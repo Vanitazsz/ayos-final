@@ -26,11 +26,21 @@ export default function LoginScreen() {
       const user = await signInWithPassword(data.email, data.password);
       setSessionUser(user);
       router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home');
-    } catch (error) { Alert.alert('Sign in failed', error instanceof Error ? error.message : 'Unable to sign in'); }
-    finally { setLoading(false); }
+    } catch (error) {
+      console.error('[login] signIn error:', error);
+      const msg =
+        typeof error === 'string'
+          ? error
+          : error instanceof Error
+            ? error.message
+            : (error as any)?.message ??
+              (error as any)?.error_description ??
+              'Unable to sign in. Please try again.';
+      Alert.alert('Sign in failed', msg);
+    } finally { setLoading(false); }
   };
 
-  const onGoogle = async () => { setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { Alert.alert('Google sign in',error instanceof Error?error.message:'Unable to sign in'); } finally { setLoading(false); } };
+  const onGoogle = async () => { setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { console.error('[login] google signIn error:', error); const msg = typeof error === 'string' ? error : error instanceof Error ? error.message : (error as any)?.message ?? 'Unable to sign in with Google.'; Alert.alert('Google sign in', msg); } finally { setLoading(false); } };
   const onForgotPassword = async () => { const email=getValues('email'); if(!email){Alert.alert('Email required','Enter your email address first.');return;} try{await requestPasswordReset(email);Alert.alert('Check your email','A secure password reset link has been sent.');}catch(error){Alert.alert('Reset failed',error instanceof Error?error.message:'Unable to send reset email');} };
 
   return (
