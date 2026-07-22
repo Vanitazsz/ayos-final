@@ -210,7 +210,19 @@ export default function WorkerProfileScreen() {
       setEditing(true);
       return;
     }
-    if (id === 'payout-history' || id === 'payout-methods') {
+    if (id === 'industry') {
+      router.push('/(worker)/service-setup');
+      return;
+    }
+    if (id === 'portfolio') {
+      Alert.alert('Coming Soon', 'Portfolio features will be available in a future update.');
+      return;
+    }
+    if (id === 'payout-methods' || id === 'payout-history') {
+      router.push('/(worker)/wallet');
+      return;
+    }
+    if (id === 'topup-methods' || id === 'topup-history') {
       router.push('/(worker)/wallet');
       return;
     }
@@ -219,8 +231,8 @@ export default function WorkerProfileScreen() {
       return;
     }
     Alert.alert(
-      'Unavailable',
-      'This section is not configured for this account.',
+      'Coming Soon',
+      'This feature will be available in a future update.',
     );
   };
 
