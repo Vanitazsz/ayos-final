@@ -1,0 +1,6 @@
+INSERT INTO public.services (id, category_id, name, description, is_active, slug, minimum_price_minor, maximum_price_minor, estimated_duration_minutes, is_safety_critical, industry_id) VALUES
+('b1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Faucet Repair', 'Fix leaking or broken faucets', true, 'faucet-repair', 50000, 200000, 60, false, '14ae7e5a-7012-4a5c-a56c-e3ac346114ed'),
+('b1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Pipe Leak Repair', 'Fix leaking water pipes', true, 'pipe-leak-repair', 80000, 300000, 90, false, '14ae7e5a-7012-4a5c-a56c-e3ac346114ed'),
+('b1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Toilet Repair', 'Fix running or clogged toilets', true, 'toilet-repair', 50000, 250000, 60, false, '14ae7e5a-7012-4a5c-a56c-e3ac346114ed'),
+('b1000000-0000-0000-0000-000000000004', 'a1000000-0000-0000-0000-000000000002', 'Outlet Repair', 'Fix faulty electrical outlets', true, 'outlet-repair', 50000, 200000, 45, true, '996bf69c-1bb3-4aea-8d29-e96874eb09a9'),
+('b1000000-0000-0000-0000-000000000005', 'a1000000-0000-0000-0000-000000000003', 'General Cleaning', 'Full house or unit cleaning', true, 'general-cleaning', 30000, 150000, 180, false, 'b61a346d-d0a6-40c2-b874-95037012d362');
