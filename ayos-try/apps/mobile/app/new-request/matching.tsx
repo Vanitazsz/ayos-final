@@ -56,6 +56,8 @@ export default function MatchingScreen() {
   const [workers, setWorkers] = useState<WorkerResult[]>([]);
   const [diagnostic, setDiagnostic] = useState<MatchDiagnostics | null>(null);
   const [matchingError, setMatchingError] = useState('');
+  const searchStartedAt = useRef(Date.now());
+  const minDisplayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (matchState !== 'searching') return;
@@ -76,6 +78,19 @@ export default function MatchingScreen() {
     );
     pulse.start();
     let active = true;
+    searchStartedAt.current = Date.now();
+
+    const finishWithMinDisplay = (next: MatchState) => {
+      const elapsed = Date.now() - searchStartedAt.current;
+      const remaining = Math.max(0, 4000 - elapsed);
+      if (remaining === 0) {
+        if (active) setMatchState(next);
+      } else {
+        minDisplayTimer.current = setTimeout(() => {
+          if (active) setMatchState(next);
+        }, remaining);
+      }
+    };
 
     void (async () => {
       try {
@@ -151,14 +166,14 @@ export default function MatchingScreen() {
         setWorkers(rows);
 
         if (rows.length) {
-          setMatchState('results');
+          finishWithMinDisplay('results');
           return;
         }
 
         const nextDiagnostic = await getMatchDiagnostics(activeRequestId);
         if (!active) return;
         setDiagnostic(nextDiagnostic);
-        setMatchState('no_workers');
+        finishWithMinDisplay('no_workers');
       } catch (error) {
         if (!active) return;
         setMatchingError(
@@ -166,12 +181,13 @@ export default function MatchingScreen() {
             ? error.message
             : 'Matching could not be completed. Please try again.',
         );
-        setMatchState('error');
+        finishWithMinDisplay('error');
       }
     })();
 
     return () => {
       active = false;
+      if (minDisplayTimer.current) clearTimeout(minDisplayTimer.current);
       pulse.stop();
       pulseAnim.stopAnimation();
     };
