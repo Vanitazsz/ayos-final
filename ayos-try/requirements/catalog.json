@@ -1,0 +1,490 @@
+[
+  {
+    "id": "FR-01",
+    "text": "The system shall allow a user to create an account using name, mobile number, email address, password, password confirmation, and acceptance of terms."
+  },
+  {
+    "id": "FR-02",
+    "text": "The system shall not require a government-issued ID for the user-registration path shown in the supplied user workflow; worker identity information for administrator review is governed by FR-07."
+  },
+  {
+    "id": "FR-03",
+    "text": "The system shall validate required registration details, matching passwords, acceptance of terms, and a valid OTP before activating an account."
+  },
+  {
+    "id": "FR-04",
+    "text": "The system shall give clear feedback for incomplete details, invalid OTPs, failed OTP delivery, network errors, and rejected identity information."
+  },
+  {
+    "id": "FR-05",
+    "text": "The system shall allow a service provider to create a worker account."
+  },
+  {
+    "id": "FR-06",
+    "text": "The system shall allow a worker to select one or more service categories."
+  },
+  {
+    "id": "FR-07",
+    "text": "The system shall allow a worker to submit identity information for administrator review."
+  },
+  {
+    "id": "FR-08",
+    "text": "The system shall allow a worker to define availability and record relevant work experience."
+  },
+  {
+    "id": "FR-09",
+    "text": "The system shall require administrator approval before a worker can accept jobs."
+  },
+  {
+    "id": "FR-10",
+    "text": "The system shall allow a user to create a service request with service choice, issue description, optional photos, address, schedule, budget, and notes."
+  },
+  {
+    "id": "FR-11",
+    "text": "The system shall evaluate workers using service category and skills, availability and preferred schedule, subdivision or service-area location and distance, ratings and reviews, and active recommendation-subscription priority without overriding suitability."
+  },
+  {
+    "id": "FR-12",
+    "text": "The system shall present eligible workers and discovery results to the user."
+  },
+  {
+    "id": "FR-13",
+    "text": "The system shall use an active worker recommendation subscription for priority placement without overriding suitability or availability."
+  },
+  {
+    "id": "FR-14",
+    "text": "The system shall allow a user to select a worker and send a booking request based on a service request."
+  },
+  {
+    "id": "FR-15",
+    "text": "The system shall make request details available only to the selected or matching worker and authorized administrators."
+  },
+  {
+    "id": "FR-16",
+    "text": "The system shall allow an approved worker to view an incoming request and accept or decline it."
+  },
+  {
+    "id": "FR-17",
+    "text": "The system shall support the statuses Pending, Accepted, Worker Preparing, Worker En Route, Worker Arrived, Service Started, In Progress, Completed, and Cancelled."
+  },
+  {
+    "id": "FR-18",
+    "text": "The system shall allow authorized participants to monitor status changes, cancel a booking, give a cancellation reason, view the refund policy, and confirm cancellation."
+  },
+  {
+    "id": "FR-19",
+    "text": "The system shall provide an administrator dashboard after successful administrator sign-in."
+  },
+  {
+    "id": "FR-20",
+    "text": "The system shall allow administrators to review worker information, approve workers, or request more documents."
+  },
+  {
+    "id": "FR-21",
+    "text": "The system shall allow administrators to manage user and worker accounts, profiles, categories, availability, and approval status."
+  },
+  {
+    "id": "FR-22",
+    "text": "The system shall allow administrators to view transactions and payment details, including cash-confirmation records and configured cash commission or homeowner-charge values, and decide whether a refund is processed or rejected."
+  },
+  {
+    "id": "FR-23",
+    "text": "The system shall allow administrators to manage reports, analytics, exports, print outputs, and platform records."
+  },
+  {
+    "id": "FR-24",
+    "text": "The system shall allow administrators to moderate submitted homeowner ratings and reviews before publication, manage support tickets, escalate unresolved issues, handle booking problems, and record interventions."
+  },
+  {
+    "id": "FR-25",
+    "text": "The system shall support Cash as the payment method for a completed booking. Cash shall follow the confirmation flow in FR-26."
+  },
+  {
+    "id": "FR-26",
+    "text": "The system shall process Cash payment and record whether payment was successful. It shall require homeowner cash-payment confirmation and worker payment-received confirmation before marking payment successful."
+  },
+  {
+    "id": "FR-27",
+    "text": "The system shall generate a receipt after successful Cash payment and close the booking. The receipt shall include the service amount, commission rate and amount, worker net amount, and homeowner platform charge."
+  },
+  {
+    "id": "FR-28",
+    "text": "The system shall show a Cash payment failure and let the user retry Cash payment."
+  },
+  {
+    "id": "FR-29",
+    "text": "The system shall allow a user or homeowner to give a star rating after a completed and paid booking."
+  },
+  {
+    "id": "FR-30",
+    "text": "The system shall allow a user or homeowner to submit a written review and upload review images after a completed and paid booking."
+  },
+  {
+    "id": "FR-31",
+    "text": "The system shall display administrator-moderated worker ratings and reviews in worker details and profiles."
+  },
+  {
+    "id": "FR-32",
+    "text": "The system shall prevent ratings and reviews for bookings that are not completed and paid."
+  },
+  {
+    "id": "FR-33",
+    "text": "The system shall allow a user to upload photos for a service request."
+  },
+  {
+    "id": "FR-34",
+    "text": "The system shall allow a user to add a written description to a service request."
+  },
+  {
+    "id": "FR-35",
+    "text": "The system shall make request photos and descriptions available only to authorized matching workers and administrators."
+  },
+  {
+    "id": "FR-36",
+    "text": "The system shall provide clear feedback when photo capture or upload fails."
+  },
+  {
+    "id": "FR-37",
+    "text": "The system shall request location permission before accessing device location."
+  },
+  {
+    "id": "FR-38",
+    "text": "The system shall use available location information to support nearby-worker discovery and live booking tracking."
+  },
+  {
+    "id": "FR-39",
+    "text": "The system shall record a chosen service address for a booking."
+  },
+  {
+    "id": "FR-40",
+    "text": "The system shall explain denied or unavailable location access and let the user retry after enabling location."
+  },
+  {
+    "id": "FR-41",
+    "text": "The system shall provide map tracking and an ETA when location permission is granted during a worker-en-route booking."
+  },
+  {
+    "id": "FR-42",
+    "text": "The system shall support recording a worker starting location when relevant."
+  },
+  {
+    "id": "FR-43",
+    "text": "The system shall make booking location context available only to authorized booking participants."
+  },
+  {
+    "id": "FR-44",
+    "text": "The system may provide directions or travel-distance information when supported by the selected location implementation."
+  },
+  {
+    "id": "FR-45",
+    "text": "The system shall support message translation between Filipino and English."
+  },
+  {
+    "id": "FR-46",
+    "text": "The system shall preserve the original message when displaying a translation result."
+  },
+  {
+    "id": "FR-47",
+    "text": "The system shall inform users when a requested translation is outside the Filipino-English MVP scope."
+  },
+  {
+    "id": "FR-48",
+    "text": "The system shall provide clear feedback when message translation fails."
+  },
+  {
+    "id": "FR-49",
+    "text": "The system shall sign the user in automatically after successful account creation."
+  },
+  {
+    "id": "FR-50",
+    "text": "The system shall provide a worker onboarding screen when the worker is not authenticated."
+  },
+  {
+    "id": "FR-51",
+    "text": "The system shall show the worker whether they are approved or need to provide more documents."
+  },
+  {
+    "id": "FR-52",
+    "text": "The system shall let a user browse featured, recommended, and recent workers."
+  },
+  {
+    "id": "FR-53",
+    "text": "The system shall let a user search, filter, sort, and select a service category when finding workers."
+  },
+  {
+    "id": "FR-54",
+    "text": "The system shall show a worker’s ratings, reviews, skills, experience, availability, portfolio, and pricing in worker details."
+  },
+  {
+    "id": "FR-55",
+    "text": "The system shall show the top five matching workers and let a user view and compare workers."
+  },
+  {
+    "id": "FR-56",
+    "text": "The system shall let a user message a worker before selecting that worker."
+  },
+  {
+    "id": "FR-57",
+    "text": "The system shall show that no workers are available and let a user adjust filters or date when no suitable match is found; for an AI-created request, it shall also keep the request open and notify the user later as specified by FR-98."
+  },
+  {
+    "id": "FR-58",
+    "text": "The system shall let a worker provide a reason when declining a booking request."
+  },
+  {
+    "id": "FR-59",
+    "text": "The system shall handle worker offline, decline, and booking-timeout outcomes and recommend another worker."
+  },
+  {
+    "id": "FR-60",
+    "text": "The system shall let a user choose a service, describe the issue, upload photos, choose an address and schedule, set a budget, add notes, and request AI analysis as shown in the workflow."
+  },
+  {
+    "id": "FR-61",
+    "text": "The system shall provide Call, Chat, and Emergency contact options during an active booking."
+  },
+  {
+    "id": "FR-62",
+    "text": "The system shall organize bookings into Upcoming, Ongoing, Completed, and Cancelled views and shall provide booking details."
+  },
+  {
+    "id": "FR-63",
+    "text": "The system shall show an error when administrator credentials are invalid."
+  },
+  {
+    "id": "FR-64",
+    "text": "The system shall let an administrator manage their profile, password, email, two-factor authentication, login history, and logout."
+  },
+  {
+    "id": "FR-65",
+    "text": "The system shall provide audit logs, a trash area, restore actions, and permanent deletion after an administrator decides not to restore an item."
+  },
+  {
+    "id": "FR-66",
+    "text": "The system shall let an administrator change system settings, save changes, or discard unsaved changes."
+  },
+  {
+    "id": "FR-67",
+    "text": "The system shall let an administrator create notifications for users, workers, or everyone and send or schedule them."
+  },
+  {
+    "id": "FR-68",
+    "text": "The system shall let an administrator generate reports, view analytics dashboards, and export or print report results."
+  },
+  {
+    "id": "FR-69",
+    "text": "The system shall let an administrator view support tickets and ticket details, close resolved tickets, and escalate unresolved tickets."
+  },
+  {
+    "id": "FR-70",
+    "text": "The system shall let an administrator suspend a user after reviewing user details."
+  },
+  {
+    "id": "FR-71",
+    "text": "The system shall let an administrator review booking details, identify a booking problem, intervene, mark it resolved, and manage services when no problem is identified."
+  },
+  {
+    "id": "FR-72",
+    "text": "The administrator interface shall provide search, filters, pagination, export, notifications, confirmations, and success or error feedback."
+  },
+  {
+    "id": "FR-73",
+    "text": "The system shall record payment details, payment status, the related booking reference, required cash confirmations, configured cash commission (default 10%), worker net amount, and homeowner platform charge (default PHP 0)."
+  },
+  {
+    "id": "FR-74",
+    "text": "The system shall record an administrator’s decision to process or reject a refund."
+  },
+  {
+    "id": "FR-75",
+    "text": "The system shall let a user recommend a worker as part of sending feedback."
+  },
+  {
+    "id": "FR-76",
+    "text": "The system shall show a feedback-submitted result after a review is sent."
+  },
+  {
+    "id": "FR-77",
+    "text": "The system shall let a user save and manage service addresses."
+  },
+  {
+    "id": "FR-78",
+    "text": "The system shall provide a chat list and worker chat with image sharing, location sharing, and optional voice messages."
+  },
+  {
+    "id": "FR-79",
+    "text": "The system shall provide alerts for updates, worker messages, payment updates, promotions, and system notifications."
+  },
+  {
+    "id": "FR-80",
+    "text": "The system shall provide profile functions for personal information, notification preferences, saved addresses, settings, payment methods, privacy, booking history, favourites, help center, and logout."
+  },
+  {
+    "id": "FR-81",
+    "text": "The system shall provide user navigation for Browse Categories, Send Request, Bookings, Messages, Alerts, and Profile."
+  },
+  {
+    "id": "FR-82",
+    "text": "The system shall provide worker navigation for Dashboard, Job Posts (the canonical name for the legacy Browse view), Bookings, Reviews, and Profile."
+  },
+  {
+    "id": "FR-83",
+    "text": "The system shall let a worker browse job posts, view request details, and accept a job."
+  },
+  {
+    "id": "FR-84",
+    "text": "The system shall let a worker start and complete an accepted job."
+  },
+  {
+    "id": "FR-85",
+    "text": "The system shall let a worker contact the customer through messaging and use live tracking when available."
+  },
+  {
+    "id": "FR-86",
+    "text": "The system shall show a worker’s bookings, payment-received status, review history, and provider details."
+  },
+  {
+    "id": "FR-87",
+    "text": "The system shall provide worker profile settings."
+  },
+  {
+    "id": "FR-88",
+    "text": "The system shall provide a post-payment Rate & Review modal that displays the customer?s submitted rating and review for the related completed, paid booking. The worker shall view this feedback only and shall not submit a rating or review through the modal. Customer feedback remains subject to administrator moderation before publication."
+  },
+  {
+    "id": "FR-89",
+    "text": "The system shall let a registered user sign in with email address or phone number and password, and choose Remember Me."
+  },
+  {
+    "id": "FR-90",
+    "text": "The system shall let a user reset a forgotten password by sending a reset link or OTP and setting a new password."
+  },
+  {
+    "id": "FR-91",
+    "text": "The system shall show an incorrect-credentials error and let the user try signing in again."
+  },
+  {
+    "id": "FR-92",
+    "text": "The system shall provide an optional AI Home Assistant that a user can open when preparing a service request."
+  },
+  {
+    "id": "FR-93",
+    "text": "The system shall let a user submit an issue photo or a spoken issue description for AI analysis, and shall convert supported spoken input to text."
+  },
+  {
+    "id": "FR-94",
+    "text": "The system shall analyze the submitted issue and return a detected issue type and severity."
+  },
+  {
+    "id": "FR-95",
+    "text": "The system shall show the AI’s possible cause, suggested service category, estimated cost range, and safety advice."
+  },
+  {
+    "id": "FR-96",
+    "text": "The system shall create an editable service-request draft from available AI analysis details; the user shall review or change the draft before sending the booking request."
+  },
+  {
+    "id": "FR-97",
+    "text": "The system shall let a user save an AI analysis and service-request draft to continue later."
+  },
+  {
+    "id": "FR-98",
+    "text": "The system shall keep an AI-created request open when no suitable worker is found and notify the user when a suitable match is found later."
+  },
+  {
+    "id": "FR-99",
+    "text": "The system shall show a Splash Screen after the user launches the mobile application and shall then show the Landing Page."
+  },
+  {
+    "id": "FR-100",
+    "text": "The Landing Page shall present an Already Registered? decision that routes a registered visitor to Sign In and a new visitor to Create Account."
+  },
+  {
+    "id": "FR-101",
+    "text": "After successful account creation or sign-in, the system shall open the Home screen, which provides access to the user navigation required by FR-81."
+  },
+  {
+    "id": "FR-102",
+    "text": "The system shall treat the worker-workflow Switch to User control as a temporary prototype-testing control and shall not provide worker-to-user role switching as a production feature."
+  },
+  {
+    "id": "FR-103",
+    "text": "The system shall treat Accept Worker, Hire, Worker Match, and Booking Success nodes shown in the worker prototype as user-side matching and booking actions. The production worker workspace shall use Job Posts, request details, accept, start, complete, bookings, reviews, and profile as defined by FR-82 through FR-87."
+  },
+  {
+    "id": "FR-104",
+    "text": "The system shall use the canonical booking lifecycle in FR-17: Pending, Accepted, Worker Preparing, Worker En Route, Worker Arrived, Service Started, In Progress, Completed, and Cancelled. Simplified workflow diagrams are summary views and do not replace these statuses."
+  },
+  {
+    "id": "NFR-01",
+    "text": "The system shall provide responsive feedback for account, discovery, AI analysis, booking, location, payment, message, notification, and administration actions."
+  },
+  {
+    "id": "NFR-02",
+    "text": "The system shall indicate loading or processing status when a result is not immediately available."
+  },
+  {
+    "id": "NFR-03",
+    "text": "The system shall return a clear outcome when an OTP, location, AI-analysis, payment, notification, translation, or external-service action cannot be completed."
+  },
+  {
+    "id": "NFR-04",
+    "text": "The system shall retain confirmed account, AI analysis and draft, booking, payment, receipt, review, notification, support, and audit records according to the selected data-storage design."
+  },
+  {
+    "id": "NFR-05",
+    "text": "The system shall not represent incomplete submissions as successful completed actions."
+  },
+  {
+    "id": "NFR-06",
+    "text": "The system shall handle unavailable camera, microphone, location, network, AI-analysis, payment, translation, and external service capabilities without causing the interface to fail unexpectedly."
+  },
+  {
+    "id": "NFR-07",
+    "text": "The system shall enforce role-appropriate access for users, workers, and administrators."
+  },
+  {
+    "id": "NFR-08",
+    "text": "The system shall protect identity, account-security, and verification information from unauthorized access."
+  },
+  {
+    "id": "NFR-09",
+    "text": "The system shall protect AI analyses and drafts, booking, payment, review, message, notification, and location information from unauthorized access."
+  },
+  {
+    "id": "NFR-10",
+    "text": "The system shall request consent before accessing camera, photo library, microphone, or location data where required."
+  },
+  {
+    "id": "NFR-11",
+    "text": "The system shall collect and present only information needed for the workflow-aligned functions."
+  },
+  {
+    "id": "NFR-12",
+    "text": "The system shall use clear, consistent labels and status indicators."
+  },
+  {
+    "id": "NFR-13",
+    "text": "The system shall provide understandable validation and error messages."
+  },
+  {
+    "id": "NFR-14",
+    "text": "The system shall make Filipino-English translation available without replacing the original message."
+  },
+  {
+    "id": "NFR-15",
+    "text": "The system shall explain the effect of denying camera, microphone, or location permission on the relevant feature."
+  },
+  {
+    "id": "NFR-16",
+    "text": "The system shall keep account, AI analysis, matching, booking, payment, communication, and administration responsibilities sufficiently separated for future enhancement."
+  },
+  {
+    "id": "NFR-17",
+    "text": "The system shall allow post-MVP capabilities to be evaluated without redefining the workflow-aligned MVP scope."
+  },
+  {
+    "id": "NFR-18",
+    "text": "The system shall retain traceable requirement identifiers for implementation and testing."
+  }
+]
