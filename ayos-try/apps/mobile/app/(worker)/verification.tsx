@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import {
   ArrowLeft, CheckCircle, Clock, AlertCircle, Upload,
@@ -317,11 +317,11 @@ export default function VerificationScreen() {
               ))}
             </View>
 
-            <View style={styles.uploadArea}>
+            <Pressable style={styles.uploadArea} onPress={() => Alert.alert('Resubmit Documents', 'To resubmit documents, please contact support or re-register as a worker.')}>
               <Camera size={20} color={Colors.info} />
               <AppText variant="bodySm" weight="bold" color={Colors.info}>Upload Additional Documents</AppText>
               <AppText variant="caption" color={Colors.textTertiary}>JPG, PNG, PDF · Max 10MB per file</AppText>
-            </View>
+            </Pressable>
 
             <AlertCard
               type="info"
