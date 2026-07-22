@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { normalizePhilippinePhone } from '@/lib/workerRegistration';
+import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -73,7 +74,7 @@ export async function signInWithPassword(email: string, password: string) {
   try {
     const user = await loadCurrentUser();
     try {
-      await supabase.functions.invoke('record-auth-session', { body: {} });
+      await invokeAuthenticatedFunction('record-auth-session', { body: {} });
     } catch (sessionLogErr) {
       console.warn('[auth] record-auth-session failed (non-fatal):', sessionLogErr);
     }
@@ -154,7 +155,7 @@ export async function signInWithGoogle() {
   const { error: exchangeError } =
     await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) throw exchangeError;
-  await supabase.functions.invoke('record-auth-session', { body: {} });
+  await invokeAuthenticatedFunction('record-auth-session', { body: {} });
 }
 
 export async function loadCurrentUser() {

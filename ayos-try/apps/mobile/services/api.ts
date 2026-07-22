@@ -3,6 +3,10 @@ import { randomUUID } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
 import type { MediaInput } from '@/types/ai';
 import {
+  invokeAuthenticatedFunction,
+  SessionExpiredError,
+} from '@/services/authenticatedFunctions';
+import {
   getMyProfile,
   requireIdentity,
   resolveProfileAvatar,
@@ -26,6 +30,7 @@ export class EdgeFunctionError extends Error {
 }
 
 async function normalizeFunctionError(error: unknown, fallback: string) {
+  if (error instanceof SessionExpiredError) return error;
   const context = (error as { context?: Response })?.context;
   let payload: Record<string, any> | null = null;
   if (context) {
@@ -1214,8 +1219,11 @@ export async function sendMessage(
   if (localeError) throw localeError;
   const targetLocale: 'en' | 'fil' = recipientLocale === 'fil' ? 'fil' : 'en';
   if (targetLocale !== sourceLocale) {
-    void supabase.functions.invoke('ai-translate-message', {
+    void invokeAuthenticatedFunction('ai-translate-message', {
       body: { messageId: data.id, targetLocale },
+    }).catch((translationError) => {
+      if (!(translationError instanceof SessionExpiredError))
+        console.warn('[translation] automatic translation failed:', translationError);
     });
   }
   return data;
@@ -1347,9 +1355,8 @@ export async function queueAiAnalysis(input: {
   consentVersion: string;
   idempotencyKey: string;
 }) {
-  const { data, error } = await supabase.functions.invoke(
-    'ai-analyze-request',
-    {
+  try {
+    const data = await invokeAuthenticatedFunction<any>('ai-analyze-request', {
       body: {
         description: input.description,
         media: input.media ?? [],
@@ -1357,17 +1364,21 @@ export async function queueAiAnalysis(input: {
         consent: { accepted: true, version: input.consentVersion },
       },
       headers: { 'idempotency-key': input.idempotencyKey },
-    },
-  );
-  if (error) throw await normalizeFunctionError(error, 'Unable to start AI analysis.');
-  return data.data;
+    });
+    return data.data;
+  } catch (error) {
+    throw await normalizeFunctionError(error, 'Unable to start AI analysis.');
+  }
 }
 export async function processAiJob(jobId: string) {
-  const { data, error } = await supabase.functions.invoke('ai-process-job', {
-    body: { jobId },
-  });
-  if (error) throw await normalizeFunctionError(error, 'Unable to process AI analysis.');
-  return data.data;
+  try {
+    const data = await invokeAuthenticatedFunction<any>('ai-process-job', {
+      body: { jobId },
+    });
+    return data.data;
+  } catch (error) {
+    throw await normalizeFunctionError(error, 'Unable to process AI analysis.');
+  }
 }
 
 export interface MediaAssistResult {
@@ -1389,18 +1400,20 @@ export async function assistRequestMedia(input: {
   consentVersion: string;
   idempotencyKey: string;
 }): Promise<MediaAssistResult> {
-  const { data, error } = await supabase.functions.invoke('ai-assist-media', {
-    body: {
-      media: input.media,
-      description: input.description?.trim() ?? '',
-      locale: input.locale ?? 'en-PH',
-      consent: { accepted: true, version: input.consentVersion },
-    },
-    headers: { 'idempotency-key': input.idempotencyKey },
-  });
-  if (error)
+  try {
+    const data = await invokeAuthenticatedFunction<any>('ai-assist-media', {
+      body: {
+        media: input.media,
+        description: input.description?.trim() ?? '',
+        locale: input.locale ?? 'en-PH',
+        consent: { accepted: true, version: input.consentVersion },
+      },
+      headers: { 'idempotency-key': input.idempotencyKey },
+    });
+    return data.data as MediaAssistResult;
+  } catch (error) {
     throw await normalizeFunctionError(error, 'AI could not process this media right now.');
-  return data.data as MediaAssistResult;
+  }
 }
 
 export async function geocodeSearch(
@@ -1412,40 +1425,42 @@ export async function geocodeSearch(
     params.set('lat', String(coords.latitude));
     params.set('lon', String(coords.longitude));
   }
-  const { data, error } = await supabase.functions.invoke(
-    `geocode-search?${params}`,
-    { method: 'GET' },
-  );
-  if (error) {
+  try {
+    const data = await invokeAuthenticatedFunction<any>(`geocode-search?${params}`, {
+      method: 'GET',
+    });
+    return (data?.data?.items ?? []) as GeocodingResult[];
+  } catch (error) {
     const normalized = await normalizeFunctionError(error, 'Address search is unavailable.');
+    if (normalized instanceof SessionExpiredError) throw normalized;
     normalized.message = geocodingErrorMessage(normalized);
     throw normalized;
   }
-  return (data?.data?.items ?? []) as GeocodingResult[];
 }
 export async function reverseGeocode(
   latitude: number,
   longitude: number,
 ): Promise<GeocodingResult> {
-  const { data, error } = await supabase.functions.invoke(
-    `geocode-reverse?lat=${latitude}&lon=${longitude}`,
-    { method: 'GET' },
-  );
-  if (error) {
+  try {
+    const data = await invokeAuthenticatedFunction<any>(
+      `geocode-reverse?lat=${latitude}&lon=${longitude}`,
+      { method: 'GET' },
+    );
+    return data.data.result as GeocodingResult;
+  } catch (error) {
     const normalized = await normalizeFunctionError(error, 'Address lookup is unavailable.');
+    if (normalized instanceof SessionExpiredError) throw normalized;
     normalized.message = geocodingErrorMessage(normalized);
     throw normalized;
   }
-  return data.data.result as GeocodingResult;
 }
 export async function calculateRoute(
   start: [number, number],
   end: [number, number],
   bookingId?: string,
 ) {
-  const { data, error } = await supabase.functions.invoke('route', {
+  const data = await invokeAuthenticatedFunction<any>('route', {
     body: { start, end, bookingId },
   });
-  if (error) throw error;
   return data.data;
 }
