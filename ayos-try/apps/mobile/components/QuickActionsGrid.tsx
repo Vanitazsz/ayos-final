@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, Dimensions, Alert } from 'react-native';
 import { Calendar, DollarSign, Star, Shield } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation, IconSize } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -12,10 +12,10 @@ const CARD_WIDTH = (screenWidth - Layout.screenPadding * 2 - CARD_GAP) / 2;
 import { Layout } from '@/constants/theme';
 
 const quickActions = [
-  { id: 'schedule', icon: Calendar, label: 'My Schedule', color: Colors.cta, bg: Colors.primarySurface },
-  { id: 'earnings', icon: DollarSign, label: 'Earnings', color: Colors.success, bg: Colors.successBg },
-  { id: 'premium', icon: Star, label: 'Premium', color: Colors.warning, bg: Colors.warningBg },
-  { id: 'verification', icon: Shield, label: 'Verification', color: Colors.info, bg: Colors.infoBg },
+  { id: 'schedule', icon: Calendar, label: 'My Schedule', color: Colors.cta, bg: Colors.primarySurface, route: '/(worker)/bookings' as const },
+  { id: 'earnings', icon: DollarSign, label: 'Earnings', color: Colors.success, bg: Colors.successBg, route: '/(worker)/wallet' as const },
+  { id: 'premium', icon: Star, label: 'Premium', color: Colors.warning, bg: Colors.warningBg, route: null },
+  { id: 'verification', icon: Shield, label: 'Verification', color: Colors.info, bg: Colors.infoBg, route: '/(worker)/verification' as const },
 ];
 
 export const QuickActionsGrid = React.memo(function QuickActionsGrid() {
@@ -25,7 +25,13 @@ export const QuickActionsGrid = React.memo(function QuickActionsGrid() {
         <Pressable
           key={action.id}
           style={({ pressed }) => [styles.card, { opacity: pressed ? 0.9 : 1 }]}
-          onPress={() => {}}
+          onPress={() => {
+            if (action.route) {
+              router.push(action.route);
+            } else {
+              Alert.alert('Coming Soon', 'Premium features will be available soon.');
+            }
+          }}
         >
           <View style={[styles.iconContainer, { backgroundColor: action.bg }]}>
             <action.icon size={IconSize.lg} color={action.color} strokeWidth={2} />
