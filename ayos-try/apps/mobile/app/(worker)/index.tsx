@@ -87,6 +87,7 @@ export default function WorkerDashboardScreen() {
             location={incomingJob.location}
             distance={incomingJob.distance}
             postedTime={incomingJob.postedTime}
+            onAccept={() => router.push(`/(worker)/booking-request/${incomingJob.id}`)}
             onMoreDetails={() => router.push(`/(worker)/booking-request/${incomingJob.id}`)}
           />}
         </View>
