@@ -907,6 +907,19 @@ export async function selectWorker(serviceRequestId: string, workerId: string) {
   if (error) throw error;
   return data;
 }
+export async function fetchBookingByRequestId(serviceRequestId: string) {
+  return wrap(async () => {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('service_request_id', serviceRequestId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  });
+}
 export async function fetchBookingDetail(id: string) {
   return wrap(async () => {
     const { data, error } = await supabase
@@ -1364,7 +1377,7 @@ export interface MediaAssistResult {
   problemDescription: string;
   requestDraft: string;
   safetyAdvice: string[];
-  provider: 'GEMINI' | 'OPENAI';
+  provider: 'OPENROUTER' | 'GEMINI' | 'OPENAI';
   model: string;
   retryable: boolean;
 }
