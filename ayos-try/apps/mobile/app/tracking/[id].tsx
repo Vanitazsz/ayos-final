@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -18,6 +19,7 @@ import {
   Circle,
 } from 'lucide-react-native';
 import { fetchBookingTracking, subscribeToTable } from '@/services/api';
+import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 
@@ -172,7 +174,14 @@ export default function TrackingScreen() {
             </View>
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity style={styles.iconButton} onPress={() => {
+              const workerAccountId = tracking?.booking?.worker_account_id;
+              if (workerAccountId) {
+                supabase.from('accounts').select('mobile').eq('id', workerAccountId).single().then(({ data }) => {
+                  if (data?.mobile) Linking.openURL(`tel:${data.mobile}`);
+                });
+              }
+            }}>
               <Phone color={theme.colors.primary} size={20} />
             </TouchableOpacity>
             <TouchableOpacity
