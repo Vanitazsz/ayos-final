@@ -6,44 +6,67 @@ import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
-import { User, Mail, Phone, Lock, ArrowLeft, CheckSquare, Square } from 'lucide-react-native';
+import {
+  User,
+  Mail,
+  Phone,
+  Lock,
+  ArrowLeft,
+  CheckSquare,
+  Square,
+} from 'lucide-react-native';
 import { signUpCustomer } from '@/services/auth';
+import { isValidPhilippinePhone } from '@/lib/workerRegistration';
 
 export default function RegisterScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  const { control, handleSubmit, watch, formState: { errors } } = useForm({
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({
     defaultValues: {
       name: '',
       mobile: '',
       email: '',
       password: '',
       confirmPassword: '',
-    }
+    },
   });
 
   const password = watch('password');
 
   const onSubmit = async (data: any) => {
     if (!acceptedTerms) {
-      alert("Please accept the terms and conditions.");
+      alert('Please accept the terms and conditions.');
       return;
     }
-    
+
     setLoading(true);
     try {
       await signUpCustomer(data);
       router.push({ pathname: '/(auth)/otp', params: { email: data.email } });
-    } catch (error) { Alert.alert('Registration failed', error instanceof Error ? error.message : 'Unable to register'); }
-    finally { setLoading(false); }
+    } catch (error) {
+      Alert.alert(
+        'Registration failed',
+        error instanceof Error ? error.message : 'Unable to register',
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Screen safeArea scrollable>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
       </View>
@@ -74,9 +97,11 @@ export default function RegisterScreen() {
 
           <Controller
             control={control}
-            rules={{ 
+            rules={{
               required: 'Mobile number is required',
-              pattern: { value: /^[0-9]{11}$/, message: 'Enter an 11-digit Philippine mobile number' }
+              validate: (value) =>
+                isValidPhilippinePhone(value) ||
+                'Enter a valid Philippine mobile number',
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -95,9 +120,12 @@ export default function RegisterScreen() {
 
           <Controller
             control={control}
-            rules={{ 
+            rules={{
               required: 'Email is required',
-              pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' }
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: 'Invalid email',
+              },
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -117,9 +145,9 @@ export default function RegisterScreen() {
 
           <Controller
             control={control}
-            rules={{ 
+            rules={{
               required: 'Password is required',
-              minLength: { value: 8, message: 'Minimum 8 characters' }
+              minLength: { value: 8, message: 'Minimum 8 characters' },
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -138,9 +166,9 @@ export default function RegisterScreen() {
 
           <Controller
             control={control}
-            rules={{ 
+            rules={{
               required: 'Confirm password is required',
-              validate: val => val === password || 'Passwords do not match'
+              validate: (val) => val === password || 'Passwords do not match',
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -157,8 +185,8 @@ export default function RegisterScreen() {
             name="confirmPassword"
           />
 
-          <TouchableOpacity 
-            style={styles.termsContainer} 
+          <TouchableOpacity
+            style={styles.termsContainer}
             activeOpacity={0.7}
             onPress={() => setAcceptedTerms(!acceptedTerms)}
           >
@@ -168,23 +196,29 @@ export default function RegisterScreen() {
               <Square color={theme.colors.textSecondary} size={20} />
             )}
             <Text style={[theme.typography.body2, styles.termsText]}>
-              I accept the <Text style={styles.termsLink}>Terms and Conditions</Text> and <Text style={styles.termsLink}>Privacy Policy</Text>
+              I accept the{' '}
+              <Text style={styles.termsLink}>Terms and Conditions</Text> and{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
             </Text>
           </TouchableOpacity>
         </View>
 
-        <Button 
-          title="Sign Up" 
-          onPress={handleSubmit(onSubmit)} 
+        <Button
+          title="Sign Up"
+          onPress={handleSubmit(onSubmit)}
           loading={loading}
-          fullWidth 
+          fullWidth
           style={styles.submitBtn}
         />
 
         <View style={styles.footer}>
           <Text style={theme.typography.body2}>Already have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-            <Text style={[theme.typography.button, { color: theme.colors.primary }]}>Log In</Text>
+            <Text
+              style={[theme.typography.button, { color: theme.colors.primary }]}
+            >
+              Log In
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -194,14 +228,34 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   header: { paddingVertical: theme.spacing.md },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
   content: { flex: 1, paddingBottom: theme.spacing.xxxl },
   title: { color: theme.colors.textPrimary, marginBottom: theme.spacing.xs },
-  subtitle: { color: theme.colors.textSecondary, marginBottom: theme.spacing.xl },
+  subtitle: {
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
+  },
   form: { marginBottom: theme.spacing.xl },
-  termsContainer: { flexDirection: 'row', alignItems: 'flex-start', marginTop: theme.spacing.sm },
-  termsText: { flex: 1, marginLeft: theme.spacing.sm, color: theme.colors.textSecondary },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: theme.spacing.sm,
+  },
+  termsText: {
+    flex: 1,
+    marginLeft: theme.spacing.sm,
+    color: theme.colors.textSecondary,
+  },
   termsLink: { color: theme.colors.primary, fontWeight: '600' },
   submitBtn: { marginBottom: theme.spacing.xl },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

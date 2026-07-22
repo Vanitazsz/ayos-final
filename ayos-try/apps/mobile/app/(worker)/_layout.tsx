@@ -96,6 +96,10 @@ export default function WorkerTabLayout() {
         options={{ href: null }}
       />
       <Tabs.Screen
+        name="service-setup"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="booking-request/[id]"
         options={{ href: null }}
       />

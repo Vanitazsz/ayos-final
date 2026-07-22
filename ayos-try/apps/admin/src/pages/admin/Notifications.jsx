@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  Bell, Send, Filter, Search, Copy, Trash2, 
-  Mail, MessageSquare, Smartphone, CheckCircle, 
+  Bell, Send, Filter, Search, Trash2,
+  Mail, MessageSquare, Smartphone,
   XCircle, Clock
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
@@ -153,14 +153,6 @@ const Notifications = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
-                    {n.status === 'Draft' && (
-                      <button className="text-blue-600 hover:text-blue-800 p-1 rounded-lg hover:bg-blue-50 transition-colors" title="Send Now">
-                        <Send size={18} />
-                      </button>
-                    )}
-                    <button className="text-gray-400 hover:text-indigo-600 p-1 rounded-lg hover:bg-indigo-50 transition-colors" title="Duplicate">
-                      <Copy size={18} />
-                    </button>
                     <button onClick={() => handleDelete(n.id)} className="text-gray-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
                       <Trash2 size={18} />
                     </button>

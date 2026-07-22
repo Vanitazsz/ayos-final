@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   Star, Search, Filter, MoreVertical, 
   ThumbsUp, ThumbsDown, MessageSquare, AlertTriangle,
-  CheckCircle, EyeOff, Trash2, CornerUpLeft
+  CheckCircle, EyeOff, Trash2
 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 
@@ -162,10 +162,6 @@ const Reviews = () => {
                   
                   {actionMenuOpenId === review.id && (
                     <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
-                      <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
-                        <CornerUpLeft size={16} className="mr-2 text-blue-500" /> Reply as Admin
-                      </button>
-                      
                       {review.status !== 'Hidden' ? (
                         <button onClick={() => toggleStatus(review.id, 'Hidden')} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
                           <EyeOff size={16} className="mr-2 text-gray-400" /> Hide Review

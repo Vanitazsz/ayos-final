@@ -16,6 +16,8 @@
 | Worker taxonomy browser acceptance    | Passed                     | Playwright verified 10 live hosted industries, searchable industry/skill selection, no custom values, and phone/desktop layout                                                        |
 | Service search/request continuation   | Passed                     | 11 Playwright checks verified Home/request search, pagination, selection retention, geocoded and GPS confirmation, provider failure, consent, continuation, and responsive boundaries |
 | Hosted taxonomy deployment            | Passed                     | Isolated migrations `20260722000500`–`00600`; 10 industries/50 skills, foreign keys, RPC hardening, and original UUID preservation verified                                           |
+| Hosted schema continuity              | Passed                     | Restricted schema/data/role backup captured; linked `public,storage` comparison against every canonical migration returned an empty (zero-byte) diff                                  |
+| Hosted identity persistence           | Passed                     | Backup inventory contains 4 Auth users and 4 matching account rows; both clients target `qsurouiyvisykjkgjqmz` with persistent Supabase Auth sessions                                 |
 | Requirements traceability             | Passed                     | FR-01–FR-104 and NFR-01–NFR-18 present                                                                                                                                                |
 | Frontend/backend contract audit       | Passed                     | Every literal frontend RPC, Edge Function, table/view, and Storage bucket reference resolves in backend source                                                                        |
 
@@ -43,9 +45,9 @@
 
 - Authenticated User and Worker browser fixtures were not available. The authenticated Admin shell and drawer passed, but complete AAL2 Admin mutation workflows are **Insufficient data to verify**.
 - Direct pixel comparison against independently running supplied source applications is **Insufficient data to verify**; the integrated final-state screenshot baselines passed at the tested viewports.
-- Native device permission dialogs and binaries, hosted SMTP, Google OAuth credentials, live Gemini/OpenAI/OpenRouteService/Translation/Expo Push providers, production legal content, browser/device acceptance, backup/restore, RPO and RTO are **Insufficient data to verify**.
+- Native device permission dialogs and binaries, hosted SMTP, Google OAuth credentials, live Gemini/OpenAI/OpenRouteService/Translation/Expo Push providers, production legal content, browser/device acceptance, backup restoration, RPO and RTO are **Insufficient data to verify**.
 - Provider-gated controls intentionally remain disabled with a readable reason until their verified credentials/contracts exist.
 
 ## Final classification
 
-The approved Admin and unified customer/worker frontends are integrated with the GitHub Supabase backend, and local static/database/build verification passes. Production acceptance remains blocked by incompatible hosted migration history, unavailable authenticated fixtures/native devices, missing provider credentials, and final policy content.
+The approved Admin and unified customer/worker frontends are integrated with hosted Supabase project `qsurouiyvisykjkgjqmz`. The canonical `public` and Storage schemas have zero diff from the hosted project, and Auth identities are stored remotely for login from another device. Production provider and native acceptance remains blocked by unavailable authenticated fixtures/native devices, missing provider credentials, and final policy content.

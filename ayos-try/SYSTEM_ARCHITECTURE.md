@@ -62,7 +62,7 @@ flowchart LR
 - Forward/reverse geocoding and route geometry/ETA use authenticated OpenRouteService Edge Functions. Requests are Philippine-bounded, cached, validated, and persisted with the authoritative PostGIS point.
 - Message translation uses Google Cloud Translation. Expo Push sends batches of at most 100, persists every ticket result, and retires `DeviceNotRegistered` tokens.
 - Customer service settlement is Cash-only and requires both User and Worker confirmation. Worker top-ups use private manual GCash/bank proof and an AAL2 Administrator decision; ledger credit is idempotent. Payout funds are held and then completed or reversed transactionally with an external settlement reference.
-- Local development uses Supabase CLI. Staging and production use separate hosted Supabase projects with migration-first deployment and generated types.
+- Local development uses Supabase CLI. The canonical applications currently target hosted project `qsurouiyvisykjkgjqmz`; its Auth, PostgreSQL/PostGIS, Storage, Realtime, and Edge services keep identities and records available independently of a client device. Future staging environments must use separate hosted projects with migration-first deployment and generated types.
 - Formal capacity, retention, backup, RPO, and RTO targets remain blocked by missing requirements. Supabase project backup/PITR settings must be selected before production acceptance.
 
 ## Testing architecture

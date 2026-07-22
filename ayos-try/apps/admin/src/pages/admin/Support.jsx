@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
   HeadphonesIcon, MessageSquare, Clock, AlertCircle,
-  Search, Filter, CheckCircle, MoreVertical, Send,
-  User, Paperclip, X
+  Search, Filter, CheckCircle, Send,
+  User
 } from 'lucide-react';
 import Drawer from '../../components/ui/Drawer';
 import Pagination from '../../components/ui/Pagination';
@@ -165,9 +165,6 @@ const Support = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                  <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                    View
-                  </button>
                 </td>
               </tr>
             )) : (
@@ -266,9 +263,6 @@ const Support = () => {
                       placeholder="Type your reply to the customer..."
                       className="w-full border border-gray-300 rounded-lg pl-3 pr-10 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 resize-none"
                     ></textarea>
-                    <button className="absolute right-2 bottom-2 text-gray-400 hover:text-gray-600 p-1">
-                      <Paperclip size={18} />
-                    </button>
                   </div>
                   <div className="flex justify-end mt-2">
                     <button 

@@ -76,7 +76,9 @@ See [MERGE_REPORT.md](./MERGE_REPORT.md) for source provenance, conflict decisio
 
 ## Staging and production
 
-The hosted project `qsurouiyvisykjkgjqmz` has pre-existing migrations, Auth users, data, and Storage. Snapshot and diff that hosted state before deployment. Apply only migrations proven additive against the hosted baseline; do not repair migration history, delete accounts, or push the repository's clean-cutover baseline into that project without an approved backup and migration procedure.
+The Admin and Expo clients target hosted project `qsurouiyvisykjkgjqmz`. User credentials, account roles, profiles, and business records are stored in hosted Supabase rather than on a device. A user changing devices signs in again with the same verified identity; the account remains available even though the previous device's local session is not copied.
+
+A restricted hosted schema/data/roles backup was captured on 2026-07-22. A linked comparison of the full canonical migration result against hosted `public` and Storage schemas returned an empty diff, so no duplicate migration replay or history repair was performed. Hosted/local migration version histories remain different but resolve to the same schema. Do not delete accounts or force the clean-cutover history into this project.
 
 Configure `GEMINI_API_KEY`, `OPENAI_API_KEY`, `OPENROUTESERVICE_API_KEY`, `EXPO_ACCESS_TOKEN`, and `EDGE_FUNCTION_SHARED_SECRET` only as server/Edge Function secrets. Set `GOOGLE_OAUTH_ENABLED` after configuring Supabase Auth Google credentials. `EXPO_PUBLIC_MAP_STYLE_URL`, `EXPO_PUBLIC_EAS_PROJECT_ID`, and the Supabase publishable client settings are public client configuration. Missing bindings return stable fail-closed errors.
 

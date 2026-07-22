@@ -40,7 +40,7 @@ export const BookingChat = React.memo(function BookingChat({
     setInputText('');
   };
 
-  useEffect(()=>{let stop=()=>{};const load=async()=>{const result=await fetchConversationForBooking(bookingId);if(result.error)return;setConversationId(result.data.id);const refresh=()=>void fetchConversation(result.data.id).then((value)=>setMessages(value.data.messages.map((row:any)=>({id:row.id,text:row.text,sender:row.sender==='self'?'worker':'customer',timestamp:row.timestamp}))));refresh();stop=subscribeToTable('messages',refresh,`conversation_id=eq.${result.data.id}`);};void load();return()=>stop();},[bookingId]);
+  useEffect(()=>{let stop=()=>{};const load=async()=>{const result=await fetchConversationForBooking(bookingId);if(result.error)return;setConversationId(result.data.id);const refresh=()=>void fetchConversation(result.data.id).then((value)=>{if(value.error||!value.data||!Array.isArray(value.data.messages)){setMessages([]);return;}setMessages(value.data.messages.map((row:any)=>({id:row.id,text:row.text,sender:row.sender==='self'?'worker':'customer',timestamp:row.timestamp})))});refresh();stop=subscribeToTable('messages',refresh,`conversation_id=eq.${result.data.id}`);};void load();return()=>stop();},[bookingId]);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);

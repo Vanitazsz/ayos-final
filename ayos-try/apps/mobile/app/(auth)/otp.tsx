@@ -22,7 +22,10 @@ const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, returnTo } = useLocalSearchParams<{
+    email: string;
+    returnTo?: string;
+  }>();
   const setSessionUser = useAuthStore((state) => state.setSessionUser);
 
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
@@ -72,6 +75,11 @@ export default function OTPScreen() {
       await verifyEmailOtp(email ?? '', otpValue);
       const user = await loadCurrentUser();
       setSessionUser(user);
+      if (returnTo === 'worker-registration' && user?.role === 'WORKER') {
+        if (router.canGoBack()) router.back();
+        else router.replace('/register-worker');
+        return;
+      }
       router.replace(
         user?.role === 'WORKER'
           ? '/register-worker'

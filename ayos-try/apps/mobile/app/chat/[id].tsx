@@ -23,7 +23,7 @@ export default function ChatScreen() {
   
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
-  useEffect(()=>{if(!id)return;let stop=()=>{};void fetchProviderProfile(id).then(result=>{if(!result.error)setProvider(result.data)});if(draft.requestId)void startConversation(draft.requestId,id).then((conversation:any)=>{setConversationId(conversation.id);const load=()=>void fetchConversation(conversation.id).then(result=>setMessages(result.data.messages.map((row:any)=>({id:row.id,text:row.text,sender:row.sender==='self'?'user':'worker',time:row.timestamp}))));load();stop=subscribeToTable('messages',load,`conversation_id=eq.${conversation.id}`);});return()=>stop();},[id,draft.requestId]);
+  useEffect(()=>{if(!id)return;let stop=()=>{};void fetchProviderProfile(id).then(result=>{if(!result.error)setProvider(result.data)});if(draft.requestId)void startConversation(draft.requestId,id).then((conversation:any)=>{setConversationId(conversation.id);const load=()=>void fetchConversation(conversation.id).then(result=>{if(result.error||!result.data||!Array.isArray(result.data.messages)){setMessages([]);return;}setMessages(result.data.messages.map((row:any)=>({id:row.id,text:row.text,sender:row.sender==='self'?'user':'worker',time:row.timestamp})))});load();stop=subscribeToTable('messages',load,`conversation_id=eq.${conversation.id}`);});return()=>stop();},[id,draft.requestId]);
 
   const handleSend = (text: string) => {
     if (!text.trim()||!conversationId) return;

@@ -198,6 +198,10 @@ export default function WorkerProfileScreen() {
       router.push('/(worker)/verification');
       return;
     }
+    if (id === 'areas') {
+      router.push('/(worker)/service-setup');
+      return;
+    }
     if (id === 'reviews') {
       router.push('/(worker)/reviews');
       return;

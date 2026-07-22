@@ -32,7 +32,7 @@
 
 - Production credentials, quotas, callback contracts, and acceptance environments for Gemini, OpenAI, OpenRouteService, Google OAuth, Google Cloud Translation, Expo Push, and production email delivery.
 - Final legal/business content, performance thresholds, browser/device matrix, production project topology, RPO, and RTO.
-- The repository is linked to hosted project `qsurouiyvisykjkgjqmz`, and a restricted schema/data/roles/migrations/functions/secrets inventory was captured before changes. Hosted and local migration histories are incompatible, so no automatic push was attempted.
+- The repository is linked to hosted project `qsurouiyvisykjkgjqmz`, and a restricted schema/data/roles inventory was captured before changes. Hosted and local migration histories differ, but a full canonical `public,storage` comparison returned an empty diff; no duplicate push or history repair was attempted.
 - `OPENAI_API_KEY` and Google OAuth acceptance credentials are not configured. The legacy hosted `ai-recommendation` function cannot be removed until the approved Gemini/OpenAI replacement chain passes live acceptance.
 - For these items: **Insufficient data to verify.**
 
@@ -98,8 +98,10 @@
 - All 248 pgTAP assertions passed across nine files, including immutable role isolation, taxonomy/onboarding validation, compatibility profile/RPC/Storage contracts, and existing RLS/domain invariants.
 - Supabase generated database types from the validated local schema; strict TypeScript passed after client repositories adopted those generated RPC names and argument types.
 - The repository is safely linked to the hosted `A-yos` project, and mobile/admin ignored environment files contain only the hosted URL and publishable key.
+- The restricted hosted backup contains 4 Auth users, 4 account rows, 2 customer profiles, 2 worker profiles, 1 administrator profile, and 2 Storage object records. No identity or business row was imported from a mock dataset.
+- The complete canonical migration result has a zero-byte schema diff against linked hosted `public` and Storage schemas. Hosted migration version history is intentionally left unchanged because replaying already-present objects would be unsafe.
 - Hosted Supabase rejected `123` / `123` with `invalid_credentials`. Live AI, transcription, OpenRouteService, tile, Translation, Expo Push, Google OAuth, hosted Storage, Realtime, and queue-provider calls were not executed. **Insufficient data to verify.**
 
 ## Current status
 
-The merged TypeScript/Supabase/PostGIS/MapLibre implementation passes local database replay, all 248 pgTAP assertions, static/unit checks, administrator build, and Expo web-export gates. Customer and Worker identities are permanently separated by their immutable primary role. The obsolete Downloads repositories were permanently deleted after cutover verification. The additive industry taxonomy migrations were deployed to hosted project `qsurouiyvisykjkgjqmz`; live REST verification confirmed 10 industries, 50 skills, and preservation of the three original category UUIDs. Other hosted migrations, live providers, native binary builds, and authenticated cross-application E2E remain unverified. The project is not declared production-complete.
+The merged TypeScript/Supabase/PostGIS/MapLibre implementation passes local database replay, all 248 pgTAP assertions, static/unit checks, administrator build, and Expo web-export gates. Customer and Worker identities are permanently separated by their immutable primary role. The obsolete Downloads repositories were permanently deleted after cutover verification. Hosted project `qsurouiyvisykjkgjqmz` contains the canonical database and Storage schema with a verified empty diff, plus real Supabase Auth/account/profile records that remain available across devices. Live providers, native binary builds, backup restoration, and authenticated cross-application E2E remain unverified. The project is not declared production-complete.

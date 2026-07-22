@@ -94,14 +94,15 @@ export async function loadUsers() {
   const { data, error } = await supabase
     .from('accounts')
     .select(
-      'id,email,mobile,status,created_at,user_profiles(display_name,verification_status),addresses(line1,barangay,city),bookings:user_account_id(count)',
+      'id,email,mobile,status,created_at,user_profiles(display_name,verification_status,bookings!bookings_user_account_id_fkey(count)),addresses(line1,barangay,city)',
     )
     .eq('role', 'USER')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => ({
     id: row.id,
-    name: identity(row.user_profiles?.display_name, 'Customer'),
+    name: row.user_profiles?.display_name?.trim() || row.email?.split('@')[0] || 'Customer',
     email: row.email,
     phone: row.mobile ?? '',
     address: [row.addresses?.[0]?.line1, row.addresses?.[0]?.barangay, row.addresses?.[0]?.city]
@@ -109,7 +110,7 @@ export async function loadUsers() {
       .join(', '),
     registeredAt: new Date(row.created_at).toLocaleDateString(),
     status: status(row.status),
-    bookings: row.bookings?.[0]?.count ?? 0,
+    bookings: row.user_profiles?.bookings?.[0]?.count ?? 0,
     verified: row.user_profiles?.verification_status === 'verified',
     verificationStatus: row.user_profiles?.verification_status ?? 'unverified',
   }));
@@ -120,7 +121,10 @@ export async function loadCustomerVerifications() {
     .select('*')
     .eq('status', 'pending')
     .order('created_at');
-  if (error) throw error;
+  if (error) {
+    if (error.code === '42P01' || error.code === 'PGRST205') return [];
+    throw error;
+  }
   const ids = [...new Set((rows ?? []).map((row) => row.customer_id))];
   const { data: accounts, error: accountError } = ids.length
     ? await supabase.from('accounts').select('id,email,user_profiles(display_name)').in('id', ids)
@@ -165,36 +169,89 @@ export async function setAccountStatus(id, nextStatus) {
   if (error) throw error;
   return data;
 }
+export async function updateUser(id, displayName, mobile) {
+  const { data, error } = await supabase.rpc('admin_update_user', {
+    p_account_id: id,
+    p_display_name: displayName,
+    p_mobile: mobile || null,
+  });
+  if (error) throw error;
+  return data;
+}
+export async function softDeleteAccount(id) {
+  const { data, error } = await supabase.rpc('admin_soft_delete_account', {
+    p_account_id: id,
+  });
+  if (error) throw error;
+  return data;
+}
 export async function loadWorkers() {
   const { data, error } = await supabase
     .from('worker_profiles')
     .select(
-      'account_id,display_name,bio,experience,service_area,approval_status,is_available,created_at,accounts(email,mobile,status),worker_skills(years,service_categories(name)),worker_verifications(id,status),bookings:account_id(count),reviews:account_id(stars),wallet_accounts(wallet_transactions(amount,status))',
+      'account_id,display_name,bio,experience,service_area,service_origin,service_radius_meters,approval_status,is_available,created_at,accounts!worker_profiles_account_id_fkey!inner(email,mobile,status,role,deleted_at),worker_skills!worker_skills_worker_id_fkey(years,service_categories!worker_skills_category_id_fkey(name)),worker_availability!worker_availability_worker_id_fkey(count),worker_verifications!worker_verifications_worker_id_fkey(id,status),bookings!bookings_worker_account_id_fkey(count),reviews!reviews_worker_account_id_fkey(stars)',
     )
+    .eq('accounts.role', 'WORKER')
+    .is('accounts.deleted_at', null)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((row) => ({
-    id: row.account_id,
-    name: identity(row.display_name, 'Worker'),
-    email: row.accounts?.email ?? '',
-    phone: row.accounts?.mobile ?? '',
-    category: row.worker_skills?.[0]?.service_categories?.name ?? '',
-    rating: row.reviews?.length
-      ? (row.reviews.reduce((sum, item) => sum + item.stars, 0) / row.reviews.length).toFixed(1)
-      : '0.0',
-    jobsCompleted: row.bookings?.[0]?.count ?? 0,
-    experience: Math.max(...(row.worker_skills ?? []).map((item) => item.years), 0),
-    status: status(row.accounts?.status),
-    verified: row.approval_status === 'APPROVED',
-    location: row.service_area ?? '',
-    registeredDate: new Date(row.created_at).toLocaleDateString(),
-    earnings: (row.wallet_accounts?.wallet_transactions ?? [])
-      .filter((item) => ['AVAILABLE', 'COMPLETED'].includes(item.status))
-      .reduce((sum, item) => sum + Number(item.amount), 0),
-    availability: row.is_available ? 'Online' : 'Offline',
-    verificationStatus: row.approval_status,
-    verificationId: row.worker_verifications?.[0]?.id,
-  }));
+  const rows = data ?? [];
+  const workerIds = rows.map((row) => row.account_id);
+  const { data: wallets } = workerIds.length
+    ? await supabase
+        .from('wallets')
+        .select('account_id,available_minor')
+        .in('account_id', workerIds)
+    : { data: [] };
+  const walletByWorker = new Map((wallets ?? []).map((wallet) => [wallet.account_id, wallet]));
+
+  return rows.map((row) => {
+    const verification = Array.isArray(row.worker_verifications)
+      ? row.worker_verifications[0]
+      : row.worker_verifications;
+    const skillsReady = (row.worker_skills?.length ?? 0) > 0;
+    const serviceAreaReady = Boolean(
+      row.service_origin && row.service_radius_meters,
+    );
+    const scheduleReady =
+      Number(row.worker_availability?.[0]?.count ?? 0) > 0;
+    const matchingReady = Boolean(
+      row.approval_status === 'APPROVED' &&
+        skillsReady &&
+        serviceAreaReady &&
+        scheduleReady &&
+        row.is_available,
+    );
+    const matchingMissing = [
+      row.approval_status !== 'APPROVED' ? 'approval' : null,
+      !skillsReady ? 'skills' : null,
+      !serviceAreaReady ? 'service area' : null,
+      !scheduleReady ? 'schedule' : null,
+      !row.is_available ? 'online status' : null,
+    ].filter(Boolean);
+    return {
+      id: row.account_id,
+      name: identity(row.display_name, 'Worker'),
+      email: row.accounts?.email ?? '',
+      phone: row.accounts?.mobile ?? '',
+      category: row.worker_skills?.[0]?.service_categories?.name ?? '',
+      rating: row.reviews?.length
+        ? (row.reviews.reduce((sum, item) => sum + item.stars, 0) / row.reviews.length).toFixed(1)
+        : '0.0',
+      jobsCompleted: row.bookings?.[0]?.count ?? 0,
+      experience: Math.max(...(row.worker_skills ?? []).map((item) => item.years), 0),
+      status: status(row.accounts?.status),
+      verified: row.approval_status === 'APPROVED',
+      location: row.service_area ?? '',
+      registeredDate: row.created_at ? new Date(row.created_at).toLocaleDateString() : '',
+      earnings: Number(walletByWorker.get(row.account_id)?.available_minor ?? 0) / 100,
+      availability: row.is_available ? 'Online' : 'Offline',
+      verificationStatus: verification?.status ?? row.approval_status,
+      verificationId: verification?.id ?? null,
+      matchingReady,
+      matchingMissing,
+    };
+  });
 }
 export async function reviewWorker(verificationId, decision, notes) {
   const { data, error } = await supabase.rpc('review_worker_verification', {
@@ -206,6 +263,27 @@ export async function reviewWorker(verificationId, decision, notes) {
   return data;
 }
 export async function deleteAccount(id, email) {
+  const { data: storageObjects, error: storageListError } = await supabase.rpc(
+    'admin_list_account_storage_objects',
+    { p_account_id: id },
+  );
+  if (storageListError) throw storageListError;
+
+  const filesByBucket = new Map();
+  for (const object of storageObjects ?? []) {
+    if (!filesByBucket.has(object.bucket_id)) filesByBucket.set(object.bucket_id, new Set());
+    filesByBucket.get(object.bucket_id).add(object.name);
+  }
+  for (const [bucket, paths] of filesByBucket) {
+    const filePaths = [...paths];
+    for (let index = 0; index < filePaths.length; index += 100) {
+      const { error } = await supabase.storage
+        .from(bucket)
+        .remove(filePaths.slice(index, index + 100));
+      if (error) throw error;
+    }
+  }
+
   const { error } = await supabase.rpc('admin_delete_account', {
     p_account_id: id,
     p_confirmation_email: email,
@@ -571,7 +649,14 @@ export async function setWorkerAvailability(id, available) {
     p_worker_id: id,
     p_available: available,
   });
-  if (error) throw error;
+  if (error) {
+    if (error.message === 'WORKER_NOT_READY') {
+      throw new Error(
+        'This worker needs approval, skills, a service area, and a schedule before going online.',
+      );
+    }
+    throw error;
+  }
   return data;
 }
 export async function publishCampaign(id) {

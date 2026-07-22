@@ -1,9 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { 
-  Search, Bell, MessageSquare, Moon, 
-  Globe, Plus, ChevronRight
-} from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
@@ -62,41 +59,15 @@ const Navbar = () => {
 
         <div className="h-6 w-px bg-border hidden sm:block"></div>
 
-        {/* Action Icons */}
-        <div className="flex items-center space-x-1">
-          <button className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-full transition-colors relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-danger rounded-full ring-2 ring-white"></span>
-          </button>
-          <button className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-full transition-colors hidden sm:block">
-            <MessageSquare className="h-5 w-5" />
-          </button>
-          <button className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-full transition-colors hidden sm:block">
-            <Moon className="h-5 w-5" />
-          </button>
-          <button className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-full transition-colors hidden sm:block">
-            <Globe className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="h-6 w-px bg-border hidden sm:block"></div>
-
-        {/* Quick Add Button */}
-        <button className="hidden sm:flex items-center justify-center bg-primary/10 text-primary hover:bg-primary/20 p-2 rounded-lg transition-colors" title="Quick Actions">
-          <Plus className="h-5 w-5" />
-        </button>
-
-        {/* Profile Dropdown Trigger */}
-        <div className="flex items-center pl-2">
-          <button className="flex items-center space-x-2 focus:outline-none">
-            <div className="w-8 h-8 rounded-full bg-navy text-white flex items-center justify-center font-medium text-sm border-2 border-white shadow-sm overflow-hidden">
-              {user?.name?.charAt(0) || 'A'}
-            </div>
-            <div className="hidden md:block text-left">
-              <div className="text-sm font-semibold text-navy leading-tight">{user?.name || 'Admin'}</div>
-              <div className="text-xs text-gray-500 leading-tight">{user?.role || 'Super Admin'}</div>
-            </div>
-          </button>
+        {/* Signed-in administrator */}
+        <div className="flex items-center space-x-2 pl-2">
+          <div className="w-8 h-8 rounded-full bg-navy text-white flex items-center justify-center font-medium text-sm border-2 border-white shadow-sm overflow-hidden">
+            {user?.name?.charAt(0) || 'A'}
+          </div>
+          <div className="hidden md:block text-left">
+            <div className="text-sm font-semibold text-navy leading-tight">{user?.name || 'Admin'}</div>
+            <div className="text-xs text-gray-500 leading-tight">{user?.role || 'Super Admin'}</div>
+          </div>
         </div>
       </div>
     </header>

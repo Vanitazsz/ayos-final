@@ -27,6 +27,8 @@ export default function VerifyIdentityScreen() {
   const [subdivisionName, setSubdivisionName] = useState('');
   const [detecting, setDetecting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const detect = async (quiet = false) => {
@@ -74,6 +76,7 @@ export default function VerifyIdentityScreen() {
   }, []);
 
   const submit = async () => {
+    if (submitting) return;
     const next: Record<string, string> = {};
     if (!idType) next.idType = 'Select an ID type';
     if (!frontUri) next.front = 'Capture or upload the front of your ID';
@@ -81,20 +84,19 @@ export default function VerifyIdentityScreen() {
     setErrors(next);
     if (Object.keys(next).length) return;
     setSubmitting(true);
+    setSubmitError('');
+    setSubmitStatus('Preparing your ID documents…');
     try {
       await submitCustomerVerification({
         idType,
         frontUri: frontUri!,
         backUri: backUri!,
-      });
-      Alert.alert(
-        'Verification submitted',
-        'You can book services after an administrator approves your ID.',
-        [{ text: 'Continue', onPress: () => router.replace('/(tabs)/home') }],
-      );
+      }, setSubmitStatus);
+      setSubmitStatus('Verification submitted. Redirecting…');
+      router.replace('/(tabs)/home');
     } catch (error) {
-      Alert.alert(
-        'Verification failed',
+      setSubmitStatus('');
+      setSubmitError(
         error instanceof Error
           ? error.message
           : 'Unable to submit verification',
@@ -160,6 +162,20 @@ export default function VerifyIdentityScreen() {
         error={errors.back}
         containerStyle={styles.upload}
       />
+      {submitStatus ? (
+        <View style={[styles.feedback, styles.progressFeedback]}>
+          <AppText variant="bodySm" color={Colors.primary}>
+            {submitStatus}
+          </AppText>
+        </View>
+      ) : null}
+      {submitError ? (
+        <View style={[styles.feedback, styles.errorFeedback]}>
+          <AppText variant="bodySm" color={Colors.error}>
+            {submitError}
+          </AppText>
+        </View>
+      ) : null}
       {!subdivisionName ? (
         <AppButton
           label={detecting ? 'Detecting…' : 'Detect my subdivision'}
@@ -218,5 +234,20 @@ const styles = StyleSheet.create({
   },
   upload: { marginTop: Spacing['5'] },
   action: { marginTop: Spacing['5'] },
+  feedback: {
+    borderRadius: Radius.lg,
+    padding: Spacing['3'],
+    marginTop: Spacing['4'],
+  },
+  progressFeedback: {
+    backgroundColor: Colors.primarySurface,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  errorFeedback: {
+    backgroundColor: Colors.errorBg,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
   note: { marginTop: Spacing['3'], marginBottom: Spacing['8'] },
 });

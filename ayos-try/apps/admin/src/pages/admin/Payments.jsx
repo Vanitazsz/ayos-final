@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  DollarSign, TrendingUp, CreditCard, Download, 
+import {
+  DollarSign, TrendingUp, CreditCard,
   Search, Filter, ArrowUpRight, ArrowDownRight,
-  MoreVertical, Eye, FileText, CheckCircle, XCircle, Clock
+  MoreVertical, Eye,
 } from 'lucide-react';
 import Drawer from '../../components/ui/Drawer';
 import Pagination from '../../components/ui/Pagination';
@@ -68,9 +68,6 @@ const Payments = () => {
           <h1 className="text-2xl font-bold text-gray-900">Financial Overview</h1>
           <p className="text-gray-500 mt-1">Monitor revenue, worker payouts, and platform commissions</p>
         </div>
-        <button className="mt-4 sm:mt-0 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center">
-          <Download size={18} className="mr-2" /> Export Report
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -210,9 +207,6 @@ const Payments = () => {
                     <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
                       <button onClick={() => handleViewDetails(txn)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
                         <Eye size={16} className="mr-2 text-gray-400" /> View Details
-                      </button>
-                      <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
-                        <FileText size={16} className="mr-2 text-gray-400" /> Download Receipt
                       </button>
                     </div>
                   )}
@@ -376,16 +370,6 @@ const Payments = () => {
               </div>
             )}
             
-            <div className="pt-6 flex gap-3">
-              <button className="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex justify-center items-center">
-                <FileText size={18} className="mr-2" /> Receipt
-              </button>
-              {selectedTxn.status === 'Completed' && selectedTxn.type === 'Payment' && (
-                <button className="flex-1 bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg font-medium hover:bg-red-100 transition-colors">
-                  Issue Refund
-                </button>
-              )}
-            </div>
           </div>
         )}
       </Drawer>

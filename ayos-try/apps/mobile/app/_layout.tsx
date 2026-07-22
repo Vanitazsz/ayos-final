@@ -66,7 +66,12 @@ function SessionBoundary() {
 
   if (!isLoading && !isAuthenticated && !isPublic)
     return <Redirect href="/(auth)/login" />;
-  if (isAuthenticated && root === '(auth)' && pathname !== '/verify-identity')
+  if (
+    isAuthenticated &&
+    root === '(auth)' &&
+    pathname !== '/verify-identity' &&
+    pathname !== '/otp'
+  )
     return (
       <Redirect href={user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'} />
     );

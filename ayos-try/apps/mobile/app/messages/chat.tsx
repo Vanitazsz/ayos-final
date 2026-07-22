@@ -62,9 +62,13 @@ export default function ChatScreen() {
       if (conversation.error) return;
       setConversationId(conversation.data.id);
       const load = () =>
-        void fetchConversation(conversation.data.id).then((result) =>
-          setMessages(result.data.messages),
-        );
+        void fetchConversation(conversation.data.id).then((result) => {
+          if (result.error || !result.data || !Array.isArray(result.data.messages)) {
+            setMessages([]);
+            return;
+          }
+          setMessages(result.data.messages);
+        });
       load();
       stops = [
         subscribeToTable(
