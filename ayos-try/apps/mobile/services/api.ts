@@ -1418,30 +1418,41 @@ export async function startDirectConversationWithUser(targetAccountId: string) {
 export async function fetchAllAccountsForPoC() {
   return wrap(async () => {
     const user = await requireUser();
-
-    const [{ data: accounts }, { data: uProfs }, { data: wProfs }] = await Promise.all([
-      supabase.from('accounts').select('id, role, status').neq('id', user.id).eq('status', 'ACTIVE'),
+    const [{ data: userProfiles }, { data: workerProfiles }] = await Promise.all([
       supabase.from('user_profiles').select('account_id, display_name, avatar_path'),
       supabase.from('worker_profiles').select('account_id, display_name, avatar_path'),
     ]);
 
-    const uMap = new Map((uProfs ?? []).map((u: any) => [u.account_id, u]));
-    const wMap = new Map((wProfs ?? []).map((w: any) => [w.account_id, w]));
+    const map = new Map<string, { id: string; name: string; avatar: string; role: string }>();
 
+    (userProfiles ?? []).forEach((row: any) => {
+      if (row.account_id && row.account_id !== user.id) {
+        map.set(row.account_id, {
+          id: row.account_id,
+          name: row.display_name || 'Customer',
+          avatar: row.avatar_path || '',
+          role: 'Customer',
+        });
+      }
+    });
+
+    (workerProfiles ?? []).forEach((row: any) => {
+      if (row.account_id && row.account_id !== user.id) {
+        map.set(row.account_id, {
+          id: row.account_id,
+          name: row.display_name || 'Worker',
+          avatar: row.avatar_path || '',
+          role: 'Worker',
+        });
+      }
+    });
+
+    const items = Array.from(map.values());
     return Promise.all(
-      (accounts ?? []).map(async (acc: any) => {
-        const u = uMap.get(acc.id);
-        const w = wMap.get(acc.id);
-        const profile = u ?? w;
-        const name = profile?.display_name || (acc.role === 'WORKER' ? 'Worker Account' : 'Customer Account');
-        const avatarPath = profile?.avatar_path || '';
-        return {
-          id: acc.id,
-          name,
-          avatar: await resolveProfileAvatar(avatarPath),
-          role: acc.role === 'WORKER' ? 'Worker' : acc.role === 'USER' ? 'Customer' : 'Admin',
-        };
-      }),
+      items.map(async (item) => ({
+        ...item,
+        avatar: await resolveProfileAvatar(item.avatar),
+      })),
     );
   });
 }
