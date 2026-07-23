@@ -27,49 +27,89 @@ import {
   fetchConversation,
   fetchConversationForBooking,
   sendMessage,
+  startDirectConversationWithUser,
   subscribeToTable,
 } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const searchParams = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [participant, setParticipant] = useState({ name: '', avatar: '' });
-  const bookingId = Array.isArray(id) ? id[0] : id;
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const scrollRef = React.useRef<ScrollView>(null);
 
+  const rawId = Array.isArray(searchParams.id) ? searchParams.id[0] : searchParams.id;
+  const rawConvId = Array.isArray(searchParams.conversationId)
+    ? searchParams.conversationId[0]
+    : searchParams.conversationId;
+  const rawRecipientId = Array.isArray(searchParams.recipientId)
+    ? searchParams.recipientId[0]
+    : searchParams.recipientId;
+
+  const bookingId = rawId;
+
   useEffect(() => {
-    if (!bookingId) return;
     let stops: (() => void)[] = [];
     void (async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const [booking, conversation] = await Promise.all([
-        fetchBookingDetail(bookingId),
-        fetchConversationForBooking(bookingId),
-      ]);
+      let targetConvId: string | null = rawConvId ?? null;
 
-      if (!booking.error && booking.data) {
-        const isWorker = currentUser?.id === booking.data.worker_account_id;
-        const otherParty = isWorker
-          ? booking.data.user_profiles
-          : booking.data.worker_profiles;
-        setParticipant({
-          name: otherParty?.display_name ?? 'Booking Participant',
-          avatar: otherParty?.avatar_path ?? '',
-        });
+      if (rawRecipientId) {
+        try {
+          const direct = await startDirectConversationWithUser(rawRecipientId);
+          if (direct.data?.id) targetConvId = direct.data.id;
+
+          const [{ data: userProf }, { data: workerProf }] = await Promise.all([
+            supabase.from('user_profiles').select('display_name, avatar_path').eq('account_id', rawRecipientId).maybeSingle(),
+            supabase.from('worker_profiles').select('display_name, avatar_path').eq('account_id', rawRecipientId).maybeSingle(),
+          ]);
+
+          const profile = userProf ?? workerProf;
+          if (profile) {
+            setParticipant({
+              name: profile.display_name ?? 'User',
+              avatar: profile.avatar_path ?? '',
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to start direct conversation:', err);
+        }
+      } else if (bookingId) {
+        const [booking, conversation] = await Promise.all([
+          fetchBookingDetail(bookingId).catch(() => ({ data: null, error: true })),
+          fetchConversationForBooking(bookingId).catch(() => ({ data: null, error: true })),
+        ]);
+
+        if (!booking.error && booking.data) {
+          const isWorker = currentUser?.id === booking.data.worker_account_id;
+          const otherParty = isWorker
+            ? booking.data.user_profiles
+            : booking.data.worker_profiles;
+          setParticipant({
+            name: otherParty?.display_name ?? 'Booking Participant',
+            avatar: otherParty?.avatar_path ?? '',
+          });
+        }
+
+        if (conversation.data?.id) {
+          targetConvId = conversation.data.id;
+        } else if (!targetConvId) {
+          targetConvId = bookingId;
+        }
       }
 
-      if (conversation.error || !conversation.data?.id) return;
-      setConversationId(conversation.data.id);
+      if (!targetConvId) return;
+      setConversationId(targetConvId);
 
+      const activeConvId = targetConvId;
       const load = () =>
-        void fetchConversation(conversation.data.id).then((result) => {
+        void fetchConversation(activeConvId).then((result) => {
           if (result.error || !result.data || !Array.isArray(result.data.messages)) {
             setMessages([]);
             return;
@@ -83,14 +123,14 @@ export default function ChatScreen() {
         subscribeToTable(
           'messages',
           load,
-          `conversation_id=eq.${conversation.data.id}`,
+          `conversation_id=eq.${activeConvId}`,
         ),
         subscribeToTable('message_translations', load),
       ];
     })();
 
     return () => stops.forEach((stop) => stop());
-  }, [bookingId]);
+  }, [rawId, rawConvId, rawRecipientId]);
   const handleSend = async () => {
     if (!conversationId || !message.trim()) return;
     await sendMessage(conversationId, message);

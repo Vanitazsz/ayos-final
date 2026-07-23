@@ -1354,6 +1354,77 @@ export async function fetchConversations() {
     );
   });
 }
+export async function startDirectConversationWithUser(targetAccountId: string) {
+  return wrap(async () => {
+    const user = await requireUser();
+    const { data: myConvs } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('account_id', user.id);
+
+    if (myConvs && myConvs.length > 0) {
+      const convIds = myConvs.map((c: any) => c.conversation_id);
+      const { data: shared } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .in('conversation_id', convIds)
+        .eq('account_id', targetAccountId)
+        .maybeSingle();
+
+      if (shared) {
+        return { id: shared.conversation_id };
+      }
+    }
+
+    const { data: newConv, error: convErr } = await supabase
+      .from('conversations')
+      .insert({})
+      .select('id')
+      .single();
+
+    if (convErr || !newConv) throw convErr ?? new Error('Failed to create conversation');
+
+    await supabase.from('conversation_participants').insert([
+      { conversation_id: newConv.id, account_id: user.id },
+      { conversation_id: newConv.id, account_id: targetAccountId },
+    ]);
+
+    return { id: newConv.id };
+  });
+}
+export async function fetchAllAccountsForPoC() {
+  return wrap(async () => {
+    const user = await requireUser();
+    const [{ data: userProfiles }, { data: workerProfiles }] = await Promise.all([
+      supabase.from('user_profiles').select('account_id, display_name, avatar_path'),
+      supabase.from('worker_profiles').select('account_id, display_name, avatar_path'),
+    ]);
+
+    const map = new Map<string, { id: string; name: string; avatar: string; role: string }>();
+    (userProfiles ?? []).forEach((row: any) => {
+      if (row.account_id && row.account_id !== user.id) {
+        map.set(row.account_id, {
+          id: row.account_id,
+          name: row.display_name || 'Customer Account',
+          avatar: row.avatar_path || '',
+          role: 'Customer',
+        });
+      }
+    });
+    (workerProfiles ?? []).forEach((row: any) => {
+      if (row.account_id && row.account_id !== user.id) {
+        map.set(row.account_id, {
+          id: row.account_id,
+          name: row.display_name || 'Worker Account',
+          avatar: row.avatar_path || '',
+          role: 'Worker',
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  });
+}
 export async function fetchNotifications() {
   return wrap(async () => {
     const user = await requireUser();
