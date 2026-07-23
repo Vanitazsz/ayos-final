@@ -1,5 +1,4 @@
 begin;
-
 update storage.buckets
 set allowed_mime_types = array[
   'image/jpeg',
@@ -12,13 +11,10 @@ set allowed_mime_types = array[
   'audio/webm'
 ]
 where id = 'request-media';
-
 create unique index if not exists request_media_request_path_unique
   on public.request_media(service_request_id, storage_path);
-
 alter table public.ai_analysis_jobs
   drop constraint if exists ai_analysis_jobs_description_check;
-
 alter table public.ai_analysis_jobs
   add constraint ai_analysis_jobs_description_or_media_check check (
     length(description) <= 4000
@@ -27,7 +23,6 @@ alter table public.ai_analysis_jobs
       or jsonb_array_length(media_paths) > 0
     )
   );
-
 create or replace function public.attach_request_media(
   p_service_request_id uuid,
   p_storage_path text,
@@ -59,7 +54,6 @@ begin
   returning * into result;
   return result;
 end $$;
-
 create or replace function public.save_geocoded_address(
   p_label text, p_line1 text, p_line2 text, p_barangay text, p_city text, p_province text,
   p_postal_code text, p_latitude numeric, p_longitude numeric, p_provider_id text,
@@ -92,5 +86,4 @@ begin
   ) returning * into result;
   return result;
 end $$;
-
 commit;
