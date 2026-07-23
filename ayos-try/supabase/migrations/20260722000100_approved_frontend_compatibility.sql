@@ -2,27 +2,22 @@
 -- The imported GitHub schema remains authoritative; no existing business rows are replaced.
 
 begin;
-
 alter table public.accounts
   add column if not exists profile_completed_at timestamptz,
   add column if not exists password_changed_at timestamptz;
-
 alter table public.admin_profiles
   add column if not exists given_name text,
   add column if not exists family_name text,
   add column if not exists location text,
   add column if not exists bio text,
   add column if not exists avatar_path text;
-
 alter table public.service_categories
   add column if not exists slug text,
   add column if not exists minimum_price_minor bigint,
   add column if not exists maximum_price_minor bigint,
   add column if not exists is_safety_critical boolean not null default false;
-
 create unique index if not exists service_categories_slug_key
   on public.service_categories(slug) where slug is not null;
-
 create table if not exists public.authentication_events (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete cascade,
@@ -32,10 +27,8 @@ create table if not exists public.authentication_events (
   user_agent text,
   created_at timestamptz not null default now()
 );
-
 create index if not exists authentication_events_account_created_idx
   on public.authentication_events(account_id, created_at desc);
-
 create table if not exists public.cancellation_reasons (
   code text primary key check (code ~ '^[A-Z0-9_]+$'),
   label text not null check (length(trim(label)) between 2 and 160),
@@ -43,22 +36,17 @@ create table if not exists public.cancellation_reasons (
   sort_order integer not null default 0,
   is_active boolean not null default true
 );
-
 alter table public.authentication_events enable row level security;
 alter table public.cancellation_reasons enable row level security;
-
 drop policy if exists authentication_events_owner_or_admin_read on public.authentication_events;
 create policy authentication_events_owner_or_admin_read on public.authentication_events
 for select to authenticated using (account_id = auth.uid() or public.is_admin(false));
-
 drop policy if exists cancellation_reasons_read on public.cancellation_reasons;
 create policy cancellation_reasons_read on public.cancellation_reasons
 for select to anon, authenticated using (is_active or public.is_admin(false));
-
 grant select on public.authentication_events to authenticated;
 grant select on public.cancellation_reasons to anon, authenticated;
 grant select, insert, update, delete on public.authentication_events to service_role;
-
 update public.accounts account
 set profile_completed_at = coalesce(account.profile_completed_at, now())
 where exists (
@@ -74,7 +62,6 @@ where exists (
   where profile.account_id = account.id
     and lower(btrim(profile.display_name)) not in ('administrator', 'a-yos user', 'a-yos worker')
 );
-
 update public.accounts account
 set profile_completed_at = null
 where exists (
@@ -84,7 +71,6 @@ where exists (
   select 1 from public.worker_profiles profile
   where profile.account_id = account.id and lower(btrim(profile.display_name)) in ('a-yos user', 'a-yos worker')
 );
-
 create or replace function public.normalize_google_signup_metadata()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare display_name text;
@@ -103,7 +89,6 @@ begin
   end if;
   return new;
 end $$;
-
 create or replace function public.enable_secondary_role(p_role public.account_role)
 returns public.account_role language plpgsql security definer set search_path = '' as $$
 declare primary_role public.account_role; source_name text;
@@ -133,7 +118,6 @@ begin
   on conflict(account_id, role) do update set status = 'ACTIVE', revoked_at = null;
   return p_role;
 end $$;
-
 create or replace function public.get_my_profile() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare account public.accounts; active_role public.account_role; profile jsonb; default_address jsonb;
@@ -160,7 +144,6 @@ begin
     'profile_complete', account.profile_completed_at is not null
   );
 end $$;
-
 create or replace function public.update_my_profile(
   p_display_name text,
   p_mobile text default null,
@@ -198,7 +181,6 @@ begin
   values(auth.uid(), 'PROFILE_UPDATED', 'account', auth.uid()::text);
   return public.get_my_profile();
 end $$;
-
 create or replace function public.complete_my_profile(
   p_display_name text,
   p_mobile text default null,
@@ -212,7 +194,6 @@ begin
   update public.accounts set profile_completed_at = now(), updated_at = now() where id = auth.uid();
   return public.get_my_profile();
 end $$;
-
 create or replace function public.set_my_avatar(p_storage_path text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare active_role public.account_role; normalized_path text;
@@ -232,7 +213,6 @@ begin
   if not found then raise exception using errcode='P0002', message='PROFILE_NOT_FOUND'; end if;
   return public.get_my_profile();
 end $$;
-
 create or replace function public.record_my_password_change() returns timestamptz
 language plpgsql security definer set search_path = '' as $$
 declare changed_at timestamptz := now();
@@ -243,17 +223,14 @@ begin
   values(auth.uid(), 'PASSWORD_CHANGED', changed_at);
   return changed_at;
 end $$;
-
 create or replace function public.admin_dashboard_metrics() returns jsonb
 language sql stable security definer set search_path = '' as $$
   select public.get_admin_dashboard_metrics(now() - interval '30 days', now())
 $$;
-
 create or replace function public.admin_upsert_category(p_id uuid, p_name text, p_is_active boolean)
 returns public.service_categories language sql security definer set search_path = '' as $$
   select public.admin_upsert_service_category(p_id, p_name, null, p_is_active)
 $$;
-
 create or replace function public.admin_upsert_service(
   p_id uuid, p_name text, p_category_id uuid, p_minimum_price_minor bigint,
   p_maximum_price_minor bigint, p_duration_minutes integer, p_is_active boolean
@@ -263,7 +240,6 @@ create or replace function public.admin_upsert_service(
     p_duration_minutes, p_is_active
   )
 $$;
-
 create or replace function public.admin_set_worker_availability(p_worker_id uuid, p_available boolean)
 returns public.worker_profiles language plpgsql security definer set search_path = '' as $$
 declare result public.worker_profiles;
@@ -274,7 +250,6 @@ begin
   if result.account_id is null then raise exception using errcode='P0002', message='WORKER_NOT_FOUND'; end if;
   return result;
 end $$;
-
 create or replace function public.submit_request_bid(
   p_service_request_id uuid, p_amount_minor bigint, p_message text, p_duration_minutes integer
 ) returns public.service_request_offers language sql security definer set search_path = '' as $$
@@ -282,7 +257,6 @@ create or replace function public.submit_request_bid(
     p_service_request_id, p_amount_minor::numeric / 100, p_message, p_duration_minutes
   )
 $$;
-
 create or replace function public.submit_worker_application(
   p_identity_data jsonb, p_document_paths text[], p_bio text, p_experience text
 ) returns public.worker_verifications language plpgsql security definer set search_path = '' as $$
@@ -294,7 +268,6 @@ begin
   result := public.submit_worker_onboarding_identity(p_identity_data, p_document_paths);
   return result;
 end $$;
-
 revoke all on function public.get_my_profile() from public, anon;
 revoke all on function public.update_my_profile(text,text,text,text,text,text) from public, anon;
 revoke all on function public.complete_my_profile(text,text,text,text,text,text) from public, anon;
@@ -306,7 +279,6 @@ revoke all on function public.admin_upsert_service(uuid,text,uuid,bigint,bigint,
 revoke all on function public.admin_set_worker_availability(uuid,boolean) from public, anon;
 revoke all on function public.submit_request_bid(uuid,bigint,text,integer) from public, anon;
 revoke all on function public.submit_worker_application(jsonb,text[],text,text) from public, anon;
-
 grant execute on function public.get_my_profile() to authenticated;
 grant execute on function public.update_my_profile(text,text,text,text,text,text) to authenticated;
 grant execute on function public.complete_my_profile(text,text,text,text,text,text) to authenticated;
@@ -318,12 +290,10 @@ grant execute on function public.admin_upsert_service(uuid,text,uuid,bigint,bigi
 grant execute on function public.admin_set_worker_availability(uuid,boolean) to authenticated;
 grant execute on function public.submit_request_bid(uuid,bigint,text,integer) to authenticated;
 grant execute on function public.submit_worker_application(jsonb,text[],text,text) to authenticated;
-
 insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
 values ('profile-avatars', 'profile-avatars', false, 5242880, array['image/jpeg','image/png','image/webp'])
 on conflict(id) do update set public = false, file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
-
 create policy profile_avatars_owner_upload on storage.objects for insert to authenticated
 with check (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy profile_avatars_authenticated_read on storage.objects for select to authenticated
@@ -333,7 +303,6 @@ using (bucket_id = 'profile-avatars' and owner_id = auth.uid()::text)
 with check (bucket_id = 'profile-avatars' and owner_id = auth.uid()::text);
 create policy profile_avatars_owner_delete on storage.objects for delete to authenticated
 using (bucket_id = 'profile-avatars' and owner_id = auth.uid()::text);
-
 insert into public.cancellation_reasons(code, label, applies_to, sort_order) values
   ('SCHEDULE_CHANGED', 'Schedule changed', 'BOTH', 10),
   ('WORKER_UNAVAILABLE', 'Worker unavailable', 'WORKER', 20),
@@ -342,5 +311,4 @@ insert into public.cancellation_reasons(code, label, applies_to, sort_order) val
   ('OTHER', 'Other', 'BOTH', 100)
 on conflict(code) do update set label = excluded.label, applies_to = excluded.applies_to,
   sort_order = excluded.sort_order;
-
 commit;
