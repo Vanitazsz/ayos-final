@@ -75,18 +75,17 @@ export default function WorkerBookingsScreen() {
       );
     }
   };
-  const decline = (id: string) =>
-    Alert.alert('Decline booking', 'Decline this incoming request?', [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Decline',
-        style: 'destructive',
-        onPress: () =>
-          void cancelBooking(id, 'Worker declined the assigned booking')
-            .then(load)
-            .catch((error) => Alert.alert('Unable to decline', error.message)),
-      },
-    ]);
+  const decline = async (id: string) => {
+    try {
+      await cancelBooking(id, 'Worker declined the assigned booking');
+      load();
+    } catch (error) {
+      Alert.alert(
+        'Unable to decline',
+        error instanceof Error ? error.message : 'Please retry.',
+      );
+    }
+  };
 
   const filteredBookings = useMemo(() => {
     const statuses = TAB_FILTERS[activeTab] || [];

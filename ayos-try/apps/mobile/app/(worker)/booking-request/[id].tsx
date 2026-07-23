@@ -178,23 +178,15 @@ export default function BookingRequestScreen() {
     return subscribeToTable('bookings', load, `id=eq.${id}`);
   }, [id, setStoreStatus]);
 
-  const handleDecline = () => {
-    Alert.alert('Decline Booking', 'Are you sure you want to decline?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline',
-        style: 'destructive',
-        onPress: () => {
-          void cancelBooking(booking.id, 'Worker declined the assigned booking')
-            .then(() => {
-              setBackendStatus('CANCELLED');
-              setBooking((b) => ({ ...b, status: 'cancelled' }));
-              setTimeout(() => router.back(), 500);
-            })
-            .catch((error) => Alert.alert('Unable to decline', error.message));
-        },
-      },
-    ]);
+  const handleDecline = async () => {
+    try {
+      await cancelBooking(booking.id, 'Worker declined the assigned booking');
+      setBackendStatus('CANCELLED');
+      setBooking((b) => ({ ...b, status: 'cancelled' }));
+      router.replace('/(worker)/bookings?filter=Cancelled');
+    } catch (error) {
+      console.warn('Decline error:', error);
+    }
   };
 
   const handleConfirmDetails = () => {
