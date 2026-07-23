@@ -1165,10 +1165,13 @@ export async function fetchConversation(conversationId: string) {
     ]);
     if (error) throw error;
     if (messageError) throw messageError;
-    const { error: readError } = await supabase.rpc('mark_conversation_read', {
-      p_conversation_id: conversationId,
-    });
-    if (readError) throw readError;
+    try {
+      await supabase.rpc('mark_conversation_read', {
+        p_conversation_id: conversationId,
+      });
+    } catch {
+      // Ignore read marking failure so message fetching never throws
+    }
     return {
       conversation,
       preferredLocale,
