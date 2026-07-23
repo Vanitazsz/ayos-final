@@ -68,7 +68,6 @@ begin
   end if;
   return result;
 end $$;
-
 create or replace function public.archive_my_address(p_address_id uuid)
 returns boolean
 language plpgsql security definer set search_path = '' as $$
@@ -85,7 +84,6 @@ begin
   get diagnostics changed = row_count;
   return changed = 1;
 end $$;
-
 revoke all on function public.upsert_my_address(uuid,text,text,text,text,text,text,text,numeric,numeric,boolean)
   from public, anon;
 revoke all on function public.archive_my_address(uuid) from public, anon;
