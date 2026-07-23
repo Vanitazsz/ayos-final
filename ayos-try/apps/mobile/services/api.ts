@@ -382,12 +382,13 @@ export async function fetchReviews(): Promise<ApiResponse<ReviewData[]>> {
 }
 export async function fetchBookings(): Promise<ApiResponse<any[]>> {
   return wrap(async () => {
-    await requireUser();
+    const user = await requireUser();
     const { data, error } = await supabase
       .from('bookings')
       .select(
         'id,worker_account_id,status,created_at,service_requests(description,scheduled_at,budget,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews:account_id(stars))',
       )
+      .eq('user_account_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return Promise.all(
