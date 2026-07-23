@@ -382,12 +382,13 @@ export async function fetchReviews(): Promise<ApiResponse<ReviewData[]>> {
 }
 export async function fetchBookings(): Promise<ApiResponse<any[]>> {
   return wrap(async () => {
-    await requireUser();
+    const user = await requireUser();
     const { data, error } = await supabase
       .from('bookings')
       .select(
         'id,worker_account_id,status,created_at,service_requests(description,scheduled_at,budget,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews:account_id(stars))',
       )
+      .eq('user_account_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return Promise.all(
@@ -1201,49 +1202,61 @@ export async function sendMessage(
   const ownProfile = await getMyProfile();
   const sourceLocale =
     locale ?? (ownProfile.role === 'ADMIN' ? 'en' : ownProfile.preferredLocale);
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      body: body.trim(),
-      original_locale: sourceLocale,
-    })
-    .select()
-    .single();
-  if (error) throw error;
 
-  // Touch conversation updated_at for ordering in messages list
-  void supabase
-    .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', conversationId);
+  // Try RPC first for atomic insert & notification delivery
+  const { data: rpcData, error: rpcError } = await supabase.rpc('send_chat_message', {
+    p_conversation_id: conversationId,
+    p_body: body.trim(),
+    p_original_locale: sourceLocale,
+  });
 
-  // Send real-time notification to recipient
-  void (async () => {
-    try {
-      const { data: participants } = await supabase
-        .from('conversation_participants')
-        .select('account_id')
-        .eq('conversation_id', conversationId);
+  let data = rpcData;
 
-      const recipientId = participants?.find(
-        (p: any) => p.account_id !== user.id,
-      )?.account_id;
+  if (rpcError || !data) {
+    // Fallback to direct client insert if RPC is not yet deployed
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        body: body.trim(),
+        original_locale: sourceLocale,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    data = inserted;
 
-      if (recipientId) {
-        await supabase.from('notifications').insert({
-          recipient_id: recipientId,
-          title: 'New Chat Message 💬',
-          body: `${ownProfile.displayName || 'Participant'}: ${body.trim().slice(0, 80)}`,
-          type: 'CHAT',
-          payload: { conversation_id: conversationId },
-        });
+    void supabase
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+
+    void (async () => {
+      try {
+        const { data: participants } = await supabase
+          .from('conversation_participants')
+          .select('account_id')
+          .eq('conversation_id', conversationId);
+
+        const recipientId = participants?.find(
+          (p: any) => p.account_id !== user.id,
+        )?.account_id;
+
+        if (recipientId) {
+          await supabase.from('notifications').insert({
+            recipient_id: recipientId,
+            title: 'New Chat Message 💬',
+            body: `${ownProfile.displayName || 'Participant'}: ${body.trim().slice(0, 80)}`,
+            type: 'CHAT',
+            payload: { conversation_id: conversationId },
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Chat notification error:', notifErr);
       }
-    } catch (notifErr) {
-      console.warn('Chat notification error:', notifErr);
-    }
-  })();
+    })();
+  }
 
   const { data: recipientLocale } = await supabase.rpc(
     'get_conversation_recipient_locale',
@@ -1314,7 +1327,7 @@ export async function fetchConversations() {
     const { data, error } = await supabase
       .from('conversations')
       .select(
-        'id,booking_id,updated_at,conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
+        'id,booking_id,updated_at,conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
       )
       .order('updated_at', { ascending: false });
     if (error) throw error;
@@ -1332,16 +1345,20 @@ export async function fetchConversations() {
         );
         const latest = messages[0];
         const readAt = ownParticipant?.last_read_at;
+        const participantName =
+          participant?.user_profiles?.display_name ??
+          participant?.worker_profiles?.display_name ??
+          'Chat Participant';
+        const avatarPath =
+          participant?.user_profiles?.avatar_path ??
+          participant?.worker_profiles?.avatar_path ??
+          '';
+
         return {
           id: row.id,
           bookingId: row.booking_id,
-          name: requireIdentity(
-            participant?.user_profiles?.display_name,
-            'Conversation participant',
-          ),
-          avatar: await resolveProfileAvatar(
-            participant?.user_profiles?.avatar_path,
-          ),
+          name: participantName,
+          avatar: await resolveProfileAvatar(avatarPath),
           lastMessage: latest?.body ?? '',
           time: latest ? relative(latest.created_at) : '',
           unread: messages.filter(
@@ -1369,6 +1386,7 @@ export async function fetchNotifications() {
       message: row.body,
       time: relative(row.created_at),
       unread: !row.read_at,
+      payload: row.payload,
     }));
   });
 }
@@ -1607,5 +1625,92 @@ export async function updateMyWorkerSkillsAndIndustry(input: {
     }
 
     return true;
+  });
+}
+
+export async function startDirectConversationWithUser(targetAccountId: string) {
+  return wrap(async () => {
+    const user = await requireUser();
+
+    // Try RPC first for atomic creation & bypassing client insert RLS
+    const { data: rpcData } = await supabase.rpc('start_direct_chat', {
+      p_target_account_id: targetAccountId,
+    });
+    if (rpcData?.id) return { id: rpcData.id };
+
+    const { data: myConvs } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('account_id', user.id);
+
+    if (myConvs && myConvs.length > 0) {
+      const convIds = myConvs.map((c: any) => c.conversation_id);
+      const { data: shared } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .in('conversation_id', convIds)
+        .eq('account_id', targetAccountId)
+        .maybeSingle();
+
+      if (shared) {
+        return { id: shared.conversation_id };
+      }
+    }
+
+    const { data: newConv, error: convErr } = await supabase
+      .from('conversations')
+      .insert({})
+      .select('id')
+      .single();
+
+    if (convErr || !newConv) throw convErr ?? new Error('Failed to create conversation');
+
+    await supabase.from('conversation_participants').insert([
+      { conversation_id: newConv.id, account_id: user.id },
+      { conversation_id: newConv.id, account_id: targetAccountId },
+    ]);
+
+    return { id: newConv.id };
+  });
+}
+export async function fetchAllAccountsForPoC() {
+  return wrap(async () => {
+    const user = await requireUser();
+    const [{ data: userProfiles }, { data: workerProfiles }] = await Promise.all([
+      supabase.from('user_profiles').select('account_id, display_name, avatar_path'),
+      supabase.from('worker_profiles').select('account_id, display_name, avatar_path'),
+    ]);
+
+    const map = new Map<string, { id: string; name: string; avatar: string; role: string }>();
+
+    (userProfiles ?? []).forEach((row: any) => {
+      if (row.account_id && row.account_id !== user.id) {
+        map.set(row.account_id, {
+          id: row.account_id,
+          name: row.display_name || 'Customer',
+          avatar: row.avatar_path || '',
+          role: 'Customer',
+        });
+      }
+    });
+
+    (workerProfiles ?? []).forEach((row: any) => {
+      if (row.account_id && row.account_id !== user.id) {
+        map.set(row.account_id, {
+          id: row.account_id,
+          name: row.display_name || 'Worker',
+          avatar: row.avatar_path || '',
+          role: 'Worker',
+        });
+      }
+    });
+
+    const items = Array.from(map.values());
+    return Promise.all(
+      items.map(async (item) => ({
+        ...item,
+        avatar: await resolveProfileAvatar(item.avatar),
+      })),
+    );
   });
 }

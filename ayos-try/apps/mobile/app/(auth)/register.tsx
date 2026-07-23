@@ -215,19 +215,9 @@ export default function RegisterScreen() {
 
               <Controller
                 control={control}
-                  rules={{
-                    required: 'Password is required',
-                    minLength: { value: 8, message: 'Minimum 8 characters' },
-                    validate: {
-                      uppercase: (value) =>
-                        /[A-Z]/.test(value) ||
-                        'Password must include an uppercase letter',
-                      number: (value) =>
-                        /\d/.test(value) || 'Password must include a number',
-                      symbol: (value) =>
-                        /[^A-Za-z0-9]/.test(value) ||
-                        'Password must include a symbol',
-                    },
+                rules={{
+                  required: 'Password is required',
+                  minLength: { value: 8, message: 'Minimum 8 characters' },
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
@@ -266,8 +256,6 @@ export default function RegisterScreen() {
               />
 
               <TouchableOpacity
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: acceptedTerms }}
                 style={styles.termsContainer}
                 activeOpacity={0.7}
                 onPress={() => setAcceptedTerms(!acceptedTerms)}

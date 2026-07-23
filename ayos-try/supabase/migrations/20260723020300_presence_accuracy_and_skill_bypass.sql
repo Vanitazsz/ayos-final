@@ -66,6 +66,7 @@ begin
   );
 end
 $$;
+
 create or replace function private.refresh_live_dispatch(p_service_request_id uuid)
 returns void language plpgsql security definer set search_path='' as $$
 declare
@@ -137,6 +138,7 @@ begin
   where public.service_request_dispatches.status in ('OFFERED','VIEWED');
 end
 $$;
+
 create or replace function private.live_dispatch_diagnostics(
   p_service_request_id uuid,
   p_wave smallint
@@ -206,6 +208,7 @@ begin
   return result;
 end
 $$;
+
 create or replace function public.get_my_worker_matching_readiness()
 returns jsonb
 language plpgsql
@@ -266,6 +269,7 @@ begin
   );
 end
 $$;
+
 grant execute on function public.update_worker_presence(numeric,numeric,numeric,boolean) to authenticated;
 grant execute on function public.get_my_worker_matching_readiness() to authenticated;
 select pg_notify('pgrst','reload schema');

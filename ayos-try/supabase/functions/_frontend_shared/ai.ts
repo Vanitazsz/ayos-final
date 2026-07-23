@@ -96,28 +96,11 @@ function geminiAudioMime(contentType: string) {
   return contentType;
 }
 function normalizeSeverity(v: string): string {
-  const map: Record<string, string> = {
-    low: 'LOW',
-    medium: 'MEDIUM',
-    high: 'HIGH',
-    critical: 'CRITICAL',
-    minor: 'LOW',
-    moderate: 'MEDIUM',
-    severe: 'HIGH',
-  };
+  const map: Record<string, string> = { low: 'LOW', medium: 'MEDIUM', high: 'HIGH', critical: 'CRITICAL', minor: 'LOW', moderate: 'MEDIUM', severe: 'HIGH' };
   return map[v.toLowerCase()] ?? v.toUpperCase();
 }
 function normalizeUrgency(v: string): string {
-  const map: Record<string, string> = {
-    routine: 'ROUTINE',
-    soon: 'SOON',
-    urgent: 'URGENT',
-    emergency: 'EMERGENCY',
-    low: 'ROUTINE',
-    medium: 'SOON',
-    high: 'URGENT',
-    critical: 'EMERGENCY',
-  };
+  const map: Record<string, string> = { routine: 'ROUTINE', soon: 'SOON', urgent: 'URGENT', emergency: 'EMERGENCY', low: 'ROUTINE', medium: 'SOON', high: 'URGENT', critical: 'EMERGENCY' };
   return map[v.toLowerCase()] ?? v.toUpperCase();
 }
 
@@ -164,11 +147,7 @@ function validate(value: unknown): AnalysisResult {
     'safetyAdvice',
     'followUpQuestions',
   ];
-  if (
-    typeof v.detectedIssue !== 'string' ||
-    typeof v.requestDraft !== 'string' ||
-    typeof v.transcript !== 'string'
-  )
+  if (typeof v.detectedIssue !== 'string' || typeof v.requestDraft !== 'string' || typeof v.transcript !== 'string')
     throw Object.assign(new Error('SCHEMA_VALIDATION_FAILED'), { retryable: true });
   if (arrays.some((key) => !Array.isArray(v[key])))
     throw Object.assign(new Error('SCHEMA_VALIDATION_FAILED'), { retryable: true });
@@ -219,12 +198,8 @@ async function transcribeGemini(item: Awaited<ReturnType<typeof loadMedia>>[numb
             {
               role: 'user',
               parts: [
-                {
-                  text: 'Transcribe this audio recording faithfully. Output only the raw transcription text with no commentary, formatting, or labels.',
-                },
-                {
-                  inline_data: { mime_type: geminiAudioMime(item.contentType), data: item.base64 },
-                },
+                { text: 'Transcribe this audio recording faithfully. Output only the raw transcription text with no commentary, formatting, or labels.' },
+                { inline_data: { mime_type: geminiAudioMime(item.contentType), data: item.base64 } },
               ],
             },
           ],
@@ -296,11 +271,8 @@ async function callOpenRouter(
   const audio = media.find((item) => item.contentType.startsWith('audio/'));
   let transcript = '';
   if (audio) {
-    try {
-      transcript = await transcribeAudio(audio);
-    } catch (e) {
-      console.error('transcription failed, proceeding without transcript:', e);
-    }
+    try { transcript = await transcribeAudio(audio); }
+    catch (e) { console.error('transcription failed, proceeding without transcript:', e); }
   }
   const content: Record<string, unknown>[] = [
     {
@@ -328,10 +300,7 @@ async function callOpenRouter(
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content }],
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'service_request_analysis', strict: true, schema: outputSchema },
-        },
+        response_format: { type: 'json_schema', json_schema: { name: 'service_request_analysis', strict: true, schema: outputSchema } },
         temperature: 0.2,
       }),
       signal: controller.signal,
@@ -345,16 +314,10 @@ async function callOpenRouter(
     const outputText = body?.choices?.[0]?.message?.content;
     const rawText = String(outputText ?? '');
     if (!rawText.trim()) throw Object.assign(new Error('EMPTY_RESPONSE'), { retryable: true });
-    const jsonText = rawText
-      .replace(/^```(?:json)?\s*\n?/i, '')
-      .replace(/\n?```\s*$/i, '')
-      .trim();
+    const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
     let result: AnalysisResult;
-    try {
-      result = validate(JSON.parse(jsonText));
-    } catch (e) {
-      throw Object.assign(e instanceof Error ? e : new Error(String(e)), { retryable: true });
-    }
+    try { result = validate(JSON.parse(jsonText)); }
+    catch (e) { throw Object.assign(e instanceof Error ? e : new Error(String(e)), { retryable: true }); }
     if (transcript && !result.transcript) result.transcript = transcript;
     return {
       result,
@@ -383,16 +346,11 @@ async function callGemini(
   const audio = media.find((item) => item.contentType.startsWith('audio/'));
   let transcript = '';
   if (audio) {
-    try {
-      transcript = await transcribeGemini(audio);
-    } catch (e) {
-      console.error('gemini transcription failed, proceeding without transcript:', e);
-    }
+    try { transcript = await transcribeGemini(audio); }
+    catch (e) { console.error('gemini transcription failed, proceeding without transcript:', e); }
   }
   const parts: Record<string, unknown>[] = [
-    {
-      text: `${prompt(description, catalog.categories, catalog.services)}${transcript ? `\nAudio transcript: ${transcript}` : ''}`,
-    },
+    { text: `${prompt(description, catalog.categories, catalog.services)}${transcript ? `\nAudio transcript: ${transcript}` : ''}` },
   ];
   for (const item of media.filter((value) => value.contentType.startsWith('image/')))
     parts.push({ inline_data: { mime_type: item.contentType, data: item.base64 } });
@@ -431,16 +389,10 @@ async function callGemini(
       .join('');
     const rawText = String(text ?? '');
     if (!rawText.trim()) throw Object.assign(new Error('EMPTY_RESPONSE'), { retryable: true });
-    const jsonText = rawText
-      .replace(/^```(?:json)?\s*\n?/i, '')
-      .replace(/\n?```\s*$/i, '')
-      .trim();
+    const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
     let result: AnalysisResult;
-    try {
-      result = validate(JSON.parse(jsonText));
-    } catch (e) {
-      throw Object.assign(e instanceof Error ? e : new Error(String(e)), { retryable: true });
-    }
+    try { result = validate(JSON.parse(jsonText)); }
+    catch (e) { throw Object.assign(e instanceof Error ? e : new Error(String(e)), { retryable: true }); }
     if (transcript && !result.transcript) result.transcript = transcript;
     return {
       result,

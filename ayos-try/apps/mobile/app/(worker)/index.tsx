@@ -11,7 +11,7 @@ import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import { fetchWalletTransactions, fetchWorkerBookings, fetchWorkerJobs, fetchWorkerProfile, subscribeToTable, type JobOpportunity, type WorkerBooking, type WorkerProfile } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
-import { getMyDispatchOffers, respondToDispatch, startForegroundWorkerPresence, subscribeToDispatch, type DispatchOffer, type PresenceState } from '@/services/liveDispatch';
+import { getMyDispatchOffers, getMyWorkerLiveStatus, refreshWorkerPresence, respondToDispatch, startForegroundWorkerPresence, subscribeToDispatch, type DispatchOffer, type PresenceState, type WorkerLiveStatus } from '@/services/liveDispatch';
 
 const statusConfig:Record<string,{label:string;variant:any}>={pending:{label:'Pending',variant:'warning'},accepted:{label:'Accepted',variant:'info'},worker_preparing:{label:'Preparing',variant:'info'},worker_en_route:{label:'En Route',variant:'info'},worker_arrived:{label:'Arrived',variant:'info'},service_started:{label:'Started',variant:'warning'},in_progress:{label:'In Progress',variant:'warning'},completed:{label:'Completed',variant:'success'},cancelled:{label:'Cancelled',variant:'error'}};
 
@@ -21,8 +21,10 @@ export default function WorkerDashboardScreen() {
   const currentBookingId = useWorkerBookingStore((s) => s.currentBookingId);
   const[workerProfile,setWorkerProfile]=useState<WorkerProfile|null>(null);const[workerBookings,setWorkerBookings]=useState<WorkerBooking[]>([]);const[workerJobs,setWorkerJobs]=useState<JobOpportunity[]>([]);const[earnings,setEarnings]=useState(0);
   const[dispatchOffers,setDispatchOffers]=useState<DispatchOffer[]>([]);const[presenceState,setPresenceState]=useState<PresenceState>('starting');const[presenceMessage,setPresenceMessage]=useState('');
+  const[liveStatus,setLiveStatus]=useState<WorkerLiveStatus|null>(null);const[refreshingLocation,setRefreshingLocation]=useState(false);
   useEffect(()=>{const load=()=>void Promise.all([fetchWorkerProfile(),fetchWorkerBookings(),fetchWorkerJobs(),fetchWalletTransactions()]).then(([profile,bookings,jobs,transactions])=>{if(!profile.error)setWorkerProfile(profile.data);setWorkerBookings(bookings.data);setWorkerJobs(jobs.data);setEarnings(transactions.data.filter(row=>row.credit).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0));});load();const stops=['bookings','service_requests','wallet_transactions'].map(table=>subscribeToTable(table,load));return()=>stops.forEach(stop=>stop());},[]);
-  useEffect(()=>{let active=true;let stopPresence=()=>{};const loadOffers=()=>void getMyDispatchOffers().then(rows=>{if(active)setDispatchOffers(rows)}).catch(()=>{});loadOffers();const stopDispatch=subscribeToDispatch(loadOffers);void startForegroundWorkerPresence((state,message)=>{if(active){setPresenceState(state);setPresenceMessage(message??'')}}).then(stop=>{if(active)stopPresence=stop;else stop()});return()=>{active=false;stopDispatch();stopPresence();};},[]);
+  useEffect(()=>{let active=true;let stopPresence=()=>{};const loadOffers=()=>void getMyDispatchOffers().then(rows=>{if(active)setDispatchOffers(rows)}).catch(()=>{});const loadLiveStatus=()=>void getMyWorkerLiveStatus().then(status=>{if(active)setLiveStatus(status)}).catch(()=>{});loadOffers();loadLiveStatus();const stopDispatch=subscribeToDispatch(loadOffers);void startForegroundWorkerPresence((state,message)=>{if(active){setPresenceState(state);setPresenceMessage(message??'');if(state==='online')loadLiveStatus();}}).then(stop=>{if(active)stopPresence=stop;else stop()});return()=>{active=false;stopDispatch();stopPresence();};},[]);
+  const refreshLocation=async()=>{setRefreshingLocation(true);setPresenceMessage('Refreshing location and matching setup…');try{const status=await refreshWorkerPresence();setLiveStatus(status);setPresenceState('online');setPresenceMessage('Location and matching setup refreshed.');}catch(error){setPresenceState('error');setPresenceMessage(error instanceof Error?error.message:'Unable to refresh location.');}finally{setRefreshingLocation(false);}};
   const respond=async(offer:DispatchOffer,response:'ACCEPTED'|'DECLINED')=>{await respondToDispatch(offer.dispatchId,response);setDispatchOffers(current=>current.map(item=>item.dispatchId===offer.dispatchId?{...item,status:response}:item));};
   const activeBookings=workerBookings.filter(row=>!['completed','cancelled'].includes(row.status));const incomingJob=workerJobs[0];const completed=workerBookings.filter(row=>row.status==='completed').length;const todayStats=[{label:'Active',value:workerBookings.filter(row=>['worker_en_route','worker_arrived','service_started','in_progress'].includes(row.status)).length.toString()},{label:'Pending',value:workerBookings.filter(row=>['pending','accepted','worker_preparing'].includes(row.status)).length.toString()},{label:'Completed',value:completed.toString()},{label:'Earnings',value:`₱${earnings.toLocaleString()}`}];const completionRate=workerBookings.length?Math.round(completed/workerBookings.length*100):0;
 
@@ -86,7 +88,16 @@ export default function WorkerDashboardScreen() {
         <View style={styles.section}>
           <View style={[styles.presenceCard,presenceState==='online'&&styles.presenceOnline]}>
             <Text style={[theme.typography.body2,{fontWeight:'700'}]}>{presenceState==='online'?'Live and receiving nearby requests':'Live matching is not active'}</Text>
-            <Text style={[theme.typography.caption,{color:theme.colors.textSecondary}]}>{presenceMessage||({starting:'Starting location sharing…',offline:'Return to this tab to go online.',permission_denied:'Allow location access in your browser.',not_ready:'Complete Service Availability and go online.',error:'Location sharing could not start.',online:'Your foreground location updates every 10–15 seconds.'}[presenceState])}</Text>
+            <Text style={[theme.typography.caption,{color:theme.colors.textSecondary}]}>{presenceMessage||({starting:'Starting location sharing…',paused:'Tab inactive — matching will pause after 60 seconds.',offline:'Return to this tab to go online.',permission_denied:'Allow location access in your browser.',not_ready:'Complete Service Availability and go online.',error:'Location sharing could not start.',online:'Your foreground location updates every 10–15 seconds.'}[presenceState])}</Text>
+            <View style={styles.liveDetails}>
+              <Text style={styles.liveDetail}>Subdivision: {liveStatus?.subdivisionName??'Not assigned — using live distance and service radius'}</Text>
+              <Text style={styles.liveDetail}>Service area: {liveStatus?.serviceArea??'Not configured'}{liveStatus?.radiusMeters?` · ${(liveStatus.radiusMeters/1000).toFixed(0)} km radius`:''}</Text>
+              <Text style={styles.liveDetail}>Current location: {liveStatus?.latitude!=null&&liveStatus.longitude!=null?`${liveStatus.latitude.toFixed(4)}, ${liveStatus.longitude.toFixed(4)}`:'Waiting for coordinates'}</Text>
+              <Text style={styles.liveDetail}>Last update: {liveStatus?.lastSeenAt?new Date(liveStatus.lastSeenAt).toLocaleTimeString():'No heartbeat received'}</Text>
+            </View>
+            <Pressable disabled={refreshingLocation} style={[styles.refreshLocationButton,refreshingLocation&&{opacity:.6}]} onPress={()=>void refreshLocation()}>
+              <Text style={styles.refreshLocationText}>{refreshingLocation?'Refreshing…':'Refresh location and matching setup'}</Text>
+            </Pressable>
           </View>
         </View>
         {dispatchOffers.map(offer=><View key={offer.dispatchId} style={styles.section}><View style={styles.dispatchCard}>
@@ -220,6 +231,10 @@ const styles = StyleSheet.create({
   },
   presenceCard:{backgroundColor:theme.colors.surface,borderRadius:theme.radius.lg,padding:theme.spacing.md,borderWidth:1,borderColor:theme.colors.warning,gap:4},
   presenceOnline:{borderColor:theme.colors.success},
+  liveDetails:{marginTop:theme.spacing.sm,paddingTop:theme.spacing.sm,borderTopWidth:1,borderTopColor:theme.colors.borderLight,gap:3},
+  liveDetail:{...theme.typography.caption,color:theme.colors.textSecondary},
+  refreshLocationButton:{marginTop:theme.spacing.sm,alignItems:'center',paddingVertical:theme.spacing.sm,borderRadius:theme.radius.md,backgroundColor:theme.colors.primary},
+  refreshLocationText:{...theme.typography.button,color:theme.colors.surface},
   dispatchCard:{backgroundColor:theme.colors.surface,borderRadius:theme.radius.xl,padding:theme.spacing.lg,gap:theme.spacing.sm,...theme.shadows.md},
   dispatchActions:{flexDirection:'row',gap:theme.spacing.sm,marginTop:theme.spacing.sm},
   declineButton:{flex:1,alignItems:'center',padding:theme.spacing.md,borderWidth:1,borderColor:theme.colors.primary,borderRadius:theme.radius.lg},

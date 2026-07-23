@@ -1,4 +1,5 @@
 begin;
+
 create or replace function public.admin_create_notification_draft(
   p_audience public.notification_audience,
   p_title text,
@@ -18,12 +19,15 @@ begin
   returning * into result;
   return result;
 end $$;
+
 create or replace function public.admin_publish_campaign(p_campaign_id uuid)
 returns public.notifications language sql security definer set search_path = '' as $$
   select public.admin_send_notification_now(p_campaign_id)
 $$;
+
 revoke all on function public.admin_create_notification_draft(public.notification_audience,text,text,text) from public, anon;
 revoke all on function public.admin_publish_campaign(uuid) from public, anon;
 grant execute on function public.admin_create_notification_draft(public.notification_audience,text,text,text) to authenticated;
 grant execute on function public.admin_publish_campaign(uuid) to authenticated;
+
 commit;

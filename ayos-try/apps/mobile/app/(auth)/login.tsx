@@ -74,7 +74,6 @@ export default function LoginScreen() {
                 <View style={styles.inputWrapper}>
                   <Mail color={theme.colors.textSecondary} size={20} style={styles.inputIcon} />
                   <TextInput
-                    accessibilityLabel="Email Address"
                     style={styles.input}
                     placeholder="Email Address"
                     placeholderTextColor={theme.colors.textTertiary}
@@ -97,7 +96,6 @@ export default function LoginScreen() {
                 <View style={[styles.inputWrapper, { marginTop: 16 }]}>
                   <Lock color={theme.colors.textSecondary} size={20} style={styles.inputIcon} />
                   <TextInput
-                    accessibilityLabel="Password"
                     style={styles.input}
                     placeholder="Password"
                     placeholderTextColor={theme.colors.textTertiary}
@@ -106,12 +104,7 @@ export default function LoginScreen() {
                     onChangeText={onChange}
                     value={value}
                   />
-                  <TouchableOpacity
-                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-                    accessibilityRole="button"
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeIcon}
-                  >
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                     {showPassword ? <Eye color={theme.colors.textSecondary} size={20} /> : <EyeOff color={theme.colors.textSecondary} size={20} />}
                   </TouchableOpacity>
                 </View>
@@ -120,16 +113,11 @@ export default function LoginScreen() {
             />
             {errors.password && <Text style={styles.errorText}>{errors.password.message as string}</Text>}
 
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={styles.forgotPassword}
-              onPress={onForgotPassword}
-            >
+            <TouchableOpacity style={styles.forgotPassword} onPress={onForgotPassword}>
               <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              accessibilityRole="button"
               style={styles.loginButton} 
               onPress={handleSubmit(onSubmit)}
               disabled={loading}
@@ -147,19 +135,18 @@ export default function LoginScreen() {
           <Text style={styles.socialPrompt}>Join With Your Favourite Social Media Account</Text>
 
           <View style={styles.socialRow}>
-            <TouchableOpacity
-              accessibilityLabel="Continue with Google"
-              accessibilityRole="button"
-              style={styles.socialButton}
-              onPress={onGoogle}
-              disabled={loading}
-            >
+            <TouchableOpacity style={styles.socialButton} onPress={onGoogle} disabled={loading} accessibilityLabel="Continue with Google">
               <Image source="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" style={styles.socialIcon} contentFit="contain" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.socialButton, { opacity: 0.45 }]} disabled accessibilityLabel="X login unavailable">
+              <Image source="https://freelogopng.com/images/all_img/1690643591twitter-x-logo-png.png" style={styles.socialIcon} contentFit="contain" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.socialButton, { opacity: 0.45 }]} disabled accessibilityLabel="Apple login unavailable">
+              <Image source="https://cdn3.iconfinder.com/data/icons/picons-social/57/16-apple-512.png" style={[styles.socialIcon, { width: 22, height: 26 }]} contentFit="contain" />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            accessibilityRole="button"
             style={styles.workerSwitchBtn}
             onPress={() => router.push('/register-worker')}
           >

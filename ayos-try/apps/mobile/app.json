@@ -25,8 +25,7 @@
       "expo-font",
       "expo-web-browser",
       "@maplibre/maplibre-react-native",
-      "@react-native-community/datetimepicker",
-      "expo-asset"
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

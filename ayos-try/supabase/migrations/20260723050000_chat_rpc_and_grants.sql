@@ -1,17 +1,23 @@
 begin;
+
 -- Grant INSERT on conversations, conversation_participants, and notifications to authenticated users
 grant insert on public.conversations to authenticated;
 grant insert on public.conversation_participants to authenticated;
 grant insert on public.notifications to authenticated;
+
 -- RLS policies
 drop policy if exists conversations_auth_insert on public.conversations;
 create policy conversations_auth_insert on public.conversations for insert to authenticated with check(true);
+
 drop policy if exists participants_auth_insert on public.conversation_participants;
 create policy participants_auth_insert on public.conversation_participants for insert to authenticated with check(true);
+
 drop policy if exists notifications_auth_insert on public.notifications;
 create policy notifications_auth_insert on public.notifications for insert to authenticated with check(true);
+
 drop policy if exists user_profile_authenticated_read on public.user_profiles;
 create policy user_profile_authenticated_read on public.user_profiles for select to authenticated using(true);
+
 -- Atomic RPC to start or get a direct conversation between two users
 create or replace function public.start_direct_chat(p_target_account_id uuid)
 returns public.conversations language plpgsql security definer set search_path = '' as $$
@@ -49,6 +55,7 @@ begin
 
   return result;
 end $$;
+
 -- Atomic RPC to send a chat message and deliver notification to recipient
 create or replace function public.send_chat_message(p_conversation_id uuid, p_body text, p_original_locale text default 'en')
 returns public.messages language plpgsql security definer set search_path = '' as $$
@@ -101,4 +108,5 @@ begin
 
   return msg;
 end $$;
+
 commit;

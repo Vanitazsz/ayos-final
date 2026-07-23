@@ -13,9 +13,11 @@ create table if not exists public.service_templates (
   updated_at timestamptz not null default now(),
   unique(category_id, name)
 );
+
 create index if not exists service_templates_catalog_idx
   on public.service_templates(category_id, is_active, name)
   where archived_at is null;
+
 alter table public.service_templates enable row level security;
 grant select on public.service_templates to anon, authenticated;
 drop policy if exists service_templates_public_read on public.service_templates;
@@ -25,6 +27,7 @@ using (
   archived_at is null
   and (is_active or (select auth.uid()) is not null and public.is_admin(false))
 );
+
 create table if not exists public.worker_portfolio_items (
   id uuid primary key default gen_random_uuid(),
   worker_id uuid not null references public.worker_profiles(account_id) on delete cascade,
@@ -37,8 +40,10 @@ create table if not exists public.worker_portfolio_items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 create index if not exists worker_portfolio_items_worker_order_idx
   on public.worker_portfolio_items(worker_id, is_published, sort_order);
+
 create table if not exists public.worker_portfolio_media (
   id uuid primary key default gen_random_uuid(),
   portfolio_item_id uuid not null references public.worker_portfolio_items(id) on delete cascade,
@@ -48,10 +53,12 @@ create table if not exists public.worker_portfolio_media (
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
+
 alter table public.worker_portfolio_items enable row level security;
 alter table public.worker_portfolio_media enable row level security;
 revoke all on public.worker_portfolio_items, public.worker_portfolio_media from anon, authenticated;
 grant select on public.worker_portfolio_items, public.worker_portfolio_media to authenticated;
+
 drop policy if exists portfolio_items_visible_read on public.worker_portfolio_items;
 create policy portfolio_items_visible_read on public.worker_portfolio_items
 for select to authenticated
@@ -63,6 +70,7 @@ using (
     where w.account_id = worker_id and w.approval_status = 'APPROVED'
   ))
 );
+
 drop policy if exists portfolio_media_visible_read on public.worker_portfolio_media;
 create policy portfolio_media_visible_read on public.worker_portfolio_media
 for select to authenticated
@@ -78,6 +86,7 @@ using (exists (
       ))
     )
 ));
+
 create table if not exists public.wallet_accounts (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null unique references public.worker_profiles(account_id) on delete restrict,
@@ -86,12 +95,14 @@ create table if not exists public.wallet_accounts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 alter table public.wallet_accounts enable row level security;
 revoke all on public.wallet_accounts from anon, authenticated;
 grant select on public.wallet_accounts to authenticated;
 drop policy if exists wallet_accounts_owner_or_admin_read on public.wallet_accounts;
 create policy wallet_accounts_owner_or_admin_read on public.wallet_accounts
 for select to authenticated using (account_id = auth.uid() or public.is_admin(false));
+
 create table if not exists public.payout_destinations (
   id uuid primary key default gen_random_uuid(),
   worker_id uuid not null references public.worker_profiles(account_id) on delete restrict,
@@ -104,15 +115,18 @@ create table if not exists public.payout_destinations (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 create unique index if not exists one_default_payout_destination
   on public.payout_destinations(worker_id)
   where is_default and status = 'ACTIVE';
+
 alter table public.payout_destinations enable row level security;
 revoke all on public.payout_destinations from anon, authenticated;
 grant select on public.payout_destinations to authenticated;
 drop policy if exists payout_destinations_owner_read on public.payout_destinations;
 create policy payout_destinations_owner_read on public.payout_destinations
 for select to authenticated using (worker_id = auth.uid() or public.is_admin(false));
+
 do $$
 begin
   if not exists (select 1 from pg_trigger where tgname = 'set_service_templates_updated_at' and tgrelid = 'public.service_templates'::regclass) then

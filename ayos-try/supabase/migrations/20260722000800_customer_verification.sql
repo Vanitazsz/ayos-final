@@ -4,6 +4,7 @@ alter table public.user_profiles
   add column if not exists verification_status text not null default 'unverified',
   add constraint user_profiles_verification_status_check
     check (verification_status in ('unverified', 'pending', 'verified', 'rejected'));
+
 create table if not exists public.customer_verifications (
   id uuid primary key default gen_random_uuid(),
   customer_id uuid not null references auth.users(id) on delete cascade,
@@ -17,20 +18,25 @@ create table if not exists public.customer_verifications (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 create unique index if not exists customer_verifications_one_pending
   on public.customer_verifications(customer_id) where status = 'pending';
 create index if not exists customer_verifications_admin_queue
   on public.customer_verifications(status, created_at);
+
 alter table public.customer_verifications enable row level security;
 revoke all on public.customer_verifications from anon, authenticated;
 grant select, insert on public.customer_verifications to authenticated;
 grant select, insert, update, delete on public.customer_verifications to service_role;
+
 drop policy if exists customer_verifications_owner_read on public.customer_verifications;
 create policy customer_verifications_owner_read on public.customer_verifications
 for select to authenticated using (customer_id = auth.uid() or public.is_admin(false));
+
 drop policy if exists customer_verifications_admin_update on public.customer_verifications;
 create policy customer_verifications_admin_update on public.customer_verifications
 for update to authenticated using (public.is_admin(true)) with check (public.is_admin(true));
+
 create or replace function public.submit_customer_verification(
   p_id_type text,
   p_front_url text,
@@ -70,6 +76,7 @@ begin
   where account_id = auth.uid();
   return result;
 end $$;
+
 create or replace function public.admin_review_customer_verification(
   p_verification_id uuid,
   p_decision text,
@@ -99,6 +106,7 @@ begin
     jsonb_build_object('decision', result.status, 'customer_id', result.customer_id));
   return result;
 end $$;
+
 create or replace function public.create_service_request(
   category_id uuid, address_id uuid, description text, scheduled_at timestamptz,
   budget numeric, notes text default null, ai_analysis_id uuid default null,
@@ -135,6 +143,7 @@ begin
   ) returning * into result;
   return result;
 end $$;
+
 revoke all on function public.submit_customer_verification(text, text, text) from public, anon;
 revoke all on function public.admin_review_customer_verification(uuid, text, text) from public, anon;
 grant execute on function public.submit_customer_verification(text, text, text) to authenticated;

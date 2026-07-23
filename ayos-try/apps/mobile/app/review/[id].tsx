@@ -53,12 +53,14 @@ export default function ReviewScreen() {
         console.warn('createReview attempt:', err);
       }
       Alert.alert('Review Submitted! ⭐', 'Thank you for your feedback.', [
-        { text: 'Done', onPress: () => router.replace('/(tabs)/home') },
+        { text: 'Done', onPress: () => router.replace('/(tabs)/home' as any) },
       ]);
+      router.replace('/(tabs)/home' as any);
     } catch (error) {
       Alert.alert('Review Submitted!', 'Thank you for your feedback.', [
-        { text: 'Done', onPress: () => router.replace('/(tabs)/home') },
+        { text: 'Done', onPress: () => router.replace('/(tabs)/home' as any) },
       ]);
+      router.replace('/(tabs)/home' as any);
     } finally {
       setLoading(false);
     }

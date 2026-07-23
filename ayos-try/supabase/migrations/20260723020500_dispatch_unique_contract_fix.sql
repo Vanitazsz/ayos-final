@@ -25,7 +25,9 @@ delete from public.service_request_dispatches dispatch
 using ranked_dispatches ranked
 where dispatch.id = ranked.id
   and ranked.duplicate_rank > 1;
+
 create unique index if not exists
   service_request_dispatches_request_worker_uidx
 on public.service_request_dispatches(service_request_id, worker_id);
+
 select pg_notify('pgrst','reload schema');

@@ -30,6 +30,7 @@ import {
   Navigation,
   Camera,
   Mic,
+  Settings,
   Info,
   ChevronDown,
   Search,
@@ -858,7 +859,10 @@ export default function CreateRequestScreen() {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
+          }}
           style={styles.backButton}
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
@@ -1248,6 +1252,12 @@ export default function CreateRequestScreen() {
               >
                 {locationLoading ? 'Detecting…' : 'Use Current'}
               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.gearBtn}
+              onPress={() => router.push('/new-request/radius-config')}
+            >
+              <Settings color={theme.colors.textSecondary} size={20} />
             </TouchableOpacity>
           </View>
         </View>

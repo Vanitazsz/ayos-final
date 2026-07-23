@@ -22,4 +22,5 @@ begin
   execute definition;
 end
 $$;
+
 select pg_notify('pgrst','reload schema');

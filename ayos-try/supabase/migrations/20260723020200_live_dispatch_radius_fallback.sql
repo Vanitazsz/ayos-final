@@ -1,4 +1,5 @@
 begin;
+
 create or replace function private.refresh_live_dispatch(p_service_request_id uuid)
 returns void language plpgsql security definer set search_path='' as $$
 declare req public.service_requests; started timestamptz; elapsed_seconds numeric; current_wave smallint; search_radius numeric;
@@ -35,6 +36,7 @@ begin
     approximate_latitude=excluded.approximate_latitude,approximate_longitude=excluded.approximate_longitude,updated_at=now()
   where service_request_dispatches.status in ('OFFERED','VIEWED');
 end $$;
+
 create or replace function private.live_dispatch_diagnostics(p_service_request_id uuid,p_wave smallint)
 returns jsonb language sql stable security definer set search_path='' as $$
   with request as (
@@ -73,6 +75,7 @@ returns jsonb language sql stable security definer set search_path='' as $$
       'withinWave',within_wave,'scheduled',scheduled,'subdivisionCompatible',subdivision_compatible)
   ) from counts
 $$;
+
 create or replace function public.get_live_dispatch_snapshot(p_service_request_id uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare req public.service_requests; started timestamptz; dispatch_expires timestamptz; current_wave smallint; result jsonb;
@@ -95,6 +98,7 @@ begin
   where dispatch.service_request_id=req.id and dispatch.status<>'EXPIRED';
   return result;
 end $$;
+
 create or replace function public.get_my_worker_live_status()
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare worker public.worker_profiles; presence public.worker_presence; subdivision_name text;
@@ -109,6 +113,7 @@ begin
     'longitude',case when presence.location is null then null else round(extensions.st_x(presence.location::extensions.geometry)::numeric,6) end,
     'accuracyMeters',presence.accuracy_meters);
 end $$;
+
 revoke all on function public.get_my_worker_live_status() from public,anon;
 grant execute on function public.get_my_worker_live_status() to authenticated;
 notify pgrst,'reload schema';

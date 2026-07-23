@@ -47,6 +47,8 @@ begin
   return public.get_live_dispatch_snapshot(p_service_request_id);
 end
 $$;
+
 revoke all on function public.start_live_dispatch(uuid) from public,anon;
 grant execute on function public.start_live_dispatch(uuid) to authenticated;
+
 select pg_notify('pgrst','reload schema');

@@ -1,4 +1,5 @@
 begin;
+
 create or replace function public.select_worker(p_service_request_id uuid,p_worker_id uuid)
 returns public.bookings language plpgsql security definer set search_path='' as $$
 declare req public.service_requests; result public.bookings; conversation_id uuid;
@@ -26,5 +27,6 @@ begin
   perform pgmq.send('booking_timeouts',jsonb_build_object('booking_id',result.id,'due_at',result.response_due_at,'attempt',0));
   return result;
 end $$;
+
 notify pgrst,'reload schema';
 commit;

@@ -2,6 +2,7 @@
 -- Existing service category rows and identifiers are preserved.
 
 begin;
+
 create table if not exists public.industries (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
@@ -12,35 +13,45 @@ create table if not exists public.industries (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 -- The hosted authoritative schema already contains an earlier industries table
 -- without display ordering. CREATE TABLE IF NOT EXISTS does not add columns.
 alter table public.industries
   add column if not exists sort_order integer not null default 0 check (sort_order >= 0);
+
 alter table public.service_categories
   add column if not exists industry_id uuid references public.industries(id) on delete restrict;
+
 alter table public.worker_profiles
   add column if not exists primary_industry_id uuid references public.industries(id) on delete restrict;
+
 create index if not exists industries_active_order_idx
   on public.industries(sort_order, name) where is_active;
 create index if not exists service_categories_industry_active_name_idx
   on public.service_categories(industry_id, is_active, name);
 create index if not exists worker_profiles_primary_industry_idx
   on public.worker_profiles(primary_industry_id) where primary_industry_id is not null;
+
 drop trigger if exists set_updated_at on public.industries;
 create trigger set_updated_at before update on public.industries
 for each row execute function public.set_updated_at();
+
 alter table public.industries enable row level security;
+
 drop policy if exists industries_public_read on public.industries;
 create policy industries_public_read on public.industries
 for select to anon, authenticated
 using (is_active or public.is_admin(false));
+
 drop policy if exists industries_admin_write on public.industries;
 create policy industries_admin_write on public.industries
 for all to authenticated
 using (public.is_admin(true))
 with check (public.is_admin(true));
+
 grant select on public.industries to anon, authenticated;
 grant insert, update, delete on public.industries to authenticated;
+
 insert into public.industries(slug, name, description, sort_order, is_active)
 values
   ('cleaning', 'Cleaning', 'Residential and property cleaning services.', 10, true),
@@ -59,6 +70,7 @@ set name = excluded.name,
     sort_order = excluded.sort_order,
     is_active = true,
     updated_at = now();
+
 with catalog(industry_slug, skill_slug, skill_name, skill_description) as (
   values
     ('cleaning', 'cleaning', 'Cleaning', 'General home and property cleaning.'),
@@ -122,6 +134,7 @@ set slug = excluded.slug,
     is_active = true,
     industry_id = excluded.industry_id,
     updated_at = now();
+
 -- Infer a primary industry only when all existing skills resolve to one industry.
 with unambiguous_worker_industries as (
   select skill.worker_id, min(category.industry_id::text)::uuid as industry_id
@@ -137,10 +150,12 @@ set primary_industry_id = inferred.industry_id,
 from unambiguous_worker_industries inferred
 where profile.account_id = inferred.worker_id
   and profile.primary_industry_id is null;
+
 -- Registration skills are written transactionally by the onboarding RPC. Direct
 -- writes would bypass active-state and same-industry validation.
 revoke insert, update, delete on public.worker_skills from authenticated;
 drop policy if exists skills_owner_write on public.worker_skills;
+
 create or replace function public.submit_worker_onboarding_identity(
   p_identity_data jsonb,
   p_document_paths text[]
@@ -262,8 +277,10 @@ begin
 
   return result;
 end $$;
+
 revoke all on function public.submit_worker_onboarding_identity(jsonb, text[]) from public, anon;
 grant execute on function public.submit_worker_onboarding_identity(jsonb, text[]) to authenticated;
+
 create or replace function public.submit_worker_application(
   p_identity_data jsonb,
   p_document_paths text[],
@@ -301,6 +318,8 @@ begin
 
   return result;
 end $$;
+
 revoke all on function public.submit_worker_application(jsonb, text[], text, text) from public, anon;
 grant execute on function public.submit_worker_application(jsonb, text[], text, text) to authenticated;
+
 commit;

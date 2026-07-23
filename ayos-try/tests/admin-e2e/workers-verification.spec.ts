@@ -102,11 +102,11 @@ async function useAdminFixture(page: Page) {
       ]),
     });
   });
-  await page.route('**/rest/v1/wallet_accounts*', (route) =>
+  await page.route('**/rest/v1/wallets*', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([{ account_id: workerId, wallet_transactions: [] }]),
+      body: JSON.stringify([{ account_id: workerId, available_minor: 0 }]),
     }),
   );
 }

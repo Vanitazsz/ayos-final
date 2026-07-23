@@ -87,8 +87,8 @@ export default function MatchingScreen() {
       if (!draft.categoryId) throw new Error('A service category is required.');
       draft.setDraft({ searchRadiusKm: radiusKm });
 
-      let resolvedRequestId = draft.requestId;
-      if (!resolvedRequestId) {
+      let requestId = draft.requestId;
+      if (!requestId) {
         const scheduledAt = draft.scheduledAt ?? new Date(Date.now() + (draft.aiResult?.urgency === 'emergency' ? 5 : 30) * 60000).toISOString();
         const created = await publishServiceRequest({
           categoryId: draft.categoryId,
@@ -102,29 +102,23 @@ export default function MatchingScreen() {
           budgetMinor: draft.aiResult?.estimatedCostMinimumMinor ?? draft.budgetMinor,
           analysisId: draft.aiResult?.analysisId ?? null,
         });
-        resolvedRequestId = created.id;
-        draft.setDraft({ requestId: resolvedRequestId });
+        requestId = created.id;
+        draft.setDraft({ requestId });
         if (draft.media.length) await attachRequestMedia(created.id, draft.media);
-      }
-      if (!resolvedRequestId) {
-        throw new Error('The service request could not be created.');
       }
 
       if (draft.matchingMode === 'bidding' || draft.aiResult?.safetyCritical) {
-        router.replace(`/request/${resolvedRequestId}` as never);
+        router.replace(`/request/${requestId}` as never);
         return;
       }
 
+      if (!requestId) throw new Error('Service request missing');
       setError('');
       setState('starting');
-      const selectedRadiusMeters = radiusKm * 1000;
-      const initialSnapshot = await startLiveDispatch(
-        resolvedRequestId,
-        selectedRadiusMeters,
-      );
+      const initialSnapshot = await startLiveDispatch(requestId);
       setSnapshot(initialSnapshot);
       setNow(Date.now());
-      setDispatchRequestId(resolvedRequestId);
+      setDispatchRequestId(requestId);
       setState('live');
     } catch (reason) {
       const normalized = normalizeSupabaseError(reason, 'Matching could not be completed. Please try again.');
@@ -147,7 +141,13 @@ export default function MatchingScreen() {
   return (
     <Screen safeArea>
       <View style={styles.header}>
-        <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()}>
+        <TouchableOpacity
+          accessibilityLabel="Go back"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
+          }}
+        >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={theme.typography.h4}>Live Worker Matching</Text>
@@ -161,7 +161,7 @@ export default function MatchingScreen() {
       {(state === 'starting' || state === 'live') ? (
         <View style={styles.status}>
           <View style={styles.statusCopy}>
-            <Text style={theme.typography.h4}>Searching within {(snapshot?.searchRadiusMeters ?? radiusKm * 1000) / 1000} km</Text>
+            <Text style={theme.typography.h4}>Searching within {radiusKm} km</Text>
             <Text style={styles.secondary}>Matched workers will appear here as they respond.</Text>
             <View style={styles.matchCount}>
               <UsersRound size={16} color={theme.colors.primary} />
@@ -197,7 +197,7 @@ export default function MatchingScreen() {
 
 function RadiusConfiguration({ center, radiusKm, onChange, onStart }: { center: { latitude: number; longitude: number } | null; radiusKm: number; onChange: (radius: number) => void; onStart: () => void }) {
   return <ScrollView style={styles.configurationScroll} contentContainerStyle={styles.configuration} showsVerticalScrollIndicator={false}>
-    <View style={styles.mapContainer}>{center ? <MapSurface center={center} points={[{ id: 'service-location', ...center, color: theme.colors.error }]} radiusMeters={radiusKm * 1000} animateRadius /> : <Text style={styles.secondary}>Confirm a service location first.</Text>}</View>
+    <View style={styles.mapContainer}>{center ? <MapSurface center={center} points={[{ id: 'service-location', ...center, color: theme.colors.error }]} radiusMeters={radiusKm * 1000} /> : <Text style={styles.secondary}>Confirm a service location first.</Text>}</View>
     <Text style={theme.typography.h3}>Choose search radius</Text>
     <Text style={styles.configurationMessage}>Only eligible workers within this distance will be notified.</Text>
     <View style={styles.radiusControlRow}>
@@ -232,5 +232,24 @@ const styles = StyleSheet.create({
   kilometers: { color: theme.colors.textSecondary, marginLeft: 4, marginTop: 8 },
   radiusLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing.xl },
   status: { marginHorizontal: theme.layout.screenPadding, marginBottom: theme.spacing.md, padding: theme.spacing.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, backgroundColor: theme.colors.infoBackground, borderRadius: theme.radius.xl },
-  statusCopy: { flex: 1, gap: 4 }, secondary: { color: theme.colors.textSecondary, textAlign: 'left' }, matchCount: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }, matchCountText: { color: theme.colors.primary, fontWeight: '700' }, timer: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.colors.surface, padding: 10, borderRadius: theme.radius.lg }, timerText: { color: theme.colors.primary, fontWeight: '800' }, list: { flex: 1 }, listContent: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: 32, gap: 12, flexGrow: 1 }, empty: { flex: 1, minHeight: 300, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: theme.spacing.xl }, emptyIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: theme.colors.infoBackground, alignItems: 'center', justifyContent: 'center' }, emptyMessage: { color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 22 }, card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, gap: 12, ...theme.shadows.sm }, acceptedCard: { borderWidth: 2, borderColor: theme.colors.success }, workerHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 }, avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.colors.border }, statusPill: { backgroundColor: theme.colors.info, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 12 }, acceptedPill: { backgroundColor: theme.colors.success }, pillText: { color: '#fff', fontWeight: '700', fontSize: 12 }, rating: { flexDirection: 'row', alignItems: 'center', gap: 5 }, state: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18, paddingHorizontal: theme.layout.screenPadding },
+  statusCopy: { flex: 1, gap: 4 },
+  secondary: { color: theme.colors.textSecondary, textAlign: 'left' },
+  matchCount: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  matchCountText: { color: theme.colors.primary, fontWeight: '700' },
+  timer: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.colors.surface, padding: 10, borderRadius: theme.radius.lg },
+  timerText: { color: theme.colors.primary, fontWeight: '800' },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: 32, gap: 12, flexGrow: 1 },
+  empty: { flex: 1, minHeight: 300, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: theme.spacing.xl },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: theme.colors.infoBackground, alignItems: 'center', justifyContent: 'center' },
+  emptyMessage: { color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, gap: 12, ...theme.shadows.sm },
+  acceptedCard: { borderWidth: 2, borderColor: theme.colors.success },
+  workerHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: theme.colors.border },
+  statusPill: { backgroundColor: theme.colors.info, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 12 },
+  acceptedPill: { backgroundColor: theme.colors.success },
+  pillText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  state: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18, paddingHorizontal: theme.layout.screenPadding },
 });
