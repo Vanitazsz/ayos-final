@@ -100,6 +100,10 @@ export default function WorkerTabLayout() {
         options={{ href: null }}
       />
       <Tabs.Screen
+        name="industry-skills"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="booking-request/[id]"
         options={{ href: null }}
       />

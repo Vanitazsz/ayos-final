@@ -1212,11 +1212,43 @@ export async function sendMessage(
     .select()
     .single();
   if (error) throw error;
-  const { data: recipientLocale, error: localeError } = await supabase.rpc(
+
+  // Touch conversation updated_at for ordering in messages list
+  void supabase
+    .from('conversations')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', conversationId);
+
+  // Send real-time notification to recipient
+  void (async () => {
+    try {
+      const { data: participants } = await supabase
+        .from('conversation_participants')
+        .select('account_id')
+        .eq('conversation_id', conversationId);
+
+      const recipientId = participants?.find(
+        (p: any) => p.account_id !== user.id,
+      )?.account_id;
+
+      if (recipientId) {
+        await supabase.from('notifications').insert({
+          recipient_id: recipientId,
+          title: 'New Chat Message 💬',
+          body: `${ownProfile.displayName || 'Participant'}: ${body.trim().slice(0, 80)}`,
+          type: 'CHAT',
+          payload: { conversation_id: conversationId },
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Chat notification error:', notifErr);
+    }
+  })();
+
+  const { data: recipientLocale } = await supabase.rpc(
     'get_conversation_recipient_locale',
     { p_conversation_id: conversationId },
   );
-  if (localeError) throw localeError;
   const targetLocale: 'en' | 'fil' = recipientLocale === 'fil' ? 'fil' : 'en';
   if (targetLocale !== sourceLocale) {
     void invokeAuthenticatedFunction('ai-translate-message', {
@@ -1237,12 +1269,42 @@ export async function setPreferredLocale(locale: 'en' | 'fil') {
 }
 export async function fetchConversationForBooking(bookingId: string) {
   return wrap(async () => {
-    const { data, error } = await supabase
+    let { data } = await supabase
       .from('conversations')
       .select('id')
       .eq('booking_id', bookingId)
-      .single();
-    if (error) throw error;
+      .maybeSingle();
+
+    if (!data) {
+      // Find booking details to retrieve user and worker IDs
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('user_account_id, worker_account_id')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+      if (booking) {
+        const { data: newConv } = await supabase
+          .from('conversations')
+          .insert({ booking_id: bookingId })
+          .select('id')
+          .single();
+
+        if (newConv) {
+          data = newConv;
+          const participants = [booking.user_account_id, booking.worker_account_id].filter(Boolean);
+          if (participants.length > 0) {
+            await supabase.from('conversation_participants').insert(
+              participants.map((accId) => ({
+                conversation_id: newConv.id,
+                account_id: accId,
+              })),
+            );
+          }
+        }
+      }
+    }
+    if (!data) throw new Error('Conversation not available for this booking');
     return data;
   });
 }
@@ -1463,4 +1525,88 @@ export async function calculateRoute(
     body: { start, end, bookingId },
   });
   return data.data;
+}
+
+export async function fetchMyWorkerSkillsAndIndustry(): Promise<
+  ApiResponse<{
+    industries: IndustryWithSkills[];
+    primaryIndustryId: string | null;
+    selectedSkillIds: string[];
+    yearsExperience: number;
+  }>
+> {
+  return wrap(async () => {
+    const user = await requireUser();
+    const [industriesRes, profileRes, skillsRes] = await Promise.all([
+      fetchIndustriesAndSkills(),
+      supabase
+        .from('worker_profiles')
+        .select('primary_industry_id')
+        .eq('worker_id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('worker_skills')
+        .select('service_category_id,years')
+        .eq('worker_id', user.id),
+    ]);
+
+    const industries = industriesRes.data ?? [];
+    const primaryIndustryId = profileRes.data?.primary_industry_id ?? null;
+    const selectedSkillIds = (skillsRes.data ?? []).map(
+      (row: any) => row.service_category_id,
+    );
+    const yearsExperience = Math.max(
+      ...(skillsRes.data ?? []).map((row: any) => row.years ?? 0),
+      1,
+    );
+
+    return {
+      industries,
+      primaryIndustryId,
+      selectedSkillIds,
+      yearsExperience,
+    };
+  });
+}
+
+export async function updateMyWorkerSkillsAndIndustry(input: {
+  primaryIndustryId: string;
+  selectedSkillIds: string[];
+  yearsExperience?: number;
+}): Promise<ApiResponse<boolean>> {
+  return wrap(async () => {
+    const user = await requireUser();
+
+    // 1. Update primary_industry_id on worker_profiles
+    const { error: profileError } = await supabase
+      .from('worker_profiles')
+      .update({
+        primary_industry_id: input.primaryIndustryId,
+      })
+      .eq('worker_id', user.id);
+    if (profileError) throw profileError;
+
+    // 2. Clear existing worker_skills
+    const { error: deleteError } = await supabase
+      .from('worker_skills')
+      .delete()
+      .eq('worker_id', user.id);
+    if (deleteError) throw deleteError;
+
+    // 3. Insert new worker_skills
+    if (input.selectedSkillIds.length > 0) {
+      const rows = input.selectedSkillIds.map((skillId, index) => ({
+        worker_id: user.id,
+        service_category_id: skillId,
+        years: input.yearsExperience ?? 1,
+        is_primary: index === 0,
+      }));
+      const { error: insertError } = await supabase
+        .from('worker_skills')
+        .insert(rows);
+      if (insertError) throw insertError;
+    }
+
+    return true;
+  });
 }

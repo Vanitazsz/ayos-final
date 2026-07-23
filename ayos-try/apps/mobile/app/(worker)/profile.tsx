@@ -211,7 +211,7 @@ export default function WorkerProfileScreen() {
       return;
     }
     if (id === 'industry') {
-      router.push('/(worker)/service-setup');
+      router.push('/(worker)/industry-skills' as any);
       return;
     }
     if (id === 'portfolio') {
