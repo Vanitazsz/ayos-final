@@ -32,7 +32,20 @@ export default function NotificationsScreen() {
           />
         ) : (
           notifications.map((notif, index) => (
-            <TouchableOpacity onPress={()=>{if(notif.unread)void markNotificationRead(notif.id).then(()=>setNotifications(rows=>rows.map(row=>row.id===notif.id?{...row,unread:false}:row)));}} key={notif.id} style={[styles.notificationCard, index !== notifications.length - 1 && styles.borderBottom, notif.unread && styles.unreadBackground]}>
+            <TouchableOpacity 
+              onPress={() => {
+                if (notif.unread) {
+                  void markNotificationRead(notif.id).then(() =>
+                    setNotifications(rows => rows.map(row => row.id === notif.id ? { ...row, unread: false } : row))
+                  );
+                }
+                if (notif.payload?.conversation_id) {
+                  router.push(`/messages/chat?conversationId=${notif.payload.conversation_id}` as any);
+                }
+              }} 
+              key={notif.id} 
+              style={[styles.notificationCard, index !== notifications.length - 1 && styles.borderBottom, notif.unread && styles.unreadBackground]}
+            >
               <View style={styles.iconContainer}>
                 <Bell color={theme.colors.primary} size={20} />
               </View>

@@ -118,8 +118,12 @@ export default function ChatScreen() {
           setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
         });
 
+      loadRef.current = load;
       load();
+
+      const timer = setInterval(load, 2000);
       stops = [
+        () => clearInterval(timer),
         subscribeToTable(
           'messages',
           load,
@@ -131,6 +135,9 @@ export default function ChatScreen() {
 
     return () => stops.forEach((stop) => stop());
   }, [rawId, rawConvId, rawRecipientId]);
+
+  const loadRef = React.useRef<() => void>(() => {});
+
   const handleSend = async () => {
     if (!message.trim()) return;
     let activeConvId = conversationId;
@@ -150,8 +157,10 @@ export default function ChatScreen() {
     if (!activeConvId) return;
 
     try {
-      await sendMessage(activeConvId, message);
+      const text = message;
       setMessage('');
+      await sendMessage(activeConvId, text);
+      loadRef.current();
     } catch (sendErr) {
       console.warn('Failed to send message:', sendErr);
     }

@@ -1471,6 +1471,7 @@ export async function fetchNotifications() {
       message: row.body,
       time: relative(row.created_at),
       unread: !row.read_at,
+      payload: row.payload,
     }));
   });
 }
