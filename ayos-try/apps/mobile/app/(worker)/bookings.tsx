@@ -57,12 +57,21 @@ export default function WorkerBookingsScreen() {
     filter === 'Cancelled' ? 'Cancelled' : 'Upcoming',
   );
   const [bookings, setBookings] = useState<WorkerBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
-  const load = () =>
-    void fetchWorkerBookings().then((result) => setBookings(result.data));
+  const load = async () => {
+    setLoading(true);
+    const result = await fetchWorkerBookings();
+    setBookings(result.data);
+    setLoadError(result.error ?? '');
+    setLoading(false);
+  };
   useEffect(() => {
-    load();
-    return subscribeToTable('bookings', load);
+    void load();
+    const stop = subscribeToTable('bookings', () => void load());
+    const poll = setInterval(() => void load(), 10000);
+    return () => { stop(); clearInterval(poll); };
   }, []);
   const accept = async (id: string) => {
     try {
@@ -144,7 +153,10 @@ export default function WorkerBookingsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
+      {loading ? <View style={styles.centerState}><Text style={theme.typography.body1}>Loading bookings…</Text></View> : null}
+      {!loading && loadError ? <View style={styles.centerState}><Text style={[theme.typography.body1, { color: theme.colors.error }]}>{loadError}</Text><TouchableOpacity onPress={() => void load()}><Text style={styles.retryText}>Retry</Text></TouchableOpacity></View> : null}
+
+      {!loading && !loadError ? <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
@@ -338,7 +350,7 @@ export default function WorkerBookingsScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+      </ScrollView> : null}
     </Screen>
   );
 }
@@ -438,4 +450,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.primary,
   },
+  centerState: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, gap: theme.spacing.sm },
+  retryText: { color: theme.colors.primary, fontWeight: '700' },
 });

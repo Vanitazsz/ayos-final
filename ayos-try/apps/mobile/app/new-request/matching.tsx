@@ -11,10 +11,21 @@ import { MapSurface } from '@/components/maps/MapSurface';
 import { theme } from '@/constants/theme';
 import { attachRequestMedia, publishServiceRequest, selectWorker } from '@/services/api';
 import { getLiveDispatchSnapshot, normalizeSupabaseError, startLiveDispatch, subscribeToDispatch, type DispatchSnapshot, type LiveWorkerCandidate } from '@/services/liveDispatch';
-import { getMatchDiagnostics, matchDiagnosticMessage, type MatchDiagnostics } from '@/services/workerMatching';
 import { useRequestStore } from '@/store/useRequestStore';
 
 type State = 'configuring' | 'starting' | 'live' | 'expired' | 'error';
+
+function diagnosticMessage(diagnostic: DispatchSnapshot['diagnostics'] | undefined) {
+  switch (diagnostic?.reasonCode) {
+    case 'NO_CATEGORY_WORKERS': return 'No workers in this service category are available nearby.';
+    case 'NO_APPROVED_WORKERS': return 'Matching workers still need approval.';
+    case 'WORKERS_OFFLINE':
+    case 'NO_FRESH_PRESENCE': return 'Eligible workers are currently offline. Try again later.';
+    case 'OUTSIDE_SEARCH_RADIUS': return 'No eligible workers were found within your selected radius.';
+    case 'OUTSIDE_WORKING_HOURS': return 'Eligible workers are outside their working schedule.';
+    default: return '';
+  }
+}
 
 export default function MatchingScreen() {
   const router = useRouter();
@@ -23,7 +34,6 @@ export default function MatchingScreen() {
   const [radiusKm, setRadiusKm] = useState(draft.searchRadiusKm);
   const [dispatchRequestId, setDispatchRequestId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<DispatchSnapshot | null>(null);
-  const [diagnostic, setDiagnostic] = useState<MatchDiagnostics | null>(null);
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
 
@@ -43,11 +53,6 @@ export default function MatchingScreen() {
         if (Date.now() >= new Date(next.expiresAt).getTime()) {
           setState('expired');
           if (!next.candidates.some((item) => item.status === 'ACCEPTED')) {
-            try {
-              setDiagnostic(await getMatchDiagnostics(dispatchRequestId));
-            } catch {
-              // Diagnostics are supplementary; keep the completed-search state visible.
-            }
           }
         } else {
           setState('live');
@@ -115,7 +120,7 @@ export default function MatchingScreen() {
       if (!requestId) throw new Error('Service request missing');
       setError('');
       setState('starting');
-      const initialSnapshot = await startLiveDispatch(requestId);
+      const initialSnapshot = await startLiveDispatch(requestId, radiusKm * 1000);
       setSnapshot(initialSnapshot);
       setNow(Date.now());
       setDispatchRequestId(requestId);
@@ -176,7 +181,7 @@ export default function MatchingScreen() {
       ) : null}
 
       {state === 'error' ? <StateMessage title="Matching Unavailable" message={error} action="Try Again" onAction={() => { setError(''); setState('configuring'); }} /> : null}
-      {state === 'expired' && !accepted.length ? <StateMessage title="No Worker Accepted Yet" message={matchDiagnosticMessage(diagnostic)} action="Change Date or Location" onAction={() => router.back()} /> : null}
+      {state === 'expired' && !accepted.length ? <StateMessage title="No Worker Accepted Yet" message={diagnosticMessage(snapshot?.diagnostics)} action="Change Date or Location" onAction={() => router.back()} /> : null}
 
       {(state === 'starting' || state === 'live' || accepted.length > 0) ? (
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
@@ -184,7 +189,7 @@ export default function MatchingScreen() {
             <View style={styles.empty}>
               <View style={styles.emptyIcon}><UsersRound size={30} color={theme.colors.primary} /></View>
               <Text style={theme.typography.h4}>Looking for workers</Text>
-              <Text style={styles.emptyMessage}>We are notifying eligible workers within your selected {radiusKm} km range.</Text>
+              <Text style={styles.emptyMessage}>{diagnosticMessage(snapshot?.diagnostics) || `We are notifying eligible workers within your selected ${snapshot?.searchRadiusMeters ? snapshot.searchRadiusMeters / 1000 : radiusKm} km range.`}</Text>
             </View>
           ) : candidates.map((worker) => (
             <WorkerCard key={worker.dispatchId} worker={worker} price={(draft.aiResult?.estimatedCostMinimumMinor ?? draft.budgetMinor) / 100} onChoose={() => void choose(worker)} />

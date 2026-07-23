@@ -1,59 +1,18 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type PropsWithChildren,
-} from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { startForegroundWorkerPresence, type PresenceState } from '@/services/liveDispatch';
 
-import {
-  startForegroundWorkerPresence,
-  type PresenceState,
-} from '@/services/liveDispatch';
+const WorkerPresenceContext = createContext<{ state: PresenceState; message: string }>({ state: 'starting', message: '' });
 
-type WorkerPresenceValue = {
-  state: PresenceState;
-  message: string;
-};
-
-const WorkerPresenceContext = createContext<WorkerPresenceValue>({
-  state: 'starting',
-  message: '',
-});
-
-export function WorkerPresenceProvider({ children }: PropsWithChildren) {
+export function WorkerPresenceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<PresenceState>('starting');
   const [message, setMessage] = useState('');
-
   useEffect(() => {
     let active = true;
-    let stopPresence = () => {};
-
-    void startForegroundWorkerPresence((nextState, nextMessage) => {
-      if (!active) return;
-      setState(nextState);
-      setMessage(nextMessage ?? '');
-    }).then((stop) => {
-      if (active) stopPresence = stop;
-      else stop();
-    });
-
-    return () => {
-      active = false;
-      stopPresence();
-    };
+    let stop = () => {};
+    void startForegroundWorkerPresence((next, detail) => { if (active) { setState(next); setMessage(detail ?? ''); } }).then((cleanup) => { if (active) stop = cleanup; else cleanup(); });
+    return () => { active = false; stop(); };
   }, []);
-
-  const value = useMemo(() => ({ state, message }), [message, state]);
-
-  return (
-    <WorkerPresenceContext.Provider value={value}>
-      {children}
-    </WorkerPresenceContext.Provider>
-  );
+  return <WorkerPresenceContext.Provider value={{ state, message }}>{children}</WorkerPresenceContext.Provider>;
 }
 
-export function useWorkerPresence() {
-  return useContext(WorkerPresenceContext);
-}
+export const useWorkerPresence = () => useContext(WorkerPresenceContext);
