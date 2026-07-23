@@ -29,6 +29,7 @@ import {
   sendMessage,
   subscribeToTable,
 } from '@/services/api';
+import { supabase } from '@/lib/supabase';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -41,26 +42,32 @@ export default function ChatScreen() {
   const [participant, setParticipant] = useState({ name: '', avatar: '' });
   const bookingId = Array.isArray(id) ? id[0] : id;
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
+  const scrollRef = React.useRef<ScrollView>(null);
+
   useEffect(() => {
     if (!bookingId) return;
     let stops: (() => void)[] = [];
-    void Promise.all([
-      fetchBookingDetail(bookingId),
-      fetchConversationForBooking(bookingId),
-    ]).then(([booking, conversation]) => {
-      if (!booking.error)
+    void (async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const [booking, conversation] = await Promise.all([
+        fetchBookingDetail(bookingId),
+        fetchConversationForBooking(bookingId),
+      ]);
+
+      if (!booking.error && booking.data) {
+        const isWorker = currentUser?.id === booking.data.worker_account_id;
+        const otherParty = isWorker
+          ? booking.data.user_profiles
+          : booking.data.worker_profiles;
         setParticipant({
-          name:
-            booking.data.worker_profiles?.display_name ??
-            booking.data.user_profiles?.display_name ??
-            '',
-          avatar:
-            booking.data.worker_profiles?.avatar_path ??
-            booking.data.user_profiles?.avatar_path ??
-            '',
+          name: otherParty?.display_name ?? 'Booking Participant',
+          avatar: otherParty?.avatar_path ?? '',
         });
-      if (conversation.error) return;
+      }
+
+      if (conversation.error || !conversation.data?.id) return;
       setConversationId(conversation.data.id);
+
       const load = () =>
         void fetchConversation(conversation.data.id).then((result) => {
           if (result.error || !result.data || !Array.isArray(result.data.messages)) {
@@ -68,7 +75,9 @@ export default function ChatScreen() {
             return;
           }
           setMessages(result.data.messages);
+          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
         });
+
       load();
       stops = [
         subscribeToTable(
@@ -78,7 +87,8 @@ export default function ChatScreen() {
         ),
         subscribeToTable('message_translations', load),
       ];
-    });
+    })();
+
     return () => stops.forEach((stop) => stop());
   }, [bookingId]);
   const handleSend = async () => {
@@ -153,6 +163,7 @@ export default function ChatScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.chatArea}
         contentContainerStyle={styles.chatScrollContent}
       >

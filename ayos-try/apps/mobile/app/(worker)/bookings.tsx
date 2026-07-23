@@ -257,7 +257,7 @@ export default function WorkerBookingsScreen() {
                   </Text>
                   <View style={styles.actionRow}>
                     {booking.status === 'in_progress' && (
-                      <TouchableOpacity style={styles.primaryBtn}>
+                      <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}>
                         <Text
                           style={[
                             theme.typography.caption,
@@ -291,7 +291,7 @@ export default function WorkerBookingsScreen() {
                     {(booking.status === 'hired' ||
                       booking.status === 'accepted' ||
                       booking.status === 'en_route') && (
-                      <TouchableOpacity style={styles.primaryBtn}>
+                      <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}>
                         <Text
                           style={[
                             theme.typography.caption,

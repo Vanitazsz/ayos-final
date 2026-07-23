@@ -4,10 +4,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "EXPO_NO_TELEMETRY=1 expo start",
+    "dev": "expo start",
     "build": "expo export --platform web",
     "build:web": "expo export --platform web",
     "lint": "expo lint",
+    "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "check:no-mocks": "node scripts/check-no-production-mocks.mjs"
   },

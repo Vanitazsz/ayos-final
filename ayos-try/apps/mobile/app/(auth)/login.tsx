@@ -13,6 +13,8 @@ import { Image } from 'expo-image';
 export default function LoginScreen() {
   const router = useRouter();
   const setSessionUser = useAuthStore(state => state.setSessionUser);
+  const sessionNotice = useAuthStore(state => state.sessionNotice);
+  const clearSessionNotice = useAuthStore(state => state.clearSessionNotice);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -21,16 +23,27 @@ export default function LoginScreen() {
   });
 
   const onSubmit = async (data: any) => {
+    clearSessionNotice();
     setLoading(true);
     try {
       const user = await signInWithPassword(data.email, data.password);
       setSessionUser(user);
       router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home');
-    } catch (error) { Alert.alert('Sign in failed', error instanceof Error ? error.message : 'Unable to sign in'); }
-    finally { setLoading(false); }
+    } catch (error) {
+      console.error('[login] signIn error:', error);
+      const msg =
+        typeof error === 'string'
+          ? error
+          : error instanceof Error
+            ? error.message
+            : (error as any)?.message ??
+              (error as any)?.error_description ??
+              'Unable to sign in. Please try again.';
+      Alert.alert('Sign in failed', msg);
+    } finally { setLoading(false); }
   };
 
-  const onGoogle = async () => { setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { Alert.alert('Google sign in',error instanceof Error?error.message:'Unable to sign in'); } finally { setLoading(false); } };
+  const onGoogle = async () => { clearSessionNotice(); setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { console.error('[login] google signIn error:', error); const msg = typeof error === 'string' ? error : error instanceof Error ? error.message : (error as any)?.message ?? 'Unable to sign in with Google.'; Alert.alert('Google sign in', msg); } finally { setLoading(false); } };
   const onForgotPassword = async () => { const email=getValues('email'); if(!email){Alert.alert('Email required','Enter your email address first.');return;} try{await requestPasswordReset(email);Alert.alert('Check your email','A secure password reset link has been sent.');}catch(error){Alert.alert('Reset failed',error instanceof Error?error.message:'Unable to send reset email');} };
 
   return (
@@ -49,6 +62,11 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
+            {sessionNotice ? (
+              <View style={styles.sessionNotice} accessibilityRole="alert">
+                <Text style={styles.sessionNoticeText}>{sessionNotice}</Text>
+              </View>
+            ) : null}
             <Controller
               control={control}
               rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email address' } }}
@@ -150,6 +168,19 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  sessionNotice: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  sessionNoticeText: {
+    color: '#92400E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,

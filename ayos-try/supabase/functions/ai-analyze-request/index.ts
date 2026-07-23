@@ -83,7 +83,7 @@ Deno.serve(async (request) => {
       .insert({
         account_id: user.id,
         consent_version: consent.version,
-        providers: ['GEMINI', 'OPENAI'],
+        providers: ['OPENROUTER', 'GEMINI', 'OPENAI'],
         media_processing: media.length > 0,
         request_correlation_id: correlationId,
       })

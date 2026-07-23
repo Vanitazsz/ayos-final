@@ -112,7 +112,7 @@ Deno.serve(async (request) => {
     const { error: consentError } = await admin.from('ai_processing_consents').insert({
       account_id: user.id,
       consent_version: consent.version,
-      providers: ['GEMINI', 'OPENAI'],
+      providers: ['OPENROUTER', 'GEMINI', 'OPENAI'],
       media_processing: true,
       request_correlation_id: correlationId,
     });

@@ -3,26 +3,84 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { normalizePhilippinePhone } from '@/lib/workerRegistration';
+import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 
 WebBrowser.maybeCompleteAuthSession();
+
+function extractRawErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const e = error as Record<string, unknown>;
+    if (typeof e.message === 'string') return e.message;
+    if (typeof e.error_description === 'string') return e.error_description;
+    if (typeof e.msg === 'string') return e.msg;
+  }
+  return '';
+}
+
+function friendlyAuthError(raw: string): string {
+  const l = raw.toLowerCase();
+  if (
+    l.includes('invalid login credentials') ||
+    l.includes('invalid email or password') ||
+    l.includes('wrong password') ||
+    l.includes('user not found')
+  )
+    return 'Invalid email or password. Please try again.';
+  if (l.includes('email not confirmed'))
+    return 'Please verify your email address before signing in.';
+  if (l.includes('too many') || l.includes('rate limit'))
+    return 'Too many login attempts. Please wait a moment and try again.';
+  if (l.includes('network') || l.includes('fetch') || l.includes('timeout'))
+    return 'Unable to connect. Check your internet connection and try again.';
+  if (l.includes('signup disabled'))
+    return 'Account registration is currently disabled.';
+  if (l.includes('account not found') || l.includes('ACCOUNT_NOT_FOUND'))
+    return 'No account found with this email address.';
+  if (l.includes('profile setup'))
+    return 'Your account needs setup. Please complete your profile first.';
+  if (l.includes('suspended'))
+    return 'This account has been suspended. Please contact support.';
+  return raw || 'Unable to sign in. Please try again.';
+}
 
 export async function signInWithPassword(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))
     throw new Error('Enter a valid email address');
   if (!password) throw new Error('Password is required');
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: normalizedEmail,
-    password,
-  });
-  if (error) throw error;
-  if (!data.session)
+
+  let authResult;
+  try {
+    authResult = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+  } catch (fetchError) {
+    console.error('[auth] signInWithPassword network error:', fetchError);
+    throw new Error(
+      'Unable to connect. Check your internet connection and try again.',
+    );
+  }
+
+  if (authResult.error) {
+    console.error('[auth] signInWithPassword error:', authResult.error);
+    const raw = extractRawErrorMessage(authResult.error);
+    throw new Error(friendlyAuthError(raw));
+  }
+  if (!authResult.data.session)
     throw new Error('Supabase did not return an authenticated session');
+
   try {
     const user = await loadCurrentUser();
-    await supabase.functions.invoke('record-auth-session', { body: {} });
+    try {
+      await invokeAuthenticatedFunction('record-auth-session', { body: {} });
+    } catch (sessionLogErr) {
+      console.warn('[auth] record-auth-session failed (non-fatal):', sessionLogErr);
+    }
     return user;
   } catch (profileError) {
+    console.error('[auth] loadCurrentUser failed after login:', profileError);
     await supabase.auth.signOut({ scope: 'local' });
     throw profileError;
   }
@@ -97,7 +155,7 @@ export async function signInWithGoogle() {
   const { error: exchangeError } =
     await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) throw exchangeError;
-  await supabase.functions.invoke('record-auth-session', { body: {} });
+  await invokeAuthenticatedFunction('record-auth-session', { body: {} });
 }
 
 export async function loadCurrentUser() {
@@ -106,10 +164,22 @@ export async function loadCurrentUser() {
   const session = sessionData.session;
   if (!session) return null;
   if (userError || !userData.user || userData.user.id !== session.user.id) {
-    throw userError ?? new Error('Supabase session validation failed');
+    throw userError
+      ? new Error(friendlyAuthError(extractRawErrorMessage(userError)))
+      : new Error('Session expired. Please sign in again.');
   }
+
   const { data, error } = await supabase.rpc('get_my_profile');
-  if (error) throw error;
+  if (error) {
+    console.error('[auth] get_my_profile RPC error:', error);
+    const raw = extractRawErrorMessage(error);
+    if (raw.includes('ACCOUNT_NOT_FOUND'))
+      throw new Error('No account found. Please register first.');
+    if (raw.includes('AUTHENTICATION_REQUIRED'))
+      throw new Error('Session expired. Please sign in again.');
+    throw new Error(friendlyAuthError(raw));
+  }
+
   const account = data?.account;
   const profile = data?.profile;
   if (
@@ -118,23 +188,29 @@ export async function loadCurrentUser() {
     typeof profile.display_name !== 'string' ||
     !profile.display_name.trim()
   )
-    throw new Error('Profile setup is required');
+    throw new Error(
+      'Your account profile is incomplete. Please complete your profile to continue.',
+    );
   if (account.id !== userData.user.id)
     throw new Error(
-      'Profile identity does not match the authenticated account',
+      'Account profile mismatch. Please sign in again.',
     );
   if (account.status !== 'ACTIVE') {
     await supabase.auth.signOut();
-    throw new Error('This account is suspended or unavailable');
+    if (account.status === 'SUSPENDED')
+      throw new Error(
+        'This account has been suspended. Please contact support.',
+      );
+    throw new Error('This account is currently unavailable.');
   }
   if (!['USER', 'WORKER'].includes(account.role)) {
     await supabase.auth.signOut({ scope: 'local' });
     throw new Error(
-      'This account cannot use the customer and worker application',
+      'This account cannot use the mobile app. Please use the web portal instead.',
     );
   }
   if (data.active_role !== account.role)
-    throw new Error('Account role integrity check failed');
+    throw new Error('Session role mismatch. Please sign in again.');
   return {
     id: account.id,
     email: account.email,

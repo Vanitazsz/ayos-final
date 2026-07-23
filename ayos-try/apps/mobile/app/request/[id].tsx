@@ -10,7 +10,7 @@ import { Badge } from '@/components/Badge';
 import { JobSummary } from '@/components/JobSummary';
 import { ProviderCard } from '@/components/ProviderCard';
 import { useRequest } from '@/context/RequestContext';
-import { fetchProviderProfile, fetchRequest, fetchRequestBids, subscribeToTable } from '@/services/api';
+import { fetchProviderProfile, fetchRequest, fetchRequestBids, fetchBookingByRequestId, subscribeToTable } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
 
 export default function RequestDetailsScreen() {
@@ -19,10 +19,11 @@ export default function RequestDetailsScreen() {
   const { request,updateRequest } = useRequest();
   const setDraft=useRequestStore(state=>state.setDraft);
   const [applicants, setApplicants] = useState<any[]>([]);
+  const [bookingId, setBookingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if(!id)return;const load=async()=>{setIsLoading(true);const[requestResult,bidsResult]=await Promise.all([fetchRequest(id),fetchRequestBids(id)]);if(requestResult.error){setIsLoading(false);return;}const row=requestResult.data;updateRequest({description:row.description,category:row.service_categories?.name??'',location:{latitude:Number(row.addresses?.latitude),longitude:Number(row.addresses?.longitude),address:[row.addresses?.line1,row.addresses?.barangay,row.addresses?.city].filter(Boolean).join(', ')},status:row.status==='CLOSED'?'Completed':row.status==='BOOKED'?'Accepted':'Posted'});setDraft({requestId:id});const candidateIds=new Set<string>();const mapped=[];for(const bid of bidsResult.data){candidateIds.add(bid.worker_id);const profile=await fetchProviderProfile(bid.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:`₱${(Number(bid.amount_minor)/100).toLocaleString()}`,eta:`${bid.estimated_duration_minutes} minutes`,message:bid.message});}for(const candidate of row.match_candidates??[]){if(candidateIds.has(candidate.worker_id))continue;const profile=await fetchProviderProfile(candidate.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:'',eta:candidate.factors?.distance_meters?`${(Number(candidate.factors.distance_meters)/1000).toFixed(1)} km`:'',message:''});}setApplicants(mapped);setIsLoading(false);};void load();return subscribeToTable('request_bids',()=>void load(),`service_request_id=eq.${id}`);
+    if(!id)return;const load=async()=>{setIsLoading(true);const[requestResult,bidsResult]=await Promise.all([fetchRequest(id),fetchRequestBids(id)]);if(requestResult.error){setIsLoading(false);return;}const row=requestResult.data;updateRequest({description:row.description,category:row.service_categories?.name??'',location:{latitude:Number(row.addresses?.latitude),longitude:Number(row.addresses?.longitude),address:[row.addresses?.line1,row.addresses?.barangay,row.addresses?.city].filter(Boolean).join(', ')},status:row.status==='CLOSED'?'Completed':row.status==='BOOKED'?'Accepted':'Posted'});setDraft({requestId:id});fetchBookingByRequestId(id).then(r=>{if(r.data?.id)setBookingId(r.data.id);});const candidateIds=new Set<string>();const mapped=[];for(const bid of bidsResult.data){candidateIds.add(bid.worker_id);const profile=await fetchProviderProfile(bid.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:`₱${(Number(bid.amount_minor)/100).toLocaleString()}`,eta:`${bid.estimated_duration_minutes} minutes`,message:bid.message});}for(const candidate of row.match_candidates??[]){if(candidateIds.has(candidate.worker_id))continue;const profile=await fetchProviderProfile(candidate.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:'',eta:candidate.factors?.distance_meters?`${(Number(candidate.factors.distance_meters)/1000).toFixed(1)} km`:'',message:''});}setApplicants(mapped);setIsLoading(false);};void load();return subscribeToTable('request_bids',()=>void load(),`service_request_id=eq.${id}`);
   }, [id]);
 
   const handleBack = () => router.back();
@@ -140,14 +141,14 @@ export default function RequestDetailsScreen() {
                 <AppButton 
                   label="Leave Review" 
                   style={[styles.actionBtn, { marginTop: Spacing['3'] }]} 
-                  onPress={() => router.push(`/review/${assignedWorker.id}` as any)}
+                  onPress={() => bookingId && router.push(`/review/${bookingId}` as any)}
                 />
               )}
               {request.status === 'Accepted' && (
                 <AppButton 
                   label="Proceed to Payment" 
                   style={[styles.actionBtn, { marginTop: Spacing['3'] }]} 
-                  onPress={() => router.push(`/payment` as any)}
+                  onPress={() => bookingId && router.push(`/payment/${bookingId}` as any)}
                 />
               )}
             </View>
