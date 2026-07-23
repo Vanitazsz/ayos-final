@@ -87,8 +87,8 @@ export default function MatchingScreen() {
       if (!draft.categoryId) throw new Error('A service category is required.');
       draft.setDraft({ searchRadiusKm: radiusKm });
 
-      let requestId = draft.requestId;
-      if (!requestId) {
+      let resolvedRequestId = draft.requestId;
+      if (!resolvedRequestId) {
         const scheduledAt = draft.scheduledAt ?? new Date(Date.now() + (draft.aiResult?.urgency === 'emergency' ? 5 : 30) * 60000).toISOString();
         const created = await publishServiceRequest({
           categoryId: draft.categoryId,
@@ -102,23 +102,29 @@ export default function MatchingScreen() {
           budgetMinor: draft.aiResult?.estimatedCostMinimumMinor ?? draft.budgetMinor,
           analysisId: draft.aiResult?.analysisId ?? null,
         });
-        requestId = created.id;
-        draft.setDraft({ requestId });
+        resolvedRequestId = created.id;
+        draft.setDraft({ requestId: resolvedRequestId });
         if (draft.media.length) await attachRequestMedia(created.id, draft.media);
+      }
+      if (!resolvedRequestId) {
+        throw new Error('The service request could not be created.');
       }
 
       if (draft.matchingMode === 'bidding' || draft.aiResult?.safetyCritical) {
-        router.replace(`/request/${requestId}` as never);
+        router.replace(`/request/${resolvedRequestId}` as never);
         return;
       }
 
       setError('');
       setState('starting');
       const selectedRadiusMeters = radiusKm * 1000;
-      const initialSnapshot = await startLiveDispatch(requestId, selectedRadiusMeters);
+      const initialSnapshot = await startLiveDispatch(
+        resolvedRequestId,
+        selectedRadiusMeters,
+      );
       setSnapshot(initialSnapshot);
       setNow(Date.now());
-      setDispatchRequestId(requestId);
+      setDispatchRequestId(resolvedRequestId);
       setState('live');
     } catch (reason) {
       const normalized = normalizeSupabaseError(reason, 'Matching could not be completed. Please try again.');
