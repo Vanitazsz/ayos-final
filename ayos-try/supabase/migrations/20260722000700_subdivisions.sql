@@ -11,42 +11,33 @@ create table if not exists public.subdivisions (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create unique index if not exists subdivisions_name_key on public.subdivisions(lower(name));
 create index if not exists subdivisions_active_idx on public.subdivisions(is_active, name);
-
 alter table public.user_profiles
   add column if not exists subdivision_id uuid references public.subdivisions(id) on delete set null;
 alter table public.worker_profiles
   add column if not exists subdivision_id uuid references public.subdivisions(id) on delete set null;
 alter table public.service_requests
   add column if not exists subdivision_id uuid references public.subdivisions(id) on delete set null;
-
 create index if not exists user_profiles_subdivision_idx on public.user_profiles(subdivision_id);
 create index if not exists worker_profiles_subdivision_idx on public.worker_profiles(subdivision_id, approval_status, is_available);
 create index if not exists service_requests_subdivision_idx on public.service_requests(subdivision_id, status);
-
 alter table public.subdivisions enable row level security;
 revoke all on public.subdivisions from anon, authenticated;
 grant select on public.subdivisions to authenticated;
 grant select, insert, update, delete on public.subdivisions to service_role;
-
 drop policy if exists subdivisions_authenticated_read on public.subdivisions;
 create policy subdivisions_authenticated_read on public.subdivisions
 for select to authenticated using (is_active or public.is_admin(false));
-
 drop policy if exists subdivisions_admin_insert on public.subdivisions;
 create policy subdivisions_admin_insert on public.subdivisions
 for insert to authenticated with check (public.is_admin(true));
-
 drop policy if exists subdivisions_admin_update on public.subdivisions;
 create policy subdivisions_admin_update on public.subdivisions
 for update to authenticated using (public.is_admin(true)) with check (public.is_admin(true));
-
 drop policy if exists subdivisions_admin_delete on public.subdivisions;
 create policy subdivisions_admin_delete on public.subdivisions
 for delete to authenticated using (public.is_admin(true));
-
 create or replace function public.auto_detect_subdivision(
   p_lat double precision,
   p_lng double precision
@@ -66,7 +57,6 @@ language sql stable security definer set search_path = '' as $$
   ), subdivision.name
   limit 1
 $$;
-
 create or replace function public.set_my_subdivision(p_subdivision_id uuid)
 returns uuid language plpgsql security definer set search_path = '' as $$
 declare selected_id uuid; account_role public.account_role;
@@ -91,7 +81,6 @@ begin
   if not found then raise exception using errcode = 'P0002', message = 'PROFILE_NOT_FOUND'; end if;
   return selected_id;
 end $$;
-
 create or replace function public.admin_create_subdivision(
   p_name text,
   p_lat double precision,
@@ -108,7 +97,6 @@ begin
   returning * into result;
   return result;
 end $$;
-
 create or replace function public.admin_update_subdivision(
   p_id uuid,
   p_name text,
@@ -130,7 +118,6 @@ begin
   if result.id is null then raise exception using errcode = 'P0002', message = 'SUBDIVISION_NOT_FOUND'; end if;
   return result;
 end $$;
-
 create or replace function public.admin_list_subdivisions()
 returns setof public.subdivisions
 language sql stable security definer set search_path = '' as $$
@@ -138,14 +125,12 @@ language sql stable security definer set search_path = '' as $$
   where public.is_admin(true)
   order by subdivision.name
 $$;
-
 insert into public.system_settings(key, value)
 values(
   'matching.weights',
   '{"distance":0.30,"availability":0.20,"rating":0.20,"completed_jobs":0.10,"response_history":0.10,"cancellation_history":0.05,"priority":0.05}'::jsonb
 )
 on conflict(key) do nothing;
-
 create or replace function public.generate_matches(p_service_request_id uuid)
 returns setof public.match_candidates
 language plpgsql security definer set search_path = '' as $$
@@ -267,7 +252,6 @@ begin
   return query select candidate.* from public.match_candidates candidate
   where candidate.service_request_id = request.id order by candidate.rank;
 end $$;
-
 revoke all on function public.auto_detect_subdivision(double precision, double precision) from public, anon;
 revoke all on function public.set_my_subdivision(uuid) from public, anon;
 revoke all on function public.admin_create_subdivision(text, double precision, double precision, integer, jsonb) from public, anon;
