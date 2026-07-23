@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 
 const Input = forwardRef(({ 
   label, 
@@ -7,10 +7,14 @@ const Input = forwardRef(({
   className = '', 
   ...props 
 }, ref) => {
+  const generatedId = useId();
+  const inputId = props.id ?? `input-${generatedId}`;
+  const errorId = error ? `${inputId}-error` : undefined;
+
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-navy mb-1.5">
+        <label htmlFor={inputId} className="block text-sm font-medium text-navy mb-1.5">
           {label}
         </label>
       )}
@@ -21,7 +25,10 @@ const Input = forwardRef(({
           </div>
         )}
         <input
+          id={inputId}
           ref={ref}
+          aria-invalid={Boolean(error)}
+          aria-describedby={errorId}
           className={`
             block w-full rounded-lg border 
             ${error ? 'border-danger focus:ring-danger' : 'border-border focus:border-primary focus:ring-primary'}
@@ -35,7 +42,7 @@ const Input = forwardRef(({
         />
       </div>
       {error && (
-        <p className="mt-1.5 text-sm text-danger">{error}</p>
+        <p id={errorId} role="alert" className="mt-1.5 text-sm text-danger">{error}</p>
       )}
     </div>
   );
