@@ -8,7 +8,7 @@ export type LiveWorkerCandidate={dispatchId:string;workerId:string;status:Dispat
 export type DispatchDiagnostics={reasonCode:'NO_ACTIVE_WORKERS'|'NO_CATEGORY_WORKERS'|'NO_APPROVED_WORKERS'|'WORKERS_OFFLINE'|'NO_FRESH_PRESENCE'|'OUTSIDE_SEARCH_RADIUS'|'OUTSIDE_WORKING_HOURS'|'WAITING_FOR_RESPONSE';counts:{active:number;skilled:number;approved:number;available:number;freshPresence:number;withinWave:number;scheduled:number;subdivisionCompatible:number}};
 export type DispatchSnapshot={serviceRequestId:string;startedAt:string;expiresAt:string;wave:1|2|3;diagnostics:DispatchDiagnostics;candidates:LiveWorkerCandidate[]};
 export type DispatchOffer={dispatchId:string;serviceRequestId:string;status:DispatchStatus;distanceMeters:number;expiresAt:string;category:string;description:string;budget:number;area:string};
-export type PresenceState='starting'|'online'|'offline'|'permission_denied'|'not_ready'|'error';
+export type PresenceState='starting'|'online'|'paused'|'offline'|'permission_denied'|'not_ready'|'error';
 export type WorkerLiveStatus={subdivisionId:string|null;subdivisionName:string|null;serviceArea:string|null;radiusMeters:number|null;presenceOnline:boolean;lastSeenAt:string|null;latitude:number|null;longitude:number|null;accuracyMeters:number|null};
 
 export function normalizeSupabaseError(error:unknown,fallback='Request failed'){
@@ -68,6 +68,7 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
   let publishing=false;
   let subscription:Location.LocationSubscription|null=null;
   let heartbeatTimer:ReturnType<typeof setInterval>|null=null;
+  let backgroundGraceTimer:ReturnType<typeof setTimeout>|null=null;
   let latestPosition:Location.LocationObject|null=null;
 
   const publish=async(position:Location.LocationObject,online=true)=>{
@@ -104,6 +105,7 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
 
   const begin=async()=>{
     if(stopped||active)return;
+    if(backgroundGraceTimer){clearTimeout(backgroundGraceTimer);backgroundGraceTimer=null;}
     active=true;
     onState('starting');
     try{
@@ -124,19 +126,29 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
 
   const publishOffline=async()=>{
     const position=latestPosition??await Location.getLastKnownPositionAsync();
-    if(position)await publish(position,false);
+    if(position){
+      try{await publishWorkerPosition(position,false);}
+      catch(error){if(!stopped)onState('error',normalizeSupabaseError(error).message);}
+    }
   };
 
   await begin();
   const appState=AppState.addEventListener('change',state=>{
     if(state==='active'){void begin();return;}
     stopActivePresence();
-    void publishOffline();
+    onState('paused','Tab inactive — matching will pause after 60 seconds.');
+    if(!backgroundGraceTimer){
+      backgroundGraceTimer=setTimeout(()=>{
+        backgroundGraceTimer=null;
+        if(!active&&!stopped){onState('offline','Return to this tab to resume matching.');void publishOffline();}
+      },60000);
+    }
   });
   return()=>{
     stopped=true;
     appState.remove();
     stopActivePresence();
+    if(backgroundGraceTimer){clearTimeout(backgroundGraceTimer);backgroundGraceTimer=null;}
     void publishOffline();
   };
 }

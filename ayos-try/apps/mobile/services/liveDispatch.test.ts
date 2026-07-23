@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   watchPosition: vi.fn(),
   removeWatch: vi.fn(),
   removeAppState: vi.fn(),
+  appStateListeners: [] as Array<(state: string) => void>,
   rpc: vi.fn(),
   readiness: vi.fn(),
 }));
@@ -20,7 +21,10 @@ vi.mock('expo-location', () => ({
 }));
 vi.mock('react-native', () => ({
   AppState: {
-    addEventListener: vi.fn(() => ({ remove: mocks.removeAppState })),
+    addEventListener: vi.fn((_event: string, listener: (state: string) => void) => {
+      mocks.appStateListeners.push(listener);
+      return { remove: mocks.removeAppState };
+    }),
   },
 }));
 vi.mock('@/lib/supabase', () => ({
@@ -95,6 +99,45 @@ describe('startForegroundWorkerPresence', () => {
 
     await vi.advanceTimersByTimeAsync(10000);
     expect(mocks.rpc).toHaveBeenCalledTimes(2);
+
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it('keeps the worker online during a short tab switch', async () => {
+    vi.useFakeTimers();
+    mocks.appStateListeners.length = 0;
+    mocks.rpc.mockClear();
+    const position = {
+      coords: {
+        latitude: 14.4179,
+        longitude: 120.9795,
+        accuracy: 25,
+      },
+      timestamp: Date.now(),
+    };
+    mocks.readiness.mockResolvedValue({ matchable: true });
+    mocks.requestPermission.mockResolvedValue({ status: 'granted' });
+    mocks.getCurrentPosition.mockResolvedValue(position);
+    mocks.getLastKnownPosition.mockResolvedValue(position);
+    mocks.watchPosition.mockResolvedValue({ remove: mocks.removeWatch });
+    mocks.rpc.mockResolvedValue({
+      data: { online: true, lastSeenAt: new Date().toISOString() },
+      error: null,
+    });
+
+    const stateChanged = vi.fn();
+    const cleanup = await startForegroundWorkerPresence(stateChanged);
+    mocks.appStateListeners.at(-1)?.('background');
+    await vi.advanceTimersByTimeAsync(30000);
+
+    expect(
+      mocks.rpc.mock.calls.some(([, args]) => args?.p_online === false),
+    ).toBe(false);
+
+    mocks.appStateListeners.at(-1)?.('active');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(stateChanged).toHaveBeenCalledWith('starting');
 
     cleanup();
     vi.useRealTimers();

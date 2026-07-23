@@ -88,7 +88,7 @@ export default function WorkerDashboardScreen() {
         <View style={styles.section}>
           <View style={[styles.presenceCard,presenceState==='online'&&styles.presenceOnline]}>
             <Text style={[theme.typography.body2,{fontWeight:'700'}]}>{presenceState==='online'?'Live and receiving nearby requests':'Live matching is not active'}</Text>
-            <Text style={[theme.typography.caption,{color:theme.colors.textSecondary}]}>{presenceMessage||({starting:'Starting location sharing…',offline:'Return to this tab to go online.',permission_denied:'Allow location access in your browser.',not_ready:'Complete Service Availability and go online.',error:'Location sharing could not start.',online:'Your foreground location updates every 10–15 seconds.'}[presenceState])}</Text>
+            <Text style={[theme.typography.caption,{color:theme.colors.textSecondary}]}>{presenceMessage||({starting:'Starting location sharing…',paused:'Tab inactive — matching will pause after 60 seconds.',offline:'Return to this tab to go online.',permission_denied:'Allow location access in your browser.',not_ready:'Complete Service Availability and go online.',error:'Location sharing could not start.',online:'Your foreground location updates every 10–15 seconds.'}[presenceState])}</Text>
             <View style={styles.liveDetails}>
               <Text style={styles.liveDetail}>Subdivision: {liveStatus?.subdivisionName??'Not assigned — using live distance and service radius'}</Text>
               <Text style={styles.liveDetail}>Service area: {liveStatus?.serviceArea??'Not configured'}{liveStatus?.radiusMeters?` · ${(liveStatus.radiusMeters/1000).toFixed(0)} km radius`:''}</Text>
