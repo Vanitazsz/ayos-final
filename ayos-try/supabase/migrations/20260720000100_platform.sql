@@ -316,8 +316,6 @@ begin
   return new;
 exception when invalid_text_representation then raise exception using errcode='42501', message='Invalid account role';
 end $$;
-drop trigger if exists on_auth_user_created on auth.users;
-drop trigger if exists provision_account_after_auth_insert on auth.users;
 create trigger provision_account_after_auth_insert after insert on auth.users for each row execute function public.provision_account();
 
 create or replace function public.activate_confirmed_account() returns trigger language plpgsql security definer set search_path = '' as $$
@@ -327,8 +325,6 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists on_auth_user_confirmed on auth.users;
-drop trigger if exists activate_account_after_email_confirmation on auth.users;
 create trigger activate_account_after_email_confirmation after update of email_confirmed_at on auth.users for each row execute function public.activate_confirmed_account();
 
 create or replace function public.prevent_account_security_changes() returns trigger language plpgsql set search_path = '' as $$
