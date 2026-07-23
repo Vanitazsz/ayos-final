@@ -104,6 +104,7 @@ export default function BookingRequestScreen() {
   const [backendStatus, setBackendStatus] = useState('PENDING');
   const [duration, setDuration] = useState('Not recorded');
   const [routeDetails, setRouteDetails] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
 
@@ -111,7 +112,11 @@ export default function BookingRequestScreen() {
     if (!id) return;
     const load = () =>
       void fetchBookingDetail(id).then((result) => {
-        if (result.error) return;
+        setIsLoading(false);
+        if (result.error) {
+          console.error('[booking-detail] fetchBookingDetail failed:', result.error);
+          return;
+        }
         const row = result.data;
         const request = row.service_requests;
         const address = request?.addresses;
@@ -178,95 +183,55 @@ export default function BookingRequestScreen() {
     return subscribeToTable('bookings', load, `id=eq.${id}`);
   }, [id, setStoreStatus]);
 
-  const handleDecline = () => {
-    Alert.alert('Decline Booking', 'Are you sure you want to decline?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline',
-        style: 'destructive',
-        onPress: () => {
-          void cancelBooking(booking.id, 'Worker declined the assigned booking')
-            .then(() => router.back())
-            .catch((error) => Alert.alert('Unable to decline', error.message));
-        },
-      },
-    ]);
+  const handleDecline = async () => {
+    try {
+      await cancelBooking(booking.id, 'Worker declined the assigned booking');
+      setBackendStatus('CANCELLED');
+      setBooking((b) => ({ ...b, status: 'cancelled' }));
+      router.replace('/(worker)/bookings?filter=Cancelled');
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('Decline error:', msg, error);
+      Alert.alert('Decline failed', msg);
+    }
   };
 
-  const handleConfirmDetails = () => {
-    Alert.alert(
-      'Details Confirmed',
-      'You have confirmed the details with the customer. Head to the location!',
-      [
-        {
-          text: 'OK',
-          onPress: () =>
-            void (async () => {
-              try {
-                if (backendStatus === 'ACCEPTED') await prepareJob(booking.id);
-                await departForJob(booking.id);
-              } catch (error) {
-                Alert.alert(
-                  'Status not updated',
-                  error instanceof Error ? error.message : 'Please retry.',
-                );
-              }
-            })(),
-        },
-      ],
-    );
+  const handleConfirmDetails = async () => {
+    try {
+      console.log('[handleConfirmDetails] booking.id:', booking.id);
+      await departForJob(booking.id);
+      setBackendStatus('WORKER_EN_ROUTE');
+      setBooking((b) => ({ ...b, status: 'en_route' }));
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleConfirmDetails error:', msg, error);
+      Alert.alert('Start En Route failed', msg);
+    }
   };
 
-  const handleArrived = () => {
-    Alert.alert(
-      'Arrived',
-      'You have arrived at the location. Start the job when ready.',
-      [
-        {
-          text: 'Start Job',
-          onPress: () =>
-            void (async () => {
-              try {
-                if (backendStatus === 'WORKER_EN_ROUTE')
-                  await arriveAtJob(booking.id);
-                await startJob(booking.id);
-              } catch (error) {
-                Alert.alert(
-                  'Status not updated',
-                  error instanceof Error ? error.message : 'Please retry.',
-                );
-              }
-            })(),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-    );
+  const handleArrived = async () => {
+    try {
+      await arriveAtJob(booking.id);
+      await startJob(booking.id);
+      setBackendStatus('IN_PROGRESS');
+      setBooking((b) => ({ ...b, status: 'in_progress' }));
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleArrived error:', msg, error);
+      Alert.alert('Arrived failed', msg);
+    }
   };
 
-  const handleComplete = () => {
-    Alert.alert(
-      'Complete Job',
-      'Mark this job as completed and notify the customer?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: () =>
-            void (async () => {
-              try {
-                if (backendStatus === 'SERVICE_STARTED')
-                  await markJobInProgress(booking.id);
-                await completeJob(booking.id);
-              } catch (error) {
-                Alert.alert(
-                  'Status not updated',
-                  error instanceof Error ? error.message : 'Please retry.',
-                );
-              }
-            })(),
-        },
-      ],
-    );
+  const handleComplete = async () => {
+    try {
+      await completeJob(booking.id);
+      setBackendStatus('COMPLETED');
+      setBooking((b) => ({ ...b, status: 'completed' }));
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleComplete error:', msg, error);
+      Alert.alert('Complete failed', msg);
+    }
   };
 
   const handleLeaveFeedback = () => {
@@ -311,6 +276,7 @@ export default function BookingRequestScreen() {
 
   const isCompleted = booking.status === 'completed';
   const isCancelled = booking.status === 'cancelled';
+  const isActive = !isCompleted && !isCancelled;
 
   const remainingTime = '';
 
@@ -330,10 +296,19 @@ export default function BookingRequestScreen() {
         <View style={{ width: 40 }} />
       </View>
 
+      {isLoading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Loader2 size={32} color={Colors.cta} style={styles.spinner} />
+          <AppText variant="body" color={Colors.textSecondary} style={{ marginTop: 12 }}>
+            Loading booking...
+          </AppText>
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ─── Job Card ─── */}
         <View style={styles.jobCard}>
@@ -448,9 +423,17 @@ export default function BookingRequestScreen() {
           <Badge label="Good client" variant="success" size="sm" />
         </View>
 
-        {/* ─── State-Specific Content ─── */}
-        {['PENDING', 'ACCEPTED', 'WORKER_PREPARING'].includes(backendStatus) &&
-          routeDetails && (
+        {/* ─── Map & Route (all active states) ─── */}
+        {isActive && routeDetails && routeDetails.destinationLat != null && routeDetails.destinationLng != null && (
+          <View style={{ gap: 12 }}>
+            <BookingMap
+              bookingId={booking.id}
+              startLat={routeDetails.startLat}
+              startLng={routeDetails.startLng}
+              destinationLat={routeDetails.destinationLat}
+              destinationLng={routeDetails.destinationLng}
+              destinationAddress={routeDetails.address}
+            />
             <RouteSummaryCard
               bookingId={booking.id}
               startLat={routeDetails.startLat}
@@ -460,7 +443,10 @@ export default function BookingRequestScreen() {
               destinationAddress={routeDetails.address}
               workerView
             />
-          )}
+          </View>
+        )}
+
+        {/* ─── State-Specific Content ─── */}
         {booking.status === 'hired' && (
           <View style={styles.hiredBanner}>
             <View style={styles.hiredIconRow}>
@@ -479,7 +465,7 @@ export default function BookingRequestScreen() {
             </AppText>
             <View style={styles.hiredActions}>
               <AppButton
-                label="Accept Booking"
+                label="Accept Booking ✅"
                 variant="primary"
                 leftIcon={<Calendar size={18} color={Colors.white} />}
                 fullWidth
@@ -492,10 +478,15 @@ export default function BookingRequestScreen() {
                     .catch((error) =>
                       Alert.alert('Unable to accept', error.message),
                     )
+                    .catch((err: any) => {
+                      const msg = err?.message ?? err?.code ?? String(err);
+                      console.error('acceptJob error:', msg, err);
+                      Alert.alert('Accept failed', msg);
+                    })
                 }
               />
               <AppButton
-                label="Decline"
+                label="Decline ❌"
                 variant="outline"
                 fullWidth
                 onPress={handleDecline}
@@ -505,12 +496,19 @@ export default function BookingRequestScreen() {
         )}
 
         {booking.status === 'accepted' && (
-          <>
+          <View style={{ gap: 12 }}>
             <BookingChat
               bookingId={String(id)}
               customerName={job.customerName}
               customerAvatar={job.customerAvatar}
               onConfirmDetails={handleConfirmDetails}
+              bookingStatus={booking.status}
+            />
+            <AppButton
+              label="Start En Route 🚚"
+              variant="primary"
+              fullWidth
+              onPress={handleConfirmDetails}
             />
             <Pressable
               style={styles.contactNowBtn}
@@ -521,16 +519,11 @@ export default function BookingRequestScreen() {
                 Open Full Chat
               </AppText>
             </Pressable>
-          </>
+          </View>
         )}
 
         {booking.status === 'en_route' && (
-          <>
-            <BookingMap
-              destinationLat={booking.lat ?? 0}
-              destinationLng={booking.lng ?? 0}
-              destinationAddress={booking.address}
-            />
+          <View style={{ gap: 12 }}>
             <View style={styles.contactRow}>
               <Pressable style={styles.contactBtn} onPress={handleCall}>
                 <Phone size={18} color={Colors.cta} />
@@ -549,17 +542,17 @@ export default function BookingRequestScreen() {
               </Pressable>
             </View>
             <AppButton
-              label="I've Arrived"
+              label="I've Arrived & Start Job 📍"
               variant="primary"
               leftIcon={<MapPin size={18} color={Colors.white} />}
               fullWidth
               onPress={handleArrived}
             />
-          </>
+          </View>
         )}
 
         {booking.status === 'in_progress' && (
-          <>
+          <View style={{ gap: 12 }}>
             <JobTimer hourlyRate={booking.hourlyRate ?? 0} />
             <View style={styles.contactRow}>
               <Pressable style={styles.contactBtn} onPress={handleCall}>
@@ -579,13 +572,13 @@ export default function BookingRequestScreen() {
               </Pressable>
             </View>
             <AppButton
-              label="Complete Job"
+              label="Complete Job ✅"
               variant="primary"
               leftIcon={<CheckCircle2 size={18} color={Colors.white} />}
               fullWidth
               onPress={handleComplete}
             />
-          </>
+          </View>
         )}
 
         {booking.status === 'pending_review' && (
@@ -654,6 +647,7 @@ export default function BookingRequestScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </View>
   );
 }
