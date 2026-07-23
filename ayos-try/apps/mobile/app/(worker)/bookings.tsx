@@ -23,6 +23,7 @@ import {
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
+import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -59,6 +60,7 @@ export default function WorkerBookingsScreen() {
   const [bookings, setBookings] = useState<WorkerBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const { state: presenceState, message: presenceMessage } = useWorkerPresence();
   const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
   const load = async () => {
     setLoading(true);
@@ -105,6 +107,9 @@ export default function WorkerBookingsScreen() {
     <Screen safeArea backgroundColor={theme.colors.background}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
+      </View>
+      <View style={[styles.presenceStrip, presenceState === 'online' ? styles.presenceOnline : styles.presenceOffline]}>
+        <Text style={styles.presenceStripText}>{presenceState === 'online' ? 'Online and receiving requests' : presenceMessage || ({ starting: 'Starting location sharing…', paused: 'Presence paused', offline: 'Offline', permission_denied: 'Location permission required', not_ready: 'Complete worker setup', error: 'Location heartbeat error' } as Record<string, string>)[presenceState]}</Text>
       </View>
 
       {isCurrentlyWorking && (
@@ -452,4 +457,8 @@ const styles = StyleSheet.create({
   },
   centerState: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, gap: theme.spacing.sm },
   retryText: { color: theme.colors.primary, fontWeight: '700' },
+  presenceStrip: { marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radius.md },
+  presenceOnline: { backgroundColor: '#E8F8F0' },
+  presenceOffline: { backgroundColor: theme.colors.borderLight },
+  presenceStripText: { color: theme.colors.textSecondary, fontWeight: '600', textAlign: 'center' },
 });

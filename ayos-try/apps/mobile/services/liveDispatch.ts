@@ -145,9 +145,16 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
       },60000);
     }
   });
+  const webDocument=typeof document !== 'undefined' ? document : null;
+  const onVisibility=()=>{ if (webDocument?.visibilityState === 'visible') void begin(); else { stopActivePresence(); onState('paused','Tab inactive — matching will pause after 60 seconds.'); } };
+  const onFocus=()=>void begin();
+  webDocument?.addEventListener('visibilitychange',onVisibility);
+  webDocument?.defaultView?.addEventListener('focus',onFocus);
   return()=>{
     stopped=true;
     appState.remove();
+    webDocument?.removeEventListener('visibilitychange',onVisibility);
+    webDocument?.defaultView?.removeEventListener('focus',onFocus);
     stopActivePresence();
     if(backgroundGraceTimer){clearTimeout(backgroundGraceTimer);backgroundGraceTimer=null;}
     void publishOffline();

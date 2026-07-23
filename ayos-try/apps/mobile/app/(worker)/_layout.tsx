@@ -10,8 +10,9 @@ export default function WorkerTabLayout() {
   const { user, isAuthenticated, isLoading } = useAuthStore();
   if (!isLoading && !isAuthenticated) return <Redirect href="/(auth)/login" />;
   if (!isLoading && user?.role !== 'WORKER') return <Redirect href="/(tabs)/home" />;
+  if (isLoading || !isAuthenticated || user?.role !== 'WORKER') return null;
   return (
-    <WorkerPresenceProvider><Tabs
+    <WorkerPresenceProvider enabled><Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
