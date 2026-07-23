@@ -75,11 +75,13 @@ export default function ReviewScreen() {
   return (
     <Screen safeArea scrollable>
       <View style={[styles.header, { paddingHorizontal: theme.layout.screenPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/home')} style={styles.backButton}>
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>Rate Service</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/home')}>
+          <Text style={[theme.typography.button, { color: theme.colors.primary }]}>Skip</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
