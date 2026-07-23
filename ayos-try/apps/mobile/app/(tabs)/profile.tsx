@@ -1,154 +1,92 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  TextInput as NativeTextInput,
-} from 'react-native';
-import { Screen } from '@/components/layout/Screen';
-import { Button } from '@/components/buttons/Button';
-import { theme } from '@/constants/theme';
-import { useAuthStore } from '@/store/useAuthStore';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-
 import {
-  ChevronRight,
-  Shield,
   Bell,
+  ChevronRight,
+  CircleHelp,
   CreditCard,
-  Settings,
-  HelpCircle,
+  Globe2,
+  Heart,
+  History,
+  Languages,
+  LockKeyhole,
   LogOut,
   MapPin,
-  Heart,
-  BookOpen,
-  Fingerprint,
+  ShieldCheck,
+  UserRound,
   Wallet,
-  Languages,
 } from 'lucide-react-native';
-import { Image } from 'expo-image';
-import { fetchCustomerProfile } from '@/services/api';
-import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
-import { updateMyProfile, uploadMyAvatar } from '@/services/profile';
+import {
+  CustomerPage,
+  MenuRow,
+  PageHeader,
+  StatusPill,
+  SurfaceCard,
+  customerColors,
+} from '@/components/customer/CustomerUI';
+import { fetchCustomerProfile } from '@/services/api';
+import { uploadMyAvatar } from '@/services/profile';
+import { useAuthStore } from '@/store/useAuthStore';
+import { supabase } from '@/lib/supabase';
 
-const SETTINGS_SECTIONS = [
+const sections = [
   {
-    title: 'Account',
-    items: [
-      {
-        id: 'personal',
-        title: 'Personal Information',
-        icon: Fingerprint,
-        route: '/(tabs)/profile',
-      },
-      {
-        id: 'identity',
-        title: 'Identity Verification',
-        icon: Shield,
-        route: '/(auth)/verify-identity',
-      },
-      {
-        id: 'addresses',
-        title: 'Saved Addresses',
-        icon: MapPin,
-        route: '/settings/addresses',
-      },
-      {
-        id: 'favorites',
-        title: 'Favorite Workers',
-        icon: Heart,
-        route: '/(tabs)/profile',
-      },
+    title: 'Personal',
+    rows: [
+      [UserRound, 'Personal Information', '/account/personal-information'],
+      [MapPin, 'Saved Addresses', '/settings/addresses'],
+      [Heart, 'Favorite Workers', '/account/favorites'],
     ],
   },
   {
     title: 'Payments',
-    items: [
-      {
-        id: 'payment-methods',
-        title: 'Payment Methods',
-        icon: CreditCard,
-        route: '/(tabs)/profile',
-      },
-      {
-        id: 'history',
-        title: 'Payment History',
-        icon: BookOpen,
-        route: '/(tabs)/profile',
-      },
+    rows: [
+      [Wallet, 'My Wallet', '/account/wallet'],
+      [CreditCard, 'Payment Methods', '/account/payments'],
+      [History, 'Payment History', '/account/transactions'],
     ],
   },
   {
-    title: 'Preferences',
-    items: [
-      {
-        id: 'budget',
-        title: 'Budget & Price Range',
-        icon: Wallet,
-        route: '/new-request/budget-config',
-      },
-      {
-        id: 'notifications',
-        title: 'Notifications',
-        icon: Bell,
-        route: '/(tabs)/profile',
-      },
-      {
-        id: 'language',
-        title: 'Message Language',
-        icon: Languages,
-        route: '/settings/language',
-      },
-      {
-        id: 'appearance',
-        title: 'App Appearance',
-        icon: Settings,
-        route: '/(tabs)/profile',
-      },
+    title: 'Settings',
+    rows: [
+      [Bell, 'Preferences', '/account/preferences'],
+      [Bell, 'Notifications', '/notifications'],
+      [Languages, 'Language and Region', '/settings/language'],
     ],
   },
   {
-    title: 'Support & Legal',
-    items: [
-      {
-        id: 'help',
-        title: 'Help Center',
-        icon: HelpCircle,
-        route: '/(tabs)/profile',
-      },
-      {
-        id: 'privacy',
-        title: 'Privacy Policy',
-        icon: Shield,
-        route: '/(tabs)/profile',
-      },
+    title: 'Support',
+    rows: [
+      [CircleHelp, 'Help Center', '/account/help-center'],
+      [Globe2, 'Support & Legal', '/account/support'],
+      [Globe2, 'Contact Us', '/account/contact-support'],
     ],
   },
-];
+  {
+    title: 'Security',
+    rows: [
+      [LockKeyhole, 'Change Password', '/account/security'],
+      [ShieldCheck, 'Login and Security', '/(auth)/verify-identity'],
+      [LogOut, 'Delete Account', '/account/delete-account'],
+    ],
+  },
+] as const;
 
-export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+export default function AccountScreen() {
   const router = useRouter();
+  const { user, logout } = useAuthStore();
   const [profile, setProfile] = useState<any>(null);
-  const [loadError, setLoadError] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
+  const [error, setError] = useState('');
+
   const load = async () => {
     const result = await fetchCustomerProfile();
-    if (result.error) {
-      setLoadError(result.error);
-      setProfile(null);
-      return;
-    }
-    setProfile(result.data);
-    setName(result.data.name);
-    setMobile(user?.phone ?? '');
-    setLoadError('');
+    setProfile(result.data || null);
+    setError(result.error ?? '');
   };
+
   useEffect(() => {
     void load();
   }, []);
@@ -166,337 +104,95 @@ export default function ProfileScreen() {
         result.assets[0].uri,
         result.assets[0].mimeType ?? 'image/jpeg',
       );
-      setProfile((current: any) => ({
-        ...current,
-        avatarUri: updated.avatarUri,
-      }));
-    } catch (error) {
-      Alert.alert(
-        'Profile photo',
-        error instanceof Error
-          ? error.message
-          : 'Unable to update profile photo',
-      );
-    }
-  };
-  const saveProfile = async () => {
-    try {
-      const normalizedMobile = mobile.startsWith('0')
-        ? `+63${mobile.slice(1)}`
-        : mobile;
-      const updated = await updateMyProfile({
-        displayName: name,
-        mobile: normalizedMobile || null,
-        complete: true,
-      });
-      setProfile((current: any) => ({
-        ...current,
-        name: updated.displayName,
-        profileComplete: updated.profileComplete,
-      }));
-      setEditing(false);
-    } catch (error) {
-      Alert.alert(
-        'Profile update',
-        error instanceof Error ? error.message : 'Unable to update profile',
-      );
+      setProfile((current: any) => ({ ...current, avatarUri: updated.avatarUri }));
+    } catch (uploadError) {
+      Alert.alert('Profile photo', uploadError instanceof Error ? uploadError.message : 'Unable to update your photo.');
     }
   };
 
-  const handleLogout = () => {
-    void supabase.auth.signOut().then(() => {
-      logout();
-      router.replace('/');
-    });
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    logout();
+    router.replace('/');
   };
 
   return (
-    <Screen safeArea scrollable>
-      <View style={styles.header}>
-        <Text style={theme.typography.h2}>Profile</Text>
-      </View>
+    <CustomerPage testID="customer-account">
+      <PageHeader title="Account" subtitle="Manage your profile, payments, and preferences" />
 
-      <View style={styles.content}>
-        {!profile && (
-          <View style={styles.userInfo}>
-            <Text
-              style={[
-                theme.typography.body2,
-                {
-                  color: loadError
-                    ? theme.colors.error
-                    : theme.colors.textSecondary,
-                },
-              ]}
-            >
-              {loadError || 'Loading profile…'}
-            </Text>
-          </View>
-        )}
-        {profile && (
-          <>
-            <View style={styles.userInfo}>
-              <TouchableOpacity
-                onPress={chooseAvatar}
-                accessibilityLabel="Change profile photo"
-              >
-                <Image
-                  source={profile.avatarUri || undefined}
-                  style={styles.avatar}
-                  contentFit="cover"
-                />
-              </TouchableOpacity>
-              <Text style={theme.typography.h3}>{profile.name}</Text>
-              <Text
-                style={[
-                  theme.typography.body2,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                {profile.email}
-              </Text>
-              {profile.subdivisionName ? (
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    { color: theme.colors.textSecondary, marginTop: 4 },
-                  ]}
-                >
-                  {profile.subdivisionName}
-                </Text>
-              ) : null}
-              <View style={styles.verifiedBadge}>
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    {
-                      color: profile.emailVerified
-                        ? theme.colors.success
-                        : theme.colors.warning,
-                    },
-                  ]}
-                >
-                  {profile.emailVerified
-                    ? '✓ Email verified'
-                    : 'Email verification pending'}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.verifiedBadge,
-                  {
-                    backgroundColor:
-                      profile.verificationStatus === 'verified'
-                        ? `${theme.colors.success}15`
-                        : profile.verificationStatus === 'rejected'
-                          ? `${theme.colors.error}15`
-                          : theme.colors.warningBackground,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    {
-                      color:
-                        profile.verificationStatus === 'verified'
-                          ? theme.colors.success
-                          : profile.verificationStatus === 'rejected'
-                            ? theme.colors.error
-                            : theme.colors.warning,
-                    },
-                  ]}
-                >
-                  {profile.verificationStatus === 'verified'
-                    ? '✓ Identity verified'
-                    : profile.verificationStatus === 'pending'
-                      ? 'Identity review pending'
-                      : profile.verificationStatus === 'rejected'
-                        ? 'Identity verification rejected'
-                        : 'Identity not verified'}
-                </Text>
-              </View>
+      <SurfaceCard style={styles.profileCard}>
+        <Pressable accessibilityLabel="Change profile photo" onPress={chooseAvatar}>
+          {profile?.avatarUri ? (
+            <Image source={profile.avatarUri} style={styles.avatar} contentFit="cover" />
+          ) : (
+            <View style={styles.avatarFallback}>
+              <Text style={styles.initial}>{(profile?.name || user?.name || 'A').charAt(0)}</Text>
             </View>
+          )}
+          <View style={styles.editDot}><UserRound size={13} color={customerColors.surface} /></View>
+        </Pressable>
+        <View style={styles.profileCopy}>
+          <Text style={styles.name}>{profile?.name || user?.name || 'Loading profile…'}</Text>
+          <Text style={styles.email}>{profile?.email || user?.email || error}</Text>
+          <View style={styles.verification}>
+            <StatusPill
+              label={profile?.emailVerified ? 'Verified account' : 'Verification pending'}
+              tone={profile?.emailVerified ? 'success' : 'warning'}
+            />
+          </View>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit profile"
+          onPress={() => router.push('/account/personal-information')}
+          style={styles.editButton}
+        >
+          <ChevronRight size={20} color={customerColors.primary} />
+        </Pressable>
+      </SurfaceCard>
 
-            {(editing || !profile.profileComplete) && (
-              <View style={styles.editCard}>
-                <Text style={theme.typography.h4}>
-                  {profile.profileComplete
-                    ? 'Personal Information'
-                    : 'Complete your profile'}
-                </Text>
-                <NativeTextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Full name"
-                />
-                <NativeTextInput
-                  style={styles.input}
-                  value={mobile}
-                  onChangeText={setMobile}
-                  placeholder="Mobile number"
-                  keyboardType="phone-pad"
-                />
-                <View style={styles.editActions}>
-                  {profile.profileComplete && (
-                    <Button
-                      title="Cancel"
-                      variant="outlined"
-                      onPress={() => setEditing(false)}
-                    />
-                  )}
-                  <Button title="Save" onPress={saveProfile} />
-                </View>
-              </View>
-            )}
-
-            {SETTINGS_SECTIONS.map((section) => (
-              <View key={section.title} style={styles.section}>
-                <Text style={[theme.typography.h4, styles.sectionTitle]}>
-                  {section.title}
-                </Text>
-                <View style={styles.card}>
-                  {section.items.map((item, index) => {
-                    const Icon = item.icon;
-                    const isLast = index === section.items.length - 1;
-                    return (
-                      <TouchableOpacity
-                        key={item.id}
-                        style={[
-                          styles.settingItem,
-                          !isLast && styles.borderBottom,
-                        ]}
-                        onPress={() =>
-                          item.id === 'personal'
-                            ? setEditing(true)
-                            : router.push(item.route as any)
-                        }
-                      >
-                        <View
-                          style={[
-                            styles.iconContainer,
-                            { backgroundColor: `${theme.colors.primary}15` },
-                          ]}
-                        >
-                          <Icon color={theme.colors.primary} size={20} />
-                        </View>
-                        <Text
-                          style={[theme.typography.body1, styles.settingText]}
-                        >
-                          {item.title}
-                        </Text>
-                        <ChevronRight
-                          color={theme.colors.textTertiary}
-                          size={20}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
+      {sections.map((section, sectionIndex) => (
+        <View key={section.title} style={styles.section}>
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <SurfaceCard>
+            {section.rows.map(([icon, label, route], index) => (
+              <MenuRow
+                key={label}
+                icon={icon}
+                label={label}
+                onPress={() => router.push(route as any)}
+                last={index === section.rows.length - 1}
+                color={sectionIndex === 1 ? customerColors.purple : undefined}
+                background={sectionIndex === 1 ? customerColors.purpleSoft : undefined}
+              />
             ))}
+          </SurfaceCard>
+        </View>
+      ))}
 
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <LogOut color={theme.colors.error} size={20} />
-              <Text
-                style={[
-                  theme.typography.button,
-                  { color: theme.colors.error, marginLeft: theme.spacing.sm },
-                ]}
-              >
-                Log Out
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    </Screen>
+      <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.logout}>
+        <LogOut size={20} color={customerColors.danger} />
+        <Text style={styles.logoutText}>Log Out</Text>
+      </Pressable>
+      <Text style={styles.version}>A-yos customer app · Secure home services</Text>
+    </CustomerPage>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.layout.screenPadding,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: theme.layout.screenPadding,
-    paddingBottom: theme.spacing.xxxl,
-  },
-  userInfo: { alignItems: 'center', marginVertical: theme.spacing.xl },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.colors.border,
-    marginBottom: theme.spacing.sm,
-  },
-  verifiedBadge: {
-    backgroundColor: `${theme.colors.success}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-    marginTop: theme.spacing.xs,
-  },
-  section: { marginBottom: theme.spacing.xl },
-  sectionTitle: {
-    marginBottom: theme.spacing.md,
-    marginLeft: theme.spacing.xs,
-  },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    ...theme.shadows.sm,
-    overflow: 'hidden',
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-  },
-  borderBottom: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  settingText: { flex: 1 },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.md,
-    backgroundColor: `${theme.colors.error}10`,
-    borderRadius: theme.radius.md,
-    marginTop: theme.spacing.md,
-  },
-  editCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-    ...theme.shadows.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    color: theme.colors.textPrimary,
-  },
-  editActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-  },
+  profileCard: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  avatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: customerColors.border },
+  avatarFallback: { width: 68, height: 68, borderRadius: 34, backgroundColor: customerColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  initial: { color: customerColors.primary, fontSize: 25, fontWeight: '800' },
+  editDot: { position: 'absolute', right: 0, bottom: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: customerColors.primary, borderWidth: 2, borderColor: customerColors.surface, alignItems: 'center', justifyContent: 'center' },
+  profileCopy: { flex: 1, marginLeft: 14 },
+  name: { color: customerColors.navy, fontSize: 18, fontWeight: '800' },
+  email: { color: customerColors.muted, fontSize: 12, marginTop: 4 },
+  verification: { marginTop: 8 },
+  editButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: customerColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  section: { marginTop: 24 },
+  sectionTitle: { color: customerColors.navy, fontSize: 17, fontWeight: '700', marginBottom: 10, marginLeft: 3 },
+  logout: { minHeight: 54, borderRadius: 17, backgroundColor: customerColors.dangerSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 26 },
+  logoutText: { color: customerColors.danger, fontSize: 15, fontWeight: '700' },
+  version: { color: customerColors.subtle, fontSize: 11, textAlign: 'center', marginTop: 16 },
 });

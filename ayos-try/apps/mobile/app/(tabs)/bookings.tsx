@@ -1,116 +1,163 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '@/components/layout/Screen';
-import { theme } from '@/constants/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MapPin, Calendar as CalendarIcon, Clock } from 'lucide-react-native';
-
-import { EmptyState } from '@/components/layout/EmptyState';
+import { CalendarDays, Clock3, MapPin, MessageCircle, ReceiptText, RotateCcw } from 'lucide-react-native';
+import {
+  CustomerEmptyState,
+  CustomerPage,
+  PageHeader,
+  PrimaryButton,
+  StatusPill,
+  SurfaceCard,
+  customerColors,
+} from '@/components/customer/CustomerUI';
 import { fetchBookings, subscribeToTable } from '@/services/api';
 
-const BOOKING_TABS = ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'];
+const tabs = ['Upcoming', 'Ongoing', 'Completed'] as const;
+type Tab = (typeof tabs)[number];
+
+function toTab(status: string): Tab | 'Cancelled' {
+  if (status === 'completed') return 'Completed';
+  if (status === 'ongoing') return 'Ongoing';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'Upcoming';
+}
 
 export default function BookingsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState('Ongoing');
-  const [bookings,setBookings]=useState<any[]>([]);
-  useEffect(()=>{
-    const load=()=>void fetchBookings().then(result=>setBookings(result.data.map(row=>({
-      ...row,service:row.category,provider:row.providerName,location:row.address,
-      status:row.status==='completed'?'Completed':row.status==='cancelled'?'Cancelled':row.status==='upcoming'?'Upcoming':'Ongoing',
-    }))));
-    load();
-    return subscribeToTable('bookings',load);
-  },[]);
+  const [active, setActive] = useState<Tab>('Upcoming');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filteredBookings = bookings.filter(b => b.status === activeTab);
+  useEffect(() => {
+    const load = () =>
+      void fetchBookings().then((result) => {
+        setBookings(result.data);
+        setError(result.error ?? '');
+        setLoading(false);
+      });
+    load();
+    return subscribeToTable('bookings', load);
+  }, []);
+
+  const filtered = useMemo(
+    () => bookings.filter((booking) => toTab(booking.status) === active),
+    [active, bookings],
+  );
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
-      <View style={styles.header}>
-        <Text style={theme.typography.h2}>My Bookings</Text>
+    <CustomerPage scroll={false} testID="customer-bookings">
+      <PageHeader title="My Bookings" subtitle="Track and manage your home services" />
+      <View style={styles.tabs}>
+        {tabs.map((tab) => (
+          <Pressable
+            key={tab}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active === tab }}
+            onPress={() => setActive(tab)}
+            style={styles.tab}
+          >
+            <Text style={[styles.tabText, active === tab && styles.tabTextActive]}>{tab}</Text>
+            <View style={[styles.tabLine, active === tab && styles.tabLineActive]} />
+          </Pressable>
+        ))}
       </View>
 
-      {/* Custom Tab Bar */}
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {BOOKING_TABS.map(tab => (
-            <TouchableOpacity 
-              key={tab} 
-              style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {loading ? (
+        <View style={styles.center}><ActivityIndicator color={customerColors.primary} /></View>
+      ) : filtered.length === 0 ? (
+        <CustomerEmptyState
+          icon={CalendarDays}
+          title={error ? 'Bookings unavailable' : `No ${active.toLowerCase()} bookings yet`}
+          description={error || (active === 'Completed'
+            ? 'Completed services and receipts will appear here.'
+            : 'Book a service to see it here.')}
+          actionLabel={active !== 'Completed' ? 'Book a service' : undefined}
+          onAction={() => router.push('/new-request/create')}
+        />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+          {filtered.map((booking) => {
+            const ongoing = active === 'Ongoing';
+            const completed = active === 'Completed';
+            return (
+              <Pressable key={booking.id} onPress={() => router.push(`/booking/${booking.id}` as any)}>
+                <SurfaceCard style={styles.card}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.serviceIcon}><Text style={styles.serviceInitial}>{booking.category?.charAt(0) || 'A'}</Text></View>
+                    <View style={styles.cardCopy}>
+                      <Text style={styles.serviceTitle}>{booking.category}</Text>
+                      <Text style={styles.provider}>Provider: {booking.providerName}</Text>
+                    </View>
+                    <StatusPill
+                      label={completed ? 'Completed' : ongoing ? 'In progress' : 'Confirmed'}
+                      tone={completed ? 'success' : ongoing ? 'warning' : 'info'}
+                    />
+                  </View>
+                  <View style={styles.details}>
+                    <View style={styles.detail}><CalendarDays size={16} color={customerColors.muted} /><Text style={styles.detailText}>{booking.date}</Text></View>
+                    <View style={styles.detail}><Clock3 size={16} color={customerColors.muted} /><Text style={styles.detailText}>{booking.time}</Text></View>
+                    <View style={styles.detail}><MapPin size={16} color={customerColors.muted} /><Text style={styles.detailText} numberOfLines={1}>{booking.address || 'Service address'}</Text></View>
+                  </View>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>Estimated total</Text>
+                    <Text style={styles.price}>{booking.price}</Text>
+                  </View>
+                  <View style={styles.actions}>
+                    {completed ? (
+                      <>
+                        <Pressable style={styles.secondaryAction} onPress={() => router.push(`/review/${booking.id}` as any)}><Text style={styles.secondaryActionText}>Rate worker</Text></Pressable>
+                        <Pressable style={styles.iconAction} onPress={() => router.push('/new-request/create')}><RotateCcw size={18} color={customerColors.primary} /></Pressable>
+                        <Pressable style={styles.iconAction} onPress={() => router.push(`/payment/${booking.id}` as any)}><ReceiptText size={18} color={customerColors.primary} /></Pressable>
+                      </>
+                    ) : (
+                      <>
+                        <View style={styles.primaryAction}>
+                          <PrimaryButton
+                            label={ongoing ? 'Track status' : 'View booking'}
+                            onPress={() => router.push(ongoing ? `/tracking/${booking.id}` as any : `/booking/${booking.id}` as any)}
+                          />
+                        </View>
+                        <Pressable style={styles.iconAction} onPress={() => router.push(`/messages/chat?id=${booking.id}` as any)}><MessageCircle size={19} color={customerColors.primary} /></Pressable>
+                      </>
+                    )}
+                  </View>
+                </SurfaceCard>
+              </Pressable>
+            );
+          })}
         </ScrollView>
-      </View>
-
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
-        {filteredBookings.length === 0 ? (
-          <EmptyState 
-            icon={CalendarIcon} 
-            title={`No ${activeTab} Bookings`} 
-            description={`You don't have any ${activeTab.toLowerCase()} bookings at the moment. Explore services to book a professional!`}
-          />
-        ) : (
-          filteredBookings.map(booking => (
-            <TouchableOpacity 
-              key={booking.id} 
-              style={styles.bookingCard}
-              onPress={() => {
-                if (booking.status === 'Ongoing') {
-                  router.push(`/tracking/${booking.id}`);
-                }
-              }}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={theme.typography.h4}>{booking.service}</Text>
-                <Text style={[theme.typography.label, { color: theme.colors.primary }]}>{booking.price}</Text>
-              </View>
-              
-              <Text style={[theme.typography.body2, { color: theme.colors.textSecondary, marginBottom: theme.spacing.md }]}>
-                Provider: {booking.provider}
-              </Text>
-
-              <View style={styles.cardDetails}>
-                <View style={styles.detailRow}>
-                  <CalendarIcon color={theme.colors.textTertiary} size={16} />
-                  <Text style={[theme.typography.caption, styles.detailText]}>{booking.date}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Clock color={theme.colors.textTertiary} size={16} />
-                  <Text style={[theme.typography.caption, styles.detailText]}>{booking.time}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MapPin color={theme.colors.textTertiary} size={16} />
-                  <Text style={[theme.typography.caption, styles.detailText]}>{booking.location}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
-    </Screen>
+      )}
+    </CustomerPage>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding },
-  tabsContainer: { borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  tabsScroll: { paddingHorizontal: theme.layout.screenPadding },
-  tabButton: { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md, marginRight: theme.spacing.sm, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabButtonActive: { borderBottomColor: theme.colors.primary },
-  content: { flex: 1 },
-  contentInner: { padding: theme.layout.screenPadding },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
-  bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.sm },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xs },
-  cardDetails: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: theme.colors.borderLight, paddingTop: theme.spacing.sm },
-  detailRow: { flexDirection: 'row', alignItems: 'center' },
-  detailText: { color: theme.colors.textSecondary, marginLeft: 4 },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: customerColors.border, marginHorizontal: -20, paddingHorizontal: 20 },
+  tab: { flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'flex-end' },
+  tabText: { color: customerColors.muted, fontSize: 14, fontWeight: '600', paddingBottom: 12 },
+  tabTextActive: { color: customerColors.primary },
+  tabLine: { height: 3, width: '70%', borderRadius: 2, backgroundColor: 'transparent' },
+  tabLineActive: { backgroundColor: customerColors.primary },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { paddingTop: 18, paddingBottom: 22, gap: 14 },
+  card: { padding: 16 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  serviceIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: customerColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  serviceInitial: { color: customerColors.primary, fontSize: 18, fontWeight: '800' },
+  cardCopy: { flex: 1 },
+  serviceTitle: { color: customerColors.text, fontSize: 16, fontWeight: '700' },
+  provider: { color: customerColors.muted, fontSize: 12, marginTop: 3 },
+  details: { gap: 8, borderTopWidth: 1, borderTopColor: customerColors.border, marginTop: 14, paddingTop: 13 },
+  detail: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailText: { flex: 1, color: customerColors.muted, fontSize: 12 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 13 },
+  priceLabel: { flex: 1, color: customerColors.muted, fontSize: 12 },
+  price: { color: customerColors.text, fontSize: 17, fontWeight: '800' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 15 },
+  primaryAction: { flex: 1 },
+  secondaryAction: { flex: 1, minHeight: 48, borderRadius: 15, backgroundColor: customerColors.primary, alignItems: 'center', justifyContent: 'center' },
+  secondaryActionText: { color: customerColors.surface, fontSize: 14, fontWeight: '700' },
+  iconAction: { width: 48, height: 48, borderRadius: 15, backgroundColor: customerColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
 });

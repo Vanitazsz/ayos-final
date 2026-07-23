@@ -867,7 +867,7 @@ export default function CreateRequestScreen() {
         <Text
           style={[theme.typography.h4, { color: theme.colors.textPrimary }]}
         >
-          A-yos AI
+          Select a Service
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -926,7 +926,7 @@ export default function CreateRequestScreen() {
           </View>
         ) : null}
         <Text style={[theme.typography.h2, styles.title]}>
-          What do you need help with?
+          Find trusted workers near you.
         </Text>
 
         {/* Categories */}

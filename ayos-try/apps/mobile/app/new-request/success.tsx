@@ -12,16 +12,22 @@ export default function RequestSuccessScreen() {
   const router = useRouter();
   const { resetRequest } = useRequest();
   const requestId = useRequestStore((state) => state.requestId);
+  const bookingId = useRequestStore((state) => state.bookingId);
   const resetDraft = useRequestStore((state) => state.reset);
 
   const handleViewRequest = () => {
-    if (requestId) router.replace(`/request/${requestId}` as any);
+    if (bookingId) router.replace(`/booking/${bookingId}` as any);
+    else if (requestId) router.replace(`/request/${requestId}` as any);
   };
 
   const handleBackToHome = () => {
     resetRequest();
     resetDraft();
     router.replace('/(tabs)/' as any);
+  };
+
+  const handleMessageWorker = () => {
+    if (bookingId) router.push(`/messages/chat?id=${bookingId}` as any);
   };
 
   return (
@@ -32,11 +38,13 @@ export default function RequestSuccessScreen() {
         </View>
         
         <AppText variant="h2" weight="bold" align="center" style={styles.title}>
-          Request Posted Successfully!
+          {bookingId ? 'Booking Confirmed' : 'Request Posted Successfully!'}
         </AppText>
         
         <AppText variant="body" color={Colors.textSecondary} align="center" style={styles.subtitle}>
-          Your request is now live in the marketplace. Verified workers in your area can now view your request and submit their applications or bids.
+          {bookingId
+            ? 'Your booking has been confirmed. You can review the details or message your worker.'
+            : 'Your request is now live in the marketplace. Verified workers in your area can now view your request and submit their applications or bids.'}
         </AppText>
 
         <View style={styles.statusBox}>
@@ -60,12 +68,21 @@ export default function RequestSuccessScreen() {
 
       <View style={styles.footer}>
         <AppButton 
-          label="View My Request" 
+          label={bookingId ? 'View Booking' : 'View My Request'}
           onPress={handleViewRequest} 
           fullWidth
           size="lg"
           style={styles.primaryBtn}
         />
+        {bookingId ? (
+          <AppButton
+            label="Message Worker"
+            onPress={handleMessageWorker}
+            variant="outline"
+            fullWidth
+            size="lg"
+          />
+        ) : null}
         <AppButton 
           label="Back to Home" 
           onPress={handleBackToHome} 

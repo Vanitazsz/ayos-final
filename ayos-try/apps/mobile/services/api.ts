@@ -262,6 +262,46 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
     );
   });
 }
+
+export async function fetchFavoriteWorkers(): Promise<ApiResponse<ProviderData[]>> {
+  return wrap(async () => {
+    const user = await requireUser();
+    const { data, error } = await supabase
+      .from('favorites')
+      .select(
+        'worker_account_id,worker_profiles!favorites_worker_account_id_fkey(display_name,avatar_path,approval_status,worker_skills(years,service_categories(name)),reviews:account_id(stars))',
+      )
+      .eq('user_account_id', user.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return Promise.all(
+      (data ?? []).map(async (favorite: any) => {
+        const worker = favorite.worker_profiles;
+        const reviews = worker?.reviews ?? [];
+        return {
+          id: favorite.worker_account_id,
+          name: requireIdentity(worker?.display_name, 'Favorite worker'),
+          category: requireIdentity(
+            worker?.worker_skills?.[0]?.service_categories?.name,
+            'Favorite worker service',
+          ),
+          avatarUri: await resolveProfileAvatar(worker?.avatar_path),
+          rating: reviews.length
+            ? reviews.reduce(
+                (sum: number, review: any) => sum + Number(review.stars),
+                0,
+              ) / reviews.length
+            : 0,
+          reviewCount: reviews.length,
+          distance: '',
+          eta: '',
+          verified: worker?.approval_status === 'APPROVED',
+          price: undefined,
+        };
+      }),
+    );
+  });
+}
 export async function fetchProviderById(
   id: string,
 ): Promise<ApiResponse<ProviderData | undefined>> {
