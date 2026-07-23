@@ -46,8 +46,7 @@ export const BookingChat = React.memo(function BookingChat({
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages.length]);
 
-  const sentCount = messages.filter((m) => m.sender === 'worker').length;
-  const canConfirm = sentCount >= 1;
+  const canConfirm = true;
 
   return (
     <KeyboardAvoidingView

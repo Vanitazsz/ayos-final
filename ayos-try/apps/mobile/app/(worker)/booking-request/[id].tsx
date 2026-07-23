@@ -189,83 +189,35 @@ export default function BookingRequestScreen() {
     }
   };
 
-  const handleConfirmDetails = () => {
-    Alert.alert(
-      'Start Travel',
-      'Confirm details and start travelling to the customer location?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start En Route 🚚',
-          onPress: () =>
-            void (async () => {
-              try {
-                await departForJob(booking.id);
-                setBackendStatus('WORKER_EN_ROUTE');
-                setBooking((b) => ({ ...b, status: 'en_route' }));
-              } catch (error) {
-                Alert.alert(
-                  'Status not updated',
-                  error instanceof Error ? error.message : 'Please retry.',
-                );
-              }
-            })(),
-        },
-      ],
-    );
+  const handleConfirmDetails = async () => {
+    try {
+      await departForJob(booking.id);
+      setBackendStatus('WORKER_EN_ROUTE');
+      setBooking((b) => ({ ...b, status: 'en_route' }));
+    } catch (error) {
+      console.warn('handleConfirmDetails error:', error);
+    }
   };
 
-  const handleArrived = () => {
-    Alert.alert(
-      'Arrived',
-      'You have arrived at the location. Start the job when ready.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Job',
-          onPress: () =>
-            void (async () => {
-              try {
-                await arriveAtJob(booking.id).catch(() => {});
-                await startJob(booking.id);
-                setBackendStatus('IN_PROGRESS');
-                setBooking((b) => ({ ...b, status: 'in_progress' }));
-              } catch (error) {
-                Alert.alert(
-                  'Status not updated',
-                  error instanceof Error ? error.message : 'Please retry.',
-                );
-              }
-            })(),
-        },
-      ],
-    );
+  const handleArrived = async () => {
+    try {
+      await arriveAtJob(booking.id).catch(() => {});
+      await startJob(booking.id);
+      setBackendStatus('IN_PROGRESS');
+      setBooking((b) => ({ ...b, status: 'in_progress' }));
+    } catch (error) {
+      console.warn('handleArrived error:', error);
+    }
   };
 
-  const handleComplete = () => {
-    Alert.alert(
-      'Complete Job',
-      'Mark this job as completed and notify the customer?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: () =>
-            void (async () => {
-              try {
-                await completeJob(booking.id);
-                setBackendStatus('COMPLETED');
-                setBooking((b) => ({ ...b, status: 'completed' }));
-              } catch (error) {
-                Alert.alert(
-                  'Status not updated',
-                  error instanceof Error ? error.message : 'Please retry.',
-                );
-              }
-            })(),
-        },
-      ],
-    );
+  const handleComplete = async () => {
+    try {
+      await completeJob(booking.id);
+      setBackendStatus('COMPLETED');
+      setBooking((b) => ({ ...b, status: 'completed' }));
+    } catch (error) {
+      console.warn('handleComplete error:', error);
+    }
   };
 
   const handleLeaveFeedback = () => {
