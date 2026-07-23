@@ -1,5 +1,4 @@
 begin;
-
 create or replace function public.provision_account()
 returns trigger
 language plpgsql
@@ -78,5 +77,4 @@ exception
     raise exception using errcode = '42501', message = 'Invalid account role';
 end;
 $$;
-
 commit;
