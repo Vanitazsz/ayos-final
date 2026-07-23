@@ -3,11 +3,9 @@
 
 alter table public.user_profiles
   add column if not exists verification_status text not null default 'unverified';
-
 update public.user_profiles
 set verification_status = 'unverified'
 where verification_status not in ('unverified', 'pending', 'verified', 'rejected');
-
 do $$
 begin
   if not exists (
@@ -21,7 +19,6 @@ begin
       check (verification_status in ('unverified', 'pending', 'verified', 'rejected'));
   end if;
 end $$;
-
 create table if not exists public.customer_verifications (
   id uuid primary key default gen_random_uuid(),
   customer_id uuid not null references auth.users(id) on delete cascade,
@@ -37,29 +34,23 @@ create table if not exists public.customer_verifications (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 alter table public.customer_verifications
   add column if not exists review_notes text,
   add column if not exists updated_at timestamptz not null default now();
-
 create unique index if not exists customer_verifications_one_pending
   on public.customer_verifications(customer_id)
   where status = 'pending';
-
 create index if not exists customer_verifications_admin_queue
   on public.customer_verifications(status, created_at);
-
 alter table public.customer_verifications enable row level security;
 revoke all on public.customer_verifications from anon, authenticated;
 grant select on public.customer_verifications to authenticated;
 grant select, insert, update, delete on public.customer_verifications to service_role;
-
 drop policy if exists customer_verifications_owner_or_admin_read
   on public.customer_verifications;
 create policy customer_verifications_owner_or_admin_read
 on public.customer_verifications for select to authenticated
 using (customer_id = auth.uid() or public.is_admin(false));
-
 insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
 values (
   'verification-documents',
@@ -72,7 +63,6 @@ on conflict (id) do update
 set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
-
 drop policy if exists customer_verification_documents_owner_upload on storage.objects;
 create policy customer_verification_documents_owner_upload
 on storage.objects for insert to authenticated
@@ -80,7 +70,6 @@ with check (
   bucket_id = 'verification-documents'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
-
 drop policy if exists customer_verification_documents_owner_or_admin_read on storage.objects;
 create policy customer_verification_documents_owner_or_admin_read
 on storage.objects for select to authenticated
@@ -91,7 +80,6 @@ using (
     or public.is_admin(false)
   )
 );
-
 drop policy if exists customer_verification_documents_owner_delete on storage.objects;
 create policy customer_verification_documents_owner_delete
 on storage.objects for delete to authenticated
@@ -99,7 +87,6 @@ using (
   bucket_id = 'verification-documents'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
-
 create or replace function public.submit_customer_verification(
   p_id_type text,
   p_front_url text,
@@ -179,7 +166,6 @@ begin
   return result;
 end;
 $$;
-
 create or replace function public.admin_review_customer_verification(
   p_verification_id uuid,
   p_decision text,
@@ -247,7 +233,6 @@ begin
   return result;
 end;
 $$;
-
 revoke all on function public.submit_customer_verification(text, text, text)
   from public, anon;
 revoke all on function public.admin_review_customer_verification(uuid, text, text)
@@ -256,7 +241,6 @@ grant execute on function public.submit_customer_verification(text, text, text)
   to authenticated;
 grant execute on function public.admin_review_customer_verification(uuid, text, text)
   to authenticated;
-
 do $$
 begin
   if not exists (
@@ -269,5 +253,4 @@ begin
     alter publication supabase_realtime add table public.customer_verifications;
   end if;
 end $$;
-
 notify pgrst, 'reload schema';
