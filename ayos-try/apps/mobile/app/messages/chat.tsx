@@ -121,7 +121,7 @@ export default function ChatScreen() {
       loadRef.current = load;
       load();
 
-      const timer = setInterval(load, 2000);
+      const timer = setInterval(load, 1500);
       stops = [
         () => clearInterval(timer),
         subscribeToTable(
@@ -157,8 +157,27 @@ export default function ChatScreen() {
     if (!activeConvId) return;
 
     try {
-      const text = message;
+      const text = message.trim();
       setMessage('');
+
+      // Optimistically append message to chat UI immediately
+      const tempId = 'temp_' + Date.now();
+      const optimisticMessage = {
+        id: tempId,
+        text: text,
+        originalText: text,
+        translatedText: null,
+        isTranslated: false,
+        sender: 'self',
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+
+      setMessages((prev) => [...prev, optimisticMessage]);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+
       await sendMessage(activeConvId, text);
       loadRef.current();
     } catch (sendErr) {
@@ -236,17 +255,24 @@ export default function ChatScreen() {
         style={styles.chatArea}
         contentContainerStyle={styles.chatScrollContent}
       >
-        {messages.map((row) => {
-          const original = showOriginal.has(row.id);
-          return (
-            <View
-              key={row.id}
-              style={
-                row.sender === 'self'
-                  ? styles.messageBubbleSender
-                  : styles.messageBubbleReceiver
-              }
-            >
+        {messages.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 }}>
+            <Text style={[theme.typography.body1, { color: theme.colors.textSecondary }]}>
+              No messages yet. Say hello! 👋
+            </Text>
+          </View>
+        ) : (
+          messages.map((row) => {
+            const original = showOriginal.has(row.id);
+            return (
+              <View
+                key={row.id}
+                style={
+                  row.sender === 'self'
+                    ? styles.messageBubbleSender
+                    : styles.messageBubbleReceiver
+                }
+              >
               <Text
                 style={[
                   theme.typography.body1,
@@ -299,7 +325,8 @@ export default function ChatScreen() {
               </Text>
             </View>
           );
-        })}
+        })
+        )}
       </ScrollView>
 
       <View
