@@ -304,25 +304,6 @@ export default function WorkerBookingsScreen() {
                     </View>
                   </View>
                 </View>
-                {booking.status === 'pending' && (
-                  <View style={styles.incomingActions}>
-                    <TouchableOpacity
-                      style={styles.declineBtn}
-                      onPress={() => decline(booking.id)}
-                    >
-                      <Text
-                        style={[
-                          theme.typography.button,
-                          { color: theme.colors.error },
-                        ]}
-                      >
-                        Decline
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.acceptBtn}
-                      onPress={() => void accept(booking.id)}
-              </Pressable>
               {booking.status === 'pending' && (
                 <View style={styles.incomingActions}>
                   <TouchableOpacity
@@ -353,6 +334,7 @@ export default function WorkerBookingsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+              </Pressable>
             </View>
           ))
         )}
