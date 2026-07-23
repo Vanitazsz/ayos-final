@@ -197,12 +197,13 @@ export async function loadWorkers() {
   if (error) throw error;
   const rows = data ?? [];
   const workerIds = rows.map((row) => row.account_id);
-  const { data: wallets } = workerIds.length
+  const { data: wallets, error: walletError } = workerIds.length
     ? await supabase
-        .from('wallets')
-        .select('account_id,available_minor')
+        .from('wallet_accounts')
+        .select('account_id,wallet_transactions(amount,status)')
         .in('account_id', workerIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (walletError) throw walletError;
   const walletByWorker = new Map((wallets ?? []).map((wallet) => [wallet.account_id, wallet]));
 
   return rows.map((row) => {
@@ -244,7 +245,15 @@ export async function loadWorkers() {
       verified: row.approval_status === 'APPROVED',
       location: row.service_area ?? '',
       registeredDate: row.created_at ? new Date(row.created_at).toLocaleDateString() : '',
-      earnings: Number(walletByWorker.get(row.account_id)?.available_minor ?? 0) / 100,
+      earnings: (
+        walletByWorker
+          .get(row.account_id)
+          ?.wallet_transactions?.filter((transaction) =>
+            ['AVAILABLE', 'COMPLETED'].includes(transaction.status),
+          )
+          .reduce((sum, transaction) => sum + Number(transaction.amount), 0) ??
+        0
+      ),
       availability: row.is_available ? 'Online' : 'Offline',
       verificationStatus: verification?.status ?? row.approval_status,
       verificationId: verification?.id ?? null,
