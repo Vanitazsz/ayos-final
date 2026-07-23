@@ -99,7 +99,7 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
   const stopActivePresence=()=>{
     active=false;
     if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
-    subscription?.remove();
+    try{subscription?.remove?.();}catch{}
     subscription=null;
   };
 
