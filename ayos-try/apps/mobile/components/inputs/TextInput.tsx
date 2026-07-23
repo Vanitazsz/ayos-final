@@ -56,6 +56,7 @@ export const TextInput: React.FC<TextInputProps> = ({
         )}
         
         <RNTextInput
+          accessibilityLabel={props.accessibilityLabel ?? label}
           style={[styles.input, theme.typography.body1, style]}
           placeholderTextColor={theme.colors.textTertiary}
           onFocus={() => setIsFocused(true)}
@@ -65,7 +66,12 @@ export const TextInput: React.FC<TextInputProps> = ({
         />
 
         {isPassword ? (
-          <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.rightIcon}>
+          <TouchableOpacity
+            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+            accessibilityRole="button"
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            style={styles.rightIcon}
+          >
             {isPasswordVisible ? (
               <EyeOff color={theme.colors.textTertiary} size={20} />
             ) : (
@@ -79,7 +85,10 @@ export const TextInput: React.FC<TextInputProps> = ({
         ) : null}
       </View>
       {error && (
-        <Text style={[theme.typography.caption, styles.errorText, styles.errorMargin]}>
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[theme.typography.caption, styles.errorText, styles.errorMargin]}
+        >
           {error}
         </Text>
       )}
