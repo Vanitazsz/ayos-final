@@ -1,5 +1,4 @@
 begin;
-
 create table public.worker_presence (
   worker_id uuid primary key references public.worker_profiles(account_id) on delete cascade,
   location extensions.geography(point, 4326) not null,
@@ -11,13 +10,11 @@ create table public.worker_presence (
 );
 create index worker_presence_live_idx on public.worker_presence(online, last_seen_at desc);
 create index worker_presence_location_gix on public.worker_presence using gist(location);
-
 create table public.live_dispatch_sessions (
   service_request_id uuid primary key references public.service_requests(id) on delete cascade,
   started_at timestamptz not null default now(),
   expires_at timestamptz not null default (now()+interval '2 minutes')
 );
-
 create table public.service_request_dispatches (
   id uuid primary key default gen_random_uuid(),
   service_request_id uuid not null references public.service_requests(id) on delete cascade,
@@ -36,20 +33,17 @@ create table public.service_request_dispatches (
 );
 create index dispatch_request_status_idx on public.service_request_dispatches(service_request_id,status,distance_meters);
 create index dispatch_worker_status_idx on public.service_request_dispatches(worker_id,status,expires_at);
-
 alter table public.worker_presence enable row level security;
 alter table public.live_dispatch_sessions enable row level security;
 alter table public.service_request_dispatches enable row level security;
 revoke all on public.worker_presence, public.live_dispatch_sessions, public.service_request_dispatches from anon, authenticated;
 grant select on public.worker_presence, public.live_dispatch_sessions, public.service_request_dispatches to authenticated;
-
 create policy worker_presence_owner_read on public.worker_presence for select to authenticated
 using(worker_id=auth.uid() or public.is_admin(false));
 create policy live_dispatch_session_owner_read on public.live_dispatch_sessions for select to authenticated
 using(exists(select 1 from public.service_requests r where r.id=service_request_id and r.user_account_id=auth.uid()) or public.is_admin(false));
 create policy dispatch_participant_read on public.service_request_dispatches for select to authenticated
 using(worker_id=auth.uid() or exists(select 1 from public.service_requests r where r.id=service_request_id and r.user_account_id=auth.uid()) or public.is_admin(false));
-
 create or replace function private.refresh_live_dispatch(p_service_request_id uuid)
 returns void language plpgsql security definer set search_path='' as $$
 declare req public.service_requests; started timestamptz; elapsed_seconds numeric; current_wave smallint; search_radius numeric;
@@ -87,7 +81,6 @@ begin
     approximate_latitude=excluded.approximate_latitude,approximate_longitude=excluded.approximate_longitude,updated_at=now()
   where service_request_dispatches.status in ('OFFERED','VIEWED');
 end $$;
-
 create or replace function public.update_worker_presence(p_latitude numeric,p_longitude numeric,p_accuracy_meters numeric default null,p_online boolean default true)
 returns jsonb language plpgsql security definer set search_path='' as $$
 begin
@@ -99,7 +92,6 @@ begin
   on conflict(worker_id) do update set location=excluded.location,accuracy_meters=excluded.accuracy_meters,online=excluded.online,last_seen_at=now(),updated_at=now();
   return jsonb_build_object('online',p_online,'lastSeenAt',now());
 end $$;
-
 create or replace function public.start_live_dispatch(p_service_request_id uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 begin
@@ -110,7 +102,6 @@ begin
   perform private.refresh_live_dispatch(p_service_request_id);
   return public.get_live_dispatch_snapshot(p_service_request_id);
 end $$;
-
 create or replace function public.get_live_dispatch_snapshot(p_service_request_id uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare req public.service_requests; started timestamptz; dispatch_expires timestamptz; result jsonb;
@@ -129,7 +120,6 @@ begin
   where d.service_request_id=req.id and d.status<>'EXPIRED';
   return result;
 end $$;
-
 create or replace function public.get_my_dispatch_offers()
 returns jsonb language sql stable security definer set search_path='' as $$
   select coalesce(jsonb_agg(jsonb_build_object('dispatchId',d.id,'serviceRequestId',d.service_request_id,'status',d.status,'distanceMeters',d.distance_meters,'expiresAt',d.expires_at,
@@ -137,7 +127,6 @@ returns jsonb language sql stable security definer set search_path='' as $$
   from public.service_request_dispatches d join public.service_requests r on r.id=d.service_request_id join public.addresses a on a.id=r.address_id join public.service_categories c on c.id=r.category_id
   where d.worker_id=auth.uid() and d.expires_at>now() and d.status in ('OFFERED','VIEWED','ACCEPTED')
 $$;
-
 create or replace function public.respond_to_dispatch(p_dispatch_id uuid,p_response text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare d public.service_request_dispatches;
@@ -148,7 +137,6 @@ begin
   if d.id is null then raise exception using errcode='P0001',message='DISPATCH_OFFER_UNAVAILABLE'; end if;
   return jsonb_build_object('dispatchId',d.id,'status',d.status);
 end $$;
-
 create or replace function public.select_worker(p_service_request_id uuid,p_worker_id uuid)
 returns public.bookings language plpgsql security definer set search_path='' as $$
 declare req public.service_requests; result public.bookings; conversation_id uuid;
@@ -165,10 +153,8 @@ begin
   update public.worker_presence set online=false,updated_at=now() where worker_id=p_worker_id;
   perform pgmq.send('booking_timeouts',jsonb_build_object('booking_id',result.id,'due_at',result.response_due_at,'attempt',0)); return result;
 end $$;
-
 revoke all on function private.refresh_live_dispatch(uuid) from public,anon,authenticated;
 grant execute on function public.update_worker_presence(numeric,numeric,numeric,boolean),public.start_live_dispatch(uuid),public.get_live_dispatch_snapshot(uuid),public.get_my_dispatch_offers(),public.respond_to_dispatch(uuid,text) to authenticated;
-
 do $$ begin
   alter publication supabase_realtime add table public.service_request_dispatches;
 exception when duplicate_object then null; end $$;
