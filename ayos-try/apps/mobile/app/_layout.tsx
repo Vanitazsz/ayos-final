@@ -60,6 +60,7 @@ function SessionBoundary() {
   const isPublic =
     root === undefined ||
     root === '(auth)' ||
+    root === 'auth' ||
     root === 'onboarding' ||
     root === 'register-worker' ||
     root === '+not-found';
@@ -106,6 +107,7 @@ function SessionBoundary() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="auth" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
