@@ -1146,34 +1146,24 @@ export async function fetchConversation(conversationId: string) {
     const profile = await getMyProfile();
     const preferredLocale =
       profile.role === 'ADMIN' ? 'en' : profile.preferredLocale;
-    const [
-      { data: conversation, error },
-      { data: messages, error: messageError },
-    ] = await Promise.all([
-      supabase
-        .from('conversations')
-        .select(
-          '*,conversation_participants(account_id,user_profiles:account_id(display_name,avatar_path))',
-        )
-        .eq('id', conversationId)
-        .single(),
-      supabase
-        .from('messages')
-        .select('*,message_translations(target_locale,translated)')
-        .eq('conversation_id', conversationId)
-        .order('created_at'),
-    ]);
-    if (error) throw error;
+
+    const { data: messages, error: messageError } = await supabase
+      .from('messages')
+      .select('*,message_translations(target_locale,translated)')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
     if (messageError) throw messageError;
+
     try {
       await supabase.rpc('mark_conversation_read', {
         p_conversation_id: conversationId,
       });
     } catch {
-      // Ignore read marking failure so message fetching never throws
+      // Ignore read marking error
     }
+
     return {
-      conversation,
       preferredLocale,
       messages: (messages ?? []).map((row: any) => {
         const translation = (row.message_translations ?? []).find(
