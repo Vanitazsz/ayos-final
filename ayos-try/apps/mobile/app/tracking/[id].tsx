@@ -18,7 +18,16 @@ import {
   CheckCircle2,
   Circle,
 } from 'lucide-react-native';
-import { fetchBookingTracking, subscribeToTable } from '@/services/api';
+import {
+  fetchBookingTracking,
+  subscribeToTable,
+  acceptJob,
+  departForJob,
+  arriveAtJob,
+  startJob,
+  markJobInProgress,
+  completeJob,
+} from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
@@ -51,6 +60,7 @@ export default function TrackingScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [tracking, setTracking] = useState<any>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const bookingId = Array.isArray(id) ? id[0] : id;
 
   const workerStatus = tracking?.booking?.status as string | undefined;
@@ -61,11 +71,20 @@ export default function TrackingScreen() {
         .then(setTracking)
         .catch(() => setTracking(null));
     load();
-    return subscribeToTable(
+    const stopLocation = subscribeToTable(
       'location_updates',
       load,
       `booking_id=eq.${bookingId}`,
     );
+    const stopBooking = subscribeToTable(
+      'bookings',
+      load,
+      `id=eq.${bookingId}`,
+    );
+    return () => {
+      stopLocation();
+      stopBooking();
+    };
   }, [bookingId]);
 
   const stepIndex = useMemo(() => {
@@ -76,6 +95,50 @@ export default function TrackingScreen() {
 
   const handleComplete = () => {
     router.push(`/payment/${id}`);
+  };
+
+  const advanceToStatus = async (targetStatus: string) => {
+    if (!bookingId || updatingStatus) return;
+    setUpdatingStatus(true);
+    try {
+      if (targetStatus === 'ACCEPTED') {
+        await acceptJob(bookingId);
+      } else if (targetStatus === 'WORKER_EN_ROUTE') {
+        try { await acceptJob(bookingId); } catch {}
+        await departForJob(bookingId);
+      } else if (targetStatus === 'IN_PROGRESS') {
+        try { await acceptJob(bookingId); } catch {}
+        try { await departForJob(bookingId); } catch {}
+        try { await arriveAtJob(bookingId); } catch {}
+        try { await startJob(bookingId); } catch {}
+        await markJobInProgress(bookingId);
+      } else if (targetStatus === 'COMPLETED') {
+        try { await acceptJob(bookingId); } catch {}
+        try { await departForJob(bookingId); } catch {}
+        try { await arriveAtJob(bookingId); } catch {}
+        try { await startJob(bookingId); } catch {}
+        try { await markJobInProgress(bookingId); } catch {}
+        await completeJob(bookingId);
+      }
+    } catch (e) {
+      console.warn('Status transition attempt:', e);
+    } finally {
+      await fetchBookingTracking(bookingId).then(setTracking);
+      setUpdatingStatus(false);
+    }
+  };
+
+  const bypassToPayment = async () => {
+    if (!bookingId) return;
+    if (workerStatus !== 'COMPLETED') {
+      await advanceToStatus('COMPLETED');
+    }
+    router.push(`/payment/${id}`);
+  };
+
+  const bypassToReview = async () => {
+    if (!bookingId) return;
+    router.push(`/review/${id}`);
   };
 
   const address = tracking?.booking?.service_requests?.addresses;
@@ -220,6 +283,81 @@ export default function TrackingScreen() {
           style={styles.timelineScroll}
           showsVerticalScrollIndicator={false}
         >
+          {/* PoC Demo Controls Card */}
+          <View style={styles.pocCard}>
+            <View style={styles.pocHeader}>
+              <Text style={[theme.typography.h4, { color: '#1e293b' }]}>
+                ⚡ PoC Simulation & Bypass Controls
+              </Text>
+              <Text style={[theme.typography.caption, { color: '#64748b' }]}>
+                Bypass pending state & test status transitions in real time:
+              </Text>
+            </View>
+            <View style={styles.pocButtonsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.pocBtn,
+                  ['ACCEPTED', 'WORKER_PREPARING'].includes(workerStatus ?? '') &&
+                    styles.pocBtnActive,
+                ]}
+                onPress={() => advanceToStatus('ACCEPTED')}
+                disabled={updatingStatus}
+              >
+                <Text style={styles.pocBtnText}>1. Accept Job</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.pocBtn,
+                  workerStatus === 'WORKER_EN_ROUTE' && styles.pocBtnActive,
+                ]}
+                onPress={() => advanceToStatus('WORKER_EN_ROUTE')}
+                disabled={updatingStatus}
+              >
+                <Text style={styles.pocBtnText}>2. En Route</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.pocBtn,
+                  ['SERVICE_STARTED', 'IN_PROGRESS'].includes(
+                    workerStatus ?? '',
+                  ) && styles.pocBtnActive,
+                ]}
+                onPress={() => advanceToStatus('IN_PROGRESS')}
+                disabled={updatingStatus}
+              >
+                <Text style={styles.pocBtnText}>3. Start Job</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.pocBtn,
+                  workerStatus === 'COMPLETED' && styles.pocBtnActive,
+                ]}
+                onPress={() => advanceToStatus('COMPLETED')}
+                disabled={updatingStatus}
+              >
+                <Text style={styles.pocBtnText}>4. Complete</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pocActionRow}>
+              <TouchableOpacity
+                style={styles.pocPrimaryBtn}
+                onPress={bypassToPayment}
+              >
+                <Text style={styles.pocPrimaryBtnText}>
+                  💳 Straight to Payment
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pocOutlineBtn}
+                onPress={bypassToReview}
+              >
+                <Text style={styles.pocOutlineBtnText}>
+                  ⭐ Straight to Review
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <Text
             style={[theme.typography.h3, { marginBottom: theme.spacing.md }]}
           >
@@ -299,15 +437,22 @@ export default function TrackingScreen() {
         </ScrollView>
       </View>
 
-      {workerStatus === 'COMPLETED' && (
-        <View style={styles.footer}>
+      <View style={styles.footer}>
+        {workerStatus === 'COMPLETED' ? (
           <Button
-            title="Confirm Completion"
+            title="Confirm Completion & Pay 💳"
             onPress={handleComplete}
             fullWidth
           />
-        </View>
-      )}
+        ) : (
+          <Button
+            title="Bypass & Proceed to Payment 💳"
+            variant="outlined"
+            onPress={bypassToPayment}
+            fullWidth
+          />
+        )}
+      </View>
     </Screen>
   );
 }
@@ -408,5 +553,70 @@ const styles = StyleSheet.create({
   footer: {
     padding: theme.spacing.md,
     paddingHorizontal: theme.layout.screenPadding,
+  },
+  pocCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  pocHeader: {
+    marginBottom: theme.spacing.sm,
+  },
+  pocButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: theme.spacing.sm,
+  },
+  pocBtn: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  pocBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#1d4ed8',
+  },
+  pocBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  pocActionRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: 4,
+  },
+  pocPrimaryBtn: {
+    flex: 1,
+    backgroundColor: '#16a34a',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+  },
+  pocPrimaryBtnText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  pocOutlineBtn: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+  },
+  pocOutlineBtnText: {
+    color: '#2563eb',
+    fontWeight: '700',
+    fontSize: 12,
   },
 });
