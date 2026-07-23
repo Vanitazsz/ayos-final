@@ -30,7 +30,6 @@ import {
   Navigation,
   Camera,
   Mic,
-  Settings,
   Info,
   ChevronDown,
   Search,
@@ -1253,12 +1252,6 @@ export default function CreateRequestScreen() {
                 {locationLoading ? 'Detecting…' : 'Use Current'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.gearBtn}
-              onPress={() => router.push('/new-request/radius-config')}
-            >
-              <Settings color={theme.colors.textSecondary} size={20} />
-            </TouchableOpacity>
           </View>
         </View>
         {savedAddresses.length ? (
@@ -1836,7 +1829,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: theme.spacing.sm,
   },
-  gearBtn: { padding: 4 },
   addressSearchStatus: {
     flexDirection: 'row',
     alignItems: 'center',

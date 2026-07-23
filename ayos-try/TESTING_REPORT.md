@@ -15,7 +15,9 @@
 | Production builds                     | Passed                     | Approved Vite Admin build and Expo web export                                                                                                                                         |
 | Worker taxonomy browser acceptance    | Passed                     | Playwright verified 10 live hosted industries, searchable industry/skill selection, no custom values, and phone/desktop layout                                                        |
 | Service search/request continuation   | Passed                     | 11 Playwright checks verified Home/request search, pagination, selection retention, geocoded and GPS confirmation, provider failure, consent, continuation, and responsive boundaries |
+| Customer Help and Privacy pages       | Passed                     | Clean migration replay, 9 focused pgTAP assertions, and 6 Playwright checks cover Supabase content, navigation, role guards, retry/unavailable states, and responsive scrolling       |
 | Hosted taxonomy deployment            | Passed                     | Isolated migrations `20260722000500`–`00600`; 10 industries/50 skills, foreign keys, RPC hardening, and original UUID preservation verified                                           |
+| Hosted Help and Privacy deployment    | Passed                     | Isolated migration `20260723120000` replaced only the two `local-1` placeholders, preserved both UUIDs, published version `2026-07-23`, and recorded the exact migration as applied   |
 | Hosted schema continuity              | Passed                     | Restricted schema/data/role backup captured; linked `public,storage` comparison against every canonical migration returned an empty (zero-byte) diff                                  |
 | Hosted identity persistence           | Passed                     | Backup inventory contains 4 Auth users and 4 matching account rows; both clients target `qsurouiyvisykjkgjqmz` with persistent Supabase Auth sessions                                 |
 | Requirements traceability             | Passed                     | FR-01–FR-104 and NFR-01–NFR-18 present                                                                                                                                                |
@@ -47,6 +49,7 @@
 - Direct pixel comparison against independently running supplied source applications is **Insufficient data to verify**; the integrated final-state screenshot baselines passed at the tested viewports.
 - Native device permission dialogs and binaries, hosted SMTP, Google OAuth credentials, live Gemini/OpenAI/OpenRouteService/Translation/Expo Push providers, production legal content, browser/device acceptance, backup restoration, RPO and RTO are **Insufficient data to verify**.
 - Provider-gated controls intentionally remain disabled with a readable reason until their verified credentials/contracts exist.
+- The full local pgTAP command currently stops in the unrelated `live_dispatch_schema_contract.test.sql` because PostgreSQL rejects its `name[] = text[]` assertion. The new Help/Privacy test passes independently; the unrelated dispatch test was not changed.
 
 ## Final classification
 

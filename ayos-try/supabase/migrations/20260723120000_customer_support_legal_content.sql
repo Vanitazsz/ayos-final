@@ -1,6 +1,42 @@
 insert into public.content_pages (key, title, body, version, published_at)
 values
-  ('TERMS', 'Terms of Service', 'Local development terms. Replace before production.', 'local-1', now()),
+  (
+    'HELP_CENTER',
+    'Help Center',
+    $help$
+Find guidance for requesting and managing services through A-YOS.
+
+## Requesting a service
+
+Choose the service that best matches the work you need, describe the issue clearly, and confirm the service location on the map. Photos or voice recordings are optional. AI assistance is also optional and is used only after you provide consent.
+
+## Bookings
+
+Review the worker, schedule, location, and price before confirming a booking. Booking updates appear in Activity. Open the booking to view its current status, worker details, and available actions.
+
+## Payments
+
+Follow the payment instructions shown for the booking. Cash payments are confirmed through the booking workflow. Do not send money outside the payment options displayed by A-YOS.
+
+## Messages
+
+Use the booking conversation to discuss service details with the assigned worker. Keep important instructions and agreements in the A-YOS chat so they remain connected to the booking.
+
+## Changes and cancellations
+
+Available rescheduling or cancellation actions depend on the booking status. Open the booking and follow the displayed options. A reason may be required before a cancellation can be submitted.
+
+## Account help
+
+Use Profile to update your personal information, saved addresses, language, and verification details. Password recovery and email verification are available from the sign-in flow.
+
+## Safety
+
+Review worker and booking details before allowing service access. Do not share passwords, verification codes, or unrelated financial information. For an immediate threat, fire, gas leak, medical emergency, or other urgent danger, contact the appropriate local emergency service before using A-YOS.
+$help$,
+    '2026-07-23',
+    now()
+  ),
   (
     'PRIVACY',
     'Privacy Policy',
@@ -41,50 +77,17 @@ The published version and update date are displayed on this page. Material chang
 $privacy$,
     '2026-07-23',
     now()
-  ),
-  ('REFUND_POLICY', 'Refund Policy', 'Local development refund policy. Replace before production.', 'local-1', now()),
-  (
-    'HELP_CENTER',
-    'Help Center',
-    $help$
-Find guidance for requesting and managing services through A-YOS.
-
-## Requesting a service
-
-Choose the service that best matches the work you need, describe the issue clearly, and confirm the service location on the map. Photos or voice recordings are optional. AI assistance is also optional and is used only after you provide consent.
-
-## Bookings
-
-Review the worker, schedule, location, and price before confirming a booking. Booking updates appear in Activity. Open the booking to view its current status, worker details, and available actions.
-
-## Payments
-
-Follow the payment instructions shown for the booking. Cash payments are confirmed through the booking workflow. Do not send money outside the payment options displayed by A-YOS.
-
-## Messages
-
-Use the booking conversation to discuss service details with the assigned worker. Keep important instructions and agreements in the A-YOS chat so they remain connected to the booking.
-
-## Changes and cancellations
-
-Available rescheduling or cancellation actions depend on the booking status. Open the booking and follow the displayed options. A reason may be required before a cancellation can be submitted.
-
-## Account help
-
-Use Profile to update your personal information, saved addresses, language, and verification details. Password recovery and email verification are available from the sign-in flow.
-
-## Safety
-
-Review worker and booking details before allowing service access. Do not share passwords, verification codes, or unrelated financial information. For an immediate threat, fire, gas leak, medical emergency, or other urgent danger, contact the appropriate local emergency service before using A-YOS.
-$help$,
-    '2026-07-23',
-    now()
   )
-on conflict (key) do update set title = excluded.title, body = excluded.body, version = excluded.version;
-
-insert into public.service_categories (name, description)
-values
-  ('Plumbing', 'Plumbing repair and installation'),
-  ('Electrical', 'Electrical repair and installation'),
-  ('Cleaning', 'Home and property cleaning')
-on conflict (name) do nothing;
+on conflict (key) do update
+set
+  title = excluded.title,
+  body = excluded.body,
+  version = excluded.version,
+  published_at = coalesce(public.content_pages.published_at, excluded.published_at),
+  updated_at = now()
+where
+  public.content_pages.version = 'local-1'
+  or public.content_pages.body in (
+    'Local development help content. Replace before production.',
+    'Local development privacy policy. Replace before production.'
+  );

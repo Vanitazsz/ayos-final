@@ -27,14 +27,15 @@ The industry suggestions are bounded and scrollable across web and native client
 3. Registered user: email/mobile + password → optional recovery code → Home.
 4. The immutable `USER` role permits only the customer workspace; worker routes redirect back to Home.
 5. Home exposes Browse, Send Request, Bookings, Messages, Alerts, Profile, and optional AI Home Assistant. It searches the live service catalog, shows the first 8 matches, and reveals 4 more per See more action.
-6. Browse supports featured/recommended/recent, search/filter/sort/category, worker details, top-five comparison, preselection messaging, and worker selection.
-7. Request creation searches the live catalog, shows the first 4 matches, reveals 4 more per See more services action, and preserves the selected service UUID. Address suggestions or GPS confirm the required map point; reverse-provider failure retains a confirmed GPS point for manual address text. Specific field errors precede optional consent-based AI analysis or manual continuation.
-8. If no suitable worker exists, adjust filters/date; AI-created requests remain open for later notification.
-9. Selected worker receives a private request and accepts or declines with a reason. Offline/decline/timeout recommends another worker.
-10. Booking follows Pending → Accepted → Worker Preparing → Worker En Route → Worker Arrived → Service Started → In Progress → Completed, or Cancelled with reason/policy/confirmation.
-11. En-route tracking requests permission. Granted shows map/ETA; denied explains the limitation and supports retry. Active booking offers Call, Chat, and Emergency actions.
-12. Completed booking uses Cash. User confirms cash paid; worker confirms receipt; success generates receipt and closes payment. Failure allows retry.
-13. Completed-and-paid booking enables star rating, text, images, recommendation, and submitted result, subject to moderation.
+6. Profile opens customer-only Help Center and Privacy Policy pages from published Supabase content. Each page supports back navigation, loading, unavailable, retry, version, and update-date states.
+7. Browse supports featured/recommended/recent, search/filter/sort/category, worker details, top-five comparison, preselection messaging, and worker selection.
+8. Request creation searches the live catalog, shows the first 4 matches, reveals 4 more per See more services action, and preserves the selected service UUID. Address suggestions or GPS confirm the required map point; reverse-provider failure retains a confirmed GPS point for manual address text. Specific field errors precede optional consent-based AI analysis or manual continuation.
+9. If no suitable worker exists, adjust filters/date; AI-created requests remain open for later notification.
+10. Selected worker receives a private request and accepts or declines with a reason. Offline/decline/timeout recommends another worker.
+11. Booking follows Pending → Accepted → Worker Preparing → Worker En Route → Worker Arrived → Service Started → In Progress → Completed, or Cancelled with reason/policy/confirmation.
+12. En-route tracking requests permission. Granted shows map/ETA; denied explains the limitation and supports retry. Active booking offers Call, Chat, and Emergency actions.
+13. Completed booking uses Cash. User confirms cash paid; worker confirms receipt; success generates receipt and closes payment. Failure allows retry.
+14. Completed-and-paid booking enables star rating, text, images, recommendation, and submitted result, subject to moderation.
 
 Related requirements: FR-01–04, FR-10–18, FR-25–48, FR-49, FR-52–62, FR-73, FR-75–81, FR-89–101, FR-104. **Status:** connected in Expo; authenticated lifecycle, native device, and external route/ETA acceptance remain unverified.
 
