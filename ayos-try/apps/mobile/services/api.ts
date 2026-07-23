@@ -1201,49 +1201,61 @@ export async function sendMessage(
   const ownProfile = await getMyProfile();
   const sourceLocale =
     locale ?? (ownProfile.role === 'ADMIN' ? 'en' : ownProfile.preferredLocale);
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      body: body.trim(),
-      original_locale: sourceLocale,
-    })
-    .select()
-    .single();
-  if (error) throw error;
 
-  // Touch conversation updated_at for ordering in messages list
-  void supabase
-    .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', conversationId);
+  // Try RPC first for atomic insert & notification delivery
+  const { data: rpcData, error: rpcError } = await supabase.rpc('send_chat_message', {
+    p_conversation_id: conversationId,
+    p_body: body.trim(),
+    p_original_locale: sourceLocale,
+  });
 
-  // Send real-time notification to recipient
-  void (async () => {
-    try {
-      const { data: participants } = await supabase
-        .from('conversation_participants')
-        .select('account_id')
-        .eq('conversation_id', conversationId);
+  let data = rpcData;
 
-      const recipientId = participants?.find(
-        (p: any) => p.account_id !== user.id,
-      )?.account_id;
+  if (rpcError || !data) {
+    // Fallback to direct client insert if RPC is not yet deployed
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        body: body.trim(),
+        original_locale: sourceLocale,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    data = inserted;
 
-      if (recipientId) {
-        await supabase.from('notifications').insert({
-          recipient_id: recipientId,
-          title: 'New Chat Message 💬',
-          body: `${ownProfile.displayName || 'Participant'}: ${body.trim().slice(0, 80)}`,
-          type: 'CHAT',
-          payload: { conversation_id: conversationId },
-        });
+    void supabase
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+
+    void (async () => {
+      try {
+        const { data: participants } = await supabase
+          .from('conversation_participants')
+          .select('account_id')
+          .eq('conversation_id', conversationId);
+
+        const recipientId = participants?.find(
+          (p: any) => p.account_id !== user.id,
+        )?.account_id;
+
+        if (recipientId) {
+          await supabase.from('notifications').insert({
+            recipient_id: recipientId,
+            title: 'New Chat Message 💬',
+            body: `${ownProfile.displayName || 'Participant'}: ${body.trim().slice(0, 80)}`,
+            type: 'CHAT',
+            payload: { conversation_id: conversationId },
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Chat notification error:', notifErr);
       }
-    } catch (notifErr) {
-      console.warn('Chat notification error:', notifErr);
-    }
-  })();
+    })();
+  }
 
   const { data: recipientLocale } = await supabase.rpc(
     'get_conversation_recipient_locale',
@@ -1361,6 +1373,13 @@ export async function fetchConversations() {
 export async function startDirectConversationWithUser(targetAccountId: string) {
   return wrap(async () => {
     const user = await requireUser();
+
+    // Try RPC first for atomic creation & bypassing client insert RLS
+    const { data: rpcData } = await supabase.rpc('start_direct_chat', {
+      p_target_account_id: targetAccountId,
+    });
+    if (rpcData?.id) return { id: rpcData.id };
+
     const { data: myConvs } = await supabase
       .from('conversation_participants')
       .select('conversation_id')
@@ -1399,6 +1418,33 @@ export async function startDirectConversationWithUser(targetAccountId: string) {
 export async function fetchAllAccountsForPoC() {
   return wrap(async () => {
     const user = await requireUser();
+
+    // Query accounts table directly to fetch all active accounts regardless of role
+    const { data: accountsData } = await supabase
+      .from('accounts')
+      .select('id, role, user_profiles(display_name, avatar_path), worker_profiles(display_name, avatar_path)')
+      .neq('id', user.id)
+      .eq('status', 'ACTIVE');
+
+    if (accountsData && accountsData.length > 0) {
+      return Promise.all(
+        accountsData.map(async (acc: any) => {
+          const uProf = Array.isArray(acc.user_profiles) ? acc.user_profiles[0] : acc.user_profiles;
+          const wProf = Array.isArray(acc.worker_profiles) ? acc.worker_profiles[0] : acc.worker_profiles;
+          const profile = uProf ?? wProf;
+          const name = profile?.display_name || (acc.role === 'WORKER' ? 'Worker Account' : 'Customer Account');
+          const avatarPath = profile?.avatar_path || '';
+          return {
+            id: acc.id,
+            name,
+            avatar: await resolveProfileAvatar(avatarPath),
+            role: acc.role === 'WORKER' ? 'Worker' : acc.role === 'USER' ? 'Customer' : 'Admin',
+          };
+        }),
+      );
+    }
+
+    // Fallback if accounts table direct query returns empty
     const [{ data: userProfiles }, { data: workerProfiles }] = await Promise.all([
       supabase.from('user_profiles').select('account_id, display_name, avatar_path'),
       supabase.from('worker_profiles').select('account_id, display_name, avatar_path'),
