@@ -1542,18 +1542,18 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
       supabase
         .from('worker_profiles')
         .select('primary_industry_id')
-        .eq('worker_id', user.id)
+        .eq('account_id', user.id)
         .maybeSingle(),
       supabase
         .from('worker_skills')
-        .select('service_category_id,years')
+        .select('category_id,years')
         .eq('worker_id', user.id),
     ]);
 
     const industries = industriesRes.data ?? [];
     const primaryIndustryId = profileRes.data?.primary_industry_id ?? null;
     const selectedSkillIds = (skillsRes.data ?? []).map(
-      (row: any) => row.service_category_id,
+      (row: any) => row.category_id,
     );
     const yearsExperience = Math.max(
       ...(skillsRes.data ?? []).map((row: any) => row.years ?? 0),
@@ -1577,13 +1577,13 @@ export async function updateMyWorkerSkillsAndIndustry(input: {
   return wrap(async () => {
     const user = await requireUser();
 
-    // 1. Update primary_industry_id on worker_profiles
+    // 1. Update primary_industry_id on worker_profiles using account_id
     const { error: profileError } = await supabase
       .from('worker_profiles')
       .update({
         primary_industry_id: input.primaryIndustryId,
       })
-      .eq('worker_id', user.id);
+      .eq('account_id', user.id);
     if (profileError) throw profileError;
 
     // 2. Clear existing worker_skills
@@ -1593,13 +1593,12 @@ export async function updateMyWorkerSkillsAndIndustry(input: {
       .eq('worker_id', user.id);
     if (deleteError) throw deleteError;
 
-    // 3. Insert new worker_skills
+    // 3. Insert new worker_skills using category_id
     if (input.selectedSkillIds.length > 0) {
-      const rows = input.selectedSkillIds.map((skillId, index) => ({
+      const rows = input.selectedSkillIds.map((skillId) => ({
         worker_id: user.id,
-        service_category_id: skillId,
+        category_id: skillId,
         years: input.yearsExperience ?? 1,
-        is_primary: index === 0,
       }));
       const { error: insertError } = await supabase
         .from('worker_skills')
