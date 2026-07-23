@@ -186,7 +186,11 @@ export default function BookingRequestScreen() {
         style: 'destructive',
         onPress: () => {
           void cancelBooking(booking.id, 'Worker declined the assigned booking')
-            .then(() => router.back())
+            .then(() => {
+              setBackendStatus('CANCELLED');
+              setBooking((b) => ({ ...b, status: 'cancelled' }));
+              setTimeout(() => router.back(), 500);
+            })
             .catch((error) => Alert.alert('Unable to decline', error.message));
         },
       },
@@ -195,16 +199,18 @@ export default function BookingRequestScreen() {
 
   const handleConfirmDetails = () => {
     Alert.alert(
-      'Details Confirmed',
-      'You have confirmed the details with the customer. Head to the location!',
+      'Start Travel',
+      'Confirm details and start travelling to the customer location?',
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'OK',
+          text: 'Start En Route 🚚',
           onPress: () =>
             void (async () => {
               try {
-                if (backendStatus === 'ACCEPTED') await prepareJob(booking.id);
                 await departForJob(booking.id);
+                setBackendStatus('WORKER_EN_ROUTE');
+                setBooking((b) => ({ ...b, status: 'en_route' }));
               } catch (error) {
                 Alert.alert(
                   'Status not updated',
@@ -222,14 +228,16 @@ export default function BookingRequestScreen() {
       'Arrived',
       'You have arrived at the location. Start the job when ready.',
       [
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Start Job',
           onPress: () =>
             void (async () => {
               try {
-                if (backendStatus === 'WORKER_EN_ROUTE')
-                  await arriveAtJob(booking.id);
+                await arriveAtJob(booking.id).catch(() => {});
                 await startJob(booking.id);
+                setBackendStatus('IN_PROGRESS');
+                setBooking((b) => ({ ...b, status: 'in_progress' }));
               } catch (error) {
                 Alert.alert(
                   'Status not updated',
@@ -238,7 +246,6 @@ export default function BookingRequestScreen() {
               }
             })(),
         },
-        { text: 'Cancel', style: 'cancel' },
       ],
     );
   };
@@ -254,9 +261,9 @@ export default function BookingRequestScreen() {
           onPress: () =>
             void (async () => {
               try {
-                if (backendStatus === 'SERVICE_STARTED')
-                  await markJobInProgress(booking.id);
                 await completeJob(booking.id);
+                setBackendStatus('COMPLETED');
+                setBooking((b) => ({ ...b, status: 'completed' }));
               } catch (error) {
                 Alert.alert(
                   'Status not updated',
