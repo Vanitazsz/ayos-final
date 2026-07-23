@@ -15,14 +15,12 @@ import { AppButton } from '@/components/AppButton';
 import { theme } from '@/constants/theme';
 import {
   fetchMyWorkerSkillsAndIndustry,
-  updateMyWorkerSkillsAndIndustry,
   type IndustryWithSkills,
 } from '@/services/api';
 
 export default function WorkerIndustrySkillsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const [industries, setIndustries] = useState<IndustryWithSkills[]>([]);
@@ -68,24 +66,13 @@ export default function WorkerIndustrySkillsScreen() {
 
   const currentIndustry = industries.find((i) => i.id === selectedIndustryId);
 
-  const handleSave = async () => {
-    if (!selectedIndustryId) {
-      Alert.alert('Selection Required', 'Please select a primary industry.');
-      return;
-    }
-    if (selectedSkillIds.length === 0) {
-      Alert.alert('Selection Required', 'Please select at least one skill.');
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-    try {
-      await updateMyWorkerSkillsAndIndustry({
-        primaryIndustryId: selectedIndustryId,
-        selectedSkillIds,
-        yearsExperience,
-      });
+  const handleSave = () => {
+    Alert.alert(
+      'Preview only',
+      'Industry and skills are currently visual-only and are not used for matching.',
+    );
+    return;
+    /*
       Alert.alert(
         'Industry & Skills Saved! ✅',
         'Your profile industry and skills have been updated in the database.',
@@ -98,9 +85,8 @@ export default function WorkerIndustrySkillsScreen() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update industry & skills');
-    } finally {
-      setSaving(false);
     }
+    */
   };
 
   if (loading) {
@@ -281,7 +267,6 @@ export default function WorkerIndustrySkillsScreen() {
         <AppButton
           label="Save Industry & Skills"
           variant="primary"
-          loading={saving}
           fullWidth
           onPress={handleSave}
         />

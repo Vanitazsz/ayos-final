@@ -197,8 +197,7 @@ export default function WorkerServiceSetupScreen() {
   };
 
   const canGoOnline =
-    readiness?.verificationStatus === 'APPROVED' &&
-    Boolean(readiness?.skillsReady);
+    readiness?.verificationStatus === 'APPROVED';
 
   return (
     <Screen safeArea scrollable>
@@ -234,7 +233,7 @@ export default function WorkerServiceSetupScreen() {
                     label: 'Admin verification approved',
                     ready: readiness.verificationStatus === 'APPROVED',
                   },
-                  { label: 'At least one active skill', ready: readiness.skillsReady },
+                  { label: 'Industry & skills (visual only)', ready: true },
                   { label: 'Service origin and radius', ready: readiness.serviceAreaReady },
                   { label: 'Working schedule', ready: readiness.scheduleReady },
                   { label: 'Available online', ready: readiness.online },
