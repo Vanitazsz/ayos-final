@@ -1419,60 +1419,30 @@ export async function fetchAllAccountsForPoC() {
   return wrap(async () => {
     const user = await requireUser();
 
-    // Query accounts table directly to fetch all active accounts regardless of role
-    const { data: accountsData } = await supabase
-      .from('accounts')
-      .select('id, role, user_profiles(display_name, avatar_path), worker_profiles(display_name, avatar_path)')
-      .neq('id', user.id)
-      .eq('status', 'ACTIVE');
-
-    if (accountsData && accountsData.length > 0) {
-      return Promise.all(
-        accountsData.map(async (acc: any) => {
-          const uProf = Array.isArray(acc.user_profiles) ? acc.user_profiles[0] : acc.user_profiles;
-          const wProf = Array.isArray(acc.worker_profiles) ? acc.worker_profiles[0] : acc.worker_profiles;
-          const profile = uProf ?? wProf;
-          const name = profile?.display_name || (acc.role === 'WORKER' ? 'Worker Account' : 'Customer Account');
-          const avatarPath = profile?.avatar_path || '';
-          return {
-            id: acc.id,
-            name,
-            avatar: await resolveProfileAvatar(avatarPath),
-            role: acc.role === 'WORKER' ? 'Worker' : acc.role === 'USER' ? 'Customer' : 'Admin',
-          };
-        }),
-      );
-    }
-
-    // Fallback if accounts table direct query returns empty
-    const [{ data: userProfiles }, { data: workerProfiles }] = await Promise.all([
+    const [{ data: accounts }, { data: uProfs }, { data: wProfs }] = await Promise.all([
+      supabase.from('accounts').select('id, role, status').neq('id', user.id).eq('status', 'ACTIVE'),
       supabase.from('user_profiles').select('account_id, display_name, avatar_path'),
       supabase.from('worker_profiles').select('account_id, display_name, avatar_path'),
     ]);
 
-    const map = new Map<string, { id: string; name: string; avatar: string; role: string }>();
-    (userProfiles ?? []).forEach((row: any) => {
-      if (row.account_id && row.account_id !== user.id) {
-        map.set(row.account_id, {
-          id: row.account_id,
-          name: row.display_name || 'Customer Account',
-          avatar: row.avatar_path || '',
-          role: 'Customer',
-        });
-      }
-    });
-    (workerProfiles ?? []).forEach((row: any) => {
-      if (row.account_id && row.account_id !== user.id) {
-        map.set(row.account_id, {
-          id: row.account_id,
-          name: row.display_name || 'Worker Account',
-          avatar: row.avatar_path || '',
-          role: 'Worker',
-        });
-      }
-    });
+    const uMap = new Map((uProfs ?? []).map((u: any) => [u.account_id, u]));
+    const wMap = new Map((wProfs ?? []).map((w: any) => [w.account_id, w]));
 
-    return Array.from(map.values());
+    return Promise.all(
+      (accounts ?? []).map(async (acc: any) => {
+        const u = uMap.get(acc.id);
+        const w = wMap.get(acc.id);
+        const profile = u ?? w;
+        const name = profile?.display_name || (acc.role === 'WORKER' ? 'Worker Account' : 'Customer Account');
+        const avatarPath = profile?.avatar_path || '';
+        return {
+          id: acc.id,
+          name,
+          avatar: await resolveProfileAvatar(avatarPath),
+          role: acc.role === 'WORKER' ? 'Worker' : acc.role === 'USER' ? 'Customer' : 'Admin',
+        };
+      }),
+    );
   });
 }
 export async function fetchNotifications() {

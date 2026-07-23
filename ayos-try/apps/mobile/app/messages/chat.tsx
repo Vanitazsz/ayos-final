@@ -132,9 +132,29 @@ export default function ChatScreen() {
     return () => stops.forEach((stop) => stop());
   }, [rawId, rawConvId, rawRecipientId]);
   const handleSend = async () => {
-    if (!conversationId || !message.trim()) return;
-    await sendMessage(conversationId, message);
-    setMessage('');
+    if (!message.trim()) return;
+    let activeConvId = conversationId;
+
+    if (!activeConvId && rawRecipientId) {
+      try {
+        const res = await startDirectConversationWithUser(rawRecipientId);
+        if (res.data?.id) {
+          activeConvId = res.data.id;
+          setConversationId(activeConvId);
+        }
+      } catch (err) {
+        console.warn('Failed to provision conversation on send:', err);
+      }
+    }
+
+    if (!activeConvId) return;
+
+    try {
+      await sendMessage(activeConvId, message);
+      setMessage('');
+    } catch (sendErr) {
+      console.warn('Failed to send message:', sendErr);
+    }
   };
 
   const handleHire = () => {
