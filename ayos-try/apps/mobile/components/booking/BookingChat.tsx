@@ -18,6 +18,7 @@ interface BookingChatProps {
   customerAvatar: string;
   onConfirmDetails: () => void;
   bookingId: string;
+  bookingStatus?: string;
 }
 
 export const BookingChat = React.memo(function BookingChat({
@@ -25,6 +26,7 @@ export const BookingChat = React.memo(function BookingChat({
   customerAvatar,
   onConfirmDetails,
   bookingId,
+  bookingStatus,
 }: BookingChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId,setConversationId]=useState<string|null>(null);
@@ -46,8 +48,7 @@ export const BookingChat = React.memo(function BookingChat({
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages.length]);
 
-  const sentCount = messages.filter((m) => m.sender === 'worker').length;
-  const canConfirm = sentCount >= 1;
+  const canConfirm = bookingStatus === 'accepted';
 
   return (
     <KeyboardAvoidingView

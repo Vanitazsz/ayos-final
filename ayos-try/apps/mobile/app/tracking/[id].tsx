@@ -17,33 +17,18 @@ import {
   MessageSquare,
   CheckCircle2,
   Circle,
+  Clock,
+  MapPin,
+  Wrench,
 } from 'lucide-react-native';
 import {
   fetchBookingTracking,
   subscribeToTable,
-  acceptJob,
-  departForJob,
-  arriveAtJob,
-  startJob,
-  markJobInProgress,
-  completeJob,
 } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
-
-const TIMELINE_STEPS = [
-  { id: '1', title: 'Provider Hired', subtitle: 'Worker has been selected' },
-  { id: '2', title: 'Provider Accepted', subtitle: 'Job has been accepted' },
-  { id: '3', title: 'En Route', subtitle: 'Provider is on the way' },
-  {
-    id: '4',
-    title: 'Arrived',
-    subtitle: 'Provider has arrived at the location',
-  },
-  { id: '5', title: 'In Progress', subtitle: 'Service has started' },
-  { id: '6', title: 'Completed', subtitle: 'Service finished' },
-];
+import { BookingChat } from '@/components/booking/BookingChat';
 
 const STATUS_STEP_MAP: Record<string, number> = {
   PENDING: 0,
@@ -56,11 +41,31 @@ const STATUS_STEP_MAP: Record<string, number> = {
   COMPLETED: 5,
 };
 
+const STATUS_INFO: Record<string, { title: string; subtitle: string; icon: any }> = {
+  PENDING: { title: 'Waiting for Provider', subtitle: 'Your booking has been sent. A provider will accept shortly.', icon: Clock },
+  ACCEPTED: { title: 'Provider Accepted', subtitle: 'Your provider has accepted the job and is getting ready.', icon: CheckCircle2 },
+  WORKER_PREPARING: { title: 'Provider Preparing', subtitle: 'Your provider is preparing to head to your location.', icon: Clock },
+  WORKER_EN_ROUTE: { title: 'Provider On The Way', subtitle: 'Your provider is en route to your location.', icon: MapPin },
+  WORKER_ARRIVED: { title: 'Provider Has Arrived', subtitle: 'Your provider has arrived at your location.', icon: MapPin },
+  SERVICE_STARTED: { title: 'Service In Progress', subtitle: 'Work has begun on your service request.', icon: Wrench },
+  IN_PROGRESS: { title: 'Service In Progress', subtitle: 'Work is currently being done.', icon: Wrench },
+  COMPLETED: { title: 'Service Completed', subtitle: 'Your service has been completed. Please confirm and pay.', icon: CheckCircle2 },
+  CANCELLED: { title: 'Booking Cancelled', subtitle: 'This booking has been cancelled.', icon: Clock },
+};
+
+const TIMELINE_STEPS = [
+  { id: '1', title: 'Booking Confirmed', subtitle: 'Your booking has been placed' },
+  { id: '2', title: 'Provider Accepted', subtitle: 'A provider accepted your job' },
+  { id: '3', title: 'Provider En Route', subtitle: 'Provider is on the way' },
+  { id: '4', title: 'Provider Arrived', subtitle: 'Provider has arrived' },
+  { id: '5', title: 'Service In Progress', subtitle: 'Work has started' },
+  { id: '6', title: 'Completed', subtitle: 'Service finished' },
+];
+
 export default function TrackingScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [tracking, setTracking] = useState<any>(null);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
   const bookingId = Array.isArray(id) ? id[0] : id;
 
   const workerStatus = tracking?.booking?.status as string | undefined;
@@ -97,52 +102,13 @@ export default function TrackingScreen() {
     router.push(`/payment/${id}`);
   };
 
-  const advanceToStatus = async (targetStatus: string) => {
-    if (!bookingId || updatingStatus) return;
-    setUpdatingStatus(true);
-    try {
-      if (targetStatus === 'ACCEPTED') {
-        await acceptJob(bookingId);
-      } else if (targetStatus === 'WORKER_EN_ROUTE') {
-        try { await acceptJob(bookingId); } catch {}
-        await departForJob(bookingId);
-      } else if (targetStatus === 'IN_PROGRESS') {
-        try { await acceptJob(bookingId); } catch {}
-        try { await departForJob(bookingId); } catch {}
-        try { await arriveAtJob(bookingId); } catch {}
-        try { await startJob(bookingId); } catch {}
-        await markJobInProgress(bookingId);
-      } else if (targetStatus === 'COMPLETED') {
-        try { await acceptJob(bookingId); } catch {}
-        try { await departForJob(bookingId); } catch {}
-        try { await arriveAtJob(bookingId); } catch {}
-        try { await startJob(bookingId); } catch {}
-        try { await markJobInProgress(bookingId); } catch {}
-        await completeJob(bookingId);
-      }
-    } catch (e) {
-      console.warn('Status transition attempt:', e);
-    } finally {
-      await fetchBookingTracking(bookingId).then(setTracking);
-      setUpdatingStatus(false);
-    }
-  };
-
-  const bypassToPayment = async () => {
-    if (!bookingId) return;
-    if (workerStatus !== 'COMPLETED') {
-      await advanceToStatus('COMPLETED');
-    }
-    router.push(`/payment/${id}`);
-  };
-
-  const bypassToReview = async () => {
-    if (!bookingId) return;
-    router.push(`/review/${id}`);
-  };
-
   const address = tracking?.booking?.service_requests?.addresses;
   const latest = tracking?.updates?.[0];
+  const statusInfo = STATUS_INFO[workerStatus ?? ''] ?? { title: workerStatus?.replaceAll('_', ' ') ?? 'Loading...', subtitle: '', icon: Clock };
+  const StatusIcon = statusInfo.icon;
+  const isCompleted = workerStatus === 'COMPLETED';
+  const isCancelled = workerStatus === 'CANCELLED';
+  const isActive = !isCompleted && !isCancelled;
 
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
@@ -161,15 +127,15 @@ export default function TrackingScreen() {
         <Text
           style={[theme.typography.h4, { color: theme.colors.textPrimary }]}
         >
-          Live Tracking
+          Booking Details
         </Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.content}>
-        {/* Map Area */}
-        <View style={styles.mapContainer}>
-          {address?.latitude != null && address?.longitude != null ? (
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Map Area - only show when active and location available */}
+        {isActive && address?.latitude != null && address?.longitude != null && (
+          <View style={styles.mapContainer}>
             <BookingMap
               bookingId={bookingId}
               destinationLat={Number(address.latitude)}
@@ -194,14 +160,24 @@ export default function TrackingScreen() {
               workerLat={latest ? Number(latest.latitude) : undefined}
               workerLng={latest ? Number(latest.longitude) : undefined}
             />
-          ) : (
-            <View style={styles.mapWithStatus}>
-              <Text>Location is not yet available.</Text>
-            </View>
-          )}
+          </View>
+        )}
+
+        {/* Status Card */}
+        <View style={[styles.statusCard, { borderLeftColor: isCompleted ? '#2E7D32' : isCancelled ? '#C62828' : theme.colors.primary }]}>
+          <StatusIcon size={24} color={isCompleted ? '#2E7D32' : isCancelled ? '#C62828' : theme.colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>
+              {statusInfo.title}
+            </Text>
+            <Text style={[theme.typography.body2, { color: theme.colors.textSecondary, marginTop: 2 }]}>
+              {statusInfo.subtitle}
+            </Text>
+          </View>
         </View>
 
-        {['ACCEPTED', 'WORKER_PREPARING'].includes(workerStatus ?? '') && (
+        {/* Route Summary - show when accepted/preparing/en_route */}
+        {['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(workerStatus ?? '') && (
           <RouteSummaryCard
             bookingId={bookingId}
             startLat={tracking?.booking?.worker_start_lat}
@@ -224,7 +200,7 @@ export default function TrackingScreen() {
             <View style={styles.avatarPlaceholder} />
             <View>
               <Text style={theme.typography.h4}>
-                {tracking?.booking?.worker_profiles?.display_name ?? ''}
+                {tracking?.booking?.worker_profiles?.display_name ?? 'Assigned Provider'}
               </Text>
               <Text
                 style={[
@@ -232,7 +208,7 @@ export default function TrackingScreen() {
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                {workerStatus?.replaceAll('_', ' ') ?? 'Loading status'}
+                {statusInfo.title}
               </Text>
             </View>
           </View>
@@ -258,6 +234,7 @@ export default function TrackingScreen() {
 
         <View style={styles.divider} />
 
+        {/* Cancellation info */}
         {tracking?.booking?.cancellations?.[0] && (
           <View style={styles.cancellationCard}>
             <Text style={theme.typography.h4}>Cancellation details</Text>
@@ -278,107 +255,26 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* Timeline */}
-        <ScrollView
-          style={styles.timelineScroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* PoC Demo Controls Card */}
-          <View style={styles.pocCard}>
-            <View style={styles.pocHeader}>
-              <Text style={[theme.typography.h4, { color: '#1e293b' }]}>
-                ⚡ PoC Simulation & Bypass Controls
-              </Text>
-              <Text style={[theme.typography.caption, { color: '#64748b' }]}>
-                Bypass pending state & test status transitions in real time:
-              </Text>
-            </View>
-            <View style={styles.pocButtonsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.pocBtn,
-                  ['ACCEPTED', 'WORKER_PREPARING'].includes(workerStatus ?? '') &&
-                    styles.pocBtnActive,
-                ]}
-                onPress={() => advanceToStatus('ACCEPTED')}
-                disabled={updatingStatus}
-              >
-                <Text style={styles.pocBtnText}>1. Accept Job</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.pocBtn,
-                  workerStatus === 'WORKER_EN_ROUTE' && styles.pocBtnActive,
-                ]}
-                onPress={() => advanceToStatus('WORKER_EN_ROUTE')}
-                disabled={updatingStatus}
-              >
-                <Text style={styles.pocBtnText}>2. En Route</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.pocBtn,
-                  ['SERVICE_STARTED', 'IN_PROGRESS'].includes(
-                    workerStatus ?? '',
-                  ) && styles.pocBtnActive,
-                ]}
-                onPress={() => advanceToStatus('IN_PROGRESS')}
-                disabled={updatingStatus}
-              >
-                <Text style={styles.pocBtnText}>3. Start Job</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.pocBtn,
-                  workerStatus === 'COMPLETED' && styles.pocBtnActive,
-                ]}
-                onPress={() => advanceToStatus('COMPLETED')}
-                disabled={updatingStatus}
-              >
-                <Text style={styles.pocBtnText}>4. Complete</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pocActionRow}>
-              <TouchableOpacity
-                style={styles.pocPrimaryBtn}
-                onPress={bypassToPayment}
-              >
-                <Text style={styles.pocPrimaryBtnText}>
-                  💳 Straight to Payment
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.pocOutlineBtn}
-                onPress={bypassToReview}
-              >
-                <Text style={styles.pocOutlineBtnText}>
-                  ⭐ Straight to Review
-                </Text>
-              </TouchableOpacity>
-            </View>
+        {/* In-booking Chat */}
+        {isActive && (
+          <View style={styles.chatSection}>
+            <BookingChat
+              bookingId={bookingId}
+              customerName={tracking?.booking?.worker_profiles?.display_name ?? 'Provider'}
+              customerAvatar={tracking?.booking?.worker_profiles?.avatar_path ?? ''}
+              onConfirmDetails={() => {}}
+              bookingStatus={workerStatus?.toLowerCase()}
+            />
           </View>
+        )}
 
-          <Text
-            style={[theme.typography.h3, { marginBottom: theme.spacing.md }]}
-          >
-            Status
+        {/* Timeline */}
+        <View style={styles.timelineSection}>
+          <Text style={[theme.typography.h4, { marginBottom: theme.spacing.md }]}>
+            Booking Progress
           </Text>
           <View style={styles.timeline}>
-            {(tracking?.booking?.booking_status_events?.length
-              ? [...tracking.booking.booking_status_events]
-                  .sort(
-                    (a: any, b: any) =>
-                      new Date(a.created_at).getTime() -
-                      new Date(b.created_at).getTime(),
-                  )
-                  .map((event: any, index: number) => ({
-                    id: event.id,
-                    title: String(event.to_status).replaceAll('_', ' '),
-                    subtitle: `${new Date(event.created_at).toLocaleString()}${event.reason ? ` · ${event.reason}` : ''}`,
-                    eventIndex: index,
-                  }))
-              : TIMELINE_STEPS
-            ).map((step: any, index: number) => {
+            {TIMELINE_STEPS.map((step, index) => {
               const isCompleted = index <= stepIndex;
               const isCurrent = index === stepIndex;
               const isLast = index === TIMELINE_STEPS.length - 1;
@@ -407,8 +303,9 @@ export default function TrackingScreen() {
                   <View style={styles.timelineTextContainer}>
                     <Text
                       style={[
-                        theme.typography.h4,
+                        theme.typography.body1,
                         {
+                          fontWeight: isCurrent ? '700' : '500',
                           color: isCurrent
                             ? theme.colors.primary
                             : theme.colors.textPrimary,
@@ -420,7 +317,7 @@ export default function TrackingScreen() {
                     </Text>
                     <Text
                       style={[
-                        theme.typography.body2,
+                        theme.typography.caption,
                         {
                           color: theme.colors.textSecondary,
                           opacity: isCompleted ? 1 : 0.5,
@@ -434,23 +331,30 @@ export default function TrackingScreen() {
               );
             })}
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
 
       <View style={styles.footer}>
-        {workerStatus === 'COMPLETED' ? (
+        {isCompleted ? (
           <Button
-            title="Confirm Completion & Pay 💳"
+            title="Confirm Completion & Pay"
             onPress={handleComplete}
             fullWidth
           />
-        ) : (
+        ) : isCancelled ? (
           <Button
-            title="Bypass & Proceed to Payment 💳"
+            title="Back to Bookings"
             variant="outlined"
-            onPress={bypassToPayment}
+            onPress={() => router.back()}
             fullWidth
           />
+        ) : (
+          <View style={styles.footerStatus}>
+            <Clock size={16} color={theme.colors.textSecondary} />
+            <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>
+              Your provider will update the status as they work
+            </Text>
+          </View>
         )}
       </View>
     </Screen>
@@ -472,37 +376,6 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1 },
   mapContainer: { height: 250, position: 'relative' },
-  mapWithStatus: {
-    flex: 1,
-    backgroundColor: theme.colors.infoBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapIcon: { opacity: 0.5 },
-  etaBadge: {
-    position: 'absolute',
-    bottom: theme.spacing.md,
-    right: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.lg,
-    alignItems: 'center',
-    ...theme.shadows.md,
-  },
-  timerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    position: 'absolute',
-    bottom: theme.spacing.md,
-    right: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.lg,
-    ...theme.shadows.md,
-  },
   workerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -540,7 +413,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.errorBackground,
   },
-  timelineScroll: { flex: 1, padding: theme.spacing.lg },
   timeline: { paddingBottom: theme.spacing.xxxl },
   timelineItem: { flexDirection: 'row', minHeight: 60 },
   timelineLineContainer: {
@@ -550,73 +422,35 @@ const styles = StyleSheet.create({
   },
   timelineLine: { width: 2, flex: 1, marginVertical: 4 },
   timelineTextContainer: { flex: 1, paddingBottom: theme.spacing.lg },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderLeftWidth: 4,
+    ...theme.shadows.sm,
+  },
+  chatSection: {
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+  },
+  timelineSection: {
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+  },
   footer: {
     padding: theme.spacing.md,
     paddingHorizontal: theme.layout.screenPadding,
   },
-  pocCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-  },
-  pocHeader: {
-    marginBottom: theme.spacing.sm,
-  },
-  pocButtonsRow: {
+  footerStatus: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: theme.spacing.sm,
-  },
-  pocBtn: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 6,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-  },
-  pocBtnActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#1d4ed8',
-  },
-  pocBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  pocActionRow: {
-    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: theme.spacing.sm,
-    marginTop: 4,
-  },
-  pocPrimaryBtn: {
-    flex: 1,
-    backgroundColor: '#16a34a',
     paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-  },
-  pocPrimaryBtnText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  pocOutlineBtn: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2563eb',
-  },
-  pocOutlineBtnText: {
-    color: '#2563eb',
-    fontWeight: '700',
-    fontSize: 12,
   },
 });
