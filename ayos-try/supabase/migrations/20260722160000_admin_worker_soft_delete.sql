@@ -66,7 +66,6 @@ begin
   return result;
 end
 $$;
-
 create or replace function public.restore_from_trash(trash_id uuid)
 returns public.trash_entries
 language plpgsql
