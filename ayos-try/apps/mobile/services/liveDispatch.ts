@@ -63,16 +63,80 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
   if(!readiness.matchable){onState('not_ready','Complete Service Availability and switch Available for matching on.');return()=>{};}
   const permission=await Location.requestForegroundPermissionsAsync();
   if(permission.status!=='granted'){onState('permission_denied','Location permission is required to receive nearby requests.');return()=>{};}
-  let stopped=false;let subscription:Location.LocationSubscription|null=null;
+  let stopped=false;
+  let active=false;
+  let publishing=false;
+  let subscription:Location.LocationSubscription|null=null;
+  let heartbeatTimer:ReturnType<typeof setInterval>|null=null;
+  let latestPosition:Location.LocationObject|null=null;
+
   const publish=async(position:Location.LocationObject,online=true)=>{
+    if(publishing)return;
+    publishing=true;
     try{
+      latestPosition=position;
       await publishWorkerPosition(position,online);
       if(!stopped)onState(online?'online':'offline');
     }
-    catch(error){if(!stopped)onState('error',normalizeSupabaseError(error).message);}
+    catch(error){
+      if(!stopped)onState('error',normalizeSupabaseError(error).message);
+    }
+    finally{publishing=false;}
   };
-  const begin=async()=>{if(stopped||subscription)return;onState('starting');try{const initial=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});await publish(initial,true);subscription=await Location.watchPositionAsync({accuracy:Location.Accuracy.Balanced,timeInterval:10000,distanceInterval:20},position=>void publish(position,true),message=>{if(!stopped)onState('error',message||'Browser location updates stopped.');});}catch(error){if(!stopped)onState('error',normalizeSupabaseError(error,'Unable to read the browser location.').message);}};
+
+  const heartbeat=async()=>{
+    if(stopped||!active||publishing)return;
+    try{
+      const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});
+      if(!stopped&&active)await publish(position,true);
+    }
+    catch(error){
+      if(!stopped&&active)onState('error',normalizeSupabaseError(error,'Unable to refresh the browser location.').message);
+    }
+  };
+
+  const stopActivePresence=()=>{
+    active=false;
+    if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
+    subscription?.remove();
+    subscription=null;
+  };
+
+  const begin=async()=>{
+    if(stopped||active)return;
+    active=true;
+    onState('starting');
+    try{
+      await heartbeat();
+      if(stopped||!active)return;
+      subscription=await Location.watchPositionAsync(
+        {accuracy:Location.Accuracy.Balanced,timeInterval:10000,distanceInterval:20},
+        position=>{latestPosition=position;void publish(position,true);},
+        message=>{if(!stopped&&active)onState('error',message||'Browser location updates stopped.');},
+      );
+      heartbeatTimer=setInterval(()=>void heartbeat(),10000);
+    }
+    catch(error){
+      stopActivePresence();
+      if(!stopped)onState('error',normalizeSupabaseError(error,'Unable to read the browser location.').message);
+    }
+  };
+
+  const publishOffline=async()=>{
+    const position=latestPosition??await Location.getLastKnownPositionAsync();
+    if(position)await publish(position,false);
+  };
+
   await begin();
-  const appState=AppState.addEventListener('change',state=>{if(state==='active'){void begin();return;}const current=subscription;subscription=null;current?.remove();void Location.getLastKnownPositionAsync().then(position=>position&&publish(position,false));});
-  return()=>{stopped=true;appState.remove();subscription?.remove();subscription=null;void Location.getLastKnownPositionAsync().then(position=>position&&publish(position,false));};
+  const appState=AppState.addEventListener('change',state=>{
+    if(state==='active'){void begin();return;}
+    stopActivePresence();
+    void publishOffline();
+  });
+  return()=>{
+    stopped=true;
+    appState.remove();
+    stopActivePresence();
+    void publishOffline();
+  };
 }

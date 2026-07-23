@@ -1,11 +1,40 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('expo-location', () => ({}));
-vi.mock('react-native', () => ({ AppState: { addEventListener: vi.fn() } }));
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
-vi.mock('@/services/workerMatching', () => ({ getWorkerMatchingReadiness: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  requestPermission: vi.fn(),
+  getCurrentPosition: vi.fn(),
+  getLastKnownPosition: vi.fn(),
+  watchPosition: vi.fn(),
+  removeWatch: vi.fn(),
+  removeAppState: vi.fn(),
+  rpc: vi.fn(),
+  readiness: vi.fn(),
+}));
 
-import { normalizeSupabaseError, sanitizeAccuracy } from './liveDispatch';
+vi.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: mocks.requestPermission,
+  getCurrentPositionAsync: mocks.getCurrentPosition,
+  getLastKnownPositionAsync: mocks.getLastKnownPosition,
+  watchPositionAsync: mocks.watchPosition,
+}));
+vi.mock('react-native', () => ({
+  AppState: {
+    addEventListener: vi.fn(() => ({ remove: mocks.removeAppState })),
+  },
+}));
+vi.mock('@/lib/supabase', () => ({
+  supabase: { rpc: mocks.rpc },
+}));
+vi.mock('@/services/workerMatching', () => ({
+  getWorkerMatchingReadiness: mocks.readiness,
+}));
+
+import {
+  normalizeSupabaseError,
+  sanitizeAccuracy,
+  startForegroundWorkerPresence,
+} from './liveDispatch';
 
 describe('normalizeSupabaseError', () => {
   it('preserves PostgREST messages and codes', () => {
@@ -38,4 +67,36 @@ describe('sanitizeAccuracy', () => {
       expect(sanitizeAccuracy(value)).toBeNull();
     },
   );
+});
+
+describe('startForegroundWorkerPresence', () => {
+  it('refreshes a stationary worker every ten seconds', async () => {
+    vi.useFakeTimers();
+    const position = {
+      coords: {
+        latitude: 14.4179,
+        longitude: 120.9795,
+        accuracy: 25,
+      },
+      timestamp: Date.now(),
+    };
+    mocks.readiness.mockResolvedValue({ matchable: true });
+    mocks.requestPermission.mockResolvedValue({ status: 'granted' });
+    mocks.getCurrentPosition.mockResolvedValue(position);
+    mocks.getLastKnownPosition.mockResolvedValue(position);
+    mocks.watchPosition.mockResolvedValue({ remove: mocks.removeWatch });
+    mocks.rpc.mockResolvedValue({
+      data: { online: true, lastSeenAt: new Date().toISOString() },
+      error: null,
+    });
+
+    const cleanup = await startForegroundWorkerPresence(vi.fn());
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+
+    cleanup();
+    vi.useRealTimers();
+  });
 });
