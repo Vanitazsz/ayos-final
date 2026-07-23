@@ -5,7 +5,7 @@ import { getWorkerMatchingReadiness } from '@/services/workerMatching';
 
 export type DispatchStatus = 'OFFERED'|'VIEWED'|'ACCEPTED'|'DECLINED'|'EXPIRED'|'SELECTED';
 export type LiveWorkerCandidate={dispatchId:string;workerId:string;status:DispatchStatus;name:string;avatar:string|null;distanceMeters:number;latitude:number;longitude:number;rating:number;reviewCount:number};
-export type DispatchSnapshot={serviceRequestId:string;startedAt:string;expiresAt:string;wave:1|2|3;candidates:LiveWorkerCandidate[]};
+export type DispatchSnapshot={serviceRequestId:string;startedAt:string;expiresAt:string;wave:1;searchRadiusMeters:number;candidates:LiveWorkerCandidate[]};
 export type DispatchOffer={dispatchId:string;serviceRequestId:string;status:DispatchStatus;distanceMeters:number;expiresAt:string;category:string;description:string;budget:number;area:string};
 export type PresenceState='starting'|'online'|'offline'|'permission_denied'|'not_ready'|'error';
 
@@ -27,7 +27,7 @@ async function rpc<T>(name:string,args?:Record<string,unknown>){
   if(error)throw normalizeSupabaseError(error);
   return data as T;
 }
-export const startLiveDispatch=(serviceRequestId:string)=>rpc<DispatchSnapshot>('start_live_dispatch',{p_service_request_id:serviceRequestId});
+export const startLiveDispatch=(serviceRequestId:string,searchRadiusMeters:number)=>rpc<DispatchSnapshot>('start_live_dispatch',{p_service_request_id:serviceRequestId,p_search_radius_meters:searchRadiusMeters});
 export const getLiveDispatchSnapshot=(serviceRequestId:string)=>rpc<DispatchSnapshot>('get_live_dispatch_snapshot',{p_service_request_id:serviceRequestId});
 export const getMyDispatchOffers=()=>rpc<DispatchOffer[]>('get_my_dispatch_offers');
 export const respondToDispatch=(dispatchId:string,response:'ACCEPTED'|'DECLINED')=>rpc<{dispatchId:string;status:DispatchStatus}>('respond_to_dispatch',{p_dispatch_id:dispatchId,p_response:response});
