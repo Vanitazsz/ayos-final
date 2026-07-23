@@ -1,13 +1,11 @@
 -- Queued AI and OpenRouteService contracts used by the approved Expo request flow.
 
 begin;
-
 alter table public.addresses
   add column if not exists geocoding_provider text,
   add column if not exists geocoding_provider_id text,
   add column if not exists geocoding_confidence numeric(5,4),
   add column if not exists geocoding_payload jsonb;
-
 create or replace view public.services with (security_invoker = true) as
 select template.id,
   template.category_id,
@@ -23,9 +21,7 @@ select template.id,
 from public.service_templates template
 join public.service_categories category on category.id = template.category_id
 where template.archived_at is null;
-
 grant select on public.services to anon, authenticated, service_role;
-
 create table public.ai_processing_consents (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete restrict,
@@ -37,7 +33,6 @@ create table public.ai_processing_consents (
   request_correlation_id text not null,
   unique(account_id, request_correlation_id)
 );
-
 create table public.ai_analysis_jobs (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete restrict,
@@ -60,15 +55,12 @@ create table public.ai_analysis_jobs (
   updated_at timestamptz not null default now(),
   unique(account_id, idempotency_key)
 );
-
 create index ai_analysis_jobs_status_created_idx on public.ai_analysis_jobs(status, created_at);
-
 alter table public.ai_analysis_attempts
   add column if not exists job_id uuid references public.ai_analysis_jobs(id) on delete set null,
   add column if not exists correlation_id text,
   add column if not exists usage_metadata jsonb not null default '{}',
   add column if not exists http_status integer;
-
 create table public.geocoding_cache (
   cache_key text primary key,
   operation text not null check (operation in ('SEARCH','REVERSE','ROUTE')),
@@ -78,9 +70,7 @@ create table public.geocoding_cache (
   expires_at timestamptz not null,
   created_at timestamptz not null default now()
 );
-
 create index geocoding_cache_expiry_idx on public.geocoding_cache(expires_at);
-
 create table public.route_snapshots (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid not null references public.bookings(id) on delete cascade,
@@ -92,14 +82,11 @@ create table public.route_snapshots (
   destination extensions.geography(Point,4326) not null,
   created_at timestamptz not null default now()
 );
-
 create index route_snapshots_booking_created_idx on public.route_snapshots(booking_id, created_at desc);
-
 alter table public.ai_processing_consents enable row level security;
 alter table public.ai_analysis_jobs enable row level security;
 alter table public.geocoding_cache enable row level security;
 alter table public.route_snapshots enable row level security;
-
 create policy ai_consents_owner_read on public.ai_processing_consents for select to authenticated
 using (account_id = auth.uid() or public.is_admin(false));
 create policy ai_consents_owner_insert on public.ai_processing_consents for insert to authenticated
@@ -108,12 +95,10 @@ create policy ai_jobs_owner_read on public.ai_analysis_jobs for select to authen
 using (account_id = auth.uid() or public.is_admin(false));
 create policy route_snapshots_booking_parties on public.route_snapshots for select to authenticated
 using (public.is_booking_party(booking_id) or public.is_admin(false));
-
 grant select, insert on public.ai_processing_consents to authenticated;
 grant select on public.ai_analysis_jobs, public.route_snapshots to authenticated;
 grant select, insert, update, delete on public.ai_processing_consents, public.ai_analysis_jobs,
   public.geocoding_cache, public.route_snapshots to service_role;
-
 create or replace function public.save_geocoded_address(
   p_label text, p_line1 text, p_line2 text, p_barangay text, p_city text, p_province text,
   p_postal_code text, p_latitude numeric, p_longitude numeric, p_provider_id text,
@@ -143,12 +128,10 @@ begin
   ) returning * into result;
   return result;
 end $$;
-
 revoke all on function public.save_geocoded_address(text,text,text,text,text,text,text,numeric,numeric,text,numeric,jsonb,boolean)
   from public, anon;
 grant execute on function public.save_geocoded_address(text,text,text,text,text,text,text,numeric,numeric,text,numeric,jsonb,boolean)
   to authenticated;
-
 insert into public.system_settings(key, value) values
   ('ai.enabled', 'false'),
   ('ai.consent_version', '"2026-07-21"'),
@@ -159,7 +142,5 @@ insert into public.system_settings(key, value) values
   ('ai.circuit_breaker_failures', '5'),
   ('geocoding.enabled', 'true')
 on conflict(key) do nothing;
-
 alter publication supabase_realtime add table public.ai_analysis_jobs;
-
 commit;
