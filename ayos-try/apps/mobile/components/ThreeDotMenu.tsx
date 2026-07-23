@@ -47,7 +47,6 @@ export const ThreeDotMenu = React.memo(function ThreeDotMenu({
         >
           <Pressable
             style={styles.menu}
-            onPress={(e) => e.stopPropagation()}
           >
             <Pressable
               style={styles.menuItem}

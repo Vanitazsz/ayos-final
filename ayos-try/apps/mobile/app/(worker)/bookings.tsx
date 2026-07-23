@@ -308,10 +308,7 @@ export default function WorkerBookingsScreen() {
                   <View style={styles.incomingActions}>
                     <TouchableOpacity
                       style={styles.declineBtn}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        decline(booking.id);
-                      }}
+                      onPress={() => decline(booking.id)}
                     >
                       <Text
                         style={[
@@ -324,10 +321,7 @@ export default function WorkerBookingsScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.acceptBtn}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        void accept(booking.id);
-                      }}
+                      onPress={() => void accept(booking.id)}
                     >
                       <Text
                         style={[

@@ -484,9 +484,14 @@ export default function BookingRequestScreen() {
                 leftIcon={<Calendar size={18} color={Colors.white} />}
                 fullWidth
                 onPress={() =>
-                  void acceptJob(booking.id).catch((error) =>
-                    Alert.alert('Unable to accept', error.message),
-                  )
+                  void acceptJob(booking.id)
+                    .then(() => {
+                      setBackendStatus('ACCEPTED');
+                      setBooking((b) => ({ ...b, status: 'accepted' }));
+                    })
+                    .catch((error) =>
+                      Alert.alert('Unable to accept', error.message),
+                    )
                 }
               />
               <AppButton
