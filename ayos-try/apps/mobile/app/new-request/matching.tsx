@@ -112,10 +112,10 @@ export default function MatchingScreen() {
         return;
       }
 
+      if (!requestId) throw new Error('Service request missing');
       setError('');
       setState('starting');
-      const selectedRadiusMeters = radiusKm * 1000;
-      const initialSnapshot = await startLiveDispatch(requestId, selectedRadiusMeters);
+      const initialSnapshot = await startLiveDispatch(requestId);
       setSnapshot(initialSnapshot);
       setNow(Date.now());
       setDispatchRequestId(requestId);
@@ -155,7 +155,7 @@ export default function MatchingScreen() {
       {(state === 'starting' || state === 'live') ? (
         <View style={styles.status}>
           <View style={styles.statusCopy}>
-            <Text style={theme.typography.h4}>Searching within {(snapshot?.searchRadiusMeters ?? radiusKm * 1000) / 1000} km</Text>
+            <Text style={theme.typography.h4}>Searching within {radiusKm} km</Text>
             <Text style={styles.secondary}>Matched workers will appear here as they respond.</Text>
             <View style={styles.matchCount}>
               <UsersRound size={16} color={theme.colors.primary} />
@@ -191,7 +191,7 @@ export default function MatchingScreen() {
 
 function RadiusConfiguration({ center, radiusKm, onChange, onStart }: { center: { latitude: number; longitude: number } | null; radiusKm: number; onChange: (radius: number) => void; onStart: () => void }) {
   return <ScrollView style={styles.configurationScroll} contentContainerStyle={styles.configuration} showsVerticalScrollIndicator={false}>
-    <View style={styles.mapContainer}>{center ? <MapSurface center={center} points={[{ id: 'service-location', ...center, color: theme.colors.error }]} radiusMeters={radiusKm * 1000} animateRadius /> : <Text style={styles.secondary}>Confirm a service location first.</Text>}</View>
+    <View style={styles.mapContainer}>{center ? <MapSurface center={center} points={[{ id: 'service-location', ...center, color: theme.colors.error }]} radiusMeters={radiusKm * 1000} /> : <Text style={styles.secondary}>Confirm a service location first.</Text>}</View>
     <Text style={theme.typography.h3}>Choose search radius</Text>
     <Text style={styles.configurationMessage}>Only eligible workers within this distance will be notified.</Text>
     <View style={styles.radiusControlRow}>
