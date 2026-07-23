@@ -1,7 +1,6 @@
 alter table public.bookings
   add column if not exists worker_start_lat double precision,
   add column if not exists worker_start_lng double precision;
-
 create or replace function public.snapshot_booking_worker_origin()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare origin extensions.geography;
@@ -17,12 +16,10 @@ begin
   end if;
   return new;
 end $$;
-
 drop trigger if exists snapshot_booking_worker_origin on public.bookings;
 create trigger snapshot_booking_worker_origin
 before insert on public.bookings for each row
 execute function public.snapshot_booking_worker_origin();
-
 update public.bookings b
 set worker_start_lat = extensions.st_y(w.service_origin::extensions.geometry),
     worker_start_lng = extensions.st_x(w.service_origin::extensions.geometry)
@@ -30,7 +27,6 @@ from public.worker_profiles w
 where w.account_id = b.worker_account_id
   and w.service_origin is not null
   and (b.worker_start_lat is null or b.worker_start_lng is null);
-
 create or replace function public.admin_cancel_booking(
   p_booking_id uuid,
   p_reason text
@@ -71,7 +67,6 @@ begin
   where id = result.service_request_id;
   return result;
 end $$;
-
 create or replace function public.admin_reassign_booking(
   p_booking_id uuid,
   p_worker_id uuid,
@@ -126,7 +121,6 @@ begin
   where id = current_booking.service_request_id;
   return replacement;
 end $$;
-
 revoke all on function public.admin_cancel_booking(uuid, text) from public, anon;
 revoke all on function public.admin_reassign_booking(uuid, uuid, text) from public, anon;
 grant execute on function public.admin_cancel_booking(uuid, text) to authenticated;
