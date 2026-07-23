@@ -141,7 +141,13 @@ export default function MatchingScreen() {
   return (
     <Screen safeArea>
       <View style={styles.header}>
-        <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()}>
+        <TouchableOpacity
+          accessibilityLabel="Go back"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
+          }}
+        >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={theme.typography.h4}>Live Worker Matching</Text>

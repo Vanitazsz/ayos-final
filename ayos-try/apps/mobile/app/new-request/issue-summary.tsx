@@ -81,7 +81,13 @@ export default function IssueSummaryScreen() {
   return (
     <Screen safeArea scrollable>
       <View style={[styles.header, { paddingHorizontal: theme.layout.screenPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
+          }}
+          style={styles.backButton}
+        >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>Summary</Text>

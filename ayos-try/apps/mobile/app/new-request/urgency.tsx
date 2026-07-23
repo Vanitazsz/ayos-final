@@ -59,7 +59,14 @@ export default function UrgencyScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
+          }}
+          hitSlop={12}
+        >
           <ChevronLeft size={24} color={Colors.textPrimary} strokeWidth={2.5} />
         </Pressable>
         <AppText variant="h4" weight="bold" style={styles.navTitle}>Urgency</AppText>
