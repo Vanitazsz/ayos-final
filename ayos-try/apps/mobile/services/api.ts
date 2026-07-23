@@ -1314,7 +1314,7 @@ export async function fetchConversations() {
     const { data, error } = await supabase
       .from('conversations')
       .select(
-        'id,booking_id,updated_at,conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
+        'id,booking_id,updated_at,conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
       )
       .order('updated_at', { ascending: false });
     if (error) throw error;
@@ -1332,16 +1332,20 @@ export async function fetchConversations() {
         );
         const latest = messages[0];
         const readAt = ownParticipant?.last_read_at;
+        const participantName =
+          participant?.user_profiles?.display_name ??
+          participant?.worker_profiles?.display_name ??
+          'Chat Participant';
+        const avatarPath =
+          participant?.user_profiles?.avatar_path ??
+          participant?.worker_profiles?.avatar_path ??
+          '';
+
         return {
           id: row.id,
           bookingId: row.booking_id,
-          name: requireIdentity(
-            participant?.user_profiles?.display_name,
-            'Conversation participant',
-          ),
-          avatar: await resolveProfileAvatar(
-            participant?.user_profiles?.avatar_path,
-          ),
+          name: participantName,
+          avatar: await resolveProfileAvatar(avatarPath),
           lastMessage: latest?.body ?? '',
           time: latest ? relative(latest.created_at) : '',
           unread: messages.filter(
