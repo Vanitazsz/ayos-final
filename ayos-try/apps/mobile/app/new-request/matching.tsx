@@ -85,6 +85,9 @@ export default function MatchingScreen() {
   );
   const accepted = candidates.filter((item) => item.status === 'ACCEPTED');
   const secondsLeft = Math.max(0, Math.ceil((new Date(snapshot?.expiresAt ?? 0).getTime() - now) / 1000));
+  const selectedBudgetMinor = Number.isInteger(draft.budgetMinor) && draft.budgetMinor >= 100 ? draft.budgetMinor : 0;
+  const aiBudgetMinor = Number(draft.aiResult?.estimatedCostMinimumMinor);
+  const budgetMinor = Number.isInteger(aiBudgetMinor) && aiBudgetMinor >= 100 ? aiBudgetMinor : selectedBudgetMinor;
 
   const startMatching = async () => {
     try {
@@ -104,7 +107,7 @@ export default function MatchingScreen() {
           latitude: draft.coords.latitude,
           longitude: draft.coords.longitude,
           scheduledAt,
-          budgetMinor: draft.aiResult?.estimatedCostMinimumMinor ?? draft.budgetMinor,
+          budgetMinor,
           analysisId: draft.aiResult?.analysisId ?? null,
         });
         requestId = created.id;
@@ -192,7 +195,7 @@ export default function MatchingScreen() {
               <Text style={styles.emptyMessage}>{diagnosticMessage(snapshot?.diagnostics) || `We are notifying eligible workers within your selected ${snapshot?.searchRadiusMeters ? snapshot.searchRadiusMeters / 1000 : radiusKm} km range.`}</Text>
             </View>
           ) : candidates.map((worker) => (
-            <WorkerCard key={worker.dispatchId} worker={worker} price={(draft.aiResult?.estimatedCostMinimumMinor ?? draft.budgetMinor) / 100} onChoose={() => void choose(worker)} />
+        <WorkerCard key={worker.dispatchId} worker={worker} price={budgetMinor / 100} onChoose={() => void choose(worker)} />
           ))}
         </ScrollView>
       ) : null}

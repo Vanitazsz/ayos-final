@@ -86,11 +86,21 @@ export default function TrackingScreen() {
       load,
       `id=eq.${bookingId}`,
     );
+    const stopStatusEvents = subscribeToTable(
+      'booking_status_events',
+      load,
+      `booking_id=eq.${bookingId}`,
+    );
+    const poll = setInterval(() => {
+      if (!tracking?.booking?.status || !['COMPLETED', 'CANCELLED'].includes(tracking.booking.status)) load();
+    }, 10000);
     return () => {
       stopLocation();
       stopBooking();
+      stopStatusEvents();
+      clearInterval(poll);
     };
-  }, [bookingId]);
+  }, [bookingId, tracking?.booking?.status]);
 
   const stepIndex = useMemo(() => {
     return workerStatus && STATUS_STEP_MAP[workerStatus] !== undefined
