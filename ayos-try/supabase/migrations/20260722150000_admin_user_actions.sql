@@ -63,7 +63,6 @@ begin
   return result;
 end
 $$;
-
 create or replace function public.admin_soft_delete_account(p_account_id uuid)
 returns public.trash_entries
 language plpgsql
@@ -121,7 +120,6 @@ begin
   return result;
 end
 $$;
-
 create or replace function public.restore_from_trash(trash_id uuid)
 returns public.trash_entries
 language plpgsql
@@ -182,7 +180,6 @@ begin
   return result;
 end
 $$;
-
 revoke all on function public.admin_update_user(uuid, text, text) from public, anon;
 revoke all on function public.admin_soft_delete_account(uuid) from public, anon;
 grant execute on function public.admin_update_user(uuid, text, text) to authenticated;
