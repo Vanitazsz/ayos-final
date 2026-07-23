@@ -20,13 +20,15 @@ export default function RootLayout() {
 
   useEffect(() => {
     let mounted = true;
+    let syncVersion = 0;
     setLoading(true);
     const sync = async () => {
+      const version = ++syncVersion;
       try {
         const user = await loadCurrentUser();
-        if (mounted) setSessionUser(user);
+        if (mounted && version === syncVersion) setSessionUser(user);
       } catch {
-        if (mounted) setSessionUser(null);
+        if (mounted && version === syncVersion) setSessionUser(null);
       } finally {
         SplashScreen.hideAsync();
       }
@@ -37,6 +39,7 @@ export default function RootLayout() {
     });
     return () => {
       mounted = false;
+      syncVersion += 1;
       listener.subscription.unsubscribe();
     };
   }, [setLoading, setSessionUser]);
