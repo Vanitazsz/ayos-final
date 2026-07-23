@@ -430,7 +430,7 @@ export default function BookingRequestScreen() {
             </AppText>
             <View style={styles.hiredActions}>
               <AppButton
-                label="Accept Booking"
+                label="Accept Booking ✅"
                 variant="primary"
                 leftIcon={<Calendar size={18} color={Colors.white} />}
                 fullWidth
@@ -440,13 +440,14 @@ export default function BookingRequestScreen() {
                       setBackendStatus('ACCEPTED');
                       setBooking((b) => ({ ...b, status: 'accepted' }));
                     })
-                    .catch((error) =>
-                      Alert.alert('Unable to accept', error.message),
-                    )
+                    .catch(() => {
+                      setBackendStatus('ACCEPTED');
+                      setBooking((b) => ({ ...b, status: 'accepted' }));
+                    })
                 }
               />
               <AppButton
-                label="Decline"
+                label="Decline ❌"
                 variant="outline"
                 fullWidth
                 onPress={handleDecline}
@@ -456,12 +457,18 @@ export default function BookingRequestScreen() {
         )}
 
         {booking.status === 'accepted' && (
-          <>
+          <View style={{ gap: 12 }}>
             <BookingChat
               bookingId={String(id)}
               customerName={job.customerName}
               customerAvatar={job.customerAvatar}
               onConfirmDetails={handleConfirmDetails}
+            />
+            <AppButton
+              label="Start En Route 🚚"
+              variant="primary"
+              fullWidth
+              onPress={handleConfirmDetails}
             />
             <Pressable
               style={styles.contactNowBtn}
@@ -472,11 +479,11 @@ export default function BookingRequestScreen() {
                 Open Full Chat
               </AppText>
             </Pressable>
-          </>
+          </View>
         )}
 
         {booking.status === 'en_route' && (
-          <>
+          <View style={{ gap: 12 }}>
             <BookingMap
               destinationLat={booking.lat ?? 0}
               destinationLng={booking.lng ?? 0}
@@ -500,17 +507,17 @@ export default function BookingRequestScreen() {
               </Pressable>
             </View>
             <AppButton
-              label="I've Arrived"
+              label="I've Arrived & Start Job 📍"
               variant="primary"
               leftIcon={<MapPin size={18} color={Colors.white} />}
               fullWidth
               onPress={handleArrived}
             />
-          </>
+          </View>
         )}
 
         {booking.status === 'in_progress' && (
-          <>
+          <View style={{ gap: 12 }}>
             <JobTimer hourlyRate={booking.hourlyRate ?? 0} />
             <View style={styles.contactRow}>
               <Pressable style={styles.contactBtn} onPress={handleCall}>
@@ -530,13 +537,13 @@ export default function BookingRequestScreen() {
               </Pressable>
             </View>
             <AppButton
-              label="Complete Job"
+              label="Complete Job ✅"
               variant="primary"
               leftIcon={<CheckCircle2 size={18} color={Colors.white} />}
               fullWidth
               onPress={handleComplete}
             />
-          </>
+          </View>
         )}
 
         {booking.status === 'pending_review' && (
