@@ -14,12 +14,10 @@ declare
   target public.accounts;
   fk record;
   key_pair record;
+  table_to_delete record;
   join_clause text;
   added_rows integer;
   current_rows integer;
-  row_to_delete record;
-  deleted_in_pass integer;
-  remaining_rows integer;
 begin
   if not public.is_admin(true) then
     raise exception using errcode = '42501', message = 'AAL2_ADMIN_REQUIRED';
@@ -125,56 +123,33 @@ begin
     exit when added_rows = 0;
   end loop;
 
-  -- Remove deepest dependencies first. A row-level retry loop handles tables
-  -- that occur at multiple dependency depths and self-referencing foreign keys.
+  -- Remove deepest dependencies first, then the public account row.
+  for table_to_delete in
+    select
+      rows.table_oid,
+      namespace.nspname as table_schema,
+      relation.relname as table_name,
+      max(rows.depth) as max_depth
+    from pg_temp.hard_delete_rows rows
+    join pg_catalog.pg_class relation on relation.oid = rows.table_oid
+    join pg_catalog.pg_namespace namespace on namespace.oid = relation.relnamespace
+    group by rows.table_oid, namespace.nspname, relation.relname
+    order by max(rows.depth) desc
   loop
-    deleted_in_pass := 0;
-    for row_to_delete in
-      select
-        rows.table_oid,
-        rows.row_ctid,
-        rows.depth,
-        namespace.nspname as table_schema,
-        relation.relname as table_name
-      from pg_temp.hard_delete_rows rows
-      join pg_catalog.pg_class relation on relation.oid = rows.table_oid
-      join pg_catalog.pg_namespace namespace on namespace.oid = relation.relnamespace
-      order by rows.depth desc
-    loop
-      begin
-        execute format(
-          'delete from %I.%I where ctid = $1',
-          row_to_delete.table_schema,
-          row_to_delete.table_name
-        ) using row_to_delete.row_ctid;
-        get diagnostics current_rows = row_count;
-        if current_rows > 0 then
-          delete from pg_temp.hard_delete_rows
-          where table_oid = row_to_delete.table_oid
-            and row_ctid = row_to_delete.row_ctid;
-          deleted_in_pass := deleted_in_pass + current_rows;
-        else
-          delete from pg_temp.hard_delete_rows
-          where table_oid = row_to_delete.table_oid
-            and row_ctid = row_to_delete.row_ctid;
-        end if;
-      exception
-        when foreign_key_violation then
-          -- A parent row may still have a marked child. It will be retried
-          -- after that child has been removed in this or the next pass.
-          null;
-      end;
-    end loop;
-
-    select count(*) into remaining_rows from pg_temp.hard_delete_rows;
-    exit when remaining_rows = 0;
-    if deleted_in_pass = 0 then
-      raise exception using
-        errcode = '23503',
-        message = 'ACCOUNT_DELETE_BLOCKED_BY_RELATED_RECORDS',
-        detail = 'Unable to resolve all dependent records for this account.';
-    end if;
+    execute format(
+      'delete from %I.%I where ctid in (
+         select row_ctid from pg_temp.hard_delete_rows where table_oid = %L::oid
+       )',
+      table_to_delete.table_schema,
+      table_to_delete.table_name,
+      table_to_delete.table_oid
+    );
   end loop;
+
+  -- Remove private Storage metadata owned by the account before Auth deletion.
+  delete from storage.objects
+  where owner_id = target.id::text
+     or name like target.id::text || '/%';
 
   delete from auth.users where id = target.id;
 
@@ -188,33 +163,5 @@ begin
   );
 end
 $$;
-
 revoke all on function public.admin_delete_account(uuid, text) from public, anon;
 grant execute on function public.admin_delete_account(uuid, text) to authenticated;
-
-create or replace function public.admin_list_account_storage_objects(p_account_id uuid)
-returns table(bucket_id text, name text)
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  if not public.is_admin(true) then
-    raise exception using errcode = '42501', message = 'AAL2_ADMIN_REQUIRED';
-  end if;
-
-  return query
-  select object.bucket_id, object.name
-  from storage.objects object
-  where object.owner_id::text = p_account_id::text
-     or object.name like p_account_id::text || '/%';
-end
-$$;
-
-revoke all on function public.admin_list_account_storage_objects(uuid) from public, anon;
-grant execute on function public.admin_list_account_storage_objects(uuid) to authenticated;
-
-drop policy if exists storage_admin_delete on storage.objects;
-create policy storage_admin_delete on storage.objects
-for delete to authenticated
-using (public.is_admin(true));
