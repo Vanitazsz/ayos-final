@@ -37,6 +37,13 @@ export function subscribeToDispatch(onChange:()=>void,filter?:string){
   return()=>{void supabase.removeChannel(channel);};
 }
 
+function sanitizeAccuracy(accuracy: number | null | undefined): number | null {
+  if (accuracy == null || !Number.isFinite(accuracy)) return null;
+  if (accuracy < 0) return 0;
+  if (accuracy > 9999) return 9999;
+  return Math.round(accuracy * 100) / 100;
+}
+
 export async function startForegroundWorkerPresence(onState:(state:PresenceState,message?:string)=>void){
   const readiness=await getWorkerMatchingReadiness();
   if(!readiness.matchable){onState('not_ready','Complete Service Availability and switch Available for matching on.');return()=>{};}
@@ -44,7 +51,11 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
   if(permission.status!=='granted'){onState('permission_denied','Location permission is required to receive nearby requests.');return()=>{};}
   let stopped=false;let subscription:Location.LocationSubscription|null=null;
   const publish=async(position:Location.LocationObject,online=true)=>{
-    try{await rpc('update_worker_presence',{p_latitude:position.coords.latitude,p_longitude:position.coords.longitude,p_accuracy_meters:position.coords.accuracy,p_online:online});if(!stopped)onState(online?'online':'offline');}
+    try{
+      const accuracy=sanitizeAccuracy(position?.coords?.accuracy);
+      await rpc('update_worker_presence',{p_latitude:position.coords.latitude,p_longitude:position.coords.longitude,p_accuracy_meters:accuracy,p_online:online});
+      if(!stopped)onState(online?'online':'offline');
+    }
     catch(error){if(!stopped)onState('error',normalizeSupabaseError(error).message);}
   };
   const begin=async()=>{if(stopped||subscription)return;onState('starting');subscription=await Location.watchPositionAsync({accuracy:Location.Accuracy.Balanced,timeInterval:10000,distanceInterval:20},position=>void publish(position,true));};
