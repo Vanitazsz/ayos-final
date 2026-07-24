@@ -31,7 +31,7 @@ import {
   ArrowUpFromLine,
   PlusCircle,
 } from 'lucide-react-native';
-import { fetchWorkerProfile } from '@/services/api';
+import { fetchWorkerProfile, subscribeToTable } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -143,6 +143,7 @@ export default function WorkerProfileScreen() {
   };
   useEffect(() => {
     void load();
+    return subscribeToTable('reviews', load);
   }, []);
   const chooseAvatar = async () => {
     try {

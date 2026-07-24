@@ -4,14 +4,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
 import { ReviewsTab } from '@/components/ReviewsTab';
 import { SearchBar } from '@/components/SearchBar';
-import { fetchWorkerReviews, type ReviewData } from '@/services/api';
+import { fetchWorkerReviews, subscribeToTable, type ReviewData } from '@/services/api';
 
 export default function WorkerReviewsScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [reviews, setReviews] = useState<ReviewData[]>([]);
 
-  useEffect(() => { void fetchWorkerReviews().then((result) => setReviews(result.data)); }, []);
+  useEffect(() => {
+    const load = () =>
+      void fetchWorkerReviews().then((result) => setReviews(result.data));
+    load();
+    return subscribeToTable('reviews', load);
+  }, []);
 
   const filteredReviews = useMemo(() => {
     if (!searchQuery.trim()) return reviews;
