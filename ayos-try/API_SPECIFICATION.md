@@ -53,6 +53,10 @@ Example accepted response:
 
 Hosted verification on 2026-07-22 returned 10 active industries with five active skills each. Cleaning, Electrical, and Plumbing retained their pre-migration UUIDs.
 
+### Published customer content
+
+`GET /rest/v1/content_pages?key=eq.{HELP_CENTER|PRIVACY}&published_at=not.is.null&select=title,body,version,updated_at` returns the published customer Help Center or Privacy Policy through the existing content-page RLS policy. The mobile service maps the row to `ContentPageViewModel`; no row returns the unavailable state, and query failure returns the retry state. Content remains administrator-managed and is not embedded in the Profile component.
+
 The SQL migration containing each function is the executable request/response authority. Literal frontend calls are checked by `pnpm contracts:check`.
 
 | Group                      | RPCs                                                                                                                                                                                                                                                                                            |

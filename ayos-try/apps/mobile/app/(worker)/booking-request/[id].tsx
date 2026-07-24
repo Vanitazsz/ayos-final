@@ -466,6 +466,9 @@ export default function BookingRequestScreen() {
                       setBackendStatus('ACCEPTED');
                       setBooking((b) => ({ ...b, status: 'accepted' }));
                     })
+                    .catch((error) =>
+                      Alert.alert('Unable to accept', error.message),
+                    )
                     .catch((err: any) => {
                       const msg = err?.message ?? err?.code ?? String(err);
                       console.error('acceptJob error:', msg, err);

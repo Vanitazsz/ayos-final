@@ -4,13 +4,15 @@ import { Redirect, Tabs } from 'expo-router';
 import { LayoutDashboard, Search, CalendarDays, User, Wallet, MessageSquare } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
+import { WorkerPresenceProvider } from '@/context/WorkerPresenceContext';
 
 export default function WorkerTabLayout() {
   const { user, isAuthenticated, isLoading } = useAuthStore();
   if (!isLoading && !isAuthenticated) return <Redirect href="/(auth)/login" />;
   if (!isLoading && user?.role !== 'WORKER') return <Redirect href="/(tabs)/home" />;
+  if (isLoading || !isAuthenticated || user?.role !== 'WORKER') return null;
   return (
-    <Tabs
+    <WorkerPresenceProvider enabled><Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
@@ -111,6 +113,6 @@ export default function WorkerTabLayout() {
         name="cancel-service/[id]"
         options={{ href: null }}
       />
-    </Tabs>
+    </Tabs></WorkerPresenceProvider>
   );
 }

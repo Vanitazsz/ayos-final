@@ -458,7 +458,7 @@ export async function fetchServiceCategories() {
       id: row.id,
       label: row.name,
       slug: row.slug,
-      minimumPriceMinor: Number(row.minimum_price_minor ?? 0),
+      minimumPriceMinor: row.minimum_price_minor != null ? Number(row.minimum_price_minor) : null,
       maximumPriceMinor: Number(row.maximum_price_minor ?? 0),
       isSafetyCritical: Boolean(row.is_safety_critical),
       icon: 'Wrench' as const,
@@ -1197,8 +1197,14 @@ export async function publishServiceRequest(input: {
   longitude: number;
   scheduledAt: string;
   budgetMinor: number;
+  minimumBudgetMinor?: number;
   analysisId?: string | null;
 }) {
+  const budgetMinor = Number(input.budgetMinor);
+  const minimumBudgetMinor = Math.max(100, Math.round(Number(input.minimumBudgetMinor ?? 100)));
+  if (!Number.isFinite(budgetMinor) || !Number.isInteger(budgetMinor) || budgetMinor < minimumBudgetMinor) {
+    throw new Error(`Enter a valid service budget of at least ₱${(minimumBudgetMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`);
+  }
   const details = input.addressDetails ?? {};
   let addressId = input.addressId ?? null;
   if (!addressId) {
@@ -1228,7 +1234,7 @@ export async function publishServiceRequest(input: {
     address_id: addressId,
     description: input.description,
     scheduled_at: input.scheduledAt,
-    budget: Math.max(1, input.budgetMinor) / 100,
+    budget: budgetMinor / 100,
     notes: null,
     ai_analysis_id: input.analysisId ?? null,
     notify_on_match: true,

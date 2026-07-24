@@ -23,6 +23,7 @@ import {
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
+import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -57,12 +58,22 @@ export default function WorkerBookingsScreen() {
     filter === 'Cancelled' ? 'Cancelled' : 'Upcoming',
   );
   const [bookings, setBookings] = useState<WorkerBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const { state: presenceState, message: presenceMessage } = useWorkerPresence();
   const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
-  const load = () =>
-    void fetchWorkerBookings().then((result) => setBookings(result.data));
+  const load = async () => {
+    setLoading(true);
+    const result = await fetchWorkerBookings();
+    setBookings(result.data);
+    setLoadError(result.error ?? '');
+    setLoading(false);
+  };
   useEffect(() => {
-    load();
-    return subscribeToTable('bookings', load);
+    void load();
+    const stop = subscribeToTable('bookings', () => void load());
+    const poll = setInterval(() => void load(), 10000);
+    return () => { stop(); clearInterval(poll); };
   }, []);
   const accept = async (id: string) => {
     try {
@@ -96,6 +107,9 @@ export default function WorkerBookingsScreen() {
     <Screen safeArea backgroundColor={theme.colors.background}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
+      </View>
+      <View style={[styles.presenceStrip, presenceState === 'online' ? styles.presenceOnline : styles.presenceOffline]}>
+        <Text style={styles.presenceStripText}>{presenceState === 'online' ? 'Online and receiving requests' : presenceMessage || ({ starting: 'Starting location sharing…', paused: 'Presence paused', offline: 'Offline', permission_denied: 'Location permission required', not_ready: 'Complete worker setup', error: 'Location heartbeat error' } as Record<string, string>)[presenceState]}</Text>
       </View>
 
       {isCurrentlyWorking && (
@@ -144,7 +158,10 @@ export default function WorkerBookingsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
+      {loading ? <View style={styles.centerState}><Text style={theme.typography.body1}>Loading bookings…</Text></View> : null}
+      {!loading && loadError ? <View style={styles.centerState}><Text style={[theme.typography.body1, { color: theme.colors.error }]}>{loadError}</Text><TouchableOpacity onPress={() => void load()}><Text style={styles.retryText}>Retry</Text></TouchableOpacity></View> : null}
+
+      {!loading && !loadError ? <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
@@ -294,7 +311,6 @@ export default function WorkerBookingsScreen() {
                     </View>
                   </View>
                 </View>
-              </Pressable>
               {booking.status === 'pending' && (
                 <View style={styles.incomingActions}>
                   <TouchableOpacity
@@ -325,10 +341,11 @@ export default function WorkerBookingsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+              </Pressable>
             </View>
           ))
         )}
-      </ScrollView>
+      </ScrollView> : null}
     </Screen>
   );
 }
@@ -428,4 +445,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.primary,
   },
+  centerState: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, gap: theme.spacing.sm },
+  retryText: { color: theme.colors.primary, fontWeight: '700' },
+  presenceStrip: { marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radius.md },
+  presenceOnline: { backgroundColor: '#E8F8F0' },
+  presenceOffline: { backgroundColor: theme.colors.borderLight },
+  presenceStripText: { color: theme.colors.textSecondary, fontWeight: '600', textAlign: 'center' },
 });
