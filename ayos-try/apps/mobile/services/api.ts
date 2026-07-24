@@ -458,7 +458,7 @@ export async function fetchServiceCategories() {
       id: row.id,
       label: row.name,
       slug: row.slug,
-      minimumPriceMinor: Number(row.minimum_price_minor ?? 0),
+      minimumPriceMinor: row.minimum_price_minor != null ? Number(row.minimum_price_minor) : null,
       maximumPriceMinor: Number(row.maximum_price_minor ?? 0),
       isSafetyCritical: Boolean(row.is_safety_critical),
       icon: 'Wrench' as const,
