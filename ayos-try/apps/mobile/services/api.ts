@@ -458,7 +458,7 @@ export async function fetchServiceCategories() {
       id: row.id,
       label: row.name,
       slug: row.slug,
-      minimumPriceMinor: Number(row.minimum_price_minor ?? 0),
+      minimumPriceMinor: row.minimum_price_minor != null ? Number(row.minimum_price_minor) : null,
       maximumPriceMinor: Number(row.maximum_price_minor ?? 0),
       isSafetyCritical: Boolean(row.is_safety_critical),
       icon: 'Wrench' as const,
@@ -689,33 +689,35 @@ export async function fetchWorkerBookings(): Promise<
   });
 }
 async function transition(bookingId: string, status: string, reason?: string) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('version')
-    .eq('id', bookingId)
-    .single();
-  if (bookingError) throw bookingError;
+  console.log(`[transition] Attempting ${status} on booking ${bookingId}`);
   const { data, error } = await supabase.rpc('transition_booking', {
     p_booking_id: bookingId,
     p_target_status: status,
-    p_expected_version: booking.version,
     p_reason: reason ?? null,
   });
-  if (error) throw error;
+  if (error) {
+    console.error(`[transition] RPC error for ${status}:`, error.message, error.code, error.details);
+    throw error;
+  }
+  console.log(`[transition] RPC success for ${status}`);
   return { data };
 }
 export async function acceptJob(bookingId: string) {
   try {
     return await transition(bookingId, 'ACCEPTED');
   } catch (err) {
-    console.warn('acceptJob transition fallback:', err);
+    console.warn('[acceptJob] RPC failed, trying fallback:', err);
     const { data, error } = await supabase
       .from('bookings')
       .update({ status: 'ACCEPTED', accepted_at: new Date().toISOString() })
       .eq('id', bookingId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[acceptJob] Fallback also failed:', error.message, error.code);
+      throw error;
+    }
+    console.log('[acceptJob] Fallback succeeded');
     return { data };
   }
 }
@@ -725,42 +727,57 @@ export async function prepareJob(bookingId: string) {
 export async function departForJob(bookingId: string) {
   try {
     return await transition(bookingId, 'WORKER_EN_ROUTE');
-  } catch {
+  } catch (err) {
+    console.warn('[departForJob] RPC failed, trying fallback:', err);
     const { data, error } = await supabase
       .from('bookings')
       .update({ status: 'WORKER_EN_ROUTE' })
       .eq('id', bookingId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[departForJob] Fallback also failed:', error.message, error.code);
+      throw error;
+    }
+    console.log('[departForJob] Fallback succeeded');
     return { data };
   }
 }
 export async function arriveAtJob(bookingId: string) {
   try {
     return await transition(bookingId, 'WORKER_ARRIVED');
-  } catch {
+  } catch (err) {
+    console.warn('[arriveAtJob] RPC failed, trying fallback:', err);
     const { data, error } = await supabase
       .from('bookings')
       .update({ status: 'WORKER_ARRIVED' })
       .eq('id', bookingId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[arriveAtJob] Fallback also failed:', error.message, error.code);
+      throw error;
+    }
+    console.log('[arriveAtJob] Fallback succeeded');
     return { data };
   }
 }
 export async function startJob(bookingId: string) {
   try {
     return await transition(bookingId, 'SERVICE_STARTED');
-  } catch {
+  } catch (err) {
+    console.warn('[startJob] RPC failed, trying fallback:', err);
     const { data, error } = await supabase
       .from('bookings')
       .update({ status: 'SERVICE_STARTED' })
       .eq('id', bookingId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[startJob] Fallback also failed:', error.message, error.code);
+      throw error;
+    }
+    console.log('[startJob] Fallback succeeded');
     return { data };
   }
 }
@@ -770,14 +787,19 @@ export async function markJobInProgress(bookingId: string) {
 export async function completeJob(bookingId: string) {
   try {
     return await transition(bookingId, 'COMPLETED');
-  } catch {
+  } catch (err) {
+    console.warn('[completeJob] RPC failed, trying fallback:', err);
     const { data, error } = await supabase
       .from('bookings')
       .update({ status: 'COMPLETED', completed_at: new Date().toISOString() })
       .eq('id', bookingId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('[completeJob] Fallback also failed:', error.message, error.code);
+      throw error;
+    }
+    console.log('[completeJob] Fallback succeeded');
     return { data };
   }
 }
@@ -785,7 +807,7 @@ export async function cancelBooking(bookingId: string, reason: string) {
   try {
     const { data: booking } = await supabase
       .from('bookings')
-      .select('status,version')
+      .select('status')
       .eq('id', bookingId)
       .single();
 
@@ -801,7 +823,6 @@ export async function cancelBooking(bookingId: string, reason: string) {
 
     const { data, error } = await supabase.rpc('cancel_booking', {
       p_booking_id: bookingId,
-      p_expected_version: booking?.version ?? 1,
       p_stage: stages[booking?.status ?? 'PENDING'] ?? 'BEFORE_ACCEPTANCE',
       p_reason_code: 'DECLINED',
       p_details: reason || 'Worker declined assigned booking',
@@ -1148,8 +1169,14 @@ export async function publishServiceRequest(input: {
   longitude: number;
   scheduledAt: string;
   budgetMinor: number;
+  minimumBudgetMinor?: number;
   analysisId?: string | null;
 }) {
+  const budgetMinor = Number(input.budgetMinor);
+  const minimumBudgetMinor = Math.max(100, Math.round(Number(input.minimumBudgetMinor ?? 100)));
+  if (!Number.isFinite(budgetMinor) || !Number.isInteger(budgetMinor) || budgetMinor < minimumBudgetMinor) {
+    throw new Error(`Enter a valid service budget of at least ₱${(minimumBudgetMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`);
+  }
   const details = input.addressDetails ?? {};
   let addressId = input.addressId ?? null;
   if (!addressId) {
@@ -1179,7 +1206,7 @@ export async function publishServiceRequest(input: {
     address_id: addressId,
     description: input.description,
     scheduled_at: input.scheduledAt,
-    budget: Math.max(1, input.budgetMinor) / 100,
+    budget: budgetMinor / 100,
     notes: null,
     ai_analysis_id: input.analysisId ?? null,
     notify_on_match: true,

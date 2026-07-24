@@ -6,7 +6,7 @@ import { getWorkerMatchingReadiness } from '@/services/workerMatching';
 export type DispatchStatus = 'OFFERED'|'VIEWED'|'ACCEPTED'|'DECLINED'|'EXPIRED'|'SELECTED';
 export type LiveWorkerCandidate={dispatchId:string;workerId:string;status:DispatchStatus;name:string;avatar:string|null;distanceMeters:number;latitude:number;longitude:number;rating:number;reviewCount:number};
 export type DispatchDiagnostics={reasonCode:'NO_ACTIVE_WORKERS'|'NO_CATEGORY_WORKERS'|'NO_APPROVED_WORKERS'|'WORKERS_OFFLINE'|'NO_FRESH_PRESENCE'|'OUTSIDE_SEARCH_RADIUS'|'OUTSIDE_WORKING_HOURS'|'WAITING_FOR_RESPONSE';counts:{active:number;skilled:number;approved:number;available:number;freshPresence:number;withinWave:number;scheduled:number;subdivisionCompatible:number}};
-export type DispatchSnapshot={serviceRequestId:string;startedAt:string;expiresAt:string;wave:1|2|3;diagnostics:DispatchDiagnostics;candidates:LiveWorkerCandidate[]};
+export type DispatchSnapshot={serviceRequestId:string;startedAt:string;expiresAt:string;wave:1|2|3;searchRadiusMeters:number;diagnostics:DispatchDiagnostics;candidates:LiveWorkerCandidate[]};
 export type DispatchOffer={dispatchId:string;serviceRequestId:string;status:DispatchStatus;distanceMeters:number;expiresAt:string;category:string;description:string;budget:number;area:string};
 export type PresenceState='starting'|'online'|'paused'|'offline'|'permission_denied'|'not_ready'|'error';
 export type WorkerLiveStatus={subdivisionId:string|null;subdivisionName:string|null;serviceArea:string|null;radiusMeters:number|null;presenceOnline:boolean;lastSeenAt:string|null;latitude:number|null;longitude:number|null;accuracyMeters:number|null};
@@ -29,7 +29,7 @@ async function rpc<T>(name:string,args?:Record<string,unknown>){
   if(error)throw normalizeSupabaseError(error);
   return data as T;
 }
-export const startLiveDispatch=(serviceRequestId:string)=>rpc<DispatchSnapshot>('start_live_dispatch',{p_service_request_id:serviceRequestId});
+export const startLiveDispatch=(serviceRequestId:string,searchRadiusMeters:number)=>rpc<DispatchSnapshot>('start_live_dispatch',{p_service_request_id:serviceRequestId,p_search_radius_meters:searchRadiusMeters});
 export const getLiveDispatchSnapshot=(serviceRequestId:string)=>rpc<DispatchSnapshot>('get_live_dispatch_snapshot',{p_service_request_id:serviceRequestId});
 export const getMyDispatchOffers=()=>rpc<DispatchOffer[]>('get_my_dispatch_offers');
 export const getMyWorkerLiveStatus=()=>rpc<WorkerLiveStatus>('get_my_worker_live_status');
@@ -100,6 +100,7 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
     active=false;
     if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
     subscription?.remove();
+    try{subscription?.remove?.();}catch{}
     subscription=null;
   };
 
@@ -144,9 +145,16 @@ export async function startForegroundWorkerPresence(onState:(state:PresenceState
       },60000);
     }
   });
+  const webDocument=typeof document !== 'undefined' ? document : null;
+  const onVisibility=()=>{ if (webDocument?.visibilityState === 'visible') void begin(); else { stopActivePresence(); onState('paused','Tab inactive — matching will pause after 60 seconds.'); } };
+  const onFocus=()=>void begin();
+  webDocument?.addEventListener('visibilitychange',onVisibility);
+  webDocument?.defaultView?.addEventListener('focus',onFocus);
   return()=>{
     stopped=true;
     appState.remove();
+    webDocument?.removeEventListener('visibilitychange',onVisibility);
+    webDocument?.defaultView?.removeEventListener('focus',onFocus);
     stopActivePresence();
     if(backgroundGraceTimer){clearTimeout(backgroundGraceTimer);backgroundGraceTimer=null;}
     void publishOffline();

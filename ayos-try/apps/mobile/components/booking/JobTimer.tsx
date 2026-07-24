@@ -4,6 +4,7 @@ import { Clock } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
+import { calculateWorkerEarnings } from '@/services/workerEarnings';
 
 interface JobTimerProps {
   hourlyRate: number;
@@ -27,8 +28,7 @@ export const JobTimer = React.memo(function JobTimer({ hourlyRate }: JobTimerPro
     return () => clearInterval(interval);
   }, [timerStart, tick]);
 
-  const hours = elapsedSeconds / 3600;
-  const earnings = hourlyRate * hours;
+  const earnings = calculateWorkerEarnings(elapsedSeconds / 60, hourlyRate).finalWorkerEarnings;
 
   return (
     <View style={styles.container}>
@@ -48,12 +48,12 @@ export const JobTimer = React.memo(function JobTimer({ hourlyRate }: JobTimerPro
       <View style={styles.earningsRow}>
         <AppText variant="body" color={Colors.textSecondary}>Earnings</AppText>
         <AppText variant="h3" weight="bold" color={Colors.success}>
-          ${earnings.toFixed(2)}
+          ₱{earnings.toFixed(2)}
         </AppText>
       </View>
 
       <AppText variant="caption" color={Colors.textTertiary} style={styles.rateText}>
-        Rate: ${hourlyRate}/hr
+        Rate: ₱14 per 10 minutes · capped by the customer budget
       </AppText>
     </View>
   );

@@ -57,8 +57,12 @@ export const BookingMap = React.memo(function BookingMap({
     latitude: routeLat ?? destinationLat,
     longitude: routeLng ?? destinationLng,
   };
+  const safeLat = (v: number) => (Number.isFinite(v) ? v : destinationLat);
+  const safeLng = (v: number) => (Number.isFinite(v) ? v : destinationLng);
+  const centerLat = safeLat((current.latitude + destinationLat) / 2);
+  const centerLng = safeLng((current.longitude + destinationLng) / 2);
   const points = [
-    ...(startLat != null && startLng != null
+    ...(startLat != null && startLng != null && Number.isFinite(startLat) && Number.isFinite(startLng)
       ? [
           {
             id: 'start',
@@ -68,7 +72,7 @@ export const BookingMap = React.memo(function BookingMap({
           },
         ]
       : []),
-    ...(workerLat != null && workerLng != null
+    ...(workerLat != null && workerLng != null && Number.isFinite(workerLat) && Number.isFinite(workerLng)
       ? [
           {
             id: 'worker',
@@ -85,12 +89,17 @@ export const BookingMap = React.memo(function BookingMap({
       color: Colors.error,
     },
   ];
+  if (
+    !Number.isFinite(destinationLat) ||
+    !Number.isFinite(destinationLng)
+  )
+    return null;
   return (
     <View style={styles.container}>
       <MapSurface
         center={{
-          latitude: (current.latitude + destinationLat) / 2,
-          longitude: (current.longitude + destinationLng) / 2,
+          latitude: centerLat,
+          longitude: centerLng,
         }}
         points={points}
         route={route ?? undefined}

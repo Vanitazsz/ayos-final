@@ -3,7 +3,7 @@
 ```text
 A-YOS/
 ├── apps/
-│   ├── mobile/                 Expo User/Worker application, MapLibre views, Supabase repositories, and shared catalog search
+│   ├── mobile/                 Expo User/Worker application, MapLibre views, Supabase repositories, catalog search, and published content pages
 │   └── admin/                  Approved Vite/React administrator dashboard
 ├── packages/
 │   ├── contracts/              Shared validation, enums, errors, and event payloads
@@ -18,7 +18,7 @@ A-YOS/
 │   ├── functions/              AI, maps, reports, Auth, invitations, provider, payment, and queue functions
 │   ├── tests/database/         pgTAP security and invariant tests
 │   ├── sql-editor-install.sql  Generated clean-project installer
-│   └── seed.sql                Development-only legal content; production taxonomy lives in an additive migration
+│   └── seed.sql                Stable Help/Privacy content plus local-only Terms/Refund placeholders; production changes use additive migrations
 ├── tests/                      Platform, security, traceability, and E2E suites, including worker taxonomy and service-grid expansion
 ├── playwright.config.ts        Admin and Expo web executable browser smoke configuration
 ├── scripts/                    Bootstrap, traceability, local Supabase, stack, and CI Shell tooling
@@ -30,6 +30,7 @@ A-YOS/
 
 - Supabase SQL migrations are the only schema authority. Every exposed table enables RLS.
 - Expo and the Vite administrator application use `@supabase/supabase-js`; neither receives the secret key.
+- Customer Help Center and Privacy Policy screens read published `content_pages` rows and remain inside the immutable User tab-role boundary.
 - The administrator application validates the Supabase session, administrator role, persisted profile, and MFA factors before protected navigation.
 - Atomic business changes use RPC functions. Edge Functions are limited to credentials, providers, reports, mobile-identifier sign-in, and job consumption.
 - PGMQ/Cron replaces external Redis workers. Private Broadcast topics replace Socket.IO.

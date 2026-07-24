@@ -104,6 +104,7 @@ export default function BookingRequestScreen() {
   const [backendStatus, setBackendStatus] = useState('PENDING');
   const [duration, setDuration] = useState('Not recorded');
   const [routeDetails, setRouteDetails] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
 
@@ -111,7 +112,11 @@ export default function BookingRequestScreen() {
     if (!id) return;
     const load = () =>
       void fetchBookingDetail(id).then((result) => {
-        if (result.error) return;
+        setIsLoading(false);
+        if (result.error) {
+          console.error('[booking-detail] fetchBookingDetail failed:', result.error);
+          return;
+        }
         const row = result.data;
         const request = row.service_requests;
         const address = request?.addresses;
@@ -184,29 +189,36 @@ export default function BookingRequestScreen() {
       setBackendStatus('CANCELLED');
       setBooking((b) => ({ ...b, status: 'cancelled' }));
       router.replace('/(worker)/bookings?filter=Cancelled');
-    } catch (error) {
-      console.warn('Decline error:', error);
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('Decline error:', msg, error);
+      Alert.alert('Decline failed', msg);
     }
   };
 
   const handleConfirmDetails = async () => {
     try {
+      console.log('[handleConfirmDetails] booking.id:', booking.id);
       await departForJob(booking.id);
       setBackendStatus('WORKER_EN_ROUTE');
       setBooking((b) => ({ ...b, status: 'en_route' }));
-    } catch (error) {
-      console.warn('handleConfirmDetails error:', error);
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleConfirmDetails error:', msg, error);
+      Alert.alert('Start En Route failed', msg);
     }
   };
 
   const handleArrived = async () => {
     try {
-      await arriveAtJob(booking.id).catch(() => {});
+      await arriveAtJob(booking.id);
       await startJob(booking.id);
       setBackendStatus('IN_PROGRESS');
       setBooking((b) => ({ ...b, status: 'in_progress' }));
-    } catch (error) {
-      console.warn('handleArrived error:', error);
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleArrived error:', msg, error);
+      Alert.alert('Arrived failed', msg);
     }
   };
 
@@ -215,8 +227,10 @@ export default function BookingRequestScreen() {
       await completeJob(booking.id);
       setBackendStatus('COMPLETED');
       setBooking((b) => ({ ...b, status: 'completed' }));
-    } catch (error) {
-      console.warn('handleComplete error:', error);
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleComplete error:', msg, error);
+      Alert.alert('Complete failed', msg);
     }
   };
 
@@ -262,6 +276,7 @@ export default function BookingRequestScreen() {
 
   const isCompleted = booking.status === 'completed';
   const isCancelled = booking.status === 'cancelled';
+  const isActive = !isCompleted && !isCancelled;
 
   const remainingTime = '';
 
@@ -281,10 +296,19 @@ export default function BookingRequestScreen() {
         <View style={{ width: 40 }} />
       </View>
 
+      {isLoading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Loader2 size={32} color={Colors.cta} style={styles.spinner} />
+          <AppText variant="body" color={Colors.textSecondary} style={{ marginTop: 12 }}>
+            Loading booking...
+          </AppText>
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ─── Job Card ─── */}
         <View style={styles.jobCard}>
@@ -399,9 +423,17 @@ export default function BookingRequestScreen() {
           <Badge label="Good client" variant="success" size="sm" />
         </View>
 
-        {/* ─── State-Specific Content ─── */}
-        {['PENDING', 'ACCEPTED', 'WORKER_PREPARING'].includes(backendStatus) &&
-          routeDetails && (
+        {/* ─── Map & Route (all active states) ─── */}
+        {isActive && routeDetails && routeDetails.destinationLat != null && routeDetails.destinationLng != null && (
+          <View style={{ gap: 12 }}>
+            <BookingMap
+              bookingId={booking.id}
+              startLat={routeDetails.startLat}
+              startLng={routeDetails.startLng}
+              destinationLat={routeDetails.destinationLat}
+              destinationLng={routeDetails.destinationLng}
+              destinationAddress={routeDetails.address}
+            />
             <RouteSummaryCard
               bookingId={booking.id}
               startLat={routeDetails.startLat}
@@ -411,7 +443,10 @@ export default function BookingRequestScreen() {
               destinationAddress={routeDetails.address}
               workerView
             />
-          )}
+          </View>
+        )}
+
+        {/* ─── State-Specific Content ─── */}
         {booking.status === 'hired' && (
           <View style={styles.hiredBanner}>
             <View style={styles.hiredIconRow}>
@@ -440,9 +475,13 @@ export default function BookingRequestScreen() {
                       setBackendStatus('ACCEPTED');
                       setBooking((b) => ({ ...b, status: 'accepted' }));
                     })
-                    .catch(() => {
-                      setBackendStatus('ACCEPTED');
-                      setBooking((b) => ({ ...b, status: 'accepted' }));
+                    .catch((error) =>
+                      Alert.alert('Unable to accept', error.message),
+                    )
+                    .catch((err: any) => {
+                      const msg = err?.message ?? err?.code ?? String(err);
+                      console.error('acceptJob error:', msg, err);
+                      Alert.alert('Accept failed', msg);
                     })
                 }
               />
@@ -463,6 +502,7 @@ export default function BookingRequestScreen() {
               customerName={job.customerName}
               customerAvatar={job.customerAvatar}
               onConfirmDetails={handleConfirmDetails}
+              bookingStatus={booking.status}
             />
             <AppButton
               label="Start En Route 🚚"
@@ -484,11 +524,6 @@ export default function BookingRequestScreen() {
 
         {booking.status === 'en_route' && (
           <View style={{ gap: 12 }}>
-            <BookingMap
-              destinationLat={booking.lat ?? 0}
-              destinationLng={booking.lng ?? 0}
-              destinationAddress={booking.address}
-            />
             <View style={styles.contactRow}>
               <Pressable style={styles.contactBtn} onPress={handleCall}>
                 <Phone size={18} color={Colors.cta} />
@@ -612,6 +647,7 @@ export default function BookingRequestScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </View>
   );
 }

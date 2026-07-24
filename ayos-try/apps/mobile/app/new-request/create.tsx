@@ -30,7 +30,6 @@ import {
   Navigation,
   Camera,
   Mic,
-  Settings,
   Info,
   ChevronDown,
   Search,
@@ -107,7 +106,7 @@ export default function CreateRequestScreen() {
     longitude: number;
   } | null>(null);
   const [categories, setCategories] = useState<
-    { id: string; name: string; slug: string; minimumPriceMinor: number }[]
+    { id: string; name: string; slug: string; minimumPriceMinor: number | null }[]
   >([]);
   const [visibleServiceCount, setVisibleServiceCount] = useState(4);
   const [addressResults, setAddressResults] = useState<GeocodingResult[]>([]);
@@ -578,7 +577,7 @@ export default function CreateRequestScreen() {
         aiConsent: useAi && consent,
         aiJobId: null,
         aiResult: null,
-        budgetMinor: category?.minimumPriceMinor ?? 10000,
+        budgetMinor: category?.minimumPriceMinor || 10000,
         requestId: null,
         scheduledAt: null,
         matchingMode: 'direct',
@@ -1253,12 +1252,6 @@ export default function CreateRequestScreen() {
                 {locationLoading ? 'Detecting…' : 'Use Current'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.gearBtn}
-              onPress={() => router.push('/new-request/radius-config')}
-            >
-              <Settings color={theme.colors.textSecondary} size={20} />
-            </TouchableOpacity>
           </View>
         </View>
         {savedAddresses.length ? (
@@ -1836,7 +1829,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: theme.spacing.sm,
   },
-  gearBtn: { padding: 4 },
   addressSearchStatus: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -23,6 +23,7 @@ import {
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
+import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -57,12 +58,22 @@ export default function WorkerBookingsScreen() {
     filter === 'Cancelled' ? 'Cancelled' : 'Upcoming',
   );
   const [bookings, setBookings] = useState<WorkerBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const { state: presenceState, message: presenceMessage } = useWorkerPresence();
   const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
-  const load = () =>
-    void fetchWorkerBookings().then((result) => setBookings(result.data));
+  const load = async () => {
+    setLoading(true);
+    const result = await fetchWorkerBookings();
+    setBookings(result.data);
+    setLoadError(result.error ?? '');
+    setLoading(false);
+  };
   useEffect(() => {
-    load();
-    return subscribeToTable('bookings', load);
+    void load();
+    const stop = subscribeToTable('bookings', () => void load());
+    const poll = setInterval(() => void load(), 10000);
+    return () => { stop(); clearInterval(poll); };
   }, []);
   const accept = async (id: string) => {
     try {
@@ -96,6 +107,9 @@ export default function WorkerBookingsScreen() {
     <Screen safeArea backgroundColor={theme.colors.background}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
+      </View>
+      <View style={[styles.presenceStrip, presenceState === 'online' ? styles.presenceOnline : styles.presenceOffline]}>
+        <Text style={styles.presenceStripText}>{presenceState === 'online' ? 'Online and receiving requests' : presenceMessage || ({ starting: 'Starting location sharing…', paused: 'Presence paused', offline: 'Offline', permission_denied: 'Location permission required', not_ready: 'Complete worker setup', error: 'Location heartbeat error' } as Record<string, string>)[presenceState]}</Text>
       </View>
 
       {isCurrentlyWorking && (
@@ -144,7 +158,10 @@ export default function WorkerBookingsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
+      {loading ? <View style={styles.centerState}><Text style={theme.typography.body1}>Loading bookings…</Text></View> : null}
+      {!loading && loadError ? <View style={styles.centerState}><Text style={[theme.typography.body1, { color: theme.colors.error }]}>{loadError}</Text><TouchableOpacity onPress={() => void load()}><Text style={styles.retryText}>Retry</Text></TouchableOpacity></View> : null}
+
+      {!loading && !loadError ? <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
@@ -157,187 +174,188 @@ export default function WorkerBookingsScreen() {
           />
         ) : (
           filteredBookings.map((booking) => (
-            <Pressable
-              key={booking.id}
-              style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
-              onPress={() =>
-                router.push(`/(worker)/booking-request/${booking.id}`)
-              }
-            >
-              <View style={styles.bookingCard}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.customerRow}>
-                    <Avatar uri={booking.customerAvatar} size={40} />
-                    <View>
-                      <Text style={theme.typography.h4}>
-                        {booking.customerName}
+            <View key={booking.id}>
+              <Pressable
+                style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
+                onPress={() =>
+                  router.push(`/(worker)/booking-request/${booking.id}`)
+                }
+              >
+                <View style={styles.bookingCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.customerRow}>
+                      <Avatar uri={booking.customerAvatar} size={40} />
+                      <View>
+                        <Text style={theme.typography.h4}>
+                          {booking.customerName}
+                        </Text>
+                        <Text
+                          style={[
+                            theme.typography.body2,
+                            { color: theme.colors.textSecondary },
+                          ]}
+                        >
+                          {booking.service}
+                        </Text>
+                      </View>
+                    </View>
+                    <Badge
+                      label={
+                        (
+                          statusConfig[booking.status] ?? {
+                            label: booking.status,
+                          }
+                        ).label
+                      }
+                      variant={
+                        (statusConfig[booking.status] ?? { variant: 'info' })
+                          .variant as any
+                      }
+                      size="sm"
+                    />
+                  </View>
+
+                  <View style={styles.cardDetails}>
+                    <View style={styles.detailRow}>
+                      <CalendarDays color={theme.colors.textTertiary} size={16} />
+                      <Text style={[theme.typography.caption, styles.detailText]}>
+                        {booking.date}
                       </Text>
-                      <Text
-                        style={[
-                          theme.typography.body2,
-                          { color: theme.colors.textSecondary },
-                        ]}
-                      >
-                        {booking.service}
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Clock color={theme.colors.textTertiary} size={16} />
+                      <Text style={[theme.typography.caption, styles.detailText]}>
+                        {booking.time}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <MapPin color={theme.colors.textTertiary} size={16} />
+                      <Text style={[theme.typography.caption, styles.detailText]}>
+                        {booking.address}
                       </Text>
                     </View>
                   </View>
-                  <Badge
-                    label={
-                      (
-                        statusConfig[booking.status] ?? {
-                          label: booking.status,
-                        }
-                      ).label
-                    }
-                    variant={
-                      (statusConfig[booking.status] ?? { variant: 'info' })
-                        .variant as any
-                    }
-                    size="sm"
-                  />
-                </View>
 
-                <View style={styles.cardDetails}>
-                  <View style={styles.detailRow}>
-                    <CalendarDays color={theme.colors.textTertiary} size={16} />
-                    <Text style={[theme.typography.caption, styles.detailText]}>
-                      {booking.date}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Clock color={theme.colors.textTertiary} size={16} />
-                    <Text style={[theme.typography.caption, styles.detailText]}>
-                      {booking.time}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <MapPin color={theme.colors.textTertiary} size={16} />
-                    <Text style={[theme.typography.caption, styles.detailText]}>
-                      {booking.address}
-                    </Text>
-                  </View>
-                </View>
-
-                {booking.hasParts !== undefined && (
-                  <View
-                    style={[
-                      styles.partsRow,
-                      {
-                        borderTopWidth: 1,
-                        borderTopColor: theme.colors.borderLight,
-                      },
-                    ]}
-                  >
-                    <Text
+                  {booking.hasParts !== undefined && (
+                    <View
                       style={[
-                        theme.typography.caption,
+                        styles.partsRow,
                         {
-                          color: booking.hasParts
-                            ? theme.colors.success
-                            : theme.colors.warning,
-                          fontWeight: '500',
+                          borderTopWidth: 1,
+                          borderTopColor: theme.colors.borderLight,
                         },
                       ]}
                     >
-                      {booking.hasParts ? 'Customer Has Parts' : 'Needs Parts'}
-                    </Text>
-                  </View>
-                )}
+                      <Text
+                        style={[
+                          theme.typography.caption,
+                          {
+                            color: booking.hasParts
+                              ? theme.colors.success
+                              : theme.colors.warning,
+                            fontWeight: '500',
+                          },
+                        ]}
+                      >
+                        {booking.hasParts ? 'Customer Has Parts' : 'Needs Parts'}
+                      </Text>
+                    </View>
+                  )}
 
-                <View style={styles.cardFooter}>
-                  <Text
-                    style={[
-                      theme.typography.h4,
-                      { color: theme.colors.primary },
-                    ]}
-                  >
-                    {booking.price}
-                  </Text>
-                  <View style={styles.actionRow}>
-                    {booking.status === 'in_progress' && (
-                      <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}>
+                  <View style={styles.cardFooter}>
+                    <Text
+                      style={[
+                        theme.typography.h4,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
+                      {booking.price}
+                    </Text>
+                    <View style={styles.actionRow}>
+                      {booking.status === 'in_progress' && (
+                        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}>
+                          <Text
+                            style={[
+                              theme.typography.caption,
+                              { color: theme.colors.surface, fontWeight: '600' },
+                            ]}
+                          >
+                            {isCurrentlyWorking ? 'Working...' : 'View'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {booking.status === 'completed' && (
                         <Text
                           style={[
                             theme.typography.caption,
-                            { color: theme.colors.surface, fontWeight: '600' },
+                            { color: theme.colors.textTertiary },
                           ]}
                         >
-                          {isCurrentlyWorking ? 'Working...' : 'View'}
+                          Paid · {booking.price}
                         </Text>
-                      </TouchableOpacity>
-                    )}
-                    {booking.status === 'completed' && (
-                      <Text
-                        style={[
-                          theme.typography.caption,
-                          { color: theme.colors.textTertiary },
-                        ]}
-                      >
-                        Paid · {booking.price}
-                      </Text>
-                    )}
-                    {booking.status === 'pending_review' && (
-                      <Text
-                        style={[
-                          theme.typography.caption,
-                          { color: theme.colors.warning },
-                        ]}
-                      >
-                        Awaiting confirmation
-                      </Text>
-                    )}
-                    {(booking.status === 'hired' ||
-                      booking.status === 'accepted' ||
-                      booking.status === 'en_route') && (
-                      <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}>
+                      )}
+                      {booking.status === 'pending_review' && (
                         <Text
                           style={[
                             theme.typography.caption,
-                            { color: theme.colors.surface, fontWeight: '600' },
+                            { color: theme.colors.warning },
                           ]}
                         >
-                          View
+                          Awaiting confirmation
                         </Text>
-                      </TouchableOpacity>
-                    )}
+                      )}
+                      {(booking.status === 'hired' ||
+                        booking.status === 'accepted' ||
+                        booking.status === 'en_route') && (
+                        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}>
+                          <Text
+                            style={[
+                              theme.typography.caption,
+                              { color: theme.colors.surface, fontWeight: '600' },
+                            ]}
+                          >
+                            View
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
-                {booking.status === 'pending' && (
-                  <View style={styles.incomingActions}>
-                    <TouchableOpacity
-                      style={styles.declineBtn}
-                      onPress={() => decline(booking.id)}
+              {booking.status === 'pending' && (
+                <View style={styles.incomingActions}>
+                  <TouchableOpacity
+                    style={styles.declineBtn}
+                    onPress={() => decline(booking.id)}
+                  >
+                    <Text
+                      style={[
+                        theme.typography.button,
+                        { color: theme.colors.error },
+                      ]}
                     >
-                      <Text
-                        style={[
-                          theme.typography.button,
-                          { color: theme.colors.error },
-                        ]}
-                      >
-                        Decline
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.acceptBtn}
-                      onPress={() => void accept(booking.id)}
+                      Decline
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.acceptBtn}
+                    onPress={() => void accept(booking.id)}
+                  >
+                    <Text
+                      style={[
+                        theme.typography.button,
+                        { color: theme.colors.surface },
+                      ]}
                     >
-                      <Text
-                        style={[
-                          theme.typography.button,
-                          { color: theme.colors.surface },
-                        ]}
-                      >
-                        Accept
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            </Pressable>
+                      Accept
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              </Pressable>
+            </View>
           ))
         )}
-      </ScrollView>
+      </ScrollView> : null}
     </Screen>
   );
 }
@@ -437,4 +455,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.primary,
   },
+  centerState: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, gap: theme.spacing.sm },
+  retryText: { color: theme.colors.primary, fontWeight: '700' },
+  presenceStrip: { marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radius.md },
+  presenceOnline: { backgroundColor: '#E8F8F0' },
+  presenceOffline: { backgroundColor: theme.colors.borderLight },
+  presenceStripText: { color: theme.colors.textSecondary, fontWeight: '600', textAlign: 'center' },
 });

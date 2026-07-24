@@ -12,6 +12,7 @@ A-YOS is a local service-matching and booking platform with the approved Expo ap
 - Authenticated queued AI processing with per-request consent, Gemini primary analysis, retryable OpenAI fallback, and persisted provider-attempt audit data.
 - OpenRouteService forward/reverse geocoding and routes behind Edge Functions, with PostGIS coordinates and MapLibre rendering.
 - Supabase-backed industry and service discovery with a scrollable 10-industry worker catalog, live service search, incremental customer service grids, and confirmed Philippine address/GPS selection.
+- Customer-only Help Center and Privacy Policy pages backed by administrator-manageable published Supabase content.
 
 ## Technology used
 
