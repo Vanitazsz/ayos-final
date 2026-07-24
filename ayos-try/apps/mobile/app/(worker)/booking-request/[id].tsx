@@ -234,13 +234,6 @@ export default function BookingRequestScreen() {
     }
   };
 
-  const handleLeaveFeedback = () => {
-    Alert.alert(
-      'Worker feedback',
-      'Detailed worker-to-customer feedback is not enabled. Use Report User for a safety or conduct concern.',
-    );
-  };
-
   const handleReport = () => {
     Alert.alert('Report User', 'Submit a conduct report for this booking?', [
       { text: 'Cancel', style: 'cancel' },
@@ -277,8 +270,6 @@ export default function BookingRequestScreen() {
   const isCompleted = booking.status === 'completed';
   const isCancelled = booking.status === 'cancelled';
   const isActive = !isCompleted && !isCancelled;
-
-  const remainingTime = '';
 
   return (
     <View style={styles.container}>
@@ -578,53 +569,11 @@ export default function BookingRequestScreen() {
           </View>
         )}
 
-        {booking.status === 'pending_review' && (
-          <View style={styles.reviewCard}>
-            <Loader2 size={36} color={Colors.warning} style={styles.spinner} />
-            <AppText variant="h4" weight="bold" style={styles.reviewTitle}>
-              Waiting for Customer
-            </AppText>
-            <AppText
-              variant="body"
-              color={Colors.textSecondary}
-              style={styles.reviewSubtitle}
-            >
-              The customer has been notified to confirm the job completion.
-            </AppText>
-            {remainingTime && (
-              <View style={styles.timeoutBadge}>
-                <Clock size={14} color={Colors.textTertiary} />
-                <AppText variant="caption" color={Colors.textSecondary}>
-                  Auto-confirms in {remainingTime}
-                </AppText>
-              </View>
-            )}
-            <View style={styles.contactRow}>
-              <Pressable style={styles.contactBtn} onPress={handleCall}>
-                <Phone size={18} color={Colors.cta} />
-                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                  Call
-                </AppText>
-              </Pressable>
-              <Pressable
-                style={styles.contactBtn}
-                onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
-              >
-                <MessageSquare size={18} color={Colors.cta} />
-                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                  Message
-                </AppText>
-              </Pressable>
-            </View>
-          </View>
-        )}
-
         {isCompleted && (
           <CompletedSummary
             bookingId={booking.id}
             duration={duration}
             earnings={booking.price}
-            onLeaveFeedback={handleLeaveFeedback}
           />
         )}
 

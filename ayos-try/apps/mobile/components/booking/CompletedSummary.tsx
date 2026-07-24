@@ -9,7 +9,7 @@ interface CompletedSummaryProps {
   bookingId: string;
   duration: string;
   earnings: string;
-  onLeaveFeedback: () => void;
+  onLeaveFeedback?: () => void;
 }
 
 export const CompletedSummary = React.memo(function CompletedSummary({
@@ -49,12 +49,14 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         </View>
       </View>
 
-      <AppButton
-        label="Leave Feedback"
-        variant="outline"
-        fullWidth
-        onPress={onLeaveFeedback}
-      />
+      {onLeaveFeedback && (
+        <AppButton
+          label="Leave Feedback"
+          variant="outline"
+          fullWidth
+          onPress={onLeaveFeedback}
+        />
+      )}
     </View>
   );
 });

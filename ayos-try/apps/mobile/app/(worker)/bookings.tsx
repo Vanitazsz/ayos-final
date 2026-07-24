@@ -277,16 +277,6 @@ export default function WorkerBookingsScreen() {
                           Paid · {booking.price}
                         </Text>
                       )}
-                      {booking.status === 'pending_review' && (
-                        <Text
-                          style={[
-                            theme.typography.caption,
-                            { color: theme.colors.warning },
-                          ]}
-                        >
-                          Awaiting confirmation
-                        </Text>
-                      )}
                       {(booking.status === 'hired' ||
                         booking.status === 'accepted' ||
                         booking.status === 'en_route') && (

@@ -47,20 +47,15 @@ export default function ReviewScreen() {
           } catch {}
         }
       }
-      try {
-        await createReview(bookingId, rating, commentText, recommend, media);
-      } catch (err) {
-        console.warn('createReview attempt:', err);
-      }
-      Alert.alert('Review Submitted! ⭐', 'Thank you for your feedback.', [
-        { text: 'Done', onPress: () => router.replace('/(tabs)/home' as any) },
-      ]);
-      router.replace('/(tabs)/home' as any);
-    } catch (error) {
+      await createReview(bookingId, rating, commentText, recommend, media);
       Alert.alert('Review Submitted!', 'Thank you for your feedback.', [
         { text: 'Done', onPress: () => router.replace('/(tabs)/home' as any) },
       ]);
       router.replace('/(tabs)/home' as any);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to submit your review.';
+      Alert.alert('Review Failed', message);
     } finally {
       setLoading(false);
     }

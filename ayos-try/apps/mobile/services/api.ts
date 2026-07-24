@@ -591,8 +591,36 @@ export async function fetchWorkerVerification() {
     return data;
   });
 }
-export async function fetchWorkerReviews() {
-  return fetchReviews();
+export async function fetchWorkerReviews(): Promise<ApiResponse<ReviewData[]>> {
+  return wrap(async () => {
+    const user = await requireUser();
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(
+        'id,stars,body,created_at,user_profiles:user_account_id(display_name,avatar_path),service:bookings(service_requests(service_categories(name)))',
+      )
+      .eq('worker_account_id', user.id)
+      .eq('moderation_status', 'PUBLISHED')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return Promise.all(
+      (data ?? []).map(async (row: any) => ({
+        id: row.id,
+        author: requireIdentity(
+          row.user_profiles?.display_name,
+          'Review author',
+        ),
+        avatarUri: await resolveProfileAvatar(row.user_profiles?.avatar_path),
+        rating: row.stars,
+        date: relative(row.created_at),
+        comment: row.body,
+        serviceType: requireIdentity(
+          row.service?.service_requests?.service_categories?.name,
+          'Reviewed service',
+        ),
+      })),
+    );
+  });
 }
 export async function fetchWorkerJobs(): Promise<
   ApiResponse<JobOpportunity[]>

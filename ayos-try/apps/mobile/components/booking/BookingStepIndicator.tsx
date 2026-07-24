@@ -9,7 +9,6 @@ const STEPS = [
   { key: 'accepted', label: 'Chat' },
   { key: 'en_route', label: 'En Route' },
   { key: 'in_progress', label: 'Work' },
-  { key: 'pending_review', label: 'Review' },
   { key: 'completed', label: 'Done' },
 ];
 
@@ -18,8 +17,7 @@ const STATUS_ORDER: Record<string, number> = {
   accepted: 1,
   en_route: 2,
   in_progress: 3,
-  pending_review: 4,
-  completed: 5,
+  completed: 4,
   cancelled: -1,
 };
 
