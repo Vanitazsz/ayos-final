@@ -17,6 +17,7 @@ export default function LoginScreen() {
   const clearSessionNotice = useAuthStore(state => state.clearSessionNotice);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const { control, handleSubmit, getValues, formState: { errors } } = useForm({
     defaultValues: { email: '', password: '' }
@@ -24,6 +25,7 @@ export default function LoginScreen() {
 
   const onSubmit = async (data: any) => {
     clearSessionNotice();
+    setErrorMessage('');
     setLoading(true);
     try {
       const user = await signInWithPassword(data.email, data.password);
@@ -39,11 +41,11 @@ export default function LoginScreen() {
             : (error as any)?.message ??
               (error as any)?.error_description ??
               'Unable to sign in. Please try again.';
-      Alert.alert('Sign in failed', msg);
+      setErrorMessage(msg);
     } finally { setLoading(false); }
   };
 
-  const onGoogle = async () => { clearSessionNotice(); setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { console.error('[login] google signIn error:', error); const msg = typeof error === 'string' ? error : error instanceof Error ? error.message : (error as any)?.message ?? 'Unable to sign in with Google.'; Alert.alert('Google sign in', msg); } finally { setLoading(false); } };
+  const onGoogle = async () => { clearSessionNotice(); setErrorMessage(''); setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { console.error('[login] google signIn error:', error); const msg = typeof error === 'string' ? error : error instanceof Error ? error.message : (error as any)?.message ?? 'Unable to sign in with Google.'; setErrorMessage(msg); } finally { setLoading(false); } };
   const onForgotPassword = async () => { const email=getValues('email'); if(!email){Alert.alert('Email required','Enter your email address first.');return;} try{await requestPasswordReset(email);Alert.alert('Check your email','A secure password reset link has been sent.');}catch(error){Alert.alert('Reset failed',error instanceof Error?error.message:'Unable to send reset email');} };
 
   return (
@@ -67,6 +69,11 @@ export default function LoginScreen() {
                 <Text style={styles.sessionNoticeText}>{sessionNotice}</Text>
               </View>
             ) : null}
+            {errorMessage ? (
+              <View style={styles.errorBanner} accessibilityRole="alert">
+                <Text style={styles.errorBannerText}>{errorMessage}</Text>
+              </View>
+            ) : null}
             <Controller
               control={control}
               rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email address' } }}
@@ -78,7 +85,7 @@ export default function LoginScreen() {
                     placeholder="Email Address"
                     placeholderTextColor={theme.colors.textTertiary}
                     onBlur={onBlur}
-                    onChangeText={onChange}
+                    onChangeText={(text) => { setErrorMessage(''); onChange(text); }}
                     value={value}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -101,7 +108,7 @@ export default function LoginScreen() {
                     placeholderTextColor={theme.colors.textTertiary}
                     secureTextEntry={!showPassword}
                     onBlur={onBlur}
-                    onChangeText={onChange}
+                    onChangeText={(text) => { setErrorMessage(''); onChange(text); }}
                     value={value}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
@@ -178,6 +185,19 @@ const styles = StyleSheet.create({
   },
   sessionNoticeText: {
     color: '#92400E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: '#991B1B',
     fontSize: 14,
     fontWeight: '600',
   },

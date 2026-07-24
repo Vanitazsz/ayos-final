@@ -198,6 +198,7 @@ const Settings = () => {
                       <option>USD ($)</option>
                       <option>EUR (€)</option>
                       <option>GBP (£)</option>
+                      <option>PHP (₱)</option>
                     </select>
                   </div>
                   <div>
