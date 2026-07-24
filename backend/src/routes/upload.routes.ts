@@ -1,2 +1,0 @@
-import{Router}from"express";import{uploadController}from"../controllers/upload.controller.js";import{authenticate}from"../middleware/auth.js";import{receiveUpload}from"../middleware/upload.js";import{validate}from"../middleware/validate.js";import{uuidParam}from"../validators/domain.schemas.js";
-export const uploadRouter=Router();uploadRouter.use(authenticate);uploadRouter.post("/",receiveUpload,uploadController.create);uploadRouter.get("/:id",validate({params:uuidParam}),uploadController.get);uploadRouter.delete("/:id",validate({params:uuidParam}),uploadController.remove);

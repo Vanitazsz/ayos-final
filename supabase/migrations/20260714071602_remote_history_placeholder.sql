@@ -1,2 +1,0 @@
--- Hosted migration history placeholder.
--- The authoritative schema is reconstructed by the hosted baseline migration.
