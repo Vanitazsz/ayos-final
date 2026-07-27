@@ -1,16 +1,13 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 
-const Input = forwardRef(({ 
-  label, 
-  error, 
-  icon: Icon,
-  className = '', 
-  ...props 
-}, ref) => {
+const Input = forwardRef(({ label, error, icon: Icon, className = '', ...props }, ref) => {
+  const generatedId = useId();
+  const inputId = props.id || generatedId;
+
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-navy mb-1.5">
+        <label htmlFor={inputId} className="block text-sm font-medium text-navy mb-1.5">
           {label}
         </label>
       )}
@@ -21,6 +18,7 @@ const Input = forwardRef(({
           </div>
         )}
         <input
+          id={inputId}
           ref={ref}
           className={`
             block w-full rounded-lg border 
@@ -34,9 +32,7 @@ const Input = forwardRef(({
           {...props}
         />
       </div>
-      {error && (
-        <p className="mt-1.5 text-sm text-danger">{error}</p>
-      )}
+      {error && <p className="mt-1.5 text-sm text-danger">{error}</p>}
     </div>
   );
 });

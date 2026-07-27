@@ -6,7 +6,7 @@ import { AppText } from '@/components/AppText';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 
 interface JobTimerProps {
-  hourlyRate: number;
+  agreedAmount: number;
 }
 
 function formatTime(seconds: number): string {
@@ -16,7 +16,9 @@ function formatTime(seconds: number): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export const JobTimer = React.memo(function JobTimer({ hourlyRate }: JobTimerProps) {
+export const JobTimer = React.memo(function JobTimer({
+  agreedAmount,
+}: JobTimerProps) {
   const elapsedSeconds = useWorkerBookingStore((s) => s.elapsedSeconds);
   const timerStart = useWorkerBookingStore((s) => s.timerStart);
   const tick = useWorkerBookingStore((s) => s.tick);
@@ -27,34 +29,38 @@ export const JobTimer = React.memo(function JobTimer({ hourlyRate }: JobTimerPro
     return () => clearInterval(interval);
   }, [timerStart, tick]);
 
-  const hours = elapsedSeconds / 3600;
-  const earnings = hourlyRate * hours;
-
   return (
     <View style={styles.container}>
       <View style={styles.timerHeader}>
         <Clock size={20} color={Colors.cta} />
-        <AppText variant="bodySm" weight="semiBold" color={Colors.textSecondary}>
+        <AppText
+          variant="bodySm"
+          weight="semiBold"
+          color={Colors.textSecondary}
+        >
           Job Timer
         </AppText>
       </View>
 
       <View style={styles.timerDisplay}>
-        <AppText variant="h1" weight="bold" color={Colors.textPrimary} style={styles.timeText}>
+        <AppText
+          variant="h1"
+          weight="bold"
+          color={Colors.textPrimary}
+          style={styles.timeText}
+        >
           {formatTime(elapsedSeconds)}
         </AppText>
       </View>
 
       <View style={styles.earningsRow}>
-        <AppText variant="body" color={Colors.textSecondary}>Earnings</AppText>
+        <AppText variant="body" color={Colors.textSecondary}>
+          Agreed service amount
+        </AppText>
         <AppText variant="h3" weight="bold" color={Colors.success}>
-          ${earnings.toFixed(2)}
+          {agreedAmount > 0 ? `₱${agreedAmount.toFixed(2)}` : 'Request a quote'}
         </AppText>
       </View>
-
-      <AppText variant="caption" color={Colors.textTertiary} style={styles.rateText}>
-        Rate: ${hourlyRate}/hr
-      </AppText>
     </View>
   );
 });
@@ -88,8 +94,5 @@ const styles = StyleSheet.create({
     paddingTop: Spacing['3'],
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
-  },
-  rateText: {
-    marginTop: -Spacing['2'],
   },
 });

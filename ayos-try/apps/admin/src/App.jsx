@@ -30,6 +30,7 @@ function App() {
 
         {/* Redirect Root to Dashboard */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
 
         {/* Protected Admin Routes */}
         <Route

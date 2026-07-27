@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import {
   ChevronLeft,
   MapPin,
@@ -41,17 +42,20 @@ import { JobTimer } from '@/components/booking/JobTimer';
 import { CompletedSummary } from '@/components/booking/CompletedSummary';
 import {
   acceptJob,
+  attachBookingProof,
   arriveAtJob,
-  cancelBooking,
   completeJob,
-  createSupportTicket,
+  confirmCashPayment,
+  declineAssignedBooking,
   departForJob,
   fetchBookingDetail,
   markJobInProgress,
   prepareJob,
+  reportBookingParticipant,
   startJob,
   subscribeToTable,
 } from '@/services/api';
+import { uploadBookingProof } from '@/services/uploads';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
 
@@ -105,87 +109,113 @@ export default function BookingRequestScreen() {
   const [duration, setDuration] = useState('Not recorded');
   const [routeDetails, setRouteDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [paymentStatus, setPaymentStatus] = useState('UNCONFIRMED');
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
 
   useEffect(() => {
     if (!id) return;
     const load = () =>
-      void fetchBookingDetail(id).then((result) => {
-        setIsLoading(false);
-        if (result.error) {
-          console.error('[booking-detail] fetchBookingDetail failed:', result.error);
-          return;
-        }
-        const row = result.data;
-        const request = row.service_requests;
-        const address = request?.addresses;
-        const status = viewStatus(row.status);
-        if (row.accepted_at && row.completed_at) {
-          const minutes = Math.max(
-            0,
-            Math.round(
-              (new Date(row.completed_at).getTime() -
-                new Date(row.accepted_at).getTime()) /
-                60000,
-            ),
-          );
-          setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
-        }
-        setBackendStatus(row.status);
-        setRouteDetails({
-          startLat: row.worker_start_lat,
-          startLng: row.worker_start_lng,
-          destinationLat: address?.latitude,
-          destinationLng: address?.longitude,
-          address: [address?.line1, address?.barangay, address?.city]
-            .filter(Boolean)
-            .join(', '),
+      void fetchBookingDetail(id)
+        .then((result) => {
+          setIsLoading(false);
+          if (result.error) {
+            console.error(
+              '[booking-detail] fetchBookingDetail failed:',
+              result.error,
+            );
+            return;
+          }
+          const row = result.data;
+          if (!row?.id) return;
+          const request = row.service_requests;
+          const payment = Array.isArray(row.payments)
+            ? row.payments[0]
+            : row.payments;
+          setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
+          const address = request?.addresses;
+          const status = viewStatus(row.status);
+          if (row.accepted_at && row.completed_at) {
+            const minutes = Math.max(
+              0,
+              Math.round(
+                (new Date(row.completed_at).getTime() -
+                  new Date(row.accepted_at).getTime()) /
+                  60000,
+              ),
+            );
+            setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
+          }
+          setBackendStatus(row.status);
+          setRouteDetails({
+            startLat: row.worker_start_lat,
+            startLng: row.worker_start_lng,
+            destinationLat: address?.latitude,
+            destinationLng: address?.longitude,
+            address: [address?.line1, address?.barangay, address?.city]
+              .filter(Boolean)
+              .join(', '),
+          });
+          setBooking({
+            id: row.id,
+            customerName: row.user_profiles?.display_name ?? '',
+            customerAvatar: row.user_profiles?.avatar_path ?? '',
+            service: request?.service_categories?.name ?? '',
+            date: new Date(request?.scheduled_at).toLocaleDateString(),
+            time: new Date(request?.scheduled_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            address: [address?.line1, address?.barangay, address?.city]
+              .filter(Boolean)
+              .join(', '),
+            price:
+              row.agreed_service_amount == null
+                ? 'Request a quote'
+                : `₱${Number(row.agreed_service_amount).toLocaleString()}`,
+            status,
+            distance: '',
+            lat: Number(address?.latitude ?? 0),
+            lng: Number(address?.longitude ?? 0),
+            hourlyRate: Number(row.agreed_service_amount ?? 0),
+          });
+          setJob({
+            id: request?.id,
+            service: request?.service_categories?.name ?? '',
+            customerName: row.user_profiles?.display_name ?? '',
+            customerAvatar: row.user_profiles?.avatar_path ?? '',
+            urgency:
+              new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
+                ? 'urgent'
+                : 'normal',
+            description: request?.description ?? '',
+            location: [address?.line1, address?.barangay, address?.city]
+              .filter(Boolean)
+              .join(', '),
+            imageUrl: null,
+          });
+          setStoreStatus(row.id, status as any);
+        })
+        .catch((e) => {
+          console.error('[booking-detail] load failed:', e);
+          setIsLoading(false);
         });
-        setBooking({
-          id: row.id,
-          customerName: row.user_profiles?.display_name ?? '',
-          customerAvatar: row.user_profiles?.avatar_path ?? '',
-          service: request?.service_categories?.name ?? '',
-          date: new Date(request?.scheduled_at).toLocaleDateString(),
-          time: new Date(request?.scheduled_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-          address: [address?.line1, address?.barangay, address?.city]
-            .filter(Boolean)
-            .join(', '),
-          price: `₱${Number(request?.budget ?? 0).toLocaleString()}`,
-          status,
-          distance: '',
-          lat: Number(address?.latitude ?? 0),
-          lng: Number(address?.longitude ?? 0),
-          hourlyRate: Number(request?.budget ?? 0),
-        });
-        setJob({
-          id: request?.id,
-          service: request?.service_categories?.name ?? '',
-          customerName: row.user_profiles?.display_name ?? '',
-          customerAvatar: row.user_profiles?.avatar_path ?? '',
-          urgency:
-            new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
-              ? 'urgent'
-              : 'normal',
-          description: request?.description ?? '',
-          location: [address?.line1, address?.barangay, address?.city]
-            .filter(Boolean)
-            .join(', '),
-          imageUrl: null,
-        });
-        setStoreStatus(row.id, status as any);
-      });
     load();
-    return subscribeToTable('bookings', load, `id=eq.${id}`);
+    let unsub = () => {};
+    try {
+      unsub = subscribeToTable('bookings', load, `id=eq.${id}`);
+    } catch (e) {
+      console.warn('[booking-detail] realtime subscribe failed:', e);
+    }
+    return unsub;
   }, [id, setStoreStatus]);
 
   const handleDecline = async () => {
     try {
-      await cancelBooking(booking.id, 'Worker declined the assigned booking');
+      await declineAssignedBooking(
+        booking.id,
+        'Worker declined the assigned booking',
+      );
       setBackendStatus('CANCELLED');
       setBooking((b) => ({ ...b, status: 'cancelled' }));
       router.replace('/(worker)/bookings?filter=Cancelled');
@@ -199,6 +229,7 @@ export default function BookingRequestScreen() {
   const handleConfirmDetails = async () => {
     try {
       console.log('[handleConfirmDetails] booking.id:', booking.id);
+      await prepareJob(booking.id);
       await departForJob(booking.id);
       setBackendStatus('WORKER_EN_ROUTE');
       setBooking((b) => ({ ...b, status: 'en_route' }));
@@ -213,6 +244,7 @@ export default function BookingRequestScreen() {
     try {
       await arriveAtJob(booking.id);
       await startJob(booking.id);
+      await markJobInProgress(booking.id);
       setBackendStatus('IN_PROGRESS');
       setBooking((b) => ({ ...b, status: 'in_progress' }));
     } catch (error: any) {
@@ -234,6 +266,59 @@ export default function BookingRequestScreen() {
     }
   };
 
+  const handleUploadProof = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission required',
+          'Photo-library access is required to attach proof of work.',
+        );
+        return;
+      }
+      const picker = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.85,
+      });
+      if (picker.canceled) return;
+      const proof = await uploadBookingProof(picker.assets[0].uri);
+      await attachBookingProof(booking.id, proof);
+      Alert.alert('Proof attached', 'The photo is tied to this booking.');
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('handleUploadProof error:', msg, error);
+      Alert.alert('Upload failed', msg);
+    }
+  };
+
+  const handleLeaveFeedback = () => {
+    Alert.alert(
+      'Worker feedback',
+      'Detailed worker-to-customer feedback is not enabled. Use Report User for a safety or conduct concern.',
+    );
+  };
+
+  const handleConfirmCash = async () => {
+    try {
+      const payment = await confirmCashPayment(booking.id);
+      setPaymentStatus(payment.status);
+      Alert.alert(
+        payment.status === 'SUCCESSFUL'
+          ? 'Cash payment confirmed'
+          : 'Confirmation recorded',
+        payment.status === 'SUCCESSFUL'
+          ? 'Both parties confirmed the cash payment.'
+          : 'Waiting for the customer to confirm the cash payment.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Confirmation failed',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    }
+  };
+
   const handleReport = () => {
     Alert.alert('Report User', 'Submit a conduct report for this booking?', [
       { text: 'Cancel', style: 'cancel' },
@@ -241,11 +326,10 @@ export default function BookingRequestScreen() {
         text: 'Submit',
         style: 'destructive',
         onPress: () =>
-          void createSupportTicket({
-            bookingId: booking.id,
-            subject: 'Booking participant conduct report',
-            description: `Worker submitted a conduct report for booking ${booking.id}. Administrator review is required.`,
-          })
+          void reportBookingParticipant(
+            booking.id,
+            `Worker submitted a conduct concern for booking ${booking.id}. Administrator review is required.`,
+          )
             .then(() =>
               Alert.alert(
                 'Report submitted',
@@ -271,6 +355,8 @@ export default function BookingRequestScreen() {
   const isCancelled = booking.status === 'cancelled';
   const isActive = !isCompleted && !isCancelled;
 
+  const remainingTime = '';
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -288,311 +374,405 @@ export default function BookingRequestScreen() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+        >
           <Loader2 size={32} color={Colors.cta} style={styles.spinner} />
-          <AppText variant="body" color={Colors.textSecondary} style={{ marginTop: 12 }}>
+          <AppText
+            variant="body"
+            color={Colors.textSecondary}
+            style={{ marginTop: 12 }}
+          >
             Loading booking...
           </AppText>
         </View>
       ) : (
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ─── Job Card ─── */}
-        <View style={styles.jobCard}>
-          <BookingStepIndicator currentStatus={booking.status} />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ─── Job Card ─── */}
+          <View style={styles.jobCard}>
+            <BookingStepIndicator currentStatus={booking.status} />
 
-          <View style={styles.statusBadgeRow}>
-            <Badge
-              label={statusConfig[booking.status]?.label || booking.status}
-              variant={(statusConfig[booking.status]?.variant as any) || 'info'}
-              size="md"
-            />
-            {booking.status === 'in_progress' && (
-              <Badge label="Currently Working" variant="warning" size="md" />
+            <View style={styles.statusBadgeRow}>
+              <Badge
+                label={statusConfig[booking.status]?.label || booking.status}
+                variant={
+                  (statusConfig[booking.status]?.variant as any) || 'info'
+                }
+                size="md"
+              />
+              {booking.status === 'in_progress' && (
+                <Badge label="Currently Working" variant="warning" size="md" />
+              )}
+            </View>
+
+            <View style={styles.cardTopRow}>
+              <AppText variant="h3" weight="bold" style={{ flex: 1 }}>
+                {job.service}
+              </AppText>
+              <ThreeDotMenu
+                onReportUser={handleReport}
+                onCancelService={handleCancelService}
+              />
+            </View>
+
+            <AppText variant="caption" color={Colors.textTertiary}>
+              Booking #{booking.id.padStart(4, '0')}
+            </AppText>
+
+            {job.urgency === 'urgent' && (
+              <Badge label="URGENT" variant="error" size="md" />
             )}
-          </View>
 
-          <View style={styles.cardTopRow}>
-            <AppText variant="h3" weight="bold" style={{ flex: 1 }}>
-              {job.service}
+            {job.imageUrl && (
+              <Image
+                source={{ uri: job.imageUrl }}
+                style={styles.jobImage}
+                resizeMode="cover"
+              />
+            )}
+
+            <AppText
+              variant="body"
+              color={Colors.textSecondary}
+              style={styles.description}
+            >
+              &ldquo;{job.description}&rdquo;
             </AppText>
-            <ThreeDotMenu
-              onReportUser={handleReport}
-              onCancelService={handleCancelService}
-            />
-          </View>
 
-          <AppText variant="caption" color={Colors.textTertiary}>
-            Booking #{booking.id.padStart(4, '0')}
-          </AppText>
+            <View style={styles.divider} />
 
-          {job.urgency === 'urgent' && (
-            <Badge label="URGENT" variant="error" size="md" />
-          )}
-
-          {job.imageUrl && (
-            <Image
-              source={{ uri: job.imageUrl }}
-              style={styles.jobImage}
-              resizeMode="cover"
-            />
-          )}
-
-          <AppText
-            variant="body"
-            color={Colors.textSecondary}
-            style={styles.description}
-          >
-            &ldquo;{job.description}&rdquo;
-          </AppText>
-
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <AppText variant="label" color={Colors.textTertiary}>
-              Client
-            </AppText>
-            <AppText variant="body" weight="semiBold">
-              {job.customerName}
-            </AppText>
-          </View>
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailLabel}>
-              <MapPin size={14} color={Colors.textTertiary} />
+            <View style={styles.detailRow}>
               <AppText variant="label" color={Colors.textTertiary}>
-                Location
+                Client
               </AppText>
-            </View>
-            <AppText variant="body" weight="semiBold">
-              {job.location}
-            </AppText>
-          </View>
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailLabel}>
-              <Clock size={14} color={Colors.textTertiary} />
-              <AppText variant="label" color={Colors.textTertiary}>
-                Schedule
-              </AppText>
-            </View>
-            <AppText variant="body" weight="semiBold">
-              {booking.date} · {booking.time}
-            </AppText>
-          </View>
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailLabel}>
-              <DollarSign size={14} color={Colors.textTertiary} />
-              <AppText variant="label" color={Colors.textTertiary}>
-                Est. Earnings
-              </AppText>
-            </View>
-            <AppText variant="body" weight="semiBold" color={Colors.cta}>
-              {booking.price}
-            </AppText>
-          </View>
-        </View>
-
-        {/* ─── Client Card ─── */}
-        <View style={styles.clientCard}>
-          <View style={styles.clientHeader}>
-            <Avatar uri={job.customerAvatar} size={AvatarSize.medium} />
-            <View style={styles.clientInfo}>
               <AppText variant="body" weight="semiBold">
                 {job.customerName}
               </AppText>
-              <AppText variant="caption" color={Colors.textSecondary}>
-                Booking customer
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailLabel}>
+                <MapPin size={14} color={Colors.textTertiary} />
+                <AppText variant="label" color={Colors.textTertiary}>
+                  Location
+                </AppText>
+              </View>
+              <AppText variant="body" weight="semiBold">
+                {job.location}
+              </AppText>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailLabel}>
+                <Clock size={14} color={Colors.textTertiary} />
+                <AppText variant="label" color={Colors.textTertiary}>
+                  Schedule
+                </AppText>
+              </View>
+              <AppText variant="body" weight="semiBold">
+                {booking.date} · {booking.time}
+              </AppText>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailLabel}>
+                <DollarSign size={14} color={Colors.textTertiary} />
+                <AppText variant="label" color={Colors.textTertiary}>
+                  Est. Earnings
+                </AppText>
+              </View>
+              <AppText variant="body" weight="semiBold" color={Colors.cta}>
+                {booking.price}
               </AppText>
             </View>
           </View>
-          <Badge label="Good client" variant="success" size="sm" />
-        </View>
 
-        {/* ─── Map & Route (all active states) ─── */}
-        {isActive && routeDetails && routeDetails.destinationLat != null && routeDetails.destinationLng != null && (
-          <View style={{ gap: 12 }}>
-            <BookingMap
-              bookingId={booking.id}
-              startLat={routeDetails.startLat}
-              startLng={routeDetails.startLng}
-              destinationLat={routeDetails.destinationLat}
-              destinationLng={routeDetails.destinationLng}
-              destinationAddress={routeDetails.address}
-            />
-            <RouteSummaryCard
-              bookingId={booking.id}
-              startLat={routeDetails.startLat}
-              startLng={routeDetails.startLng}
-              destinationLat={routeDetails.destinationLat}
-              destinationLng={routeDetails.destinationLng}
-              destinationAddress={routeDetails.address}
-              workerView
-            />
-          </View>
-        )}
-
-        {/* ─── State-Specific Content ─── */}
-        {booking.status === 'hired' && (
-          <View style={styles.hiredBanner}>
-            <View style={styles.hiredIconRow}>
-              <Calendar size={28} color={Colors.cta} />
+          {/* ─── Client Card ─── */}
+          <View style={styles.clientCard}>
+            <View style={styles.clientHeader}>
+              <Avatar uri={job.customerAvatar} size={AvatarSize.medium} />
+              <View style={styles.clientInfo}>
+                <AppText variant="body" weight="semiBold">
+                  {job.customerName}
+                </AppText>
+                <AppText variant="caption" color={Colors.textSecondary}>
+                  Booking customer
+                </AppText>
+              </View>
             </View>
-            <AppText variant="h3" weight="bold" style={styles.hiredTitle}>
-              You&apos;ve Been Selected!
-            </AppText>
-            <AppText
-              variant="body"
-              color={Colors.textSecondary}
-              style={styles.hiredSubtitle}
-            >
-              {job.customerName} has selected you for this job. Accept to start
-              coordinating.
-            </AppText>
-            <View style={styles.hiredActions}>
-              <AppButton
-                label="Accept Booking ✅"
-                variant="primary"
-                leftIcon={<Calendar size={18} color={Colors.white} />}
-                fullWidth
-                onPress={() =>
-                  void acceptJob(booking.id)
-                    .then(() => {
-                      setBackendStatus('ACCEPTED');
-                      setBooking((b) => ({ ...b, status: 'accepted' }));
-                    })
-                    .catch((err: any) => {
-                      const msg = err?.message ?? err?.code ?? String(err);
-                      console.error('acceptJob error:', msg, err);
-                      Alert.alert('Accept failed', msg);
-                    })
-                }
+            <Badge label="Good client" variant="success" size="sm" />
+          </View>
+
+          {/* ─── Map & Route (all active states) ─── */}
+          {isActive &&
+            routeDetails &&
+            routeDetails.destinationLat != null &&
+            routeDetails.destinationLng != null && (
+              <View style={{ gap: 12 }}>
+                <BookingMap
+                  bookingId={booking.id}
+                  startLat={routeDetails.startLat}
+                  startLng={routeDetails.startLng}
+                  destinationLat={routeDetails.destinationLat}
+                  destinationLng={routeDetails.destinationLng}
+                  destinationAddress={routeDetails.address}
+                />
+                <RouteSummaryCard
+                  bookingId={booking.id}
+                  startLat={routeDetails.startLat}
+                  startLng={routeDetails.startLng}
+                  destinationLat={routeDetails.destinationLat}
+                  destinationLng={routeDetails.destinationLng}
+                  destinationAddress={routeDetails.address}
+                  workerView
+                />
+              </View>
+            )}
+
+          {/* ─── State-Specific Content ─── */}
+          {booking.status === 'hired' && (
+            <View style={styles.hiredBanner}>
+              <View style={styles.hiredIconRow}>
+                <Calendar size={28} color={Colors.cta} />
+              </View>
+              <AppText variant="h3" weight="bold" style={styles.hiredTitle}>
+                You&apos;ve Been Selected!
+              </AppText>
+              <AppText
+                variant="body"
+                color={Colors.textSecondary}
+                style={styles.hiredSubtitle}
+              >
+                {job.customerName} has selected you for this job. Accept to
+                start coordinating.
+              </AppText>
+              <View style={styles.hiredActions}>
+                <AppButton
+                  label="Accept Booking ✅"
+                  variant="primary"
+                  leftIcon={<Calendar size={18} color={Colors.white} />}
+                  fullWidth
+                  onPress={() =>
+                    void acceptJob(booking.id)
+                      .then(() => {
+                        setBackendStatus('ACCEPTED');
+                        setBooking((b) => ({ ...b, status: 'accepted' }));
+                      })
+                      .catch((error) =>
+                        Alert.alert('Unable to accept', error.message),
+                      )
+                      .catch((err: any) => {
+                        const msg = err?.message ?? err?.code ?? String(err);
+                        console.error('acceptJob error:', msg, err);
+                        Alert.alert('Accept failed', msg);
+                      })
+                  }
+                />
+                <AppButton
+                  label="Decline ❌"
+                  variant="outline"
+                  fullWidth
+                  onPress={handleDecline}
+                />
+              </View>
+            </View>
+          )}
+
+          {booking.status === 'accepted' && (
+            <View style={{ gap: 12 }}>
+              <BookingChat
+                bookingId={String(id)}
+                customerName={job.customerName}
+                customerAvatar={job.customerAvatar}
+                onConfirmDetails={handleConfirmDetails}
+                bookingStatus={booking.status}
               />
               <AppButton
-                label="Decline ❌"
+                label="Start En Route 🚚"
+                variant="primary"
+                fullWidth
+                onPress={handleConfirmDetails}
+              />
+              <Pressable
+                style={styles.contactNowBtn}
+                onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
+              >
+                <MessageSquare size={16} color={Colors.cta} />
+                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
+                  Open Full Chat
+                </AppText>
+              </Pressable>
+            </View>
+          )}
+
+          {booking.status === 'en_route' && (
+            <View style={{ gap: 12 }}>
+              <View style={styles.contactRow}>
+                <Pressable style={styles.contactBtn} onPress={handleCall}>
+                  <Phone size={18} color={Colors.cta} />
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.cta}
+                  >
+                    Call
+                  </AppText>
+                </Pressable>
+                <Pressable
+                  style={styles.contactBtn}
+                  onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
+                >
+                  <MessageSquare size={18} color={Colors.cta} />
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.cta}
+                  >
+                    Message
+                  </AppText>
+                </Pressable>
+              </View>
+              <AppButton
+                label="I've Arrived & Start Job 📍"
+                variant="primary"
+                leftIcon={<MapPin size={18} color={Colors.white} />}
+                fullWidth
+                onPress={handleArrived}
+              />
+            </View>
+          )}
+
+          {booking.status === 'in_progress' && (
+            <View style={{ gap: 12 }}>
+              <JobTimer agreedAmount={booking.hourlyRate ?? 0} />
+              <View style={styles.contactRow}>
+                <Pressable style={styles.contactBtn} onPress={handleCall}>
+                  <Phone size={18} color={Colors.cta} />
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.cta}
+                  >
+                    Call
+                  </AppText>
+                </Pressable>
+                <Pressable
+                  style={styles.contactBtn}
+                  onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
+                >
+                  <MessageSquare size={18} color={Colors.cta} />
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.cta}
+                  >
+                    Message
+                  </AppText>
+                </Pressable>
+              </View>
+              <AppButton
+                label="Complete Job ✅"
+                variant="primary"
+                leftIcon={<CheckCircle2 size={18} color={Colors.white} />}
+                fullWidth
+                onPress={handleComplete}
+              />
+            </View>
+          )}
+
+          {booking.status === 'pending_review' && (
+            <View style={styles.reviewCard}>
+              <Loader2
+                size={36}
+                color={Colors.warning}
+                style={styles.spinner}
+              />
+              <AppText variant="h4" weight="bold" style={styles.reviewTitle}>
+                Waiting for Customer
+              </AppText>
+              <AppText
+                variant="body"
+                color={Colors.textSecondary}
+                style={styles.reviewSubtitle}
+              >
+                The customer has been notified to confirm the job completion.
+              </AppText>
+              {remainingTime && (
+                <View style={styles.timeoutBadge}>
+                  <Clock size={14} color={Colors.textTertiary} />
+                  <AppText variant="caption" color={Colors.textSecondary}>
+                    Auto-confirms in {remainingTime}
+                  </AppText>
+                </View>
+              )}
+              <View style={styles.contactRow}>
+                <Pressable style={styles.contactBtn} onPress={handleCall}>
+                  <Phone size={18} color={Colors.cta} />
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.cta}
+                  >
+                    Call
+                  </AppText>
+                </Pressable>
+                <Pressable
+                  style={styles.contactBtn}
+                  onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
+                >
+                  <MessageSquare size={18} color={Colors.cta} />
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.cta}
+                  >
+                    Message
+                  </AppText>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {isCompleted && (
+            <View style={{ gap: 12 }}>
+              <CompletedSummary
+                bookingId={booking.id}
+                duration={duration}
+                earnings={booking.price}
+                paymentStatus={paymentStatus}
+                onConfirmCash={handleConfirmCash}
+                onLeaveFeedback={handleLeaveFeedback}
+              />
+              <AppButton
+                label="Add Proof of Work Photo"
                 variant="outline"
                 fullWidth
-                onPress={handleDecline}
+                onPress={handleUploadProof}
               />
             </View>
-          </View>
-        )}
+          )}
 
-        {booking.status === 'accepted' && (
-          <View style={{ gap: 12 }}>
-            <BookingChat
-              bookingId={String(id)}
-              customerName={job.customerName}
-              customerAvatar={job.customerAvatar}
-              onConfirmDetails={handleConfirmDetails}
-              bookingStatus={booking.status}
-            />
-            <AppButton
-              label="Start En Route 🚚"
-              variant="primary"
-              fullWidth
-              onPress={handleConfirmDetails}
-            />
-            <Pressable
-              style={styles.contactNowBtn}
-              onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
-            >
-              <MessageSquare size={16} color={Colors.cta} />
-              <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                Open Full Chat
+          {isCancelled && (
+            <View style={styles.cancelledBanner}>
+              <XCircle size={36} color={Colors.error} />
+              <AppText variant="h4" weight="bold" color={Colors.error}>
+                Booking Cancelled
               </AppText>
-            </Pressable>
-          </View>
-        )}
-
-        {booking.status === 'en_route' && (
-          <View style={{ gap: 12 }}>
-            <View style={styles.contactRow}>
-              <Pressable style={styles.contactBtn} onPress={handleCall}>
-                <Phone size={18} color={Colors.cta} />
-                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                  Call
-                </AppText>
-              </Pressable>
-              <Pressable
-                style={styles.contactBtn}
-                onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
+              <AppText
+                variant="body"
+                color={Colors.textSecondary}
+                style={{ textAlign: 'center' }}
               >
-                <MessageSquare size={18} color={Colors.cta} />
-                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                  Message
-                </AppText>
-              </Pressable>
+                This booking has been cancelled.
+              </AppText>
             </View>
-            <AppButton
-              label="I've Arrived & Start Job 📍"
-              variant="primary"
-              leftIcon={<MapPin size={18} color={Colors.white} />}
-              fullWidth
-              onPress={handleArrived}
-            />
-          </View>
-        )}
-
-        {booking.status === 'in_progress' && (
-          <View style={{ gap: 12 }}>
-            <JobTimer hourlyRate={booking.hourlyRate ?? 0} />
-            <View style={styles.contactRow}>
-              <Pressable style={styles.contactBtn} onPress={handleCall}>
-                <Phone size={18} color={Colors.cta} />
-                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                  Call
-                </AppText>
-              </Pressable>
-              <Pressable
-                style={styles.contactBtn}
-                onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
-              >
-                <MessageSquare size={18} color={Colors.cta} />
-                <AppText variant="bodySm" weight="semiBold" color={Colors.cta}>
-                  Message
-                </AppText>
-              </Pressable>
-            </View>
-            <AppButton
-              label="Complete Job ✅"
-              variant="primary"
-              leftIcon={<CheckCircle2 size={18} color={Colors.white} />}
-              fullWidth
-              onPress={handleComplete}
-            />
-          </View>
-        )}
-
-        {isCompleted && (
-          <CompletedSummary
-            bookingId={booking.id}
-            duration={duration}
-            earnings={booking.price}
-          />
-        )}
-
-        {isCancelled && (
-          <View style={styles.cancelledBanner}>
-            <XCircle size={36} color={Colors.error} />
-            <AppText variant="h4" weight="bold" color={Colors.error}>
-              Booking Cancelled
-            </AppText>
-            <AppText
-              variant="body"
-              color={Colors.textSecondary}
-              style={{ textAlign: 'center' }}
-            >
-              This booking has been cancelled.
-            </AppText>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
       )}
     </View>
   );
