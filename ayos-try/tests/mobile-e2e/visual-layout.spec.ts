@@ -10,14 +10,15 @@ for (const viewport of viewports) {
   test(`mobile entry ${viewport.name} layout is stable and has no overflow`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/landing');
-    await expect(page.getByText('Book trusted service nearby.')).toBeVisible();
-    await expect(page.getByText(/confirm Cash settlement/)).toBeVisible();
-    await expect(page.getByText(/Cash or GCash/)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByText('Sign in', { exact: true })).toBeVisible();
+    await expect(page.getByText('Register as Worker')).toHaveCount(0);
+    await expect(page.getByText('Book trusted service nearby.')).toHaveCount(0);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
     expect(overflow).toBeLessThanOrEqual(1);
-    await expect(page).toHaveScreenshot(`mobile-landing-${viewport.name}.png`, {
+    await expect(page).toHaveScreenshot(`mobile-login-${viewport.name}.png`, {
       animations: 'disabled',
       maxDiffPixelRatio: 0.01,
       fullPage: true,

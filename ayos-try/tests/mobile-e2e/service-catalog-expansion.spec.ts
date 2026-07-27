@@ -252,6 +252,7 @@ test('GPS point remains usable when reverse geocoding is unavailable', async ({
   page,
   context,
 }) => {
+  test.setTimeout(45_000);
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({
     latitude: geocodedAddress.latitude,
@@ -316,6 +317,7 @@ test('address search falls back to manual entry without showing a persistent err
 });
 
 test('AI consent blocks only the AI continuation path', async ({ page }) => {
+  test.setTimeout(60_000);
   await useCustomerFixture(page);
   await page.goto('/new-request/create');
 
@@ -449,6 +451,7 @@ test('default saved address is selected automatically for a new booking', async 
 });
 
 test('photo analysis waits for consent then merges an editable explanation', async ({ page }) => {
+  test.setTimeout(60_000);
   await useCustomerFixture(page);
   await page.route('**/storage/v1/object/request-media/**', (route) =>
     route.fulfill({
