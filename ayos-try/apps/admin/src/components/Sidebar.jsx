@@ -215,6 +215,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     <>
       <div className="md:hidden fixed bottom-6 right-6 z-50">
         <button
+          aria-label="Open navigation"
           onClick={() => setIsMobileOpen(true)}
           className={`p-3.5 bg-primary text-white rounded-full shadow-lg transition-transform ${isMobileOpen ? 'scale-0' : 'scale-100'}`}
         >
@@ -252,6 +253,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
           {isMobileOpen && (
             <button
+              aria-label="Close navigation"
               onClick={() => setIsMobileOpen(false)}
               className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
             >
@@ -260,7 +262,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden pt-6 pb-4 custom-scrollbar">
+        <nav
+          aria-label="Administrator navigation"
+          className="flex-1 overflow-y-auto overflow-x-hidden pt-6 pb-4 custom-scrollbar"
+        >
           {navigationGroups.map((group) => (
             <NavGroup
               key={group.title}
