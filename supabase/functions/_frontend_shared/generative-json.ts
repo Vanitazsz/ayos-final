@@ -1,0 +1,61 @@
+export async function generateJson(prompt: string, schema: Record<string, unknown>) {
+  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  const geminiModel = Deno.env.get('GEMINI_MODEL');
+  let retryable = true;
+  let lastError = 'GEMINI_NOT_CONFIGURED';
+  if (geminiKey && geminiModel)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseJsonSchema: schema,
+              temperature: 0.1,
+            },
+          }),
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (response.ok) {
+        const text = body?.candidates?.[0]?.content?.parts
+          ?.map((part: Record<string, unknown>) => part.text ?? '')
+          .join('');
+        return {
+          data: JSON.parse(text),
+          provider: 'GEMINI',
+          model: geminiModel,
+          reference: body.responseId ?? null,
+        };
+      }
+      retryable = response.status === 429 || response.status >= 500;
+      lastError = `GEMINI_HTTP_${response.status}`;
+      if (!retryable) throw new Error(lastError);
+    }
+  if (!retryable) throw new Error(lastError);
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  const openaiModel = Deno.env.get('OPENAI_MODEL') ?? 'gpt-5.6-terra';
+  if (!openaiKey) throw new Error('AI_PROVIDERS_UNAVAILABLE');
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${openaiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: openaiModel,
+      reasoning: { effort: 'none' },
+      input: prompt,
+      text: { format: { type: 'json_schema', name: 'result', strict: true, schema } },
+    }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`OPENAI_HTTP_${response.status}`);
+  return {
+    data: JSON.parse(String(body.output_text ?? '')),
+    provider: 'OPENAI',
+    model: openaiModel,
+    reference: body.id ?? null,
+  };
+}
