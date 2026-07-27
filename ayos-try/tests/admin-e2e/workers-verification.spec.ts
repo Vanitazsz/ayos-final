@@ -102,11 +102,11 @@ async function useAdminFixture(page: Page) {
       ]),
     });
   });
-  await page.route('**/rest/v1/wallets*', (route) =>
+  await page.route('**/rest/v1/rpc/get_worker_wallet_balances', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([{ account_id: workerId, available_minor: 0 }]),
+      body: JSON.stringify([{ worker_id: workerId, available_amount: 0 }]),
     }),
   );
 }
