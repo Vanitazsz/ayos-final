@@ -102,7 +102,8 @@ export default function WorkerProfileScreen() {
         throw new Error(result.error ?? 'Worker profile is not active');
       }
 
-      let accountProfile: Awaited<ReturnType<typeof getMyProfile>> | null = null;
+      let accountProfile: Awaited<ReturnType<typeof getMyProfile>> | null =
+        null;
       try {
         accountProfile = await getMyProfile();
       } catch {
@@ -127,7 +128,10 @@ export default function WorkerProfileScreen() {
       );
       setSubdivisions(areas);
       setSubdivisionId(workerAccountProfile?.subdivisionId ?? '');
-      setWorkerProfile({ ...result.data, subdivisionName: selected?.name ?? '' });
+      setWorkerProfile({
+        ...result.data,
+        subdivisionName: selected?.name ?? '',
+      });
       setName(result.data.name);
       setMobile(workerAccountProfile?.mobile ?? '');
       setServiceArea(
@@ -137,7 +141,9 @@ export default function WorkerProfileScreen() {
     } catch (error) {
       setWorkerProfile(null);
       setLoadError(
-        error instanceof Error ? error.message : 'Unable to load worker profile',
+        error instanceof Error
+          ? error.message
+          : 'Unable to load worker profile',
       );
     }
   };
@@ -215,7 +221,10 @@ export default function WorkerProfileScreen() {
       return;
     }
     if (id === 'portfolio') {
-      Alert.alert('Coming Soon', 'Portfolio features will be available in a future update.');
+      Alert.alert(
+        'Coming Soon',
+        'Portfolio features will be available in a future update.',
+      );
       return;
     }
     if (id === 'payout-methods' || id === 'payout-history') {
@@ -311,7 +320,9 @@ export default function WorkerProfileScreen() {
                     ? 'Verified Worker'
                     : workerProfile.verificationStatus === 'rejected'
                       ? 'Verification Rejected'
-                      : 'Verification Pending'}
+                      : workerProfile.verificationStatus === 'needs_review'
+                        ? 'Needs Document Review'
+                        : 'Verification Pending'}
                 </Text>
               </View>
             </View>
