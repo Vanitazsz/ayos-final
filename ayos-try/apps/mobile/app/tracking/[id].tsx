@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -22,7 +23,10 @@ import {
   Wrench,
 } from 'lucide-react-native';
 import {
+  blockAccount,
   fetchBookingTracking,
+  openBookingDispute,
+  reportBookingParticipant,
   subscribeToTable,
 } from '@/services/api';
 import { supabase } from '@/lib/supabase';
@@ -41,21 +45,68 @@ const STATUS_STEP_MAP: Record<string, number> = {
   COMPLETED: 5,
 };
 
-const STATUS_INFO: Record<string, { title: string; subtitle: string; icon: any }> = {
-  PENDING: { title: 'Waiting for Provider', subtitle: 'Your booking has been sent. A provider will accept shortly.', icon: Clock },
-  ACCEPTED: { title: 'Provider Accepted', subtitle: 'Your provider has accepted the job and is getting ready.', icon: CheckCircle2 },
-  WORKER_PREPARING: { title: 'Provider Preparing', subtitle: 'Your provider is preparing to head to your location.', icon: Clock },
-  WORKER_EN_ROUTE: { title: 'Provider On The Way', subtitle: 'Your provider is en route to your location.', icon: MapPin },
-  WORKER_ARRIVED: { title: 'Provider Has Arrived', subtitle: 'Your provider has arrived at your location.', icon: MapPin },
-  SERVICE_STARTED: { title: 'Service In Progress', subtitle: 'Work has begun on your service request.', icon: Wrench },
-  IN_PROGRESS: { title: 'Service In Progress', subtitle: 'Work is currently being done.', icon: Wrench },
-  COMPLETED: { title: 'Service Completed', subtitle: 'Your service has been completed. Please confirm and pay.', icon: CheckCircle2 },
-  CANCELLED: { title: 'Booking Cancelled', subtitle: 'This booking has been cancelled.', icon: Clock },
+const STATUS_INFO: Record<
+  string,
+  { title: string; subtitle: string; icon: any }
+> = {
+  PENDING: {
+    title: 'Waiting for Provider',
+    subtitle: 'Your booking has been sent. A provider will accept shortly.',
+    icon: Clock,
+  },
+  ACCEPTED: {
+    title: 'Provider Accepted',
+    subtitle: 'Your provider has accepted the job and is getting ready.',
+    icon: CheckCircle2,
+  },
+  WORKER_PREPARING: {
+    title: 'Provider Preparing',
+    subtitle: 'Your provider is preparing to head to your location.',
+    icon: Clock,
+  },
+  WORKER_EN_ROUTE: {
+    title: 'Provider On The Way',
+    subtitle: 'Your provider is en route to your location.',
+    icon: MapPin,
+  },
+  WORKER_ARRIVED: {
+    title: 'Provider Has Arrived',
+    subtitle: 'Your provider has arrived at your location.',
+    icon: MapPin,
+  },
+  SERVICE_STARTED: {
+    title: 'Service In Progress',
+    subtitle: 'Work has begun on your service request.',
+    icon: Wrench,
+  },
+  IN_PROGRESS: {
+    title: 'Service In Progress',
+    subtitle: 'Work is currently being done.',
+    icon: Wrench,
+  },
+  COMPLETED: {
+    title: 'Service Completed',
+    subtitle: 'Your service has been completed. Please confirm and pay.',
+    icon: CheckCircle2,
+  },
+  CANCELLED: {
+    title: 'Booking Cancelled',
+    subtitle: 'This booking has been cancelled.',
+    icon: Clock,
+  },
 };
 
 const TIMELINE_STEPS = [
-  { id: '1', title: 'Booking Confirmed', subtitle: 'Your booking has been placed' },
-  { id: '2', title: 'Provider Accepted', subtitle: 'A provider accepted your job' },
+  {
+    id: '1',
+    title: 'Booking Confirmed',
+    subtitle: 'Your booking has been placed',
+  },
+  {
+    id: '2',
+    title: 'Provider Accepted',
+    subtitle: 'A provider accepted your job',
+  },
   { id: '3', title: 'Provider En Route', subtitle: 'Provider is on the way' },
   { id: '4', title: 'Provider Arrived', subtitle: 'Provider has arrived' },
   { id: '5', title: 'Service In Progress', subtitle: 'Work has started' },
@@ -92,7 +143,11 @@ export default function TrackingScreen() {
       `booking_id=eq.${bookingId}`,
     );
     const poll = setInterval(() => {
-      if (!tracking?.booking?.status || !['COMPLETED', 'CANCELLED'].includes(tracking.booking.status)) load();
+      if (
+        !tracking?.booking?.status ||
+        !['COMPLETED', 'CANCELLED'].includes(tracking.booking.status)
+      )
+        load();
     }, 10000);
     return () => {
       stopLocation();
@@ -114,11 +169,95 @@ export default function TrackingScreen() {
 
   const address = tracking?.booking?.service_requests?.addresses;
   const latest = tracking?.updates?.[0];
-  const statusInfo = STATUS_INFO[workerStatus ?? ''] ?? { title: workerStatus?.replaceAll('_', ' ') ?? 'Loading...', subtitle: '', icon: Clock };
+  const statusInfo = STATUS_INFO[workerStatus ?? ''] ?? {
+    title: workerStatus?.replaceAll('_', ' ') ?? 'Loading...',
+    subtitle: '',
+    icon: Clock,
+  };
   const StatusIcon = statusInfo.icon;
   const isCompleted = workerStatus === 'COMPLETED';
   const isCancelled = workerStatus === 'CANCELLED';
   const isActive = !isCompleted && !isCancelled;
+  const contactAvailable = workerStatus !== 'PENDING';
+  const workerAccountId = tracking?.booking?.worker_account_id as
+    | string
+    | undefined;
+
+  const reportWorker = () =>
+    Alert.alert(
+      'Report provider',
+      'Submit a conduct report for administrator review?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Submit report',
+          style: 'destructive',
+          onPress: () =>
+            void reportBookingParticipant(
+              bookingId,
+              `Customer submitted a conduct concern for booking ${bookingId}. Administrator review is required.`,
+            )
+              .then(() =>
+                Alert.alert(
+                  'Report submitted',
+                  'An administrator can now review this booking.',
+                ),
+              )
+              .catch((error) => Alert.alert('Report failed', error.message)),
+        },
+      ],
+    );
+
+  const blockWorker = () => {
+    if (!workerAccountId) return;
+    Alert.alert(
+      'Block provider',
+      'This provider will be excluded from your future matches.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: () =>
+            void blockAccount(
+              workerAccountId,
+              `Blocked from booking ${bookingId}`,
+            )
+              .then(() =>
+                Alert.alert(
+                  'Provider blocked',
+                  'This provider will not appear in future matches.',
+                ),
+              )
+              .catch((error) => Alert.alert('Block failed', error.message)),
+        },
+      ],
+    );
+  };
+
+  const disputeBooking = () =>
+    Alert.alert(
+      'Open dispute',
+      'Open a dispute for administrator review of this booking?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open dispute',
+          onPress: () =>
+            void openBookingDispute(
+              bookingId,
+              `Customer requested administrator review for booking ${bookingId}.`,
+            )
+              .then(() =>
+                Alert.alert(
+                  'Dispute opened',
+                  'An administrator can now review the booking record.',
+                ),
+              )
+              .catch((error) => Alert.alert('Dispute failed', error.message)),
+        },
+      ],
+    );
 
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
@@ -144,50 +283,81 @@ export default function TrackingScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Map Area - only show when active and location available */}
-        {isActive && address?.latitude != null && address?.longitude != null && (
-          <View style={styles.mapContainer}>
-            <BookingMap
-              bookingId={bookingId}
-              destinationLat={Number(address.latitude)}
-              destinationLng={Number(address.longitude)}
-              destinationAddress={[
-                address.line1,
-                address.barangay,
-                address.city,
-              ]
-                .filter(Boolean)
-                .join(', ')}
-              startLat={
-                tracking?.booking?.worker_start_lat == null
-                  ? undefined
-                  : Number(tracking.booking.worker_start_lat)
-              }
-              startLng={
-                tracking?.booking?.worker_start_lng == null
-                  ? undefined
-                  : Number(tracking.booking.worker_start_lng)
-              }
-              workerLat={latest ? Number(latest.latitude) : undefined}
-              workerLng={latest ? Number(latest.longitude) : undefined}
-            />
-          </View>
-        )}
+        {isActive &&
+          address?.latitude != null &&
+          address?.longitude != null && (
+            <View style={styles.mapContainer}>
+              <BookingMap
+                bookingId={bookingId}
+                destinationLat={Number(address.latitude)}
+                destinationLng={Number(address.longitude)}
+                destinationAddress={[
+                  address.line1,
+                  address.barangay,
+                  address.city,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+                startLat={
+                  tracking?.booking?.worker_start_lat == null
+                    ? undefined
+                    : Number(tracking.booking.worker_start_lat)
+                }
+                startLng={
+                  tracking?.booking?.worker_start_lng == null
+                    ? undefined
+                    : Number(tracking.booking.worker_start_lng)
+                }
+                workerLat={latest ? Number(latest.latitude) : undefined}
+                workerLng={latest ? Number(latest.longitude) : undefined}
+              />
+            </View>
+          )}
 
         {/* Status Card */}
-        <View style={[styles.statusCard, { borderLeftColor: isCompleted ? '#2E7D32' : isCancelled ? '#C62828' : theme.colors.primary }]}>
-          <StatusIcon size={24} color={isCompleted ? '#2E7D32' : isCancelled ? '#C62828' : theme.colors.primary} />
+        <View
+          style={[
+            styles.statusCard,
+            {
+              borderLeftColor: isCompleted
+                ? '#2E7D32'
+                : isCancelled
+                  ? '#C62828'
+                  : theme.colors.primary,
+            },
+          ]}
+        >
+          <StatusIcon
+            size={24}
+            color={
+              isCompleted
+                ? '#2E7D32'
+                : isCancelled
+                  ? '#C62828'
+                  : theme.colors.primary
+            }
+          />
           <View style={{ flex: 1 }}>
-            <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>
+            <Text
+              style={[theme.typography.h4, { color: theme.colors.textPrimary }]}
+            >
               {statusInfo.title}
             </Text>
-            <Text style={[theme.typography.body2, { color: theme.colors.textSecondary, marginTop: 2 }]}>
+            <Text
+              style={[
+                theme.typography.body2,
+                { color: theme.colors.textSecondary, marginTop: 2 },
+              ]}
+            >
               {statusInfo.subtitle}
             </Text>
           </View>
         </View>
 
         {/* Route Summary - show when accepted/preparing/en_route */}
-        {['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(workerStatus ?? '') && (
+        {['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(
+          workerStatus ?? '',
+        ) && (
           <RouteSummaryCard
             bookingId={bookingId}
             startLat={tracking?.booking?.worker_start_lat}
@@ -210,7 +380,8 @@ export default function TrackingScreen() {
             <View style={styles.avatarPlaceholder} />
             <View>
               <Text style={theme.typography.h4}>
-                {tracking?.booking?.worker_profiles?.display_name ?? 'Assigned Provider'}
+                {tracking?.booking?.worker_profiles?.display_name ??
+                  'Assigned Provider'}
               </Text>
               <Text
                 style={[
@@ -223,16 +394,25 @@ export default function TrackingScreen() {
             </View>
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => {
-              const workerAccountId = tracking?.booking?.worker_account_id;
-              if (workerAccountId) {
-                supabase.from('accounts').select('mobile').eq('id', workerAccountId).single().then(({ data }) => {
-                  if (data?.mobile) Linking.openURL(`tel:${data.mobile}`);
-                });
-              }
-            }}>
-              <Phone color={theme.colors.primary} size={20} />
-            </TouchableOpacity>
+            {contactAvailable ? (
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => {
+                  if (workerAccountId) {
+                    supabase
+                      .from('accounts')
+                      .select('mobile')
+                      .eq('id', workerAccountId)
+                      .single()
+                      .then(({ data }) => {
+                        if (data?.mobile) Linking.openURL(`tel:${data.mobile}`);
+                      });
+                  }
+                }}
+              >
+                <Phone color={theme.colors.primary} size={20} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => router.push(`/messages/chat?id=${id}`)}
@@ -243,6 +423,27 @@ export default function TrackingScreen() {
         </View>
 
         <View style={styles.divider} />
+
+        <View style={styles.safetyActions}>
+          <Button
+            title="Report Provider"
+            variant="outlined"
+            onPress={reportWorker}
+            fullWidth
+          />
+          <Button
+            title="Block Provider"
+            variant="outlined"
+            onPress={blockWorker}
+            fullWidth
+          />
+          <Button
+            title="Open Dispute"
+            variant="outlined"
+            onPress={disputeBooking}
+            fullWidth
+          />
+        </View>
 
         {/* Cancellation info */}
         {tracking?.booking?.cancellations?.[0] && (
@@ -270,8 +471,12 @@ export default function TrackingScreen() {
           <View style={styles.chatSection}>
             <BookingChat
               bookingId={bookingId}
-              customerName={tracking?.booking?.worker_profiles?.display_name ?? 'Provider'}
-              customerAvatar={tracking?.booking?.worker_profiles?.avatar_path ?? ''}
+              customerName={
+                tracking?.booking?.worker_profiles?.display_name ?? 'Provider'
+              }
+              customerAvatar={
+                tracking?.booking?.worker_profiles?.avatar_path ?? ''
+              }
               onConfirmDetails={() => {}}
               bookingStatus={workerStatus?.toLowerCase()}
             />
@@ -280,7 +485,9 @@ export default function TrackingScreen() {
 
         {/* Timeline */}
         <View style={styles.timelineSection}>
-          <Text style={[theme.typography.h4, { marginBottom: theme.spacing.md }]}>
+          <Text
+            style={[theme.typography.h4, { marginBottom: theme.spacing.md }]}
+          >
             Booking Progress
           </Text>
           <View style={styles.timeline}>
@@ -361,7 +568,12 @@ export default function TrackingScreen() {
         ) : (
           <View style={styles.footerStatus}>
             <Clock size={16} color={theme.colors.textSecondary} />
-            <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[
+                theme.typography.body2,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
               Your provider will update the status as they work
             </Text>
           </View>
@@ -414,6 +626,10 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.borderLight,
     marginHorizontal: theme.spacing.lg,
+  },
+  safetyActions: {
+    gap: theme.spacing.sm,
+    padding: theme.spacing.lg,
   },
   cancellationCard: {
     marginHorizontal: theme.spacing.lg,
