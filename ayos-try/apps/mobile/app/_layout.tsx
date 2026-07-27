@@ -14,6 +14,17 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+if (typeof globalThis !== 'undefined' && (globalThis as any).ErrorUtils) {
+  const prev = (globalThis as any).ErrorUtils.getGlobalHandler?.() ?? null;
+  (globalThis as any).ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+    if (error?.message?.includes('Load failed') || error?.message?.includes('Network request failed')) {
+      console.warn('[global] suppressed network error:', error.message);
+      return;
+    }
+    if (prev) prev(error, isFatal);
+  });
+}
+
 export default function RootLayout() {
   const setSessionUser = useAuthStore((state) => state.setSessionUser);
   const setLoading = useAuthStore((state) => state.setLoading);
