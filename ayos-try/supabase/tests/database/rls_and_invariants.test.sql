@@ -50,7 +50,7 @@ select ok((select relrowsecurity from pg_class where oid='public.accounts'::regc
 select ok((select relrowsecurity from pg_class where oid='public.payments'::regclass),'payments RLS enabled');
 select ok((select relrowsecurity from pg_class where oid='public.ai_analysis_attempts'::regclass),'AI attempts RLS enabled');
 select is((select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity),0::bigint,'every public application table enables RLS');
-select is((select count(*)::integer from storage.buckets where public=false),10,'all ten application buckets are private');
+select is((select count(*)::integer from storage.buckets where public=false),11,'all eleven application buckets are private');
 select is(has_table_privilege('authenticated','public.bookings','insert'),false,'authenticated clients cannot insert bookings directly');
 select is((select count(*) from information_schema.routine_privileges where specific_schema='public' and grantee in ('anon','PUBLIC') and privilege_type='EXECUTE' and routine_name in ('transition_booking','confirm_cash_payment','review_worker_verification','read_job_batch')),0::bigint,'anonymous roles cannot execute sensitive RPCs');
 select is((select count(*) from information_schema.routine_privileges where specific_schema='public' and grantee in ('anon','PUBLIC') and privilege_type='EXECUTE' and routine_name in ('admin_create_notification','admin_upsert_service_category','attach_request_media','attach_review_media','save_ai_analysis')),0::bigint,'anonymous roles cannot execute UI integration commands');
