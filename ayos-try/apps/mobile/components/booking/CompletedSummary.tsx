@@ -9,54 +9,89 @@ interface CompletedSummaryProps {
   bookingId: string;
   duration: string;
   earnings: string;
-  onLeaveFeedback?: () => void;
+  paymentStatus: string;
+  onConfirmCash: () => void;
+  onLeaveFeedback: () => void;
 }
 
 export const CompletedSummary = React.memo(function CompletedSummary({
   bookingId,
   duration,
   earnings,
+  paymentStatus,
+  onConfirmCash,
   onLeaveFeedback,
 }: CompletedSummaryProps) {
+  const paymentConfirmed = paymentStatus === 'SUCCESSFUL';
   return (
     <View style={styles.container}>
       <View style={styles.iconRow}>
         <CheckCircle2 size={48} color={Colors.success} />
       </View>
 
-      <AppText variant="h3" weight="bold" color={Colors.success} style={styles.title}>
+      <AppText
+        variant="h3"
+        weight="bold"
+        color={Colors.success}
+        style={styles.title}
+      >
         Job Completed!
       </AppText>
 
-      <AppText variant="body" color={Colors.textSecondary} style={styles.subtitle}>
-        Your payment has been released.
+      <AppText
+        variant="body"
+        color={Colors.textSecondary}
+        style={styles.subtitle}
+      >
+        {paymentConfirmed
+          ? 'Cash payment has been confirmed by both parties.'
+          : 'Confirm only after you have received the cash payment.'}
       </AppText>
 
       <View style={styles.summaryCard}>
         <View style={styles.summaryRow}>
-          <AppText variant="body" color={Colors.textTertiary}>Booking ID</AppText>
-          <AppText variant="body" weight="semiBold">#{bookingId.padStart(4, '0')}</AppText>
+          <AppText variant="body" color={Colors.textTertiary}>
+            Booking ID
+          </AppText>
+          <AppText variant="body" weight="semiBold">
+            #{bookingId.padStart(4, '0')}
+          </AppText>
         </View>
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
-          <AppText variant="body" color={Colors.textTertiary}>Duration</AppText>
-          <AppText variant="body" weight="semiBold">{duration}</AppText>
+          <AppText variant="body" color={Colors.textTertiary}>
+            Duration
+          </AppText>
+          <AppText variant="body" weight="semiBold">
+            {duration}
+          </AppText>
         </View>
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
-          <AppText variant="body" color={Colors.textTertiary}>Earnings</AppText>
-          <AppText variant="body" weight="bold" color={Colors.success}>{earnings}</AppText>
+          <AppText variant="body" color={Colors.textTertiary}>
+            Earnings
+          </AppText>
+          <AppText variant="body" weight="bold" color={Colors.success}>
+            {earnings}
+          </AppText>
         </View>
       </View>
 
-      {onLeaveFeedback && (
-        <AppButton
-          label="Leave Feedback"
-          variant="outline"
-          fullWidth
-          onPress={onLeaveFeedback}
-        />
-      )}
+      <AppButton
+        label={
+          paymentConfirmed ? 'Cash Payment Confirmed' : 'Confirm Cash Received'
+        }
+        variant="primary"
+        fullWidth
+        disabled={paymentConfirmed}
+        onPress={onConfirmCash}
+      />
+      <AppButton
+        label="Leave Feedback"
+        variant="outline"
+        fullWidth
+        onPress={onLeaveFeedback}
+      />
     </View>
   );
 });

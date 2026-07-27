@@ -53,7 +53,10 @@ const Navbar = () => {
         </div>
 
         {/* Date Display */}
-        <div className="hidden lg:block text-sm text-gray-500 font-medium px-2">
+        <div
+          className="hidden lg:block text-sm text-gray-500 font-medium px-2"
+          data-testid="current-date"
+        >
           {currentDate}
         </div>
 

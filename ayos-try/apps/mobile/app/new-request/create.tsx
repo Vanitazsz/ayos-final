@@ -30,7 +30,6 @@ import {
   Navigation,
   Camera,
   Mic,
-  Settings,
   Info,
   ChevronDown,
   Search,
@@ -54,10 +53,7 @@ import {
   EdgeFunctionError,
   type GeocodingResult,
 } from '@/services/api';
-import {
-  deleteRequestMedia,
-  uploadRequestMedia,
-} from '@/services/uploads';
+import { deleteRequestMedia, uploadRequestMedia } from '@/services/uploads';
 import { useRequestStore } from '@/store/useRequestStore';
 import {
   LocationPicker,
@@ -100,14 +96,21 @@ export default function CreateRequestScreen() {
   const [serviceQuery, setServiceQuery] = useState('');
   const [address, setAddress] = useState('');
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [addressDetails, setAddressDetails] = useState<AddressDetails | null>(null);
+  const [addressDetails, setAddressDetails] = useState<AddressDetails | null>(
+    null,
+  );
   const [description, setDescription] = useState('');
   const [coords, setCoords] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
   const [categories, setCategories] = useState<
-    { id: string; name: string; slug: string; minimumPriceMinor: number }[]
+    {
+      id: string;
+      name: string;
+      slug: string;
+      minimumPriceMinor: number | null;
+    }[]
   >([]);
   const [visibleServiceCount, setVisibleServiceCount] = useState(4);
   const [addressResults, setAddressResults] = useState<GeocodingResult[]>([]);
@@ -151,8 +154,13 @@ export default function CreateRequestScreen() {
   const consentRef = useRef(false);
   const mediaGenerationRef = useRef({ photo: 0, voice: 0 });
   const mediaIdempotencyRef = useRef({ photo: '', voice: '' });
-  const mediaUploadTaskRef = useRef<Partial<Record<MediaKind, Promise<void>>>>({});
-  const uploadedMediaRef = useRef<{ photo: MediaInput | null; voice: MediaInput | null }>({
+  const mediaUploadTaskRef = useRef<Partial<Record<MediaKind, Promise<void>>>>(
+    {},
+  );
+  const uploadedMediaRef = useRef<{
+    photo: MediaInput | null;
+    voice: MediaInput | null;
+  }>({
     photo: null,
     voice: null,
   });
@@ -169,31 +177,30 @@ export default function CreateRequestScreen() {
   const hasMoreServices = visibleServiceCount < filteredCategories.length;
   const matchingSavedAddressId = useMemo(() => {
     return (
-      savedAddresses.find(
-        (item) => formatSavedAddress(item) === address,
-      )?.id ?? null
+      savedAddresses.find((item) => formatSavedAddress(item) === address)?.id ??
+      null
     );
   }, [address, savedAddresses]);
   const activeSavedAddressId =
-    selectedSavedAddressId ?? matchingSavedAddressId ?? savedAddressSelectionRef.current;
+    selectedSavedAddressId ??
+    matchingSavedAddressId ??
+    savedAddressSelectionRef.current;
 
   useEffect(() => {
     let active = true;
-    void fetchServiceCategories().then(
-      (result) => {
-        if (!active) return;
-        if (result.error) Alert.alert('Services unavailable', result.error);
-        else
-          setCategories(
-            result.data.map((row: any) => ({
-              id: row.id,
-              name: row.label,
-              slug: row.slug,
-              minimumPriceMinor: row.minimumPriceMinor,
-            })),
-          );
-      },
-    );
+    void fetchServiceCategories().then((result) => {
+      if (!active) return;
+      if (result.error) Alert.alert('Services unavailable', result.error);
+      else
+        setCategories(
+          result.data.map((row: any) => ({
+            id: row.id,
+            name: row.label,
+            slug: row.slug,
+            minimumPriceMinor: row.minimumPriceMinor,
+          })),
+        );
+    });
     return () => {
       active = false;
     };
@@ -330,9 +337,10 @@ export default function CreateRequestScreen() {
     if (!nextGenerated) return;
     setDescription((current) => {
       const previous = generatedTextRef.current[kind];
-      const preserved = previous && current.includes(previous)
-        ? current.replace(previous, '').trim()
-        : current.trim();
+      const preserved =
+        previous && current.includes(previous)
+          ? current.replace(previous, '').trim()
+          : current.trim();
       generatedTextRef.current[kind] = nextGenerated;
       return [preserved, nextGenerated].filter(Boolean).join('\n\n');
     });
@@ -343,7 +351,9 @@ export default function CreateRequestScreen() {
     const previous = generatedTextRef.current[kind];
     if (previous)
       setDescription((current) =>
-        current.includes(previous) ? current.replace(previous, '').trim() : current,
+        current.includes(previous)
+          ? current.replace(previous, '').trim()
+          : current,
       );
     generatedTextRef.current[kind] = '';
   };
@@ -470,10 +480,7 @@ export default function CreateRequestScreen() {
   const validateRequest = (useAi: boolean, media: MediaInput[]) => {
     const next: Record<string, string> = {};
     if (!selectedCategory) next.service = 'Select a service.';
-    if (
-      description.trim().length < 10 &&
-      (!useAi || media.length === 0)
-    )
+    if (description.trim().length < 10 && (!useAi || media.length === 0))
       next.description = useAi
         ? 'Enter at least 10 characters or add a photo or voice recording.'
         : 'Describe the issue using at least 10 characters.';
@@ -484,11 +491,14 @@ export default function CreateRequestScreen() {
         'Select a suggested address or confirm your current location.';
     if (manualAddressMode) {
       if (!manualAddress.barangay.trim()) next.barangay = 'Enter the barangay.';
-      if (!manualAddress.city.trim()) next.city = 'Enter the city or municipality.';
+      if (!manualAddress.city.trim())
+        next.city = 'Enter the city or municipality.';
       if (!manualAddress.province.trim()) next.province = 'Enter the province.';
     } else if (
       coords &&
-      (!addressDetails?.district || !addressDetails.city || !addressDetails.region)
+      (!addressDetails?.district ||
+        !addressDetails.city ||
+        !addressDetails.region)
     ) {
       next.locationDetails = 'Complete the barangay, city, and province.';
       setManualAddressMode(true);
@@ -498,7 +508,8 @@ export default function CreateRequestScreen() {
       setSubmissionError(
         `Please complete: ${Array.from(new Set(Object.values(next))).join(' ')}`,
       );
-      if (next.service || next.description) scrollRef.current?.scrollTo({ y: 0, animated: true });
+      if (next.service || next.description)
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
       else scrollRef.current?.scrollToEnd({ animated: true });
     }
     return Object.keys(next).length === 0;
@@ -507,11 +518,15 @@ export default function CreateRequestScreen() {
   const handleNext = async (useAi = true) => {
     setSubmissionError('');
     if (profileLoading) {
-      setSubmissionError('Your profile is still loading. Please wait a moment.');
+      setSubmissionError(
+        'Your profile is still loading. Please wait a moment.',
+      );
       return;
     }
     if (profileError || !customerProfile) {
-      setSubmissionError('Your profile could not be loaded. Reopen this screen and try again.');
+      setSubmissionError(
+        'Your profile could not be loaded. Reopen this screen and try again.',
+      );
       return;
     }
     if (customerProfile?.verificationStatus !== 'verified') {
@@ -540,7 +555,9 @@ export default function CreateRequestScreen() {
       uploadedMediaRef.current.voice,
     ].filter((item): item is MediaInput => Boolean(item));
     if ((cameraPhoto || voiceRecord) && media.length === 0) {
-      setSubmissionError('Media upload failed. Retry it or remove it before continuing.');
+      setSubmissionError(
+        'Media upload failed. Retry it or remove it before continuing.',
+      );
       return;
     }
     if (!validateRequest(useAi, media)) return;
@@ -556,7 +573,6 @@ export default function CreateRequestScreen() {
     setErrors((current) => ({ ...current, consent: '' }));
     setSaving(true);
     try {
-      const category = categories.find((item) => item.id === selectedCategory);
       const nextAddressDetails: AddressDetails = manualAddressMode
         ? {
             streetNumber: '',
@@ -578,7 +594,7 @@ export default function CreateRequestScreen() {
         aiConsent: useAi && consent,
         aiJobId: null,
         aiResult: null,
-        budgetMinor: category?.minimumPriceMinor ?? 10000,
+        budgetMinor: 0,
         requestId: null,
         scheduledAt: null,
         matchingMode: 'direct',
@@ -912,7 +928,9 @@ export default function CreateRequestScreen() {
         ) : null}
         {profileError ? (
           <View style={styles.profileErrorBanner}>
-            <Text style={styles.fieldError}>Profile unavailable: {profileError}</Text>
+            <Text style={styles.fieldError}>
+              Profile unavailable: {profileError}
+            </Text>
           </View>
         ) : null}
         {customerProfile?.subdivisionName ? (
@@ -1253,12 +1271,6 @@ export default function CreateRequestScreen() {
                 {locationLoading ? 'Detecting…' : 'Use Current'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.gearBtn}
-              onPress={() => router.push('/new-request/radius-config')}
-            >
-              <Settings color={theme.colors.textSecondary} size={20} />
-            </TouchableOpacity>
           </View>
         </View>
         {savedAddresses.length ? (
@@ -1290,7 +1302,9 @@ export default function CreateRequestScreen() {
                     onPress={() => applySavedAddress(savedAddress)}
                   >
                     <MapPin
-                      color={selected ? theme.colors.surface : theme.colors.primary}
+                      color={
+                        selected ? theme.colors.surface : theme.colors.primary
+                      }
                       size={15}
                     />
                     <View style={styles.savedAddressChipText}>
@@ -1327,7 +1341,9 @@ export default function CreateRequestScreen() {
             onPress={() => router.push('/settings/addresses')}
           >
             <MapPin color={theme.colors.primary} size={16} />
-            <Text style={styles.savedAddressManage}>Save an address for future bookings</Text>
+            <Text style={styles.savedAddressManage}>
+              Save an address for future bookings
+            </Text>
           </TouchableOpacity>
         )}
         <TextInput
@@ -1382,7 +1398,8 @@ export default function CreateRequestScreen() {
           <View style={styles.manualAddressCard}>
             <Text style={styles.manualAddressTitle}>Complete the address</Text>
             <Text style={styles.manualAddressHelp}>
-              Your map point is saved. These details are required so the worker can find you.
+              Your map point is saved. These details are required so the worker
+              can find you.
             </Text>
             <TextInput
               placeholder="Barangay"
@@ -1458,7 +1475,9 @@ export default function CreateRequestScreen() {
               postalCode: details.postalCode,
             });
             setManualAddressMode(
-              !details.district.trim() || !details.city.trim() || !details.region.trim(),
+              !details.district.trim() ||
+                !details.city.trim() ||
+                !details.region.trim(),
             );
             setLocationWarning('');
             setErrors((current) => ({ ...current, address: '', location: '' }));
@@ -1515,13 +1534,19 @@ export default function CreateRequestScreen() {
               setErrors((current) => ({ ...current, consent: '' }));
               setSubmissionError('');
               if (nextConsent) {
-                if (uploadedMediaRef.current.photo && photoStatus === 'awaiting-consent')
+                if (
+                  uploadedMediaRef.current.photo &&
+                  photoStatus === 'awaiting-consent'
+                )
                   void runMediaAssist(
                     'photo',
                     uploadedMediaRef.current.photo,
                     mediaGenerationRef.current.photo,
                   );
-                if (uploadedMediaRef.current.voice && voiceStatus === 'awaiting-consent')
+                if (
+                  uploadedMediaRef.current.voice &&
+                  voiceStatus === 'awaiting-consent'
+                )
                   void runMediaAssist(
                     'voice',
                     uploadedMediaRef.current.voice,
@@ -1565,7 +1590,9 @@ export default function CreateRequestScreen() {
                 accessibilityLabel="Verify identity now"
                 onPress={() => router.push('/(auth)/verify-identity')}
               >
-                <Text style={styles.submissionErrorAction}>Verify identity now</Text>
+                <Text style={styles.submissionErrorAction}>
+                  Verify identity now
+                </Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -1836,7 +1863,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: theme.spacing.sm,
   },
-  gearBtn: { padding: 4 },
   addressSearchStatus: {
     flexDirection: 'row',
     alignItems: 'center',

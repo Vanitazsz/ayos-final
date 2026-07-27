@@ -14,7 +14,10 @@ const supportedTypes = new Set([
   'audio/webm',
 ]);
 
-function normalizeContentType(value: string | null | undefined, fallback?: string) {
+function normalizeContentType(
+  value: string | null | undefined,
+  fallback?: string,
+) {
   const candidate = value?.split(';')[0]?.trim().toLowerCase();
   if (candidate && supportedTypes.has(candidate))
     return candidate === 'audio/x-m4a' || candidate === 'audio/m4a'
@@ -43,13 +46,15 @@ export async function uploadRequestMedia(
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (userError || !user) throw userError ?? new Error('Authentication required');
+  if (userError || !user)
+    throw userError ?? new Error('Authentication required');
 
   const response = await fetch(uri);
   if (!response.ok) throw new Error('The selected media could not be read.');
   const blob = await response.blob();
   const contentType = normalizeContentType(blob.type, fallbackContentType);
-  if (blob.size > 15 * 1024 * 1024) throw new Error('Media must be 15 MB or smaller.');
+  if (blob.size > 15 * 1024 * 1024)
+    throw new Error('Media must be 15 MB or smaller.');
 
   const path = `${user.id}/${randomUUID()}.${extensionFor(contentType)}`;
   const bytes = await blob.arrayBuffer();
@@ -68,6 +73,35 @@ export async function uploadRequestMedia(
 }
 
 export async function deleteRequestMedia(media: MediaInput) {
-  const { error } = await supabase.storage.from(media.bucket).remove([media.path]);
+  const { error } = await supabase.storage
+    .from(media.bucket)
+    .remove([media.path]);
   if (error) throw error;
+}
+
+export async function uploadBookingProof(uri: string) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user)
+    throw userError ?? new Error('Authentication required');
+
+  const response = await fetch(uri);
+  if (!response.ok)
+    throw new Error('The selected proof photo could not be read.');
+  const blob = await response.blob();
+  const contentType = normalizeContentType(blob.type, 'image/jpeg');
+  if (!contentType.startsWith('image/'))
+    throw new Error('Proof of work must be an image.');
+  if (blob.size > 15 * 1024 * 1024)
+    throw new Error('Proof photos must be 15 MB or smaller.');
+
+  const path = `${user.id}/${randomUUID()}.${extensionFor(contentType)}`;
+  const bytes = await blob.arrayBuffer();
+  const { error } = await supabase.storage
+    .from('booking-proof')
+    .upload(path, bytes, { contentType, upsert: false });
+  if (error) throw error;
+  return { path, contentType, byteSize: bytes.byteLength };
 }

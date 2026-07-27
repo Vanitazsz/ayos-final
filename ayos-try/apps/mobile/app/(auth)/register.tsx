@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -24,9 +24,12 @@ type RoleChoice = 'USER' | 'WORKER' | null;
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { role } = useLocalSearchParams<{ role?: string }>();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleChoice>(null);
+  const [selectedRole, setSelectedRole] = useState<RoleChoice>(
+    role === 'USER' ? 'USER' : null,
+  );
 
   const {
     control,
@@ -91,8 +94,11 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.content}>
-        <Text style={[theme.typography.h1, styles.title]}>
-          {selectedRole === 'USER' ? 'Create Account' : 'Get Started'}
+        <Text
+          accessibilityRole="header"
+          style={[theme.typography.h1, styles.title]}
+        >
+          {selectedRole === 'USER' ? 'Create account' : 'Get Started'}
         </Text>
         <Text style={[theme.typography.body1, styles.subtitle]}>
           {selectedRole === 'USER'
@@ -113,13 +119,33 @@ export default function RegisterScreen() {
               onPress={() => handleRoleSelect('USER')}
               activeOpacity={0.7}
             >
-              <View style={[styles.roleIconCircle, selectedRole === 'USER' && styles.roleIconCircleSelected]}>
-                <Wrench size={28} color={selectedRole === 'USER' ? '#fff' : theme.colors.primary} />
+              <View
+                style={[
+                  styles.roleIconCircle,
+                  selectedRole === 'USER' && styles.roleIconCircleSelected,
+                ]}
+              >
+                <Wrench
+                  size={28}
+                  color={
+                    selectedRole === 'USER' ? '#fff' : theme.colors.primary
+                  }
+                />
               </View>
-              <Text style={[styles.roleCardTitle, selectedRole === 'USER' && styles.roleCardTitleSelected]}>
+              <Text
+                style={[
+                  styles.roleCardTitle,
+                  selectedRole === 'USER' && styles.roleCardTitleSelected,
+                ]}
+              >
                 I need services
               </Text>
-              <Text style={[styles.roleCardDesc, selectedRole === 'USER' && styles.roleCardDescSelected]}>
+              <Text
+                style={[
+                  styles.roleCardDesc,
+                  selectedRole === 'USER' && styles.roleCardDescSelected,
+                ]}
+              >
                 Hire professionals for home and business services
               </Text>
             </TouchableOpacity>
@@ -132,13 +158,33 @@ export default function RegisterScreen() {
               onPress={() => handleRoleSelect('WORKER')}
               activeOpacity={0.7}
             >
-              <View style={[styles.roleIconCircle, selectedRole === 'WORKER' && styles.roleIconCircleSelected]}>
-                <Briefcase size={28} color={selectedRole === 'WORKER' ? '#fff' : theme.colors.primary} />
+              <View
+                style={[
+                  styles.roleIconCircle,
+                  selectedRole === 'WORKER' && styles.roleIconCircleSelected,
+                ]}
+              >
+                <Briefcase
+                  size={28}
+                  color={
+                    selectedRole === 'WORKER' ? '#fff' : theme.colors.primary
+                  }
+                />
               </View>
-              <Text style={[styles.roleCardTitle, selectedRole === 'WORKER' && styles.roleCardTitleSelected]}>
+              <Text
+                style={[
+                  styles.roleCardTitle,
+                  selectedRole === 'WORKER' && styles.roleCardTitleSelected,
+                ]}
+              >
                 I provide services
               </Text>
-              <Text style={[styles.roleCardDesc, selectedRole === 'WORKER' && styles.roleCardDescSelected]}>
+              <Text
+                style={[
+                  styles.roleCardDesc,
+                  selectedRole === 'WORKER' && styles.roleCardDescSelected,
+                ]}
+              >
                 Join as a verified service professional
               </Text>
             </TouchableOpacity>
@@ -153,7 +199,8 @@ export default function RegisterScreen() {
                 rules={{ required: 'Full name is required' }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Full Name"
+                    label="Full name"
+                    accessibilityLabel="Full name"
                     placeholder="Enter your full name"
                     leftIcon={User}
                     onBlur={onBlur}
@@ -171,11 +218,12 @@ export default function RegisterScreen() {
                   required: 'Mobile number is required',
                   validate: (value) =>
                     isValidPhilippinePhone(value) ||
-                    'Enter a valid Philippine mobile number',
+                    'Enter a mobile number with country code, for example +639171234567.',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Mobile Number"
+                    label="Mobile number (+63…)"
+                    accessibilityLabel="Mobile number (+63…)"
                     placeholder="Enter your mobile number"
                     leftIcon={Phone}
                     keyboardType="phone-pad"
@@ -200,6 +248,7 @@ export default function RegisterScreen() {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     label="Email"
+                    accessibilityLabel="Email"
                     placeholder="Enter your email address"
                     leftIcon={Mail}
                     keyboardType="email-address"
@@ -218,10 +267,14 @@ export default function RegisterScreen() {
                 rules={{
                   required: 'Password is required',
                   minLength: { value: 8, message: 'Minimum 8 characters' },
+                  validate: (value) =>
+                    /[A-Z]/.test(value) ||
+                    'Password must include an uppercase letter.',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     label="Password"
+                    accessibilityLabel="Password"
                     placeholder="Create password"
                     leftIcon={Lock}
                     isPassword
@@ -238,11 +291,13 @@ export default function RegisterScreen() {
                 control={control}
                 rules={{
                   required: 'Confirm password is required',
-                  validate: (val) => val === password || 'Passwords do not match',
+                  validate: (val) =>
+                    val === password || 'Passwords do not match',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Confirm Password"
+                    label="Confirm password"
+                    accessibilityLabel="Confirm password"
                     placeholder="Confirm password"
                     leftIcon={Lock}
                     isPassword
@@ -259,6 +314,9 @@ export default function RegisterScreen() {
                 style={styles.termsContainer}
                 activeOpacity={0.7}
                 onPress={() => setAcceptedTerms(!acceptedTerms)}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: acceptedTerms }}
+                aria-checked={acceptedTerms}
               >
                 {acceptedTerms ? (
                   <CheckSquare color={theme.colors.primary} size={20} />
@@ -274,7 +332,7 @@ export default function RegisterScreen() {
             </View>
 
             <Button
-              title="Sign Up"
+              title="Send email code"
               onPress={handleSubmit(onSubmit)}
               loading={loading}
               fullWidth

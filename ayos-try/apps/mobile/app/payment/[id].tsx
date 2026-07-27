@@ -52,7 +52,7 @@ export default function PaymentScreen() {
   const { id } = useLocalSearchParams();
   const [selectedMethod, setSelectedMethod] = useState<string | null>('cash');
   const [loading, setLoading] = useState(false);
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState<number | null>(null);
   const [homeownerCharge, setHomeownerCharge] = useState(0);
   const [error, setError] = useState('');
   const bookingId = Array.isArray(id) ? id[0] : id;
@@ -64,29 +64,40 @@ export default function PaymentScreen() {
       ]).then(([result, fees]) => {
         if (result.error) setError(result.error);
         else {
-          const val = Number(
-            result.data?.agreed_service_amount ??
-              result.data?.service_requests?.budget ??
-              1500,
-          );
-          setAmount(val > 0 ? val : 1500);
+          const agreedAmount = result.data?.agreed_service_amount;
+          if (agreedAmount == null || Number(agreedAmount) <= 0) {
+            setError('A worker price must be agreed before payment.');
+            setAmount(null);
+          } else {
+            setAmount(Number(agreedAmount));
+          }
         }
-        if (!fees.error) setHomeownerCharge(fees.data.homeownerCharge ?? 50);
+        if (!fees.error) setHomeownerCharge(fees.data.homeownerCharge ?? 0);
       });
   }, [bookingId]);
-  const total = amount + homeownerCharge;
+  const total = (amount ?? 0) + homeownerCharge;
 
   const handlePayment = async () => {
     if (!selectedMethod || !bookingId) return;
     setLoading(true);
     setError('');
     try {
-      await confirmCashPayment(bookingId);
+      const payment = await confirmCashPayment(bookingId);
+      if (payment.status === 'SUCCESSFUL') {
+        router.push(`/payment/success?id=${bookingId}`);
+      } else {
+        setError(
+          'Your confirmation was recorded. Waiting for the worker to confirm receipt.',
+        );
+      }
     } catch (cause) {
-      console.warn('Cash payment RPC note:', cause);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Cash payment confirmation failed.',
+      );
     } finally {
       setLoading(false);
-      router.push(`/payment/success?id=${bookingId}`);
     }
   };
 
@@ -131,7 +142,9 @@ export default function PaymentScreen() {
               { color: theme.colors.primary, marginBottom: theme.spacing.md },
             ]}
           >
-            ₱ {total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            {amount == null
+              ? 'Request a quote'
+              : `₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
           </Text>
 
           <View style={styles.summaryRow}>
@@ -144,7 +157,9 @@ export default function PaymentScreen() {
               Service
             </Text>
             <Text style={theme.typography.body2}>
-              ₱ {amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              {amount == null
+                ? 'Request a quote'
+                : `₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
             </Text>
           </View>
           <View style={styles.summaryRow}>
@@ -261,7 +276,7 @@ export default function PaymentScreen() {
         <Button
           title={`Confirm cash payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
           onPress={handlePayment}
-          disabled={!selectedMethod}
+          disabled={!selectedMethod || amount == null}
           loading={loading}
           fullWidth
         />

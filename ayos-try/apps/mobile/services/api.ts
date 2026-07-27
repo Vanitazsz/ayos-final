@@ -40,7 +40,9 @@ async function normalizeFunctionError(error: unknown, fallback: string) {
       payload = null;
     }
   }
-  const code = String(payload?.code ?? payload?.errors?.code ?? 'edge_function_error');
+  const code = String(
+    payload?.code ?? payload?.errors?.code ?? 'edge_function_error',
+  );
   return new EdgeFunctionError(
     String(payload?.message ?? fallback),
     code,
@@ -55,7 +57,10 @@ function geocodingErrorMessage(error: EdgeFunctionError) {
     return 'Choose a service location within the Philippines.';
   if (error.code === 'authentication_required')
     return 'Your session expired. Sign in again to search for an address.';
-  if (error.code === 'invalid_query' || error.code === 'invalid_geocoding_request')
+  if (
+    error.code === 'invalid_query' ||
+    error.code === 'invalid_geocoding_request'
+  )
     return 'That address could not be found. Check it or enter the address manually.';
   return 'The address provider is temporarily unavailable. Your map point is still usable.';
 }
@@ -139,7 +144,7 @@ export interface WorkerProfile {
   email: string;
   avatarUri: string;
   category: string;
-  verificationStatus: 'verified' | 'pending' | 'rejected';
+  verificationStatus: 'verified' | 'pending' | 'needs_review' | 'rejected';
   profileComplete: boolean;
   yearsExperience: number;
   rating: number;
@@ -230,7 +235,7 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
     const { data, error } = await supabase
       .from('worker_profiles')
       .select(
-        'account_id,display_name,avatar_path,approval_status,worker_skills(years,service_categories(name)),reviews:account_id(stars)',
+        'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name)),reviews:account_id(stars)',
       )
       .eq('approval_status', 'APPROVED')
       .eq('is_available', true);
@@ -256,7 +261,17 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
           distance: '',
           eta: '',
           verified: row.approval_status === 'APPROVED',
-          price: undefined,
+          price:
+            row.worker_skills?.find((skill: any) => skill.rate_minor != null)
+              ?.rate_minor != null
+              ? money(
+                  Math.min(
+                    ...row.worker_skills
+                      .map((skill: any) => Number(skill.rate_minor))
+                      .filter(Number.isFinite),
+                  ) / 100,
+                )
+              : 'Request a quote',
         };
       }),
     );
@@ -280,7 +295,7 @@ export async function fetchProviderProfile(id: string) {
     ] = await Promise.all([
       supabase
         .from('worker_profiles')
-        .select('*,worker_skills(years,service_categories(name))')
+        .select('*,worker_skills(years,rate_minor,service_categories(name))')
         .eq('account_id', id)
         .eq('approval_status', 'APPROVED')
         .single(),
@@ -294,20 +309,16 @@ export async function fetchProviderProfile(id: string) {
         .order('created_at', { ascending: false }),
       supabase
         .from('worker_skills')
-        .select(
-          'service_categories(name,service_templates(name,base_price,is_active))',
-        )
+        .select('rate_minor,service_categories(name)')
         .eq('worker_id', id),
     ]);
     if (error) throw error;
     if (reviewError) throw reviewError;
     if (skillError) throw skillError;
     const rows = reviews ?? [];
-    const templates = (skills ?? [])
-      .flatMap(
-        (skill: any) => skill.service_categories?.service_templates ?? [],
-      )
-      .filter((item: any) => item.is_active);
+    const workerRates = (skills ?? [])
+      .map((skill: any) => Number(skill.rate_minor))
+      .filter(Number.isFinite);
     const rating = rows.length
       ? rows.reduce((sum, row) => sum + row.stars, 0) / rows.length
       : 0;
@@ -324,17 +335,17 @@ export async function fetchProviderProfile(id: string) {
       reviewCount: rows.length,
       distance: '',
       eta: '',
-      price: templates.length
-        ? money(
-            Math.min(...templates.map((row: any) => Number(row.base_price))),
-          )
-        : '',
+      price: workerRates.length
+        ? money(Math.min(...workerRates) / 100)
+        : 'Request a quote',
       bio: profile.bio ?? '',
       years: Math.max(
         0,
         ...(profile.worker_skills ?? []).map((row: any) => Number(row.years)),
       ),
-      services: templates.map((row: any) => row.name).filter(Boolean),
+      services: (skills ?? [])
+        .map((skill: any) => skill.service_categories?.name)
+        .filter(Boolean),
       reviews: await Promise.all(
         rows.map(async (row: any) => ({
           id: row.id,
@@ -386,7 +397,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     const { data, error } = await supabase
       .from('bookings')
       .select(
-        'id,worker_account_id,status,created_at,service_requests(description,scheduled_at,budget,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews:account_id(stars))',
+        'id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews:account_id(stars))',
       )
       .eq('user_account_id', user.id)
       .order('created_at', { ascending: false });
@@ -432,7 +443,10 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
           ]
             .filter(Boolean)
             .join(', '),
-          price: money(row.service_requests?.budget),
+          price:
+            row.agreed_service_amount == null
+              ? 'Request a quote'
+              : money(row.agreed_service_amount),
           rating: reviews.length
             ? reviews.reduce(
                 (sum: number, item: any) => sum + Number(item.stars),
@@ -458,7 +472,10 @@ export async function fetchServiceCategories() {
       id: row.id,
       label: row.name,
       slug: row.slug,
-      minimumPriceMinor: Number(row.minimum_price_minor ?? 0),
+      minimumPriceMinor:
+        row.minimum_price_minor != null
+          ? Number(row.minimum_price_minor)
+          : null,
       maximumPriceMinor: Number(row.maximum_price_minor ?? 0),
       isSafetyCritical: Boolean(row.is_safety_critical),
       icon: 'Wrench' as const,
@@ -487,7 +504,7 @@ export async function fetchWorkerProfile(): Promise<
         .single(),
       supabase
         .from('worker_profiles')
-        .select('*,worker_skills(years,service_categories(name))')
+        .select('*,worker_skills(years,rate_minor,service_categories(name))')
         .eq('account_id', user.id)
         .single(),
       supabase
@@ -513,7 +530,7 @@ export async function fetchWorkerProfile(): Promise<
         .order('sort_order'),
       supabase
         .from('worker_skills')
-        .select('service_categories(service_templates(base_price,is_active))')
+        .select('rate_minor')
         .eq('worker_id', user.id),
     ]);
     if (accountError) throw accountError;
@@ -523,11 +540,7 @@ export async function fetchWorkerProfile(): Promise<
         (reviews ?? []).length
       : 0;
     const prices = (skills ?? [])
-      .flatMap(
-        (skill: any) => skill.service_categories?.service_templates ?? [],
-      )
-      .filter((item: any) => item.is_active)
-      .map((item: any) => Number(item.base_price))
+      .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
     const earnings = (wallet?.wallet_transactions ?? [])
       .filter((item: any) => ['AVAILABLE', 'COMPLETED'].includes(item.status))
@@ -547,7 +560,9 @@ export async function fetchWorkerProfile(): Promise<
             ? 'verified'
             : profile.approval_status === 'REJECTED'
               ? 'rejected'
-              : 'pending',
+              : profile.approval_status === 'NEEDS_DOCUMENTS'
+                ? 'needs_review'
+                : 'pending',
         profileComplete: Boolean(account.profile_completed_at),
         yearsExperience: Math.max(
           ...(profile.worker_skills ?? []).map((skill: any) => skill.years),
@@ -557,7 +572,9 @@ export async function fetchWorkerProfile(): Promise<
         reviewCount: (reviews ?? []).length,
         completedJobs: (bookings ?? []).length,
         earnings: money(earnings),
-        hourlyRate: prices.length ? money(Math.min(...prices)) : '',
+        hourlyRate: prices.length
+          ? money(Math.min(...prices) / 100)
+          : 'Request a quote',
         skills: (profile.worker_skills ?? [])
           .map((skill: any) => skill.service_categories?.name)
           .filter(Boolean),
@@ -591,36 +608,8 @@ export async function fetchWorkerVerification() {
     return data;
   });
 }
-export async function fetchWorkerReviews(): Promise<ApiResponse<ReviewData[]>> {
-  return wrap(async () => {
-    const user = await requireUser();
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(
-        'id,stars,body,created_at,user_profiles:user_account_id(display_name,avatar_path),service:bookings(service_requests(service_categories(name)))',
-      )
-      .eq('worker_account_id', user.id)
-      .eq('moderation_status', 'PUBLISHED')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => ({
-        id: row.id,
-        author: requireIdentity(
-          row.user_profiles?.display_name,
-          'Review author',
-        ),
-        avatarUri: await resolveProfileAvatar(row.user_profiles?.avatar_path),
-        rating: row.stars,
-        date: relative(row.created_at),
-        comment: row.body,
-        serviceType: requireIdentity(
-          row.service?.service_requests?.service_categories?.name,
-          'Reviewed service',
-        ),
-      })),
-    );
-  });
+export async function fetchWorkerReviews() {
+  return fetchReviews();
 }
 export async function fetchWorkerJobs(): Promise<
   ApiResponse<JobOpportunity[]>
@@ -677,7 +666,7 @@ export async function fetchWorkerBookings(): Promise<
     const { data, error } = await supabase
       .from('bookings')
       .select(
-        'id,status,created_at,service_requests(description,scheduled_at,budget,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)',
+        'id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)',
       )
       .eq('worker_account_id', user.id)
       .order('created_at', { ascending: false });
@@ -709,7 +698,7 @@ export async function fetchWorkerBookings(): Promise<
         ]
           .filter(Boolean)
           .join(', '),
-        price: money(row.service_requests?.budget),
+        price: money(row.agreed_service_amount),
         status: row.status.toLowerCase(),
         distance: '',
       })),
@@ -717,159 +706,90 @@ export async function fetchWorkerBookings(): Promise<
   });
 }
 async function transition(bookingId: string, status: string, reason?: string) {
-  console.log(`[transition] Attempting ${status} on booking ${bookingId}`);
+  const { data: booking, error: bookingError } = await supabase
+    .from('bookings')
+    .select('version')
+    .eq('id', bookingId)
+    .single();
+  if (bookingError) throw bookingError;
+
   const { data, error } = await supabase.rpc('transition_booking', {
     p_booking_id: bookingId,
     p_target_status: status,
+    p_expected_version: booking.version,
     p_reason: reason ?? null,
   });
-  if (error) {
-    console.error(`[transition] RPC error for ${status}:`, error.message, error.code, error.details);
-    throw error;
-  }
-  console.log(`[transition] RPC success for ${status}`);
+  if (error) throw error;
   return { data };
 }
 export async function acceptJob(bookingId: string) {
-  try {
-    return await transition(bookingId, 'ACCEPTED');
-  } catch (err) {
-    console.warn('[acceptJob] RPC failed, trying fallback:', err);
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'ACCEPTED', accepted_at: new Date().toISOString() })
-      .eq('id', bookingId)
-      .select()
-      .single();
-    if (error) {
-      console.error('[acceptJob] Fallback also failed:', error.message, error.code);
-      throw error;
-    }
-    console.log('[acceptJob] Fallback succeeded');
-    return { data };
-  }
+  return transition(bookingId, 'ACCEPTED');
 }
 export async function prepareJob(bookingId: string) {
   return transition(bookingId, 'WORKER_PREPARING');
 }
 export async function departForJob(bookingId: string) {
-  try {
-    return await transition(bookingId, 'WORKER_EN_ROUTE');
-  } catch (err) {
-    console.warn('[departForJob] RPC failed, trying fallback:', err);
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'WORKER_EN_ROUTE' })
-      .eq('id', bookingId)
-      .select()
-      .single();
-    if (error) {
-      console.error('[departForJob] Fallback also failed:', error.message, error.code);
-      throw error;
-    }
-    console.log('[departForJob] Fallback succeeded');
-    return { data };
-  }
+  return transition(bookingId, 'WORKER_EN_ROUTE');
 }
 export async function arriveAtJob(bookingId: string) {
-  try {
-    return await transition(bookingId, 'WORKER_ARRIVED');
-  } catch (err) {
-    console.warn('[arriveAtJob] RPC failed, trying fallback:', err);
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'WORKER_ARRIVED' })
-      .eq('id', bookingId)
-      .select()
-      .single();
-    if (error) {
-      console.error('[arriveAtJob] Fallback also failed:', error.message, error.code);
-      throw error;
-    }
-    console.log('[arriveAtJob] Fallback succeeded');
-    return { data };
-  }
+  return transition(bookingId, 'WORKER_ARRIVED');
 }
 export async function startJob(bookingId: string) {
-  try {
-    return await transition(bookingId, 'SERVICE_STARTED');
-  } catch (err) {
-    console.warn('[startJob] RPC failed, trying fallback:', err);
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'SERVICE_STARTED' })
-      .eq('id', bookingId)
-      .select()
-      .single();
-    if (error) {
-      console.error('[startJob] Fallback also failed:', error.message, error.code);
-      throw error;
-    }
-    console.log('[startJob] Fallback succeeded');
-    return { data };
-  }
+  return transition(bookingId, 'SERVICE_STARTED');
 }
 export async function markJobInProgress(bookingId: string) {
   return transition(bookingId, 'IN_PROGRESS');
 }
 export async function completeJob(bookingId: string) {
-  try {
-    return await transition(bookingId, 'COMPLETED');
-  } catch (err) {
-    console.warn('[completeJob] RPC failed, trying fallback:', err);
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'COMPLETED', completed_at: new Date().toISOString() })
-      .eq('id', bookingId)
-      .select()
-      .single();
-    if (error) {
-      console.error('[completeJob] Fallback also failed:', error.message, error.code);
-      throw error;
-    }
-    console.log('[completeJob] Fallback succeeded');
-    return { data };
-  }
+  return transition(bookingId, 'COMPLETED');
 }
 export async function cancelBooking(bookingId: string, reason: string) {
-  try {
-    const { data: booking } = await supabase
-      .from('bookings')
-      .select('status')
-      .eq('id', bookingId)
-      .single();
+  const { data: booking, error: bookingError } = await supabase
+    .from('bookings')
+    .select('status,version')
+    .eq('id', bookingId)
+    .single();
+  if (bookingError) throw bookingError;
 
-    const stages: Record<string, string> = {
-      PENDING: 'BEFORE_ACCEPTANCE',
-      ACCEPTED: 'BEFORE_TRAVEL',
-      WORKER_PREPARING: 'BEFORE_TRAVEL',
-      WORKER_EN_ROUTE: 'EN_ROUTE',
-      WORKER_ARRIVED: 'ARRIVED',
-      SERVICE_STARTED: 'SERVICE_STARTED',
-      IN_PROGRESS: 'IN_PROGRESS',
-    };
+  const stages: Record<string, string> = {
+    PENDING: 'BEFORE_ACCEPTANCE',
+    ACCEPTED: 'BEFORE_TRAVEL',
+    WORKER_PREPARING: 'BEFORE_TRAVEL',
+    WORKER_EN_ROUTE: 'EN_ROUTE',
+    WORKER_ARRIVED: 'ARRIVED',
+    SERVICE_STARTED: 'SERVICE_STARTED',
+    IN_PROGRESS: 'IN_PROGRESS',
+  };
 
-    const { data, error } = await supabase.rpc('cancel_booking', {
-      p_booking_id: bookingId,
-      p_stage: stages[booking?.status ?? 'PENDING'] ?? 'BEFORE_ACCEPTANCE',
-      p_reason_code: 'DECLINED',
-      p_details: reason || 'Worker declined assigned booking',
-      p_policy_version: '2026-07-21',
-    });
-    if (error) throw error;
-    return { data };
-  } catch (rpcError) {
-    console.warn('cancelBooking fallback executing:', rpcError);
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'CANCELLED', cancelled_at: new Date().toISOString() })
-      .eq('id', bookingId)
-      .select()
-      .single();
+  const { data, error } = await supabase.rpc('cancel_booking', {
+    p_booking_id: bookingId,
+    p_expected_version: booking.version,
+    p_stage: stages[booking.status] ?? 'BEFORE_ACCEPTANCE',
+    p_reason_code: 'DECLINED',
+    p_details: reason || 'Worker declined assigned booking',
+    p_policy_version: '2026-07-21',
+  });
+  if (error) throw error;
+  return { data };
+}
 
-    if (error) throw error;
-    return { data };
-  }
+export async function declineAssignedBooking(
+  bookingId: string,
+  reason: string,
+) {
+  const { data: booking, error: bookingError } = await supabase
+    .from('bookings')
+    .select('version')
+    .eq('id', bookingId)
+    .single();
+  if (bookingError) throw bookingError;
+  const { data, error } = await supabase.rpc('decline_assigned_booking', {
+    p_booking_id: bookingId,
+    p_expected_version: booking.version,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchWalletTransactions(): Promise<
@@ -966,7 +886,7 @@ export async function requestPayout(methodId: string, amountMinor: number) {
   const { data, error } = await supabase.rpc('request_payout', {
     p_destination_id: methodId,
     p_amount: amountMinor / 100,
-      p_idempotency_key: randomUUID(),
+    p_idempotency_key: randomUUID(),
   });
   if (error) throw error;
   return data;
@@ -1076,7 +996,7 @@ export async function fetchBookingTracking(id: string) {
 export async function confirmCashPayment(bookingId: string) {
   const { data, error } = await supabase.rpc('confirm_cash_payment', {
     p_booking_id: bookingId,
-      p_idempotency_key: randomUUID(),
+    p_idempotency_key: randomUUID(),
   });
   if (error) throw error;
   return data;
@@ -1187,6 +1107,51 @@ export async function createSupportTicket(input: {
   if (error) throw error;
   return data;
 }
+
+export async function reportBookingParticipant(
+  bookingId: string,
+  details: string,
+) {
+  const { data, error } = await supabase.rpc('report_booking_participant', {
+    p_booking_id: bookingId,
+    p_reason_code: 'CONDUCT_CONCERN',
+    p_details: details,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function blockAccount(accountId: string, reason: string) {
+  const { data, error } = await supabase.rpc('block_account', {
+    p_account_id: accountId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function openBookingDispute(bookingId: string, reason: string) {
+  const { data, error } = await supabase.rpc('open_booking_dispute', {
+    p_booking_id: bookingId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function attachBookingProof(
+  bookingId: string,
+  media: { path: string; contentType: string; byteSize: number },
+) {
+  const { data, error } = await supabase.rpc('attach_booking_proof', {
+    p_booking_id: bookingId,
+    p_storage_path: media.path,
+    p_content_type: media.contentType,
+    p_byte_size: media.byteSize,
+  });
+  if (error) throw error;
+  return data;
+}
 export async function publishServiceRequest(input: {
   categoryId: string;
   description: string;
@@ -1197,8 +1162,23 @@ export async function publishServiceRequest(input: {
   longitude: number;
   scheduledAt: string;
   budgetMinor: number;
+  minimumBudgetMinor?: number;
   analysisId?: string | null;
 }) {
+  const budgetMinor = Number(input.budgetMinor);
+  const minimumBudgetMinor = Math.max(
+    100,
+    Math.round(Number(input.minimumBudgetMinor ?? 100)),
+  );
+  if (
+    !Number.isFinite(budgetMinor) ||
+    !Number.isInteger(budgetMinor) ||
+    budgetMinor < minimumBudgetMinor
+  ) {
+    throw new Error(
+      `Enter a valid service budget of at least ₱${(minimumBudgetMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`,
+    );
+  }
   const details = input.addressDetails ?? {};
   let addressId = input.addressId ?? null;
   if (!addressId) {
@@ -1228,7 +1208,7 @@ export async function publishServiceRequest(input: {
     address_id: addressId,
     description: input.description,
     scheduled_at: input.scheduledAt,
-    budget: Math.max(1, input.budgetMinor) / 100,
+    budget: budgetMinor / 100,
     notes: null,
     ai_analysis_id: input.analysisId ?? null,
     notify_on_match: true,
@@ -1237,7 +1217,10 @@ export async function publishServiceRequest(input: {
   return data;
 }
 
-export async function attachRequestMedia(requestId: string, media: MediaInput[]) {
+export async function attachRequestMedia(
+  requestId: string,
+  media: MediaInput[],
+) {
   for (const item of media) {
     const { error } = await supabase.rpc('attach_request_media', {
       p_service_request_id: requestId,
@@ -1316,11 +1299,14 @@ export async function sendMessage(
     locale ?? (ownProfile.role === 'ADMIN' ? 'en' : ownProfile.preferredLocale);
 
   // Try RPC first for atomic insert & notification delivery
-  const { data: rpcData, error: rpcError } = await supabase.rpc('send_chat_message', {
-    p_conversation_id: conversationId,
-    p_body: body.trim(),
-    p_original_locale: sourceLocale,
-  });
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    'send_chat_message',
+    {
+      p_conversation_id: conversationId,
+      p_body: body.trim(),
+      p_original_locale: sourceLocale,
+    },
+  );
 
   let data = rpcData;
 
@@ -1380,7 +1366,10 @@ export async function sendMessage(
       body: { messageId: data.id, targetLocale },
     }).catch((translationError) => {
       if (!(translationError instanceof SessionExpiredError))
-        console.warn('[translation] automatic translation failed:', translationError);
+        console.warn(
+          '[translation] automatic translation failed:',
+          translationError,
+        );
     });
   }
   return data;
@@ -1417,7 +1406,10 @@ export async function fetchConversationForBooking(bookingId: string) {
 
         if (newConv) {
           data = newConv;
-          const participants = [booking.user_account_id, booking.worker_account_id].filter(Boolean);
+          const participants = [
+            booking.user_account_id,
+            booking.worker_account_id,
+          ].filter(Boolean);
           if (participants.length > 0) {
             await supabase.from('conversation_participants').insert(
               participants.map((accId) => ({
@@ -1518,7 +1510,8 @@ export async function startDirectConversationWithUser(targetAccountId: string) {
       .select('id')
       .single();
 
-    if (convErr || !newConv) throw convErr ?? new Error('Failed to create conversation');
+    if (convErr || !newConv)
+      throw convErr ?? new Error('Failed to create conversation');
 
     await supabase.from('conversation_participants').insert([
       { conversation_id: newConv.id, account_id: user.id },
@@ -1531,12 +1524,20 @@ export async function startDirectConversationWithUser(targetAccountId: string) {
 export async function fetchAllAccountsForPoC() {
   return wrap(async () => {
     const user = await requireUser();
-    const [{ data: userProfiles }, { data: workerProfiles }] = await Promise.all([
-      supabase.from('user_profiles').select('account_id, display_name, avatar_path'),
-      supabase.from('worker_profiles').select('account_id, display_name, avatar_path'),
-    ]);
+    const [{ data: userProfiles }, { data: workerProfiles }] =
+      await Promise.all([
+        supabase
+          .from('user_profiles')
+          .select('account_id, display_name, avatar_path'),
+        supabase
+          .from('worker_profiles')
+          .select('account_id, display_name, avatar_path'),
+      ]);
 
-    const map = new Map<string, { id: string; name: string; avatar: string; role: string }>();
+    const map = new Map<
+      string,
+      { id: string; name: string; avatar: string; role: string }
+    >();
 
     (userProfiles ?? []).forEach((row: any) => {
       if (row.account_id && row.account_id !== user.id) {
@@ -1690,7 +1691,10 @@ export async function assistRequestMedia(input: {
     });
     return data.data as MediaAssistResult;
   } catch (error) {
-    throw await normalizeFunctionError(error, 'AI could not process this media right now.');
+    throw await normalizeFunctionError(
+      error,
+      'AI could not process this media right now.',
+    );
   }
 }
 
@@ -1704,12 +1708,18 @@ export async function geocodeSearch(
     params.set('lon', String(coords.longitude));
   }
   try {
-    const data = await invokeAuthenticatedFunction<any>(`geocode-search?${params}`, {
-      method: 'GET',
-    });
+    const data = await invokeAuthenticatedFunction<any>(
+      `geocode-search?${params}`,
+      {
+        method: 'GET',
+      },
+    );
     return (data?.data?.items ?? []) as GeocodingResult[];
   } catch (error) {
-    const normalized = await normalizeFunctionError(error, 'Address search is unavailable.');
+    const normalized = await normalizeFunctionError(
+      error,
+      'Address search is unavailable.',
+    );
     if (normalized instanceof SessionExpiredError) throw normalized;
     normalized.message = geocodingErrorMessage(normalized);
     throw normalized;
@@ -1726,7 +1736,10 @@ export async function reverseGeocode(
     );
     return data.data.result as GeocodingResult;
   } catch (error) {
-    const normalized = await normalizeFunctionError(error, 'Address lookup is unavailable.');
+    const normalized = await normalizeFunctionError(
+      error,
+      'Address lookup is unavailable.',
+    );
     if (normalized instanceof SessionExpiredError) throw normalized;
     normalized.message = geocodingErrorMessage(normalized);
     throw normalized;
@@ -1749,6 +1762,7 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
     primaryIndustryId: string | null;
     selectedSkillIds: string[];
     yearsExperience: number;
+    rateBySkillId: Record<string, number | null>;
   }>
 > {
   return wrap(async () => {
@@ -1762,7 +1776,7 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
         .maybeSingle(),
       supabase
         .from('worker_skills')
-        .select('category_id,years')
+        .select('category_id,years,rate_minor')
         .eq('worker_id', user.id),
     ]);
 
@@ -1775,12 +1789,19 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
       ...(skillsRes.data ?? []).map((row: any) => row.years ?? 0),
       1,
     );
+    const rateBySkillId = Object.fromEntries(
+      (skillsRes.data ?? []).map((row: any) => [
+        row.category_id,
+        row.rate_minor == null ? null : Number(row.rate_minor),
+      ]),
+    );
 
     return {
       industries,
       primaryIndustryId,
       selectedSkillIds,
       yearsExperience,
+      rateBySkillId,
     };
   });
 }
@@ -1789,39 +1810,18 @@ export async function updateMyWorkerSkillsAndIndustry(input: {
   primaryIndustryId: string;
   selectedSkillIds: string[];
   yearsExperience?: number;
+  rateBySkillId: Record<string, number | null>;
 }): Promise<ApiResponse<boolean>> {
   return wrap(async () => {
-    const user = await requireUser();
-
-    // 1. Update primary_industry_id on worker_profiles using account_id
-    const { error: profileError } = await supabase
-      .from('worker_profiles')
-      .update({
-        primary_industry_id: input.primaryIndustryId,
-      })
-      .eq('account_id', user.id);
-    if (profileError) throw profileError;
-
-    // 2. Clear existing worker_skills
-    const { error: deleteError } = await supabase
-      .from('worker_skills')
-      .delete()
-      .eq('worker_id', user.id);
-    if (deleteError) throw deleteError;
-
-    // 3. Insert new worker_skills using category_id
-    if (input.selectedSkillIds.length > 0) {
-      const rows = input.selectedSkillIds.map((skillId) => ({
-        worker_id: user.id,
-        category_id: skillId,
+    const { error } = await supabase.rpc('save_my_worker_skills', {
+      p_primary_industry_id: input.primaryIndustryId,
+      p_skills: input.selectedSkillIds.map((categoryId) => ({
+        categoryId,
         years: input.yearsExperience ?? 1,
-      }));
-      const { error: insertError } = await supabase
-        .from('worker_skills')
-        .insert(rows);
-      if (insertError) throw insertError;
-    }
-
+        rateMinor: input.rateBySkillId[categoryId] ?? null,
+      })),
+    });
+    if (error) throw error;
     return true;
   });
 }

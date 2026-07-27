@@ -1,29 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, TextInput, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TextInput,
+  Alert,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { Screen } from '@/components/layout/Screen';
-import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
-import { loadCurrentUser, requestPasswordReset, signInWithGoogle, signInWithPassword } from '@/services/auth';
+import {
+  loadCurrentUser,
+  requestPasswordReset,
+  signInWithGoogle,
+  signInWithPassword,
+} from '@/services/auth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Mail, Lock, Eye, EyeOff, Briefcase } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Image } from 'expo-image';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const setSessionUser = useAuthStore(state => state.setSessionUser);
-  const sessionNotice = useAuthStore(state => state.sessionNotice);
-  const clearSessionNotice = useAuthStore(state => state.clearSessionNotice);
+  const setSessionUser = useAuthStore((state) => state.setSessionUser);
+  const sessionNotice = useAuthStore((state) => state.sessionNotice);
+  const clearSessionNotice = useAuthStore((state) => state.clearSessionNotice);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const { control, handleSubmit, getValues, formState: { errors } } = useForm({
-    defaultValues: { email: '', password: '' }
+  const {
+    control,
+    handleSubmit,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = async (data: any) => {
     clearSessionNotice();
+    setErrorMessage('');
     setLoading(true);
     try {
       const user = await signInWithPassword(data.email, data.password);
@@ -36,21 +57,67 @@ export default function LoginScreen() {
           ? error
           : error instanceof Error
             ? error.message
-            : (error as any)?.message ??
+            : ((error as any)?.message ??
               (error as any)?.error_description ??
-              'Unable to sign in. Please try again.';
-      Alert.alert('Sign in failed', msg);
-    } finally { setLoading(false); }
+              'Unable to sign in. Please try again.');
+      setErrorMessage(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onGoogle = async () => { clearSessionNotice(); setLoading(true); try { await signInWithGoogle(); const user=await loadCurrentUser(); setSessionUser(user); router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home'); } catch(error) { console.error('[login] google signIn error:', error); const msg = typeof error === 'string' ? error : error instanceof Error ? error.message : (error as any)?.message ?? 'Unable to sign in with Google.'; Alert.alert('Google sign in', msg); } finally { setLoading(false); } };
-  const onForgotPassword = async () => { const email=getValues('email'); if(!email){Alert.alert('Email required','Enter your email address first.');return;} try{await requestPasswordReset(email);Alert.alert('Check your email','A secure password reset link has been sent.');}catch(error){Alert.alert('Reset failed',error instanceof Error?error.message:'Unable to send reset email');} };
+  const onGoogle = async () => {
+    clearSessionNotice();
+    setErrorMessage('');
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      const user = await loadCurrentUser();
+      setSessionUser(user);
+      router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home');
+    } catch (error) {
+      console.error('[login] google signIn error:', error);
+      const msg =
+        typeof error === 'string'
+          ? error
+          : error instanceof Error
+            ? error.message
+            : ((error as any)?.message ?? 'Unable to sign in with Google.');
+      setErrorMessage(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const onForgotPassword = async () => {
+    const email = getValues('email');
+    if (!email) {
+      Alert.alert('Email required', 'Enter your email address first.');
+      return;
+    }
+    try {
+      await requestPasswordReset(email);
+      Alert.alert(
+        'Check your email',
+        'A secure password reset link has been sent.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Reset failed',
+        error instanceof Error ? error.message : 'Unable to send reset email',
+      );
+    }
+  };
 
   return (
     <Screen safeArea backgroundColor="#fff">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>Sign in</Text>
             <View style={styles.subtitleRow}>
@@ -67,18 +134,36 @@ export default function LoginScreen() {
                 <Text style={styles.sessionNoticeText}>{sessionNotice}</Text>
               </View>
             ) : null}
+            {errorMessage ? (
+              <View style={styles.errorBanner} accessibilityRole="alert">
+                <Text style={styles.errorBannerText}>{errorMessage}</Text>
+              </View>
+            ) : null}
             <Controller
               control={control}
-              rules={{ required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email address' } }}
+              rules={{
+                required: 'Email is required',
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: 'Enter a valid email address',
+                },
+              }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputWrapper}>
-                  <Mail color={theme.colors.textSecondary} size={20} style={styles.inputIcon} />
+                  <Mail
+                    color={theme.colors.textSecondary}
+                    size={20}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="Email Address"
                     placeholderTextColor={theme.colors.textTertiary}
                     onBlur={onBlur}
-                    onChangeText={onChange}
+                    onChangeText={(text) => {
+                      setErrorMessage('');
+                      onChange(text);
+                    }}
                     value={value}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -87,42 +172,69 @@ export default function LoginScreen() {
               )}
               name="email"
             />
-            {errors.email && <Text style={styles.errorText}>{errors.email.message as string}</Text>}
+            {errors.email && (
+              <Text style={styles.errorText}>
+                {errors.email.message as string}
+              </Text>
+            )}
 
             <Controller
               control={control}
               rules={{ required: 'Password is required' }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={[styles.inputWrapper, { marginTop: 16 }]}>
-                  <Lock color={theme.colors.textSecondary} size={20} style={styles.inputIcon} />
+                  <Lock
+                    color={theme.colors.textSecondary}
+                    size={20}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="Password"
                     placeholderTextColor={theme.colors.textTertiary}
                     secureTextEntry={!showPassword}
                     onBlur={onBlur}
-                    onChangeText={onChange}
+                    onChangeText={(text) => {
+                      setErrorMessage('');
+                      onChange(text);
+                    }}
                     value={value}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                    {showPassword ? <Eye color={theme.colors.textSecondary} size={20} /> : <EyeOff color={theme.colors.textSecondary} size={20} />}
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    {showPassword ? (
+                      <Eye color={theme.colors.textSecondary} size={20} />
+                    ) : (
+                      <EyeOff color={theme.colors.textSecondary} size={20} />
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
               name="password"
             />
-            {errors.password && <Text style={styles.errorText}>{errors.password.message as string}</Text>}
+            {errors.password && (
+              <Text style={styles.errorText}>
+                {errors.password.message as string}
+              </Text>
+            )}
 
-            <TouchableOpacity style={styles.forgotPassword} onPress={onForgotPassword}>
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={onForgotPassword}
+            >
               <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.loginButton} 
+            <TouchableOpacity
+              style={styles.loginButton}
               onPress={handleSubmit(onSubmit)}
               disabled={loading}
             >
-              <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
+              <Text style={styles.loginButtonText}>
+                {loading ? 'Logging in...' : 'Login'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -132,35 +244,33 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          <Text style={styles.socialPrompt}>Join With Your Favourite Social Media Account</Text>
+          <Text style={styles.socialPrompt}>
+            Join With Your Favourite Social Media Account
+          </Text>
 
           <View style={styles.socialRow}>
-            <TouchableOpacity style={styles.socialButton} onPress={onGoogle} disabled={loading} accessibilityLabel="Continue with Google">
-              <Image source="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" style={styles.socialIcon} contentFit="contain" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, { opacity: 0.45 }]} disabled accessibilityLabel="X login unavailable">
-              <Image source="https://freelogopng.com/images/all_img/1690643591twitter-x-logo-png.png" style={styles.socialIcon} contentFit="contain" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, { opacity: 0.45 }]} disabled accessibilityLabel="Apple login unavailable">
-              <Image source="https://cdn3.iconfinder.com/data/icons/picons-social/57/16-apple-512.png" style={[styles.socialIcon, { width: 22, height: 26 }]} contentFit="contain" />
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={onGoogle}
+              disabled={loading}
+              accessibilityLabel="Continue with Google"
+              accessibilityRole="button"
+            >
+              <Image
+                source="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png"
+                style={styles.socialIcon}
+                contentFit="contain"
+              />
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.workerSwitchBtn}
-            onPress={() => router.push('/register-worker')}
-          >
-            <Briefcase color={theme.colors.textSecondary} size={18} />
-            <Text style={styles.workerSwitchText}>Register as Worker</Text>
-          </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
 
           <Text style={styles.termsText}>
             By signing in with an account, you agree to SO&apos;s{'\n'}
-            <Text style={styles.termsLink}>Terms of Service</Text> and <Text style={styles.termsLink}>Privacy Policy</Text>.
+            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>.
           </Text>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -178,6 +288,19 @@ const styles = StyleSheet.create({
   },
   sessionNoticeText: {
     color: '#92400E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: '#991B1B',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -310,20 +433,5 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '600',
     textDecorationLine: 'underline',
-  },
-  workerSwitchBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    marginTop: 20,
-  },
-  workerSwitchText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-    marginLeft: 8,
   },
 });

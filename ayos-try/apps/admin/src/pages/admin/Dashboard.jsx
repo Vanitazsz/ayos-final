@@ -30,7 +30,12 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, subtitle, isLoa
           </>
         ) : (
           <>
-            <div className="text-3xl font-display font-bold text-navy">{value}</div>
+            <div
+              className="text-3xl font-display font-bold text-navy"
+              data-testid="stat-card-value"
+            >
+              {value}
+            </div>
             <p className="text-xs text-gray-500 mt-1 flex items-center">
               <span className={`flex items-center font-medium mr-2 ${trend === 'up' ? 'text-success' : 'text-danger'}`}>
                 {trend === 'up' ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
@@ -136,7 +141,10 @@ const Dashboard = () => {
             <CardTitle>Revenue Overview</CardTitle>
             <CardDescription>Monthly revenue and profit margins.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-[300px] pb-4">
+          <CardContent
+            className="flex-1 min-h-[300px] pb-4"
+            data-testid="dashboard-chart"
+          >
             {isLoading ? (
               <Skeleton className="w-full h-full rounded-lg min-h-[300px]" />
             ) : (
@@ -166,7 +174,10 @@ const Dashboard = () => {
             <CardTitle>Weekly Bookings</CardTitle>
             <CardDescription>Booking statuses over the last 7 days.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-[300px] pb-4">
+          <CardContent
+            className="flex-1 min-h-[300px] pb-4"
+            data-testid="dashboard-chart"
+          >
             {isLoading ? (
               <Skeleton className="w-full h-full rounded-lg min-h-[300px]" />
             ) : (
@@ -193,7 +204,7 @@ const Dashboard = () => {
       {/* Tables Section */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Recent Activity */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1" data-testid="dashboard-live-list">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>Latest actions across the platform.</CardDescription>
@@ -220,7 +231,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Pending Approvals */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-testid="dashboard-live-list">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Pending Worker Approvals</CardTitle>
@@ -277,7 +288,7 @@ const Dashboard = () => {
       {/* Additional Widgets Row */}
       <div className="grid gap-6 md:grid-cols-2 mt-2">
         {/* Recent Registrations */}
-        <Card>
+        <Card data-testid="dashboard-live-list">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -310,7 +321,7 @@ const Dashboard = () => {
         </Card>
 
         {/* System Notifications */}
-        <Card>
+        <Card data-testid="dashboard-live-list">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>

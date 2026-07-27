@@ -77,7 +77,7 @@ export async function loadAnalytics() {
       .not('successful_at', 'is', null),
     supabase.from('service_requests').select('category_id,service_categories(name)'),
     supabase.from('accounts').select('id,created_at').eq('role', 'USER'),
-    supabase.from('bookings').select('user_account_id,status,service_requests(budget)'),
+    supabase.from('bookings').select('user_account_id,status,agreed_service_amount'),
   ]);
   if (paymentError) throw paymentError;
   if (requestError) throw requestError;
@@ -197,24 +197,24 @@ export async function loadWorkers() {
   if (error) throw error;
   const rows = data ?? [];
   const workerIds = rows.map((row) => row.account_id);
-  const { data: wallets } = workerIds.length
-    ? await supabase
-        .from('wallets')
-        .select('account_id,available_minor')
-        .in('account_id', workerIds)
-    : { data: [] };
-  const walletByWorker = new Map((wallets ?? []).map((wallet) => [wallet.account_id, wallet]));
+  const { data: walletBalances, error: walletBalancesError } = workerIds.length
+    ? await supabase.rpc('get_worker_wallet_balances', { p_worker_ids: workerIds })
+    : { data: [], error: null };
+  if (walletBalancesError) throw walletBalancesError;
+  const walletByWorker = new Map(
+    (walletBalances ?? []).map((wallet) => [
+      wallet.worker_id,
+      Number(wallet.available_amount ?? 0),
+    ]),
+  );
 
   return rows.map((row) => {
     const verification = Array.isArray(row.worker_verifications)
       ? row.worker_verifications[0]
       : row.worker_verifications;
     const skillsReady = (row.worker_skills?.length ?? 0) > 0;
-    const serviceAreaReady = Boolean(
-      row.service_origin && row.service_radius_meters,
-    );
-    const scheduleReady =
-      Number(row.worker_availability?.[0]?.count ?? 0) > 0;
+    const serviceAreaReady = Boolean(row.service_origin && row.service_radius_meters);
+    const scheduleReady = Number(row.worker_availability?.[0]?.count ?? 0) > 0;
     const matchingReady = Boolean(
       row.approval_status === 'APPROVED' &&
         skillsReady &&
@@ -244,7 +244,7 @@ export async function loadWorkers() {
       verified: row.approval_status === 'APPROVED',
       location: row.service_area ?? '',
       registeredDate: row.created_at ? new Date(row.created_at).toLocaleDateString() : '',
-      earnings: Number(walletByWorker.get(row.account_id)?.available_minor ?? 0) / 100,
+      earnings: walletByWorker.get(row.account_id) ?? 0,
       availability: row.is_available ? 'Online' : 'Offline',
       verificationStatus: verification?.status ?? row.approval_status,
       verificationId: verification?.id ?? null,
@@ -294,7 +294,7 @@ export async function loadBookings() {
   const { data, error } = await supabase
     .from('bookings')
     .select(
-      'id,service_request_id,status,version,created_at,user_profiles:user_account_id(display_name),worker_profiles:worker_account_id(display_name),service_requests(description,scheduled_at,budget,addresses(line1,barangay,city),service_categories(name),match_candidates(worker_id,score,eligible,worker_profiles:worker_id(display_name))),payments(method,status,service_amount,homeowner_platform_charge,refunds(status,reason)),cancellations(reason,fee_amount,refund_amount,resolution_status),booking_status_events(from_status,to_status,reason,created_at)',
+      'id,service_request_id,status,version,created_at,agreed_service_amount,user_profiles:user_account_id(display_name),worker_profiles:worker_account_id(display_name),service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name),match_candidates(worker_id,score,eligible,worker_profiles:worker_id(display_name))),payments(method,status,service_amount,homeowner_platform_charge,refunds(status,reason)),cancellations(reason,fee_amount,refund_amount,resolution_status),booking_status_events(from_status,to_status,reason,created_at)',
     )
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -316,7 +316,7 @@ export async function loadBookings() {
     date: new Date(row.service_requests?.scheduled_at ?? row.created_at).toLocaleDateString(),
     schedule: new Date(row.service_requests?.scheduled_at ?? row.created_at).toLocaleTimeString(),
     duration: '',
-    price: Number(row.service_requests?.budget ?? 0),
+    price: row.agreed_service_amount == null ? null : Number(row.agreed_service_amount),
     payment: status(row.payments?.[0]?.method),
     status: status(row.status),
     events: (row.booking_status_events ?? []).sort(
@@ -397,6 +397,42 @@ export async function moderateReview(id, decision) {
   const { data, error } = await supabase.rpc('moderate_review', { review_id: id, decision });
   if (error) throw error;
   return data;
+}
+export async function loadSafetyCases() {
+  const [reportsResult, disputesResult] = await Promise.all([
+    supabase
+      .from('account_reports')
+      .select('id,reporter_id,reported_id,booking_id,reason_code,details,status,created_at')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('booking_disputes')
+      .select('id,booking_id,opened_by,reason,status,created_at')
+      .order('created_at', { ascending: false }),
+  ]);
+  if (reportsResult.error) throw reportsResult.error;
+  if (disputesResult.error) throw disputesResult.error;
+  return [
+    ...(reportsResult.data ?? []).map((row) => ({
+      id: row.id,
+      kind: 'Report',
+      bookingId: row.booking_id,
+      openedBy: row.reporter_id,
+      subjectId: row.reported_id,
+      reason: `${status(row.reason_code)} — ${row.details}`,
+      status: status(row.status),
+      createdAt: row.created_at,
+    })),
+    ...(disputesResult.data ?? []).map((row) => ({
+      id: row.id,
+      kind: 'Dispute',
+      bookingId: row.booking_id,
+      openedBy: row.opened_by,
+      subjectId: null,
+      reason: row.reason,
+      status: status(row.status),
+      createdAt: row.created_at,
+    })),
+  ].sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
 }
 export async function loadSupport() {
   const { data, error } = await supabase

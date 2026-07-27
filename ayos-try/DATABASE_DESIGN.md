@@ -4,7 +4,7 @@
 
 Supabase PostgreSQL/PostGIS is the only data authority. The schema is defined by ordered files in `supabase/migrations`; clients do not create schema. Migrations `20260722000100` through `20260722000600` add the approved frontend compatibility layer, permanent single-role enforcement, and normalized industry/skill taxonomy without deleting application records. Migration `20260722000600` idempotently reconciles the hosted project's pre-existing earlier `industries` shape. Hosted project `qsurouiyvisykjkgjqmz` is the deployed authority; its complete `public` and Storage schema has an empty diff from the canonical migration result.
 
-Only stable categories, content, and settings are seeded. Users, profiles, requests, bookings, messages, payments, reviews, wallet activity, notifications, and AI jobs are never seeded as production sample data.
+Only stable categories, published Help/Privacy content, local Terms/Refund placeholders, and settings are seeded. Users, profiles, requests, bookings, messages, payments, reviews, wallet activity, notifications, and AI jobs are never seeded as production sample data.
 
 ## Core entity relationships
 
@@ -68,3 +68,5 @@ All application buckets are private. Paths begin with the authenticated UUID and
 Local acceptance requires `supabase db reset`, `supabase test db`, and a generated-schema diff. Before the taxonomy rollout, hosted `public`, `private`, and `storage` schema/data snapshots were written outside the repository under `/Users/jhonfiel/Documents/A-YOS/.hosted-backups/20260722-primary-industry`. Migrations `20260722000500` and `20260722000600` were then applied in isolation; live REST and post-deployment schema dumps verified 10 industries, 50 active skills, both foreign keys, the validated onboarding RPC, select-only client access to `worker_skills`, and preservation of existing core category UUIDs.
 
 On 2026-07-22, a second restricted schema/data/roles backup was captured under `/Users/jhonfiel/Documents/A-YOS/backups/supabase-qsurouiyvisykjkgjqmz-20260722`. The backup inventory includes Auth identities, application accounts/profiles, business tables, buckets, and Storage object metadata. A linked comparison of every canonical migration against hosted `public,storage` returned a zero-byte diff. Migration histories remain intentionally different; replay or history repair is prohibited while the resulting schemas are identical.
+
+Migration `20260723120000` updates only placeholder-version `HELP_CENTER` and `PRIVACY` rows, preserving their IDs and later administrator edits. It was applied in isolation to the hosted project and recorded as applied after verification of both original UUIDs, published status, version, and content sections.

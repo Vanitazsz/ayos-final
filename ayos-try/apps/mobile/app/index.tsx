@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -16,7 +15,7 @@ export default function Index() {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/landing" />;
+    return <Redirect href="/(auth)/login" />;
   }
 
   return <Redirect href="/(tabs)/home" />;

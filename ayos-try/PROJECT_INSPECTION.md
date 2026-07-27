@@ -14,6 +14,7 @@
 
 - `apps/admin` uses Supabase Auth, validates a persisted Administrator account/profile, and maps approved dashboard screens to real tables, aggregates, Storage, RPCs, and Edge Functions.
 - `apps/mobile` uses Supabase Auth, Data APIs, RPC, Storage, Realtime, queued AI functions, OpenRouteService functions, PostGIS coordinates, and MapLibre.
+- Customer Profile Help Center and Privacy Policy controls now open hidden User-only routes backed by published `content_pages` rows; loading, unavailable, error, retry, version, and update-date states replace the previous profile self-navigation.
 - Compatibility migrations `20260722000100` through `20260722000400` provide real profiles, queued AI, geocoding, administrator commands, and immutable single-role authorization required by the approved clients.
 - Missing mandatory profile data returns incomplete/not-found/error states. It is not replaced with `A-YOS User`, `Administrator`, `Customer`, `Worker`, or other fabricated identities.
 
@@ -101,6 +102,7 @@
 - The restricted hosted backup contains 4 Auth users, 4 account rows, 2 customer profiles, 2 worker profiles, 1 administrator profile, and 2 Storage object records. No identity or business row was imported from a mock dataset.
 - The complete canonical migration result has a zero-byte schema diff against linked hosted `public` and Storage schemas. Hosted migration version history is intentionally left unchanged because replaying already-present objects would be unsafe.
 - Hosted Supabase rejected `123` / `123` with `invalid_credentials`. Live AI, transcription, OpenRouteService, tile, Translation, Expo Push, Google OAuth, hosted Storage, Realtime, and queue-provider calls were not executed. **Insufficient data to verify.**
+- Hosted migration `20260723120000` replaced only the two published Help/Privacy development placeholders, retained their UUIDs, and exposed version `2026-07-23`. Six focused Playwright cases and nine focused pgTAP assertions passed.
 
 ## Current status
 
