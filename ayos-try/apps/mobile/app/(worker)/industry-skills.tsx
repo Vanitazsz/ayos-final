@@ -9,12 +9,20 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Check, Wrench, Briefcase, Award } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Check,
+  Wrench,
+  Briefcase,
+  Award,
+} from 'lucide-react-native';
 import { Screen } from '@/components/layout/Screen';
 import { AppButton } from '@/components/AppButton';
+import { AppInput } from '@/components/AppInput';
 import { theme } from '@/constants/theme';
 import {
   fetchMyWorkerSkillsAndIndustry,
+  updateMyWorkerSkillsAndIndustry,
   type IndustryWithSkills,
 } from '@/services/api';
 
@@ -24,9 +32,15 @@ export default function WorkerIndustrySkillsScreen() {
   const [error, setError] = useState('');
 
   const [industries, setIndustries] = useState<IndustryWithSkills[]>([]);
-  const [selectedIndustryId, setSelectedIndustryId] = useState<string | null>(null);
+  const [selectedIndustryId, setSelectedIndustryId] = useState<string | null>(
+    null,
+  );
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [yearsExperience, setYearsExperience] = useState<number>(3);
+  const [rateBySkillId, setRateBySkillId] = useState<
+    Record<string, number | null>
+  >({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -42,10 +56,14 @@ export default function WorkerIndustrySkillsScreen() {
           );
           setSelectedSkillIds(res.data.selectedSkillIds || []);
           setYearsExperience(res.data.yearsExperience || 3);
+          setRateBySkillId(res.data.rateBySkillId ?? {});
         }
       })
       .catch((err) => {
-        if (active) setError(err instanceof Error ? err.message : 'Unable to load skills');
+        if (active)
+          setError(
+            err instanceof Error ? err.message : 'Unable to load skills',
+          );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -66,16 +84,24 @@ export default function WorkerIndustrySkillsScreen() {
 
   const currentIndustry = industries.find((i) => i.id === selectedIndustryId);
 
-  const handleSave = () => {
-    Alert.alert(
-      'Preview only',
-      'Industry and skills are currently visual-only and are not used for matching.',
-    );
-    return;
-    /*
+  const handleSave = async () => {
+    if (!selectedIndustryId || !selectedSkillIds.length) {
+      Alert.alert('Skills required', 'Select at least one service skill.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const result = await updateMyWorkerSkillsAndIndustry({
+        primaryIndustryId: selectedIndustryId,
+        selectedSkillIds,
+        yearsExperience,
+        rateBySkillId,
+      });
+      if (result.error) throw new Error(result.error);
       Alert.alert(
         'Industry & Skills Saved! ✅',
-        'Your profile industry and skills have been updated in the database.',
+        'Your skills and worker-set rates are now used for matching and pricing.',
         [
           {
             text: 'OK',
@@ -84,9 +110,14 @@ export default function WorkerIndustrySkillsScreen() {
         ],
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update industry & skills');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update industry and skills',
+      );
+    } finally {
+      setSaving(false);
     }
-    */
   };
 
   if (loading) {
@@ -94,7 +125,9 @@ export default function WorkerIndustrySkillsScreen() {
       <Screen safeArea backgroundColor={theme.colors.background}>
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={[theme.typography.body2, { marginTop: theme.spacing.md }]}>
+          <Text
+            style={[theme.typography.body2, { marginTop: theme.spacing.md }]}
+          >
             Loading industry & skills taxonomy...
           </Text>
         </View>
@@ -138,7 +171,10 @@ export default function WorkerIndustrySkillsScreen() {
           <Text
             style={[
               theme.typography.caption,
-              { color: theme.colors.textSecondary, marginBottom: theme.spacing.md },
+              {
+                color: theme.colors.textSecondary,
+                marginBottom: theme.spacing.md,
+              },
             ]}
           >
             Select your main line of work or trade category:
@@ -158,7 +194,10 @@ export default function WorkerIndustrySkillsScreen() {
                     setSelectedIndustryId(ind.id);
                     // Automatically add skills from this industry if none selected
                     const skillIdsInInd = ind.skills.map((s) => s.id);
-                    if (skillIdsInInd.length > 0 && selectedSkillIds.length === 0) {
+                    if (
+                      skillIdsInInd.length > 0 &&
+                      selectedSkillIds.length === 0
+                    ) {
                       setSelectedSkillIds(skillIdsInInd.slice(0, 2));
                     }
                   }}
@@ -172,7 +211,11 @@ export default function WorkerIndustrySkillsScreen() {
                     {ind.name}
                   </Text>
                   {isSelected && (
-                    <Check size={16} color={theme.colors.surface} style={{ marginLeft: 4 }} />
+                    <Check
+                      size={16}
+                      color={theme.colors.surface}
+                      style={{ marginLeft: 4 }}
+                    />
                   )}
                 </Pressable>
               );
@@ -192,7 +235,10 @@ export default function WorkerIndustrySkillsScreen() {
             <Text
               style={[
                 theme.typography.caption,
-                { color: theme.colors.textSecondary, marginBottom: theme.spacing.md },
+                {
+                  color: theme.colors.textSecondary,
+                  marginBottom: theme.spacing.md,
+                },
               ]}
             >
               Check all specific services you are qualified to perform:
@@ -202,31 +248,57 @@ export default function WorkerIndustrySkillsScreen() {
               {currentIndustry.skills.map((skill) => {
                 const isChecked = selectedSkillIds.includes(skill.id);
                 return (
-                  <Pressable
-                    key={skill.id}
-                    style={[
-                      styles.skillRow,
-                      isChecked && styles.skillRowChecked,
-                    ]}
-                    onPress={() => toggleSkill(skill.id)}
-                  >
-                    <View
+                  <View key={skill.id} style={styles.skillBlock}>
+                    <Pressable
                       style={[
-                        styles.checkbox,
-                        isChecked && styles.checkboxChecked,
+                        styles.skillRow,
+                        isChecked && styles.skillRowChecked,
                       ]}
+                      onPress={() => toggleSkill(skill.id)}
                     >
-                      {isChecked && <Check size={14} color={theme.colors.surface} />}
-                    </View>
-                    <Text
-                      style={[
-                        theme.typography.body2,
-                        { fontWeight: isChecked ? '700' : '400' },
-                      ]}
-                    >
-                      {skill.name}
-                    </Text>
-                  </Pressable>
+                      <View
+                        style={[
+                          styles.checkbox,
+                          isChecked && styles.checkboxChecked,
+                        ]}
+                      >
+                        {isChecked && (
+                          <Check size={14} color={theme.colors.surface} />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          theme.typography.body2,
+                          { fontWeight: isChecked ? '700' : '400' },
+                        ]}
+                      >
+                        {skill.name}
+                      </Text>
+                    </Pressable>
+                    {isChecked ? (
+                      <AppInput
+                        label="Your service rate (PHP)"
+                        placeholder="Leave blank to request a quote"
+                        keyboardType="decimal-pad"
+                        value={
+                          rateBySkillId[skill.id] == null
+                            ? ''
+                            : String(rateBySkillId[skill.id]! / 100)
+                        }
+                        onChangeText={(value) => {
+                          const normalized = value.replace(/[^0-9.]/g, '');
+                          const amount = Number(normalized);
+                          setRateBySkillId((current) => ({
+                            ...current,
+                            [skill.id]:
+                              normalized && Number.isFinite(amount)
+                                ? Math.round(amount * 100)
+                                : null,
+                          }));
+                        }}
+                      />
+                    ) : null}
+                  </View>
                 );
               })}
             </View>
@@ -269,6 +341,7 @@ export default function WorkerIndustrySkillsScreen() {
           variant="primary"
           fullWidth
           onPress={handleSave}
+          loading={saving}
         />
       </View>
     </Screen>
@@ -351,6 +424,9 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
   },
   skillsList: {
+    gap: theme.spacing.sm,
+  },
+  skillBlock: {
     gap: theme.spacing.sm,
   },
   skillRow: {
