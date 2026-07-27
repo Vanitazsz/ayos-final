@@ -20,7 +20,7 @@ select ok(
       and table_definition.relname = 'service_request_dispatches'
       and index_definition.indisunique
       and (
-        select array_agg(attribute.attname order by key_position.ordinality)
+        select array_agg(attribute.attname::text order by key_position.ordinality)
         from unnest(index_definition.indkey) with ordinality key_position(attnum, ordinality)
         join pg_attribute attribute
           on attribute.attrelid = table_definition.oid
