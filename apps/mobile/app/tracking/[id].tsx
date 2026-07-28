@@ -32,7 +32,6 @@ import {
 import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
-import { BookingChat } from '@/components/booking/BookingChat';
 
 const STATUS_STEP_MAP: Record<string, number> = {
   PENDING: 0,
@@ -466,23 +465,6 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* In-booking Chat */}
-        {isActive && (
-          <View style={styles.chatSection}>
-            <BookingChat
-              bookingId={bookingId}
-              customerName={
-                tracking?.booking?.worker_profiles?.display_name ?? 'Provider'
-              }
-              customerAvatar={
-                tracking?.booking?.worker_profiles?.avatar_path ?? ''
-              }
-              onConfirmDetails={() => {}}
-              bookingStatus={workerStatus?.toLowerCase()}
-            />
-          </View>
-        )}
-
         {/* Timeline */}
         <View style={styles.timelineSection}>
           <Text
@@ -659,10 +641,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderLeftWidth: 4,
     ...theme.shadows.sm,
-  },
-  chatSection: {
-    marginHorizontal: theme.spacing.lg,
-    marginTop: theme.spacing.md,
   },
   timelineSection: {
     marginHorizontal: theme.spacing.lg,

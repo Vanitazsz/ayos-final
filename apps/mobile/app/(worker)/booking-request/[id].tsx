@@ -35,7 +35,6 @@ import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import { ThreeDotMenu } from '@/components/ThreeDotMenu';
 import { BookingStepIndicator } from '@/components/booking/BookingStepIndicator';
-import { BookingChat } from '@/components/booking/BookingChat';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { JobTimer } from '@/components/booking/JobTimer';
@@ -585,13 +584,6 @@ export default function BookingRequestScreen() {
 
           {booking.status === 'accepted' && (
             <View style={{ gap: 12 }}>
-              <BookingChat
-                bookingId={String(id)}
-                customerName={job.customerName}
-                customerAvatar={job.customerAvatar}
-                onConfirmDetails={handleConfirmDetails}
-                bookingStatus={booking.status}
-              />
               <AppButton
                 label="Start En Route 🚚"
                 variant="primary"

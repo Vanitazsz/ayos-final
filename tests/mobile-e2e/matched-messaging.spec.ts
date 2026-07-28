@@ -5,8 +5,24 @@ const workerId = 'b2000000-0000-0000-0000-000000000001';
 const conversationId = 'b3000000-0000-0000-0000-000000000001';
 const bookingId = 'b4000000-0000-0000-0000-000000000001';
 const requestId = 'b5000000-0000-0000-0000-000000000001';
+let bookingStatus = 'COMPLETED';
+let requestStatus = 'CLOSED';
+let messageRows: Record<string, unknown>[] = [];
 
 test.beforeEach(async ({ page }) => {
+  bookingStatus = 'COMPLETED';
+  requestStatus = 'CLOSED';
+  messageRows = [
+    {
+      id: 'b6000000-0000-0000-0000-000000000001',
+      conversation_id: conversationId,
+      sender_id: workerId,
+      body: 'The completed job message is retained.',
+      original_locale: 'en',
+      created_at: '2026-07-28T08:00:00.000Z',
+      message_translations: [],
+    },
+  ];
   const session = {
     access_token: 'matched-messaging-test-token',
     refresh_token: 'matched-messaging-test-refresh',
@@ -78,12 +94,12 @@ test.beforeEach(async ({ page }) => {
       archived_at: null,
       updated_at: '2026-07-28T08:00:00.000Z',
       bookings: {
-        status: 'COMPLETED',
+        status: bookingStatus,
         user_account_id: customerId,
         worker_account_id: workerId,
       },
       service_requests: {
-        status: 'CLOSED',
+        status: requestStatus,
         user_account_id: customerId,
         selected_worker_id: workerId,
       },
@@ -127,19 +143,27 @@ test.beforeEach(async ({ page }) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          id: 'b6000000-0000-0000-0000-000000000001',
-          conversation_id: conversationId,
-          sender_id: workerId,
-          body: 'The completed job message is retained.',
-          original_locale: 'en',
-          created_at: '2026-07-28T08:00:00.000Z',
-          message_translations: [],
-        },
-      ]),
+      body: JSON.stringify(messageRows),
     }),
   );
+  await page.route('**/rest/v1/rpc/send_chat_message', async (route) => {
+    const request = route.request().postDataJSON();
+    const sent = {
+      id: 'b6000000-0000-0000-0000-000000000002',
+      conversation_id: conversationId,
+      sender_id: customerId,
+      body: request.p_body,
+      original_locale: 'en',
+      created_at: '2026-07-28T08:01:00.000Z',
+      message_translations: [],
+    };
+    messageRows.push(sent);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(sent),
+    });
+  });
 });
 
 test('only matched conversations are listed and closed chat is read-only', async ({
@@ -164,4 +188,21 @@ test('only matched conversations are listed and closed chat is read-only', async
   await expect(
     page.getByPlaceholder('Conversation is read-only'),
   ).toHaveAttribute('readonly', '');
+});
+
+test('active matched conversation accepts and displays a sent message', async ({
+  page,
+}) => {
+  bookingStatus = 'ACCEPTED';
+  requestStatus = 'MATCHED';
+
+  await page.goto(`/messages/chat?conversationId=${conversationId}`);
+
+  await expect(page.getByText('Matched conversation')).toBeVisible();
+  const composer = page.getByPlaceholder('Type a message...');
+  await expect(composer).toBeEditable();
+  await composer.fill('Hello worker');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.getByText('Hello worker')).toBeVisible();
+  await expect(page.getByText('Request failed')).toHaveCount(0);
 });

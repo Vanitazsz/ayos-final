@@ -346,6 +346,8 @@ export default function ChatScreen() {
         </View>
         <TouchableOpacity
           style={styles.sendBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
           disabled={!message.trim() || !access.canSend || sending}
           onPress={() => void handleSend()}
         >
