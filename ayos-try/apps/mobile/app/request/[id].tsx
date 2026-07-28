@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Alert, View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { ChevronLeft, CheckCircle, Clock3, MessageSquare } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors, Layout, Spacing, Radius, Elevation } from '@/constants/theme';
@@ -9,11 +9,19 @@ import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { JobSummary } from '@/components/JobSummary';
 import { ProviderCard } from '@/components/ProviderCard';
-import { useRequest } from '@/context/RequestContext';
-import { fetchProviderProfile, fetchRequest, fetchRequestBids, fetchBookingByRequestId, subscribeToTable } from '@/services/api';
+import { RequestProvider, useRequest } from '@/context/RequestContext';
+import { acceptServiceOffer, fetchProviderProfile, fetchRequest, fetchRequestBids, fetchBookingByRequestId, subscribeToTable } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
 
 export default function RequestDetailsScreen() {
+  return (
+    <RequestProvider>
+      <RequestDetailsContent />
+    </RequestProvider>
+  );
+}
+
+function RequestDetailsContent() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { request,updateRequest } = useRequest();
@@ -21,15 +29,152 @@ export default function RequestDetailsScreen() {
   const [applicants, setApplicants] = useState<any[]>([]);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [acceptingOfferId, setAcceptingOfferId] = useState<string | null>(null);
 
   useEffect(() => {
-    if(!id)return;const load=async()=>{setIsLoading(true);const[requestResult,bidsResult]=await Promise.all([fetchRequest(id),fetchRequestBids(id)]);if(requestResult.error){setIsLoading(false);return;}const row=requestResult.data;updateRequest({description:row.description,category:row.service_categories?.name??'',location:{latitude:Number(row.addresses?.latitude),longitude:Number(row.addresses?.longitude),address:[row.addresses?.line1,row.addresses?.barangay,row.addresses?.city].filter(Boolean).join(', ')},status:row.status==='CLOSED'?'Completed':row.status==='BOOKED'?'Accepted':'Posted'});setDraft({requestId:id});fetchBookingByRequestId(id).then(r=>{if(r.data?.id)setBookingId(r.data.id);});const candidateIds=new Set<string>();const mapped=[];for(const bid of bidsResult.data){candidateIds.add(bid.worker_id);const profile=await fetchProviderProfile(bid.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:`₱${(Number(bid.amount_minor)/100).toLocaleString()}`,eta:`${bid.estimated_duration_minutes} minutes`,message:bid.message});}for(const candidate of row.match_candidates??[]){if(candidateIds.has(candidate.worker_id))continue;const profile=await fetchProviderProfile(candidate.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:'',eta:candidate.factors?.distance_meters?`${(Number(candidate.factors.distance_meters)/1000).toFixed(1)} km`:'',message:''});}setApplicants(mapped);setIsLoading(false);};void load();return subscribeToTable('request_bids',()=>void load(),`service_request_id=eq.${id}`);
+    if (!id) return;
+    let active = true;
+    const load = async () => {
+      setIsLoading(true);
+      const [requestResult, bidsResult] = await Promise.all([
+        fetchRequest(id),
+        fetchRequestBids(id),
+      ]);
+      if (!active) return;
+      if (requestResult.error) {
+        setIsLoading(false);
+        return;
+      }
+      const row = requestResult.data;
+      updateRequest({
+        description: row.description,
+        category: row.service_categories?.name ?? '',
+        location: {
+          latitude: Number(row.addresses?.latitude),
+          longitude: Number(row.addresses?.longitude),
+          address: [
+            row.addresses?.line1,
+            row.addresses?.barangay,
+            row.addresses?.city,
+          ]
+            .filter(Boolean)
+            .join(', '),
+        },
+        selectedWorkerId: row.selected_worker_id ?? null,
+        status:
+          row.status === 'CLOSED'
+            ? 'Completed'
+            : row.status === 'BOOKED'
+              ? 'Accepted'
+              : 'Posted',
+      });
+      setDraft({ requestId: id });
+      void fetchBookingByRequestId(id).then((result) => {
+        if (active) setBookingId(result.data?.id ?? null);
+      });
+      const candidateIds = new Set<string>();
+      const mapped: any[] = [];
+      for (const bid of bidsResult.data) {
+        candidateIds.add(bid.worker_id);
+        const profile = await fetchProviderProfile(bid.worker_id);
+        if (!profile.error)
+          mapped.push({
+            ...profile.data,
+            offerId: bid.id,
+            offerStatus: bid.status,
+            estimatedPrice: `₱${(
+              Number(bid.amount_minor) / 100
+            ).toLocaleString()}`,
+            eta: `${bid.estimated_duration_minutes} minutes`,
+            message: bid.message,
+          });
+      }
+      for (const candidate of row.match_candidates ?? []) {
+        if (candidateIds.has(candidate.worker_id)) continue;
+        candidateIds.add(candidate.worker_id);
+        const profile = await fetchProviderProfile(candidate.worker_id);
+        if (!profile.error)
+          mapped.push({
+            ...profile.data,
+            estimatedPrice: '',
+            eta: candidate.factors?.distance_meters
+              ? `${(Number(candidate.factors.distance_meters) / 1000).toFixed(1)} km`
+              : '',
+            message: '',
+          });
+      }
+      if (row.selected_worker_id && !candidateIds.has(row.selected_worker_id)) {
+        const profile = await fetchProviderProfile(row.selected_worker_id);
+        if (!profile.error)
+          mapped.push({
+            ...profile.data,
+            estimatedPrice: '',
+            eta: '',
+            message: '',
+          });
+      }
+      if (!active) return;
+      setApplicants(mapped);
+      setIsLoading(false);
+    };
+    void load();
+    const stops = [
+      subscribeToTable(
+        'service_request_offers',
+        () => void load(),
+        `service_request_id=eq.${id}`,
+      ),
+      subscribeToTable(
+        'service_requests',
+        () => void load(),
+        `id=eq.${id}`,
+      ),
+    ];
+    return () => {
+      active = false;
+      stops.forEach((stop) => stop());
+    };
   }, [id]);
 
   const handleBack = () => router.back();
 
   const assignedWorker = applicants.find(row=>row.id===request.selectedWorkerId)??null;
   const isBidding = applicants.some(row=>row.message!=='Eligible verified match');
+  const visibleApplicants = request.selectedWorkerId
+    ? applicants.filter((row) => row.id === request.selectedWorkerId)
+    : applicants;
+  const selectedOffer = visibleApplicants.find((row) => row.offerId);
+  const awaitingSelectedQuote =
+    Boolean(request.selectedWorkerId) && !selectedOffer;
+
+  const handleAcceptQuote = (applicant: any) => {
+    if (!applicant.offerId || acceptingOfferId) return;
+    Alert.alert(
+      'Accept this quote?',
+      `${applicant.name} quoted ${applicant.estimatedPrice}. A booking will be created after you confirm.`,
+      [
+        { text: 'Not Yet', style: 'cancel' },
+        {
+          text: 'Accept Quote',
+          onPress: () => {
+            setAcceptingOfferId(applicant.offerId);
+            void acceptServiceOffer(applicant.offerId)
+              .then((booking) => {
+                setDraft({ requestId: id, bookingId: booking.id });
+                router.replace(`/tracking/${booking.id}` as any);
+              })
+              .catch((error) => {
+                Alert.alert(
+                  'Quote unavailable',
+                  error instanceof Error ? error.message : 'Please try again.',
+                );
+              })
+              .finally(() => setAcceptingOfferId(null));
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -55,15 +200,31 @@ export default function RequestDetailsScreen() {
           <View style={styles.section}>
             <View style={styles.statusAlert}>
               <AppText variant="h4" weight="bold" color={Colors.white}>
-                {isBidding ? 'Waiting for Bids' : 'Waiting for Workers'}
+                {awaitingSelectedQuote
+                  ? 'Awaiting Quote'
+                  : selectedOffer
+                    ? 'Quote Received'
+                    : isBidding
+                      ? 'Waiting for Bids'
+                      : 'Waiting for Workers'}
               </AppText>
               <AppText variant="caption" color={Colors.white} style={{ opacity: 0.9, marginTop: 4 }}>
-                {isBidding ? 'Workers are reviewing your request and will submit offers shortly.' : 'Your request is posted. Workers are reviewing it.'}
+                {awaitingSelectedQuote
+                  ? 'Your selected worker is preparing a quote.'
+                  : selectedOffer
+                    ? 'Review the selected worker’s quote before creating the booking.'
+                    : isBidding
+                      ? 'Workers are reviewing your request and will submit offers shortly.'
+                      : 'Your request is posted. Workers are reviewing it.'}
               </AppText>
             </View>
 
             <AppText variant="h3" weight="bold" style={styles.sectionTitle}>
-              {isBidding ? `Incoming Offers (${applicants.length})` : `Applicants (${applicants.length})`}
+              {request.selectedWorkerId
+                ? `Selected Worker (${visibleApplicants.length})`
+                : isBidding
+                  ? `Incoming Offers (${applicants.length})`
+                  : `Applicants (${applicants.length})`}
             </AppText>
             
             {isLoading ? (
@@ -75,7 +236,7 @@ export default function RequestDetailsScreen() {
                 </AppText>
               </View>
             ) : (
-              applicants.map((applicant) => (
+              visibleApplicants.map((applicant) => (
                 <View key={applicant.id} style={styles.applicantCard}>
                   <View style={styles.applicantHeader}>
                     <Avatar uri={applicant.avatarUri} size={50} />
@@ -120,6 +281,16 @@ export default function RequestDetailsScreen() {
                       onPress={() => router.push(`/chat/${applicant.id}` as any)}
                     />
                   </View>
+                  {applicant.offerId &&
+                    applicant.id === request.selectedWorkerId && (
+                      <AppButton
+                        label="Accept Quote"
+                        loading={acceptingOfferId === applicant.offerId}
+                        fullWidth
+                        style={{ marginTop: Spacing['3'] }}
+                        onPress={() => handleAcceptQuote(applicant)}
+                      />
+                    )}
                 </View>
               ))
             )}
