@@ -1,5 +1,71 @@
 begin;
 
+-- Some hosted environments recorded the original offers migration as applied
+-- without retaining this table. Reconcile the durable quote schema before the
+-- RPC return types below are parsed.
+create table if not exists public.service_request_offers (
+  id uuid primary key default gen_random_uuid(),
+  service_request_id uuid not null references public.service_requests(id) on delete cascade,
+  worker_id uuid not null references public.worker_profiles(account_id) on delete restrict,
+  amount numeric(12,2) not null check (amount > 0),
+  message text not null check (length(trim(message)) between 3 and 2000),
+  estimated_minutes integer check (
+    estimated_minutes is null or estimated_minutes between 15 and 10080
+  ),
+  status text not null default 'SUBMITTED' check (
+    status in (
+      'SUBMITTED',
+      'UPDATED',
+      'ACCEPTED',
+      'REJECTED',
+      'WITHDRAWN',
+      'EXPIRED'
+    )
+  ),
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  responded_at timestamptz
+);
+
+create unique index if not exists one_active_offer_per_worker_request
+on public.service_request_offers(service_request_id, worker_id)
+where status in ('SUBMITTED', 'UPDATED');
+
+create index if not exists service_request_offers_request_status_idx
+on public.service_request_offers(service_request_id, status, created_at desc);
+
+alter table public.bookings
+  add column if not exists accepted_offer_id uuid
+    references public.service_request_offers(id) on delete restrict;
+
+alter table public.service_request_offers enable row level security;
+revoke all on public.service_request_offers from anon, authenticated;
+grant select on public.service_request_offers to authenticated;
+
+drop policy if exists offers_participant_or_admin_read
+on public.service_request_offers;
+create policy offers_participant_or_admin_read
+on public.service_request_offers
+for select
+to authenticated
+using (
+  worker_id = auth.uid()
+  or exists (
+    select 1
+    from public.service_requests request
+    where request.id = service_request_id
+      and request.user_account_id = auth.uid()
+  )
+  or public.is_admin(false)
+);
+
+drop trigger if exists set_service_request_offers_updated_at
+on public.service_request_offers;
+create trigger set_service_request_offers_updated_at
+before update on public.service_request_offers
+for each row execute function public.set_updated_at();
+
 create or replace function public.select_worker_for_quote(
   p_service_request_id uuid,
   p_worker_id uuid
