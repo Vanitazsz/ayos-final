@@ -28,7 +28,7 @@ import {
   attachRequestMedia,
   publishServiceRequest,
   selectWorker,
-  startConversation,
+  selectWorkerForQuote,
 } from '@/services/api';
 import {
   getLiveDispatchSnapshot,
@@ -208,11 +208,11 @@ export default function MatchingScreen() {
     if (!draft.requestId) return;
     try {
       if (worker.rateMinor == null) {
-        const conversation = await startConversation(
+        const conversation = await selectWorkerForQuote(
           draft.requestId,
           worker.workerId,
         );
-        router.replace(
+        router.push(
           `/messages/chat?conversationId=${conversation.id}` as never,
         );
         return;
@@ -469,6 +469,8 @@ function WorkerCard({
   onChoose: () => void;
 }) {
   const accepted = worker.status === 'ACCEPTED';
+  const awaitingQuote =
+    worker.status === 'SELECTED' && worker.rateMinor == null;
   const priceLabel =
     worker.rateMinor == null
       ? 'Request a quote'
@@ -476,7 +478,9 @@ function WorkerCard({
           minimumFractionDigits: 2,
         })} worker rate`;
   return (
-    <View style={[styles.card, accepted && styles.acceptedCard]}>
+    <View
+      style={[styles.card, (accepted || awaitingQuote) && styles.acceptedCard]}
+    >
       <View style={styles.workerHeader}>
         <Image source={worker.avatar || undefined} style={styles.avatar} />
         <View style={{ flex: 1 }}>
@@ -485,9 +489,14 @@ function WorkerCard({
             {(worker.distanceMeters / 1000).toFixed(1)} km away · {priceLabel}
           </Text>
         </View>
-        <View style={[styles.statusPill, accepted && styles.acceptedPill]}>
+        <View
+          style={[
+            styles.statusPill,
+            (accepted || awaitingQuote) && styles.acceptedPill,
+          ]}
+        >
           <Text style={styles.pillText}>
-            {accepted ? 'Accepted' : 'Notified'}
+            {awaitingQuote ? 'Awaiting Quote' : accepted ? 'Accepted' : 'Notified'}
           </Text>
         </View>
       </View>
@@ -497,10 +506,11 @@ function WorkerCard({
           {Number(worker.rating).toFixed(1)} ({worker.reviewCount})
         </Text>
       </View>
-      {accepted ? (
+      {accepted || awaitingQuote ? (
         <Button
-          title={worker.rateMinor == null ? 'Request a Quote' : 'Choose Worker'}
+          title={awaitingQuote ? 'Awaiting Quote' : 'Accept Worker'}
           onPress={onChoose}
+          disabled={awaitingQuote}
           fullWidth
         />
       ) : (
