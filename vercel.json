@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --dir apps/mobile build:web",
+  "outputDirectory": "apps/mobile/dist",
+  "rewrites": [
+    {
+      "source": "/((?!_expo/|assets/|favicon\\.ico$|metadata\\.json$).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
