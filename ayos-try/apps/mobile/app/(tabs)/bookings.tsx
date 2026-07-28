@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { AppState, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
@@ -7,14 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapPin, Calendar as CalendarIcon, Clock, ChevronRight } from 'lucide-react-native';
 
 import { EmptyState } from '@/components/layout/EmptyState';
-import { fetchBookings, subscribeToTable } from '@/services/api';
+import { fetchBookings, subscribeToBookingFeed } from '@/services/api';
 
 const BOOKING_TABS = ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'];
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'Pending Acceptance', color: '#B78103', bg: '#FFF8E1' },
-  ACCEPTED: { label: 'Accepted', color: '#0277BD', bg: '#E1F5FE' },
-  WORKER_PREPARING: { label: 'Preparing', color: '#0277BD', bg: '#E1F5FE' },
+  AWAITING_QUOTE: { label: 'Awaiting Quote', color: '#B78103', bg: '#FFF8E1' },
+  QUOTE_RECEIVED: { label: 'Quote Received', color: '#0277BD', bg: '#E1F5FE' },
+  PENDING: { label: 'Awaiting Worker Acceptance', color: '#B78103', bg: '#FFF8E1' },
+  ACCEPTED: { label: 'Confirmed', color: '#0277BD', bg: '#E1F5FE' },
+  WORKER_PREPARING: { label: 'Confirmed · Preparing', color: '#0277BD', bg: '#E1F5FE' },
   WORKER_EN_ROUTE: { label: 'En Route 🚚', color: '#1565C0', bg: '#E8EAF6' },
   WORKER_ARRIVED: { label: 'Arrived 📍', color: '#2E7D32', bg: '#E8F5E9' },
   SERVICE_STARTED: { label: 'In Progress 🛠️', color: '#2E7D32', bg: '#E8F5E9' },
@@ -62,8 +64,21 @@ export default function BookingsScreen() {
     });
 
   useEffect(() => {
+    let active = true;
+    let stopRealtime = () => {};
     load();
-    return subscribeToTable('bookings', load);
+    void subscribeToBookingFeed('customer', load).then((stop) => {
+      if (active) stopRealtime = stop;
+      else stop();
+    });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') load();
+    });
+    return () => {
+      active = false;
+      stopRealtime();
+      appState.remove();
+    };
   }, []);
 
   const filteredBookings = bookings.filter((b) => b.tabGroup === activeTab);
@@ -105,7 +120,11 @@ export default function BookingsScreen() {
               <TouchableOpacity 
                 key={booking.id} 
                 style={styles.bookingCard}
-                onPress={() => router.push(`/tracking/${booking.id}`)}
+                onPress={() =>
+                  booking.recordType === 'quote_request'
+                    ? router.push(`/request/${booking.requestId}`)
+                    : router.push(`/tracking/${booking.id}`)
+                }
               >
                 <View style={styles.cardHeader}>
                   <View style={{ flex: 1 }}>
