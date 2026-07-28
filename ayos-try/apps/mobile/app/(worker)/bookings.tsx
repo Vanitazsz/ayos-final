@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
+  AppState,
   Alert,
   View,
   Text,
@@ -19,13 +20,15 @@ import {
   acceptJob,
   cancelBooking,
   fetchWorkerBookings,
-  subscribeToTable,
+  subscribeToBookingFeed,
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
+  awaiting_quote: { label: 'Quote Required', variant: 'warning' },
+  quote_submitted: { label: 'Quote Submitted', variant: 'info' },
   hired: { label: 'Pending', variant: 'warning' },
   accepted: { label: 'Accepted', variant: 'info' },
   worker_preparing: { label: 'Preparing', variant: 'info' },
@@ -41,7 +44,14 @@ const statusConfig: Record<string, { label: string; variant: string }> = {
 const BOOKING_TABS = ['Upcoming', 'In Progress', 'Completed', 'Cancelled'];
 
 const TAB_FILTERS: Record<string, WorkerBooking['status'][]> = {
-  Upcoming: ['pending', 'hired', 'accepted', 'worker_preparing'],
+  Upcoming: [
+    'awaiting_quote',
+    'quote_submitted',
+    'pending',
+    'hired',
+    'accepted',
+    'worker_preparing',
+  ],
   'In Progress': [
     'worker_en_route',
     'worker_arrived',
@@ -70,10 +80,21 @@ export default function WorkerBookingsScreen() {
     setLoading(false);
   };
   useEffect(() => {
+    let active = true;
+    let stopRealtime = () => {};
     void load();
-    const stop = subscribeToTable('bookings', () => void load());
-    const poll = setInterval(() => void load(), 10000);
-    return () => { stop(); clearInterval(poll); };
+    void subscribeToBookingFeed('worker', () => void load()).then((stop) => {
+      if (active) stopRealtime = stop;
+      else stop();
+    });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => {
+      active = false;
+      stopRealtime();
+      appState.remove();
+    };
   }, []);
   const accept = async (id: string) => {
     try {
@@ -178,7 +199,11 @@ export default function WorkerBookingsScreen() {
               <Pressable
                 style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
                 onPress={() =>
-                  router.push(`/(worker)/booking-request/${booking.id}`)
+                  booking.recordType === 'quote_request'
+                    ? router.push(
+                        `/(worker)/search?requestId=${booking.requestId}`,
+                      )
+                    : router.push(`/(worker)/booking-request/${booking.id}`)
                 }
               >
                 <View style={styles.bookingCard}>
@@ -293,6 +318,31 @@ export default function WorkerBookingsScreen() {
                         >
                           Paid · {booking.price}
                         </Text>
+                      )}
+                      {(booking.status === 'awaiting_quote' ||
+                        booking.status === 'quote_submitted') && (
+                        <TouchableOpacity
+                          style={styles.primaryBtn}
+                          onPress={() =>
+                            router.push(
+                              `/(worker)/search?requestId=${booking.requestId}`,
+                            )
+                          }
+                        >
+                          <Text
+                            style={[
+                              theme.typography.caption,
+                              {
+                                color: theme.colors.surface,
+                                fontWeight: '600',
+                              },
+                            ]}
+                          >
+                            {booking.status === 'awaiting_quote'
+                              ? 'Submit Quote'
+                              : 'Update Quote'}
+                          </Text>
+                        </TouchableOpacity>
                       )}
                       {booking.status === 'pending_review' && (
                         <Text
