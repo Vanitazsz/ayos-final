@@ -16,12 +16,12 @@ failed=0
 
 extract_calls() {
   local pattern=$1
-  rg -o --no-filename --pcre2 "$pattern" "${frontend_paths[@]}" 2>/dev/null | sort -u || true
+  node scripts/search.mjs --pattern "$pattern" --extract --paths "${frontend_paths[@]}" 2>/dev/null || true
 }
 
 while IFS= read -r name; do
   [[ -z "$name" ]] && continue
-  if ! rg -qi "function[[:space:]]+(public\\.)?${name}[[:space:]]*\\(" "${backend_paths[@]}"; then
+  if ! node scripts/search.mjs --pattern "function[[:space:]]+(public\\.)?${name}[[:space:]]*\\(" --quiet --paths "${backend_paths[@]}"; then
     printf 'Missing RPC: %s\n' "$name" >&2
     failed=1
   fi
@@ -45,7 +45,8 @@ done < <(extract_calls '(?<=functions\.invoke\(`)[A-Za-z0-9_-]+')
 
 while IFS= read -r name; do
   [[ -z "$name" ]] && continue
-  if ! rg -qi "(table[[:space:]]+(if[[:space:]]+not[[:space:]]+exists[[:space:]]+)?public\\.${name}|view[[:space:]]+public\\.${name}|values[[:space:]]*\\([[:space:]]*'${name}'|bucket_id[[:space:]]*=[[:space:]]*'${name}')" "${backend_paths[@]}"; then
+  table_pattern="(table[[:space:]]+(if[[:space:]]+not[[:space:]]+exists[[:space:]]+)?public\\.${name}|view[[:space:]]+public\\.${name}|values[[:space:]]*\\([[:space:]]*'${name}'|bucket_id[[:space:]]*=[[:space:]]*'${name}')"
+  if ! node scripts/search.mjs --pattern "$table_pattern" --quiet --paths "${backend_paths[@]}"; then
     printf 'Missing table, view, or bucket: %s\n' "$name" >&2
     failed=1
   fi

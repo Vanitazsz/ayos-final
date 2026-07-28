@@ -14,14 +14,14 @@ required_patterns=(
   'create extension if not exists postgis'
 )
 for pattern in "${required_patterns[@]}"; do
-  if ! rg -q "$pattern" package.json apps supabase; then
+  if ! node scripts/search.mjs --pattern "$pattern" --quiet --paths package.json apps supabase; then
     echo "Required stack marker missing: $pattern" >&2
     exit 1
   fi
 done
 
-if rg -n --hidden --glob '!node_modules/**' --glob '!.git/**' --glob '!.env*' \
-  '(sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,})' .; then
+if node scripts/search.mjs --pattern \
+  '(sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,})' --paths .; then
   echo "A potential provider or Supabase secret is present in tracked source." >&2
   exit 1
 fi
