@@ -1,172 +1,85 @@
 # Workflows
 
-## Authentication and Google OAuth
+## Worker industry and skill selection
 
 ```mermaid
 sequenceDiagram
-  participant U as User
-  participant App as Expo/Web
-  participant Auth as Supabase Auth
-  participant DB as Postgres
-  U->>App: Email/password or Google
-  App->>Auth: signIn / signInWithOAuth (PKCE)
-  Auth-->>App: ayos://auth/callback + code
-  App->>Auth: Exchange code for session
-  Auth->>DB: Provision account/profile if new
-  DB-->>Auth: USER membership only for social user
-  App->>DB: Load account and role context
-  alt suspended or deleted
-    DB-->>App: Reject protected navigation
-  else active
-    DB-->>App: Authorized role projection
-  end
+  participant W as Worker registration
+  participant S as Supabase API
+  participant D as PostgreSQL
+  W->>S: Read active industries with active skills
+  S->>D: RLS-protected catalog query
+  D-->>W: 10 ordered industries and UUID-backed skills
+  W->>S: submit_worker_application(identityData)
+  S->>D: Validate role, industry, 1–10 skills, documents, and consent
+  D->>D: Persist verification, primary industry, and worker skills atomically
+  D-->>W: Pending worker verification
 ```
 
-Google setup is not active until credentials/redirect URLs are supplied. Apple/X controls do not perform a fake action.
+The industry suggestions are bounded and scrollable across web and native clients. Changing the selected industry clears incompatible client selections. Custom text is never submitted as a category identifier, and failed validation leaves the previously persisted worker taxonomy unchanged.
 
-## Registration and password reset
+## User/Homeowner workflow
 
-Email signup creates an Auth user; the trigger creates the account/profile/membership. Unconfirmed accounts stay pending until Supabase verification completes. Recovery uses a Supabase email redirect and `updateUser`; there is no fixed application OTP.
+**Actor:** new or registered user. **Precondition:** required content and network/provider availability.
 
-## Customer request with optional AI
+1. Launch → Splash → Landing → Already registered?
+2. New user: registration details → accept Terms → email OTP → valid code activates and signs in. Invalid/expired/provider failures show retryable outcomes.
+3. Registered user: email/mobile + password → optional recovery code → Home.
+4. The immutable `USER` role permits only the customer workspace; worker routes redirect back to Home.
+5. Home exposes Browse, Send Request, Bookings, Messages, Alerts, Profile, and optional AI Home Assistant. It searches the live service catalog, shows the first 8 matches, and reveals 4 more per See more action.
+6. Profile opens customer-only Help Center and Privacy Policy pages from published Supabase content. Each page supports back navigation, loading, unavailable, retry, version, and update-date states.
+7. Browse supports featured/recommended/recent, search/filter/sort/category, worker details, top-five comparison, preselection messaging, and worker selection.
+8. Request creation searches the live catalog, shows the first 4 matches, reveals 4 more per See more services action, and preserves the selected service UUID. Address suggestions or GPS confirm the required map point; reverse-provider failure retains a confirmed GPS point for manual address text. Specific field errors precede optional consent-based AI analysis or manual continuation.
+9. If no suitable worker exists, adjust filters/date; AI-created requests remain open for later notification.
+10. Selected worker receives a private request and accepts or declines with a reason. Offline/decline/timeout recommends another worker.
+11. Booking follows Pending → Accepted → Worker Preparing → Worker En Route → Worker Arrived → Service Started → In Progress → Completed, or Cancelled with reason/policy/confirmation.
+12. En-route tracking requests permission. Granted shows map/ETA; denied explains the limitation and supports retry. Active booking offers Call, Chat, and Emergency actions.
+13. Completed booking uses Cash. User confirms cash paid; worker confirms receipt; success generates receipt and closes payment. Failure allows retry.
+14. Completed-and-paid booking enables star rating, text, images, recommendation, and submitted result, subject to moderation.
 
-```mermaid
-sequenceDiagram
-  participant C as Customer
-  participant App as Expo
-  participant S as Storage
-  participant AI as Edge AI
-  participant DB as Postgres
-  C->>App: Description, category, photos/audio, address
-  App->>S: Upload to UUID-owned paths
-  alt Consent accepted
-    App->>AI: Queue with JWT, consent, idempotency key
-    AI->>DB: Insert consent + QUEUED job
-    DB-->>App: Realtime job updates
-    App->>AI: Process owned job
-    AI->>AI: Gemini attempts, conditional OpenAI fallback
-    AI->>DB: Validate/persist result and attempts
-    DB-->>App: SUCCEEDED or retryable FAILED
-  else Manual path
-    App->>App: Keep entered draft without provider processing
-  end
-  App->>DB: Atomically save address text + PostGIS point
-  App->>DB: Create service request
-```
+Related requirements: FR-01–04, FR-10–18, FR-25–48, FR-49, FR-52–62, FR-73, FR-75–81, FR-89–101, FR-104. **Status:** connected in Expo; authenticated lifecycle, native device, and external route/ETA acceptance remain unverified.
 
-Safety-critical AI output displays escalation advice and publishes only a manual/open request; it does not automatically run worker selection.
+## Worker workflow
 
-## Matching and booking
+**Actor:** worker account. **Precondition:** verified email; administrator approval before accepting jobs.
 
-```mermaid
-flowchart TD
-  R["Open service request"] --> Mode{"Bidding or direct?"}
-  Mode -->|Bidding| B["Approved workers submit/withdraw bounded bids"]
-  Mode -->|Direct| M["generate_matches"]
-  M --> E["Skill/category + approval + availability + PostGIS radius eligibility"]
-  E --> S["Score distance, availability, rating, jobs, response, cancellations, priority"]
-  S --> C["Auditable ranked candidates"]
-  B --> Select["Customer selects eligible worker"]
-  C --> Select
-  Select --> T["Transactional booking + conversation + status event"]
-```
+1. Create a dedicated `WORKER` account, verify its email, then complete categories, experience, service area, availability, identity information, and document submission.
+2. Administrator approves, requests documents, or rejects. Approval activates job acceptance without a verification fee.
+3. Dashboard exposes the existing Job Posts, Bookings, Reviews, Wallet, Portfolio and Profile workflows. No supplied Worker reference exists, so existing Worker UX is preserved.
+4. Job Posts show only authorized suitable requests. Worker accepts or declines with a reason.
+5. Accepted booking is prepared, travelled to, performed, and completed through canonical states; contact/tracking are permission- and participant-scoped.
+6. Worker confirms cash received. After successful payment, worker sees customer feedback read-only.
+7. Profile maintains professional details. Customer routes reject the immutable Worker role. Recommendation priority is administrator-controlled; advertising and premium purchase are excluded.
 
-AI may generate a display explanation but cannot modify the eligibility query or select a worker.
+Related requirements: FR-05–09, FR-15–17, FR-42–43, FR-50–51, FR-58–59, FR-82–88, FR-102–104. **Status:** connected in Expo; authenticated lifecycle and native-device acceptance remain unverified.
 
-## Booking lifecycle
+## Administrator workflow
 
-```mermaid
-stateDiagram-v2
-  [*] --> PENDING
-  PENDING --> ACCEPTED
-  ACCEPTED --> WORKER_PREPARING
-  WORKER_PREPARING --> WORKER_EN_ROUTE
-  WORKER_EN_ROUTE --> WORKER_ARRIVED
-  WORKER_ARRIVED --> SERVICE_STARTED
-  SERVICE_STARTED --> IN_PROGRESS
-  IN_PROGRESS --> COMPLETED
-  PENDING --> CANCELLED
-  ACCEPTED --> CANCELLED
-  WORKER_PREPARING --> CANCELLED
-  WORKER_EN_ROUTE --> CANCELLED
-```
+**Actor:** protected administrator. **Precondition:** Supabase service-role bootstrap account and valid credentials; authenticator-app TOTP/AAL2 when enabled.
 
-Every transition validates participant, current state/version, and required reason; an event row preserves history. Realtime refreshes both parties.
+1. Login validates credentials and optional second factor, then opens Dashboard.
+2. Account Management covers profile, password/email, 2FA, login history, logout, users, workers, details, approval/document requests, suspension, recommendation priority, and confirmed deletion of eligible User/Worker accounts. Deletion rejects Administrators and accounts with retained business records.
+3. System Administration covers audit logs, Trash, Restore, allowlisted AAL2 permanent deletion/empty-trash, and saved/discarded settings.
+4. Communication creates notifications for users, workers, or everyone and sends/schedules them.
+5. Business Intelligence provides reports, analytics, export, and print.
+6. Customer Support provides ticket details, review moderation, escalation, resolution, and closure.
+7. Financial Management provides transactions, cash details, and processed/rejected refunds.
+8. Operations provides booking details, intervention/resolution, and services management.
+9. Shared controls provide search, filters, pagination, exports, notifications, confirmations, and success/error outcomes.
 
-## Tracking and route ETA
+Related requirements: FR-19–24, FR-31, FR-63–72, FR-74. **Status:** connected in the approved Vite/React administrator application; authenticated AAL2 mutation acceptance remains unverified.
 
-The latest authorized worker point and request destination are sent to `route` in `[longitude, latitude]` order. OpenRouteService returns route GeoJSON, meters, and seconds. A route snapshot is stored for a booking party/admin. MapLibre renders the real route; straight-line distance is not used as ETA.
+## AI Home Assistant workflow
 
-## Chat and translation
+**Actor:** user. **Precondition:** authenticated active User; media permission for selected image/voice inputs; configured provider secrets for production calls.
 
-Conversation participants insert/read messages under RLS. Realtime publishes new messages. If participant locale differs, `ai-translate-message` checks participant access, returns an existing cached translation or generates one, and leaves the original untouched.
+1. Open assistant → provide text, choose an image, or record voice → accept the versioned per-request AI consent or continue manually.
+2. The authenticated Edge Function validates ownership/media/idempotency, creates a queued job, and the client follows persisted status through Realtime.
+3. Gemini analyzes the permitted inputs; eligible retryable failures fall back to OpenAI. The validated result contains the detected issue, severity, possible cause, suggested live category/service IDs, cost range, safety advice, questions, confidence, and editable draft.
+4. Book a Professional creates an editable request draft; otherwise save analysis/draft for later.
+5. Standard matching, booking, canonical lifecycle, cash confirmation, feedback, and administration paths continue.
+6. No match keeps the request open and notifies later when a suitable worker appears.
 
-## Cash payment and wallet
+Gemini receives bounded retry attempts. OpenAI is used only after eligible retryable Gemini timeout, throttle, 5xx, or schema failures. Authorization, invalid input, missing consent, and safety/refusal failures do not trigger fallback. Both-provider failure preserves the manual request path. Every attempt is redacted and audited.
 
-```mermaid
-sequenceDiagram
-  participant C as Customer
-  participant DB as Transactional RPC
-  participant W as Worker wallet
-  C->>DB: confirm_cash_payment(booking, idempotency)
-  DB->>DB: Validate party/state and create/update payment + receipt
-  DB->>W: Credit available balance once
-  DB->>W: Append immutable wallet transaction
-  DB-->>C: Real payment/receipt result
-```
-
-GCash/card remain disabled until configured.
-
-## Payout
-
-The worker selects an owned payout method and submits a bounded amount/idempotency key. The RPC locks the wallet, moves available funds to locked state, and creates a pending request. An AAL2 administrator approves/rejects through `admin_decide_payout`; balances and ledger are updated transactionally.
-
-## Review/moderation
-
-After completion, a customer creates one bounded review and optional owned images. Votes/reports/replies are separate normalized rows. AI sentiment runs asynchronously for aggregate administrator reporting and stores topics/risk/confidence/provider metadata. Only the administrator moderation RPC publishes/hides content.
-
-## Notification campaign
-
-An administrator creates a draft, then an AAL2 publish RPC materializes delivery rows for the selected audience. Recipient notifications/read state and delivery metrics update through Realtime. External push delivery is not active.
-
-## Report export
-
-An AAL2 administrator selects a report type/format. `report-generate` creates a PROCESSING row, reads a bounded dataset, generates CSV/XLSX/PDF, uploads to the administrator UUID path in `report-exports`, and marks COMPLETED. Failures persist FAILED with a reason. Downloads use short-lived signed URLs.
-
-## Error handling
-
-```mermaid
-flowchart LR
-  Input["Client request"] --> Gateway{"JWT valid?"}
-  Gateway -->|No| E401["401"]
-  Gateway -->|Yes| Validate{"Input/owner/role/state valid?"}
-  Validate -->|No| E4["4xx consistent JSON / database code"]
-  Validate -->|Yes| Work["Transactional or provider work"]
-  Work -->|Retryable provider failure| Retry["Bounded retry/manual continuation"]
-  Work -->|Success| OK["success/message/data"]
-  Work -->|Unexpected failure| E500["Sanitized 500 + server log"]
-```
-
-Provider failures never fabricate AI, geocoding, payment, notification, or booking success.
-## Profile completion and update
-
-```mermaid
-sequenceDiagram
-  participant C as Client
-  participant A as Supabase Auth
-  participant D as Profile RPC
-  participant S as Storage
-  C->>A: Restore authenticated session
-  C->>D: get_my_profile()
-  alt Profile incomplete
-    D-->>C: profile_complete=false
-    C->>D: complete_my_profile(real values)
-  else Profile complete
-    D-->>C: persisted profile and verification state
-  end
-  C->>S: Upload owned avatar path
-  C->>D: set_my_avatar(path)
-  D-->>C: refreshed profile
-```
-
-Email changes use Supabase Auth confirmation. Password changes use Auth first and record `password_changed_at` only after Auth succeeds. Missing historical password or session data is displayed as unavailable.
+Related requirements: FR-11–18, FR-25–31, FR-41–43, FR-57–59, FR-92–98, FR-104. **Status:** analysis, save, and request continuation are connected; live-provider and authenticated end-to-end verification are blocked by credentials/fixtures.
