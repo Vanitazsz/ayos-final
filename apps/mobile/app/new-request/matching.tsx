@@ -28,7 +28,6 @@ import {
   attachRequestMedia,
   publishServiceRequest,
   selectWorker,
-  selectWorkerForQuote,
 } from '@/services/api';
 import {
   getLiveDispatchSnapshot,
@@ -207,16 +206,6 @@ export default function MatchingScreen() {
   const choose = async (worker: LiveWorkerCandidate) => {
     if (!draft.requestId) return;
     try {
-      if (worker.rateMinor == null) {
-        const conversation = await selectWorkerForQuote(
-          draft.requestId,
-          worker.workerId,
-        );
-        router.push(
-          `/messages/chat?conversationId=${conversation.id}` as never,
-        );
-        return;
-      }
       const booking = await selectWorker(draft.requestId, worker.workerId);
       draft.setDraft({ bookingId: booking.id });
       router.replace(`/tracking/${booking.id}` as never);
