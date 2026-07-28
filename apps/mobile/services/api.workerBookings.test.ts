@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   getUser: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: { getUser: mocks.getUser },
     from: mocks.from,
+    rpc: mocks.rpc,
   },
 }));
 
@@ -98,5 +100,52 @@ describe('fetchWorkerBookings', () => {
         status: 'pending',
       }),
     ]);
+  });
+});
+
+describe('selectWorker', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it('returns the direct booking created by the selection RPC', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { id: 'booking-id', service_request_id: 'request-id' },
+      error: null,
+    });
+    const { selectWorker } = await import('./api');
+
+    await expect(selectWorker('request-id', 'worker-id')).resolves.toEqual(
+      expect.objectContaining({ id: 'booking-id' }),
+    );
+    expect(mocks.rpc).toHaveBeenCalledWith('select_worker', {
+      p_service_request_id: 'request-id',
+      p_worker_id: 'worker-id',
+    });
+  });
+
+  it('rejects an invalid booking response instead of navigating without an id', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    const { selectWorker } = await import('./api');
+
+    await expect(selectWorker('request-id', 'worker-id')).rejects.toThrow(
+      'BOOKING_RESPONSE_INVALID',
+    );
+  });
+
+  it('preserves RPC failures for the matching screen to display', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: 'P0001', message: 'WORKER_UNAVAILABLE' },
+    });
+    const { selectWorker } = await import('./api');
+
+    await expect(selectWorker('request-id', 'worker-id')).rejects.toEqual(
+      expect.objectContaining({
+        code: 'P0001',
+        message: 'WORKER_UNAVAILABLE',
+      }),
+    );
   });
 });

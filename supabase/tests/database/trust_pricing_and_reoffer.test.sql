@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(29);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -274,6 +274,17 @@ select lives_ok(
 );
 
 reset role;
+update public.worker_skills
+set rate_minor = null
+where worker_id = (
+  select worker_id
+  from public.service_request_dispatches
+  where service_request_id = '96000000-0000-0000-0000-000000000001'
+    and status = 'ACCEPTED'
+  limit 1
+)
+and category_id = '94000000-0000-0000-0000-000000000001';
+
 select set_config(
   'request.jwt.claims',
   '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
@@ -299,8 +310,40 @@ select is(
     from public.bookings
     where service_request_id = '96000000-0000-0000-0000-000000000001'
   ),
-  700::numeric,
-  'booking price is copied from the selected worker rate'
+  2000::numeric,
+  'customer budget is used when the selected worker has no configured rate'
+);
+select is(
+  (
+    select status::text
+    from public.service_requests
+    where id = '96000000-0000-0000-0000-000000000001'
+  ),
+  'BOOKED',
+  'selected service request is booked'
+);
+select is(
+  (
+    select selected_worker_id
+    from public.service_requests
+    where id = '96000000-0000-0000-0000-000000000001'
+  ),
+  (
+    select worker_account_id
+    from public.bookings
+    where service_request_id = '96000000-0000-0000-0000-000000000001'
+  ),
+  'service request stores the booked worker'
+);
+select is(
+  (
+    select count(*)
+    from public.service_request_dispatches
+    where service_request_id = '96000000-0000-0000-0000-000000000001'
+      and status = 'SELECTED'
+  ),
+  1::bigint,
+  'accepted dispatch is marked selected'
 );
 select lives_ok(
   $$select public.report_booking_participant(

@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -37,6 +36,7 @@ import {
   type DispatchSnapshot,
   type LiveWorkerCandidate,
 } from '@/services/liveDispatch';
+import { createWorkerSelectionGate } from '@/services/workerSelection';
 import { useRequestStore } from '@/store/useRequestStore';
 
 type State = 'configuring' | 'starting' | 'live' | 'expired' | 'error';
@@ -71,6 +71,11 @@ export default function MatchingScreen() {
   );
   const [snapshot, setSnapshot] = useState<DispatchSnapshot | null>(null);
   const [error, setError] = useState('');
+  const [selectionError, setSelectionError] = useState('');
+  const [selectingWorkerId, setSelectingWorkerId] = useState<string | null>(
+    null,
+  );
+  const selectionGate = useRef(createWorkerSelectionGate());
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -199,17 +204,27 @@ export default function MatchingScreen() {
   };
 
   const choose = async (worker: LiveWorkerCandidate) => {
-    if (!draft.requestId) return;
-    try {
-      const booking = await selectWorker(draft.requestId, worker.workerId);
-      draft.setDraft({ bookingId: booking.id });
-      router.replace(`/tracking/${booking.id}` as never);
-    } catch (reason) {
-      Alert.alert(
-        'Worker unavailable',
-        normalizeSupabaseError(reason, 'Choose another worker.').message,
+    const requestId = draft.requestId;
+    if (!requestId) {
+      setSelectionError(
+        'This service request is unavailable. Return and start matching again.',
       );
+      return;
     }
+    const booking = await selectionGate.current.run(
+      worker.workerId,
+      () => selectWorker(requestId, worker.workerId),
+      (next) => {
+        setSelectingWorkerId(next.workerId);
+        setSelectionError(next.error);
+      },
+      (reason) =>
+        normalizeSupabaseError(reason, 'Choose another worker.').message,
+    );
+    if (!booking) return;
+
+    draft.setDraft({ bookingId: booking.id });
+    router.replace(`/tracking/${booking.id}` as never);
   };
 
   return (
@@ -290,6 +305,16 @@ export default function MatchingScreen() {
           style={styles.list}
           contentContainerStyle={styles.listContent}
         >
+          {selectionError ? (
+            <View
+              accessibilityLiveRegion="assertive"
+              accessibilityRole="alert"
+              style={styles.selectionError}
+            >
+              <AlertCircle size={18} color={theme.colors.error} />
+              <Text style={styles.selectionErrorText}>{selectionError}</Text>
+            </View>
+          ) : null}
           {!candidates.length ? (
             <View style={styles.empty}>
               <View style={styles.emptyIcon}>
@@ -307,6 +332,8 @@ export default function MatchingScreen() {
                 key={worker.dispatchId}
                 worker={worker}
                 onChoose={() => void choose(worker)}
+                choosing={selectingWorkerId === worker.workerId}
+                selectionDisabled={selectingWorkerId !== null}
               />
             ))
           )}
@@ -448,9 +475,13 @@ function StateMessage({
 function WorkerCard({
   worker,
   onChoose,
+  choosing,
+  selectionDisabled,
 }: {
   worker: LiveWorkerCandidate;
   onChoose: () => void;
+  choosing: boolean;
+  selectionDisabled: boolean;
 }) {
   const accepted = worker.status === 'ACCEPTED';
   const priceLabel =
@@ -492,6 +523,8 @@ function WorkerCard({
         <Button
           title="Accept Worker"
           onPress={onChoose}
+          loading={choosing}
+          disabled={selectionDisabled}
           fullWidth
         />
       ) : (
@@ -603,6 +636,20 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 12,
     flexGrow: 1,
+  },
+  selectionError: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.errorBackground,
+    borderColor: theme.colors.error,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  selectionErrorText: {
+    color: theme.colors.error,
+    flex: 1,
   },
   empty: {
     flex: 1,

@@ -903,6 +903,9 @@ export async function selectWorker(serviceRequestId: string, workerId: string) {
     p_worker_id: workerId,
   });
   if (error) throw error;
+  if (!data || typeof data.id !== 'string' || !data.id) {
+    throw new Error('BOOKING_RESPONSE_INVALID');
+  }
   return data;
 }
 export async function fetchBookingByRequestId(serviceRequestId: string) {

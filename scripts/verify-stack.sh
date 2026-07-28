@@ -4,6 +4,11 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_dir"
 
+if [[ -e ayos-try ]]; then
+  echo "Nested ayos-try workspace detected. Run the project from the repository root only." >&2
+  exit 1
+fi
+
 required_patterns=(
   '"expo-router"'
   '"react": "19'
