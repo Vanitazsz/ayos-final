@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -43,8 +44,17 @@ export default function ChatScreen() {
   const rawConversationId = Array.isArray(searchParams.conversationId)
     ? searchParams.conversationId[0]
     : searchParams.conversationId;
-  const { messages, access, sending, error, send, archive } =
+  const { messages, access, loading, sending, error, refresh, send, archive } =
     useConversationChat(conversationId);
+  const conversationLabel = loading
+    ? 'Loading conversation…'
+    : error
+      ? 'Unable to load conversation'
+      : access.canSend
+        ? 'Matched conversation'
+        : access.status
+          ? 'Read-only history'
+          : 'Conversation unavailable';
 
   useEffect(() => {
     if (rawConversationId) {
@@ -151,7 +161,7 @@ export default function ChatScreen() {
                 { color: theme.colors.textSecondary },
               ]}
             >
-              {access.canSend ? 'Matched conversation' : 'Read-only history'}
+              {conversationLabel}
             </Text>
           </View>
         </View>
@@ -189,7 +199,7 @@ export default function ChatScreen() {
         </View>
       ) : null}
 
-      {!access.canSend && access.status ? (
+      {!loading && !error && !access.canSend && access.status ? (
         <View style={styles.closedBanner}>
           <Text style={[theme.typography.body2, styles.closedText]}>
             This conversation is read-only because the job is closed.
@@ -224,7 +234,12 @@ export default function ChatScreen() {
         style={styles.chatArea}
         contentContainerStyle={styles.chatScrollContent}
       >
-        {messages.length === 0 ? (
+        {loading ? (
+          <View style={styles.emptyChat}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading messages…</Text>
+          </View>
+        ) : error ? null : messages.length === 0 ? (
           <View style={styles.emptyChat}>
             <Text
               style={[
@@ -304,7 +319,17 @@ export default function ChatScreen() {
         )}
       </ScrollView>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => void refresh(true)}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <View
         style={[
@@ -336,12 +361,18 @@ export default function ChatScreen() {
           <RNTextInput
             style={styles.textInput}
             placeholder={
-              access.canSend ? 'Type a message...' : 'Conversation is read-only'
+              loading
+                ? 'Loading conversation...'
+                : error
+                  ? 'Conversation unavailable'
+                  : access.canSend
+                    ? 'Type a message...'
+                    : 'Conversation is read-only'
             }
             value={message}
             onChangeText={setMessage}
             multiline
-            editable={access.canSend}
+            editable={!loading && !error && access.canSend}
           />
         </View>
         <TouchableOpacity
@@ -513,6 +544,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 80,
   },
+  loadingText: {
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+  },
   messageBubbleReceiver: {
     backgroundColor: theme.colors.surface,
     alignSelf: 'flex-start',
@@ -550,12 +585,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
-  errorText: {
-    color: theme.colors.error,
+  errorContainer: {
+    alignItems: 'center',
+    gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
   },
+  errorText: { color: theme.colors.error, textAlign: 'center' },
+  retryText: { color: theme.colors.primary, fontWeight: '600' },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',

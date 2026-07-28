@@ -8,15 +8,20 @@ const requestId = 'b5000000-0000-0000-0000-000000000001';
 let bookingStatus = 'COMPLETED';
 let requestStatus = 'CLOSED';
 let messageRows: Record<string, unknown>[] = [];
+let conversationFetchFails = false;
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const workerSession = testInfo.title.toLowerCase().includes('worker');
+  const currentUserId = workerSession ? workerId : customerId;
+  const otherUserId = workerSession ? customerId : workerId;
   bookingStatus = 'COMPLETED';
   requestStatus = 'CLOSED';
+  conversationFetchFails = false;
   messageRows = [
     {
       id: 'b6000000-0000-0000-0000-000000000001',
       conversation_id: conversationId,
-      sender_id: workerId,
+      sender_id: otherUserId,
       body: 'The completed job message is retained.',
       original_locale: 'en',
       created_at: '2026-07-28T08:00:00.000Z',
@@ -24,18 +29,19 @@ test.beforeEach(async ({ page }) => {
     },
   ];
   const session = {
-    access_token: 'matched-messaging-test-token',
+    access_token:
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiMjAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImV4cCI6NDA3MDkwODgwMH0.test-signature',
     refresh_token: 'matched-messaging-test-refresh',
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     token_type: 'bearer',
     user: {
-      id: customerId,
+      id: currentUserId,
       aud: 'authenticated',
       role: 'authenticated',
       email: 'matched-customer@example.test',
       app_metadata: {},
-      user_metadata: { role: 'USER' },
+      user_metadata: { role: workerSession ? 'WORKER' : 'USER' },
       created_at: new Date().toISOString(),
     },
   };
@@ -60,17 +66,18 @@ test.beforeEach(async ({ page }) => {
       contentType: 'application/json',
       body: JSON.stringify({
         account: {
-          id: customerId,
+          id: currentUserId,
           email: session.user.email,
           mobile: '+639171234567',
-          role: 'USER',
+          role: workerSession ? 'WORKER' : 'USER',
           status: 'ACTIVE',
         },
         profile: {
           display_name: 'Matched Customer',
           preferred_locale: 'en',
+          approval_status: workerSession ? 'APPROVED' : undefined,
         },
-        active_role: 'USER',
+        active_role: workerSession ? 'WORKER' : 'USER',
         email_verified: true,
         profile_complete: true,
       }),
@@ -83,9 +90,35 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify(null),
     }),
   );
+  await page.route(
+    '**/rest/v1/rpc/get_my_worker_matching_readiness',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          matchable: false,
+          setupComplete: false,
+          online: false,
+        }),
+      }),
+  );
   await page.route('**/rest/v1/conversations?*', (route) => {
     const url = new URL(route.request().url());
     const detail = url.searchParams.has('id');
+    expect(url.searchParams.get('select')).toContain(
+      'accounts:account_id(user_profiles',
+    );
+    if (conversationFetchFails) {
+      return route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: '42703',
+          message: 'Conversation profile query failed',
+        }),
+      });
+    }
     const row = {
       id: conversationId,
       booking_id: bookingId,
@@ -107,19 +140,23 @@ test.beforeEach(async ({ page }) => {
         {
           account_id: customerId,
           last_read_at: '2026-07-28T08:00:00.000Z',
-          user_profiles: {
-            display_name: 'Matched Customer',
-            avatar_path: '',
+          accounts: {
+            user_profiles: {
+              display_name: 'Matched Customer',
+              avatar_path: '',
+            },
+            worker_profiles: null,
           },
-          worker_profiles: null,
         },
         {
           account_id: workerId,
           last_read_at: null,
-          user_profiles: null,
-          worker_profiles: {
-            display_name: 'Matched Worker',
-            avatar_path: '',
+          accounts: {
+            user_profiles: null,
+            worker_profiles: {
+              display_name: 'Matched Worker',
+              avatar_path: '',
+            },
           },
         },
       ],
@@ -151,7 +188,7 @@ test.beforeEach(async ({ page }) => {
     const sent = {
       id: 'b6000000-0000-0000-0000-000000000002',
       conversation_id: conversationId,
-      sender_id: customerId,
+      sender_id: currentUserId,
       body: request.p_body,
       original_locale: 'en',
       created_at: '2026-07-28T08:01:00.000Z',
@@ -205,4 +242,71 @@ test('active matched conversation accepts and displays a sent message', async ({
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByText('Hello worker')).toBeVisible();
   await expect(page.getByText('Request failed')).toHaveCount(0);
+});
+
+test('active matched worker conversation loads the customer and sends', async ({
+  page,
+}) => {
+  bookingStatus = 'ACCEPTED';
+  requestStatus = 'MATCHED';
+
+  await page.goto(`/messages/chat?conversationId=${conversationId}`);
+
+  await expect(page.getByText('Matched Customer')).toBeVisible();
+  await expect(page.getByText('Matched conversation')).toBeVisible();
+  const composer = page.getByPlaceholder('Type a message...');
+  await composer.fill('Hello customer');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.getByText('Hello customer')).toBeVisible();
+});
+
+test('fetch failure shows retry instead of read-only history', async ({
+  page,
+}) => {
+  bookingStatus = 'ACCEPTED';
+  requestStatus = 'MATCHED';
+  conversationFetchFails = true;
+
+  await page.goto(`/messages/chat?conversationId=${conversationId}`);
+
+  await expect(page.getByText('Unable to load conversation')).toBeVisible();
+  await expect(page.getByText('Conversation profile query failed')).toBeVisible();
+  await expect(page.getByText('Read-only history')).toHaveCount(0);
+  await expect(
+    page.getByPlaceholder('Conversation unavailable'),
+  ).toHaveAttribute('readonly', '');
+
+  conversationFetchFails = false;
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(page.getByText('Matched conversation')).toBeVisible();
+  await expect(page.getByPlaceholder('Type a message...')).toBeEditable();
+});
+
+test('worker conversation list fetch failure shows retry', async ({ page }) => {
+  conversationFetchFails = true;
+
+  await page.goto('/messages');
+  await page.getByRole('tab', { name: 'Messages' }).click();
+
+  await expect(page.getByText('Conversation profile query failed')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(page.getByText('No Matched Conversations')).toHaveCount(0);
+
+  conversationFetchFails = false;
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(page.getByText('Matched Customer')).toBeVisible();
+});
+
+test('customer conversation list fetch failure shows retry', async ({ page }) => {
+  conversationFetchFails = true;
+
+  await page.goto('/messages');
+
+  await expect(page.getByText('Conversation profile query failed')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(page.getByText('No Matched Conversations')).toHaveCount(0);
+
+  conversationFetchFails = false;
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(page.getByText('Matched Worker')).toBeVisible();
 });

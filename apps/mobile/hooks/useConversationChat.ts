@@ -43,7 +43,8 @@ export function useConversationChat(conversationId: string | null) {
   const [error, setError] = useState('');
   const mounted = useRef(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showLoading = false) => {
+    if (showLoading && mounted.current) setLoading(true);
     if (!conversationId) {
       if (mounted.current) {
         setMessages([]);
@@ -81,7 +82,7 @@ export function useConversationChat(conversationId: string | null) {
 
   useEffect(() => {
     mounted.current = true;
-    void refresh();
+    void refresh(true);
     return () => {
       mounted.current = false;
     };

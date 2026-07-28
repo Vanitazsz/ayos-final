@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
@@ -15,15 +22,26 @@ import {
 export default function MessagesListScreen() {
   const router = useRouter();
   const [chats, setChats] = useState<any[]>([]);
-  const load = useCallback(() => {
-    void fetchConversations().then((result) => setChats(result.data ?? []));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const load = useCallback((showLoading = false) => {
+    if (showLoading) setLoading(true);
+    void fetchConversations().then((result) => {
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setChats(result.data ?? []);
+        setError('');
+      }
+      setLoading(false);
+    });
   }, []);
 
   useEffect(() => {
-    load();
+    load(true);
     const stops = [
-      subscribeToTable('messages', load),
-      subscribeToTable('conversations', load),
+      subscribeToTable('messages', () => load()),
+      subscribeToTable('conversations', () => load()),
     ];
     return () => stops.forEach((stop) => stop());
   }, [load]);
@@ -31,7 +49,7 @@ export default function MessagesListScreen() {
   useEffect(
     () => {
       const stops = chats.map((chat) =>
-        subscribeToConversationBroadcast(chat.id, load),
+        subscribeToConversationBroadcast(chat.id, () => load()),
       );
       return () => stops.forEach((stop) => stop());
     },
@@ -44,7 +62,22 @@ export default function MessagesListScreen() {
         <Text style={theme.typography.h2}>Messages</Text>
       </View>
       <ScrollView style={styles.content}>
-        {chats.length > 0 ? (
+        {loading ? (
+          <View style={styles.stateContainer}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.stateText}>Loading conversations…</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.stateContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => load(true)}
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : chats.length > 0 ? (
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Text style={[theme.typography.h4, { marginBottom: theme.spacing.sm, color: theme.colors.primary }]}>Matched Conversations</Text>
             {chats.map(chat => (
@@ -103,4 +136,12 @@ const styles = StyleSheet.create({
   chatFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   unreadBadge: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.primary, justifyContent: 'center', alignItems: 'center', marginLeft: theme.spacing.sm },
   closedLabel: { color: theme.colors.textSecondary, fontSize: 11, marginLeft: theme.spacing.sm },
+  stateContainer: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.xxxl,
+  },
+  stateText: { color: theme.colors.textSecondary },
+  errorText: { color: theme.colors.error, textAlign: 'center' },
+  retryText: { color: theme.colors.primary, fontWeight: '600' },
 });

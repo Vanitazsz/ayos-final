@@ -178,16 +178,35 @@ const requireUser = async () => {
   if (error || !user) throw error ?? new Error('Authentication required');
   return user;
 };
+export const apiErrorMessage = (
+  error: unknown,
+  fallback = 'Request failed',
+) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message
+  ) {
+    return error.message;
+  }
+  return fallback;
+};
 const wrap = async <T>(load: () => Promise<T>): Promise<ApiResponse<T>> => {
   try {
     return { data: await load() };
   } catch (error) {
     return {
       data: [] as T,
-      error: error instanceof Error ? error.message : 'Request failed',
+      error: apiErrorMessage(error),
     };
   }
 };
+
+const firstRelation = <T>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 export function subscribeToTable(
   table: string,
@@ -1228,7 +1247,7 @@ export async function fetchConversation(conversationId: string) {
       supabase
         .from('conversations')
         .select(
-          'id,booking_id,service_request_id,worker_account_id,archived_at,bookings:booking_id(status,user_account_id,worker_account_id),service_requests:service_request_id(status,user_account_id,selected_worker_id),conversation_participants(account_id,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path))',
+          'id,booking_id,service_request_id,worker_account_id,archived_at,bookings:booking_id(status,user_account_id,worker_account_id),service_requests:service_request_id(status,user_account_id,selected_worker_id),conversation_participants(account_id,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path)))',
         )
         .eq('id', conversationId)
         .maybeSingle(),
@@ -1262,8 +1281,10 @@ export async function fetchConversation(conversationId: string) {
     const otherParticipant = (
       (conversation as any).conversation_participants ?? []
     ).find((item: any) => item.account_id !== user.id);
+    const participantAccount = firstRelation(otherParticipant?.accounts);
     const participantProfile =
-      otherParticipant?.user_profiles ?? otherParticipant?.worker_profiles;
+      firstRelation((participantAccount as any)?.user_profiles) ??
+      firstRelation((participantAccount as any)?.worker_profiles);
 
     return {
       preferredLocale,
@@ -1370,7 +1391,7 @@ export async function fetchConversations() {
     const { data, error } = await supabase
       .from('conversations')
       .select(
-        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,bookings:booking_id(status,worker_account_id),service_requests:service_request_id(status),conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
+        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,bookings:booking_id(status,worker_account_id),service_requests:service_request_id(status),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
       )
       .is('archived_at', null)
       .order('updated_at', { ascending: false });
@@ -1399,14 +1420,13 @@ export async function fetchConversations() {
         );
         const latest = messages[0];
         const readAt = ownParticipant?.last_read_at;
+        const participantAccount = firstRelation(participant?.accounts);
+        const participantProfile =
+          firstRelation((participantAccount as any)?.user_profiles) ??
+          firstRelation((participantAccount as any)?.worker_profiles);
         const participantName =
-          participant?.user_profiles?.display_name ??
-          participant?.worker_profiles?.display_name ??
-          'Chat Participant';
-        const avatarPath =
-          participant?.user_profiles?.avatar_path ??
-          participant?.worker_profiles?.avatar_path ??
-          '';
+          (participantProfile as any)?.display_name ?? 'Chat Participant';
+        const avatarPath = (participantProfile as any)?.avatar_path ?? '';
 
         return {
           id: row.id,
