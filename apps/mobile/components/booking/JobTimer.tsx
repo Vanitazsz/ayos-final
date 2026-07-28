@@ -58,7 +58,7 @@ export const JobTimer = React.memo(function JobTimer({
           Agreed service amount
         </AppText>
         <AppText variant="h3" weight="bold" color={Colors.success}>
-          {agreedAmount > 0 ? `₱${agreedAmount.toFixed(2)}` : 'Request a quote'}
+          {agreedAmount > 0 ? `₱${agreedAmount.toFixed(2)}` : 'Price pending'}
         </AppText>
       </View>
     </View>

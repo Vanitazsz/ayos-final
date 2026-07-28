@@ -36,14 +36,14 @@ export default function ReviewRequestScreen() {
 
   const handlePostRequest = () => {
     updateRequest({ status: 'Posted' });
-    draft.setDraft({ scheduledAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), matchingMode: 'direct' });
+    draft.setDraft({ scheduledAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() });
     router.push('/new-request/matching' as any);
   };
 
   const isASAP = request.urgency === 'ASAP';
   const getPrimaryButtonText = () => {
-    if (isASAP) return 'Broadcast Request';
-    return 'Post Request for Bidding';
+    if (isASAP) return 'Start Live Matching';
+    return 'Start Live Matching';
   };
 
   return (

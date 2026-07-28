@@ -981,7 +981,6 @@ export type Database = {
       bookings: {
         Row: {
           accepted_at: string | null
-          accepted_offer_id: string | null
           agreed_service_amount: number
           cancelled_at: string | null
           completed_at: string | null
@@ -1000,7 +999,6 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
-          accepted_offer_id?: string | null
           agreed_service_amount: number
           cancelled_at?: string | null
           completed_at?: string | null
@@ -1019,7 +1017,6 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
-          accepted_offer_id?: string | null
           agreed_service_amount?: number
           cancelled_at?: string | null
           completed_at?: string | null
@@ -1037,13 +1034,6 @@ export type Database = {
           worker_start_lng?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "bookings_accepted_offer_id_fkey"
-            columns: ["accepted_offer_id"]
-            isOneToOne: false
-            referencedRelation: "service_request_offers"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "bookings_service_request_id_fkey"
             columns: ["service_request_id"]
@@ -2816,63 +2806,6 @@ export type Database = {
           },
         ]
       }
-      service_request_offers: {
-        Row: {
-          amount: number
-          created_at: string
-          estimated_minutes: number | null
-          expires_at: string | null
-          id: string
-          message: string
-          responded_at: string | null
-          service_request_id: string
-          status: string
-          updated_at: string
-          worker_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          estimated_minutes?: number | null
-          expires_at?: string | null
-          id?: string
-          message: string
-          responded_at?: string | null
-          service_request_id: string
-          status?: string
-          updated_at?: string
-          worker_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          estimated_minutes?: number | null
-          expires_at?: string | null
-          id?: string
-          message?: string
-          responded_at?: string | null
-          service_request_id?: string
-          status?: string
-          updated_at?: string
-          worker_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_request_offers_service_request_id_fkey"
-            columns: ["service_request_id"]
-            isOneToOne: false
-            referencedRelation: "service_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_request_offers_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "worker_profiles"
-            referencedColumns: ["account_id"]
-          },
-        ]
-      }
       service_requests: {
         Row: {
           address_id: string
@@ -4061,34 +3994,6 @@ export type Database = {
       }
     }
     Functions: {
-      accept_service_offer: {
-        Args: { p_offer_id: string }
-        Returns: {
-          accepted_at: string | null
-          accepted_offer_id: string | null
-          agreed_service_amount: number
-          cancelled_at: string | null
-          completed_at: string | null
-          created_at: string
-          currency: string
-          id: string
-          response_due_at: string
-          service_request_id: string
-          status: Database["public"]["Enums"]["booking_status"]
-          updated_at: string
-          user_account_id: string
-          version: number
-          worker_account_id: string
-          worker_start_lat: number | null
-          worker_start_lng: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "bookings"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       admin_activate_subscription: {
         Args: { p_plan_id: string; p_starts_at?: string; p_worker_id: string }
         Returns: {
@@ -4183,7 +4088,6 @@ export type Database = {
         Args: { p_booking_id: string; p_reason: string }
         Returns: {
           accepted_at: string | null
-          accepted_offer_id: string | null
           agreed_service_amount: number
           cancelled_at: string | null
           completed_at: string | null
@@ -4468,7 +4372,6 @@ export type Database = {
         Args: { p_booking_id: string; p_reason: string; p_worker_id: string }
         Returns: {
           accepted_at: string | null
-          accepted_offer_id: string | null
           agreed_service_amount: number
           cancelled_at: string | null
           completed_at: string | null
@@ -5061,7 +4964,6 @@ export type Database = {
         }
         Returns: {
           accepted_at: string | null
-          accepted_offer_id: string | null
           agreed_service_amount: number
           cancelled_at: string | null
           completed_at: string | null
@@ -5817,7 +5719,6 @@ export type Database = {
         Args: { p_service_request_id: string; p_worker_id: string }
         Returns: {
           accepted_at: string | null
-          accepted_offer_id: string | null
           agreed_service_amount: number
           cancelled_at: string | null
           completed_at: string | null
@@ -6133,60 +6034,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      submit_request_bid: {
-        Args: {
-          p_amount_minor: number
-          p_duration_minutes: number
-          p_message: string
-          p_service_request_id: string
-        }
-        Returns: {
-          amount: number
-          created_at: string
-          estimated_minutes: number | null
-          expires_at: string | null
-          id: string
-          message: string
-          responded_at: string | null
-          service_request_id: string
-          status: string
-          updated_at: string
-          worker_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "service_request_offers"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      submit_service_offer: {
-        Args: {
-          p_amount: number
-          p_estimated_minutes?: number
-          p_message: string
-          p_service_request_id: string
-        }
-        Returns: {
-          amount: number
-          created_at: string
-          estimated_minutes: number | null
-          expires_at: string | null
-          id: string
-          message: string
-          responded_at: string | null
-          service_request_id: string
-          status: string
-          updated_at: string
-          worker_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "service_request_offers"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       submit_verification_document: {
         Args: {
           p_byte_size: number
@@ -6273,7 +6120,6 @@ export type Database = {
         }
         Returns: {
           accepted_at: string | null
-          accepted_offer_id: string | null
           agreed_service_amount: number
           cancelled_at: string | null
           completed_at: string | null
@@ -6537,28 +6383,6 @@ export type Database = {
           final_amount: number
           promotion_id: string
         }[]
-      }
-      withdraw_service_offer: {
-        Args: { p_offer_id: string }
-        Returns: {
-          amount: number
-          created_at: string
-          estimated_minutes: number | null
-          expires_at: string | null
-          id: string
-          message: string
-          responded_at: string | null
-          service_request_id: string
-          status: string
-          updated_at: string
-          worker_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "service_request_offers"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
     }
     Enums: {

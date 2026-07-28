@@ -27,8 +27,6 @@ import type { WorkerBooking } from '@/services/api';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
-  awaiting_quote: { label: 'Quote Required', variant: 'warning' },
-  quote_submitted: { label: 'Quote Submitted', variant: 'info' },
   hired: { label: 'Pending', variant: 'warning' },
   accepted: { label: 'Accepted', variant: 'info' },
   worker_preparing: { label: 'Preparing', variant: 'info' },
@@ -45,8 +43,6 @@ const BOOKING_TABS = ['Upcoming', 'In Progress', 'Completed', 'Cancelled'];
 
 const TAB_FILTERS: Record<string, WorkerBooking['status'][]> = {
   Upcoming: [
-    'awaiting_quote',
-    'quote_submitted',
     'pending',
     'hired',
     'accepted',
@@ -199,11 +195,7 @@ export default function WorkerBookingsScreen() {
               <Pressable
                 style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
                 onPress={() =>
-                  booking.recordType === 'quote_request'
-                    ? router.push(
-                        `/(worker)/search?requestId=${booking.requestId}`,
-                      )
-                    : router.push(`/(worker)/booking-request/${booking.id}`)
+                  router.push(`/(worker)/booking-request/${booking.id}`)
                 }
               >
                 <View style={styles.bookingCard}>
@@ -318,31 +310,6 @@ export default function WorkerBookingsScreen() {
                         >
                           Paid · {booking.price}
                         </Text>
-                      )}
-                      {(booking.status === 'awaiting_quote' ||
-                        booking.status === 'quote_submitted') && (
-                        <TouchableOpacity
-                          style={styles.primaryBtn}
-                          onPress={() =>
-                            router.push(
-                              `/(worker)/search?requestId=${booking.requestId}`,
-                            )
-                          }
-                        >
-                          <Text
-                            style={[
-                              theme.typography.caption,
-                              {
-                                color: theme.colors.surface,
-                                fontWeight: '600',
-                              },
-                            ]}
-                          >
-                            {booking.status === 'awaiting_quote'
-                              ? 'Submit Quote'
-                              : 'Update Quote'}
-                          </Text>
-                        </TouchableOpacity>
                       )}
                       {booking.status === 'pending_review' && (
                         <Text

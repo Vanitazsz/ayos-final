@@ -171,7 +171,7 @@ export default function BookingRequestScreen() {
               .join(', '),
             price:
               row.agreed_service_amount == null
-                ? 'Request a quote'
+                ? 'Price pending'
                 : `₱${Number(row.agreed_service_amount).toLocaleString()}`,
             status,
             distance: '',

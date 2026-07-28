@@ -235,8 +235,7 @@ export default function IssueSummaryScreen() {
                   { marginBottom: theme.spacing.md },
                 ]}
               >
-                Request a quote — the final price comes from the worker&apos;s
-                saved service rate.
+                Price is confirmed when a matched worker accepts the request.
               </Text>
 
               <Text style={styles.label}>Editable Request Draft</Text>

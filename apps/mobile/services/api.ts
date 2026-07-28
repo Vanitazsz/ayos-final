@@ -73,35 +73,10 @@ export interface ReviewData {
   comment: string;
   serviceType: string;
 }
-export interface JobOpportunity {
-  id: string;
-  customerName: string;
-  customerAvatar: string;
-  service: string;
-  category: string;
-  description: string;
-  location: string;
-  distance: string;
-  offeredPrice: string;
-  urgency: 'normal' | 'urgent';
-  postedTime: string;
-  imageUrl?: string;
-  commentCount: number;
-}
-export interface JobComment {
-  id: string;
-  jobId: string;
-  author: string;
-  avatarUri: string;
-  text: string;
-  offerMin?: string;
-  offerMax?: string;
-  postedTime: string;
-}
 export interface WorkerBooking {
   id: string;
   requestId?: string;
-  recordType?: 'booking' | 'quote_request';
+  recordType?: 'booking';
   customerName: string;
   customerAvatar: string;
   service: string;
@@ -321,7 +296,7 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
                       .filter(Number.isFinite),
                   ) / 100,
                 )
-              : 'Request a quote',
+              : 'Pending price',
         };
       }),
     );
@@ -387,7 +362,7 @@ export async function fetchProviderProfile(id: string) {
       eta: '',
       price: workerRates.length
         ? money(Math.min(...workerRates) / 100)
-        : 'Request a quote',
+        : 'Pending price',
       bio: profile.bio ?? '',
       years: Math.max(
         0,
@@ -444,31 +419,14 @@ export async function fetchReviews(): Promise<ApiResponse<ReviewData[]>> {
 export async function fetchBookings(): Promise<ApiResponse<any[]>> {
   return wrap(async () => {
     const user = await requireUser();
-    const [bookingResult, quoteRequestResult] = await Promise.all([
-      supabase
+    const bookingResult = await supabase
         .from('bookings')
         .select(
           'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars))',
         )
         .eq('user_account_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('service_requests')
-        .select(
-          'id,selected_worker_id,status,created_at,updated_at,scheduled_at,addresses(line1,barangay,city),service_categories(name),worker_profiles:selected_worker_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars)),service_request_offers(id,worker_id,amount,status,updated_at)',
-        )
-        .eq('user_account_id', user.id)
-        .eq('status', 'MATCHED')
-        .not('selected_worker_id', 'is', null)
-        .order('updated_at', { ascending: false }),
-    ]);
+        .order('created_at', { ascending: false });
     if (bookingResult.error) throw new Error(bookingResult.error.message);
-    if (quoteRequestResult.error) {
-      console.warn(
-        '[bookings] selected-worker quotes unavailable:',
-        quoteRequestResult.error.message,
-      );
-    }
 
     const bookings = await Promise.all(
       (bookingResult.data ?? []).map(async (row: any) => {
@@ -515,7 +473,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
             .join(', '),
           price:
             row.agreed_service_amount == null
-              ? 'Request a quote'
+              ? 'Pending price'
               : money(row.agreed_service_amount),
           rating: reviews.length
             ? reviews.reduce(
@@ -526,59 +484,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
         };
       }),
     );
-    const quoteRequests = await Promise.all(
-      (quoteRequestResult.error ? [] : (quoteRequestResult.data ?? [])).map(
-        async (row: any) => {
-          const reviews = row.worker_profiles?.reviews ?? [];
-          const quote = (row.service_request_offers ?? []).find(
-            (offer: any) =>
-              offer.worker_id === row.selected_worker_id &&
-              ['SUBMITTED', 'UPDATED'].includes(offer.status),
-          );
-          return {
-            id: `quote:${row.id}`,
-            requestId: row.id,
-            recordType: 'quote_request',
-            providerId: row.selected_worker_id,
-            providerName: requireIdentity(
-              row.worker_profiles?.display_name,
-              'Selected worker',
-            ),
-            category: requireIdentity(
-              row.service_categories?.name,
-              'Requested service',
-            ),
-            avatarUri: await resolveProfileAvatar(
-              row.worker_profiles?.avatar_path,
-            ),
-            date: new Date(
-              row.scheduled_at ?? row.created_at,
-            ).toLocaleDateString(),
-            time: new Date(
-              row.scheduled_at ?? row.created_at,
-            ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'upcoming',
-            rawStatus: quote ? 'QUOTE_RECEIVED' : 'AWAITING_QUOTE',
-            address: [
-              row.addresses?.line1,
-              row.addresses?.barangay,
-              row.addresses?.city,
-            ]
-              .filter(Boolean)
-              .join(', '),
-            price: quote ? money(quote.amount) : 'Awaiting quote',
-            rating: reviews.length
-              ? reviews.reduce(
-                  (sum: number, item: any) => sum + Number(item.stars),
-                  0,
-                ) / reviews.length
-              : 0,
-            updatedAt: quote?.updated_at ?? row.updated_at,
-          };
-        },
-      ),
-    );
-    return [...quoteRequests, ...bookings];
+    return bookings;
   });
 }
 export async function fetchServiceCategories() {
@@ -697,7 +603,7 @@ export async function fetchWorkerProfile(): Promise<
         earnings: money(earnings),
         hourlyRate: prices.length
           ? money(Math.min(...prices) / 100)
-          : 'Request a quote',
+          : 'Price pending',
         skills: (profile.worker_skills ?? [])
           .map((skill: any) => skill.service_categories?.name)
           .filter(Boolean),
@@ -734,82 +640,19 @@ export async function fetchWorkerVerification() {
 export async function fetchWorkerReviews() {
   return fetchReviews();
 }
-export async function fetchWorkerJobs(): Promise<
-  ApiResponse<JobOpportunity[]>
-> {
-  return wrap(async () => {
-    await requireUser();
-    const { data, error } = await supabase
-      .from('service_requests')
-      .select(
-        'id,description,budget,scheduled_at,created_at,user_profiles:user_account_id(display_name,avatar_path),addresses(line1,barangay,city),service_categories(name),service_request_offers(count)',
-      )
-      .in('status', ['OPEN', 'MATCHED'])
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => ({
-        id: row.id,
-        customerName: requireIdentity(
-          row.user_profiles?.display_name,
-          'Request customer',
-        ),
-        customerAvatar: await resolveProfileAvatar(
-          row.user_profiles?.avatar_path,
-        ),
-        service: requireIdentity(
-          row.service_categories?.name,
-          'Requested service',
-        ),
-        category: requireIdentity(
-          row.service_categories?.name,
-          'Requested service',
-        ),
-        description: row.description,
-        location: [row.addresses?.barangay, row.addresses?.city]
-          .filter(Boolean)
-          .join(', '),
-        distance: '',
-        offeredPrice: money(row.budget),
-        urgency:
-          new Date(row.scheduled_at).getTime() - Date.now() < 86400000
-            ? 'urgent'
-            : 'normal',
-        postedTime: relative(row.created_at),
-        commentCount: row.service_request_offers?.[0]?.count ?? 0,
-      })),
-    );
-  });
-}
 export async function fetchWorkerBookings(): Promise<
   ApiResponse<WorkerBooking[]>
 > {
   return wrap(async () => {
     const user = await requireUser();
-    const [bookingResult, quoteRequestResult] = await Promise.all([
-      supabase
+    const bookingResult = await supabase
         .from('bookings')
         .select(
           'id,service_request_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)',
         )
         .eq('worker_account_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('service_requests')
-        .select(
-          'id,status,created_at,updated_at,scheduled_at,user_profiles:user_account_id(display_name,avatar_path),addresses(line1,barangay,city),service_categories(name),service_request_offers(id,worker_id,amount,status,updated_at)',
-        )
-        .eq('selected_worker_id', user.id)
-        .eq('status', 'MATCHED')
-        .order('updated_at', { ascending: false }),
-    ]);
+        .order('created_at', { ascending: false });
     if (bookingResult.error) throw new Error(bookingResult.error.message);
-    if (quoteRequestResult.error) {
-      console.warn(
-        '[worker-bookings] selected-worker quotes unavailable:',
-        quoteRequestResult.error.message,
-      );
-    }
 
     const bookings = await Promise.all(
       (bookingResult.data ?? []).map(async (row: any) => ({
@@ -845,46 +688,7 @@ export async function fetchWorkerBookings(): Promise<
         distance: '',
       })),
     );
-    const quoteRequests = await Promise.all(
-      (quoteRequestResult.error ? [] : (quoteRequestResult.data ?? [])).map(
-        async (row: any) => {
-          const quote = (row.service_request_offers ?? []).find(
-            (offer: any) =>
-              offer.worker_id === user.id &&
-              ['SUBMITTED', 'UPDATED'].includes(offer.status),
-          );
-          return {
-            id: `quote:${row.id}`,
-            requestId: row.id,
-            recordType: 'quote_request' as const,
-            customerName: requireIdentity(
-              row.user_profiles?.display_name,
-              'Request customer',
-            ),
-            customerAvatar: await resolveProfileAvatar(
-              row.user_profiles?.avatar_path,
-            ),
-            service: requireIdentity(
-              row.service_categories?.name,
-              'Requested service',
-            ),
-            date: new Date(
-              row.scheduled_at ?? row.created_at,
-            ).toLocaleDateString(),
-            time: new Date(
-              row.scheduled_at ?? row.created_at,
-            ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            address: [row.addresses?.barangay, row.addresses?.city]
-              .filter(Boolean)
-              .join(', '),
-            price: quote ? money(quote.amount) : 'Quote required',
-            status: quote ? 'quote_submitted' : 'awaiting_quote',
-            distance: '',
-          };
-        },
-      ),
-    );
-    return [...quoteRequests, ...bookings];
+    return bookings;
   });
 }
 async function transition(bookingId: string, status: string, reason?: string) {
@@ -1073,54 +877,6 @@ export async function requestPayout(methodId: string, amountMinor: number) {
   if (error) throw error;
   return data;
 }
-export async function submitBid(
-  serviceRequestId: string,
-  amountMinor: number,
-  message: string,
-  durationMinutes: number,
-) {
-  const { data, error } = await supabase.rpc('submit_request_bid', {
-    p_service_request_id: serviceRequestId,
-    p_amount_minor: amountMinor,
-    p_message: message,
-    p_duration_minutes: durationMinutes,
-  });
-  if (error) throw error;
-  return data;
-}
-export async function submitSelectedWorkerQuote(
-  serviceRequestId: string,
-  amountMinor: number,
-  message: string,
-  durationMinutes: number,
-) {
-  const { data, error } = await supabase.rpc('submit_selected_worker_quote', {
-    p_service_request_id: serviceRequestId,
-    p_amount_minor: amountMinor,
-    p_message: message,
-    p_duration_minutes: durationMinutes,
-  });
-  if (error) throw error;
-  return data;
-}
-export async function fetchRequestBids(serviceRequestId: string) {
-  return wrap(async () => {
-    const { data, error } = await supabase
-      .from('service_request_offers')
-      .select(
-        '*,worker_profiles:worker_id(display_name,avatar_path,approval_status)',
-      )
-      .eq('service_request_id', serviceRequestId)
-      .in('status', ['SUBMITTED', 'UPDATED', 'ACCEPTED'])
-      .order('created_at');
-    if (error) throw error;
-    return (data ?? []).map((row: any) => ({
-      ...row,
-      amount_minor: Math.round(Number(row.amount) * 100),
-      estimated_duration_minutes: row.estimated_minutes,
-    }));
-  });
-}
 export async function fetchRequest(id: string) {
   return wrap(async () => {
     const { data, error } = await supabase
@@ -1145,24 +901,6 @@ export async function selectWorker(serviceRequestId: string, workerId: string) {
   const { data, error } = await supabase.rpc('select_worker', {
     p_service_request_id: serviceRequestId,
     p_worker_id: workerId,
-  });
-  if (error) throw error;
-  return data;
-}
-export async function selectWorkerForQuote(
-  serviceRequestId: string,
-  workerId: string,
-) {
-  const { data, error } = await supabase.rpc('select_worker_for_quote', {
-    p_service_request_id: serviceRequestId,
-    p_worker_id: workerId,
-  });
-  if (error) throw error;
-  return data;
-}
-export async function acceptServiceOffer(offerId: string) {
-  const { data, error } = await supabase.rpc('accept_service_offer', {
-    p_offer_id: offerId,
   });
   if (error) throw error;
   return data;

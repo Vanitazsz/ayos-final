@@ -55,7 +55,7 @@ describe('fetchWorkerBookings', () => {
     });
   });
 
-  it('keeps existing bookings available when the optional quote schema is not deployed', async () => {
+  it('loads direct worker bookings without offer/quote joins', async () => {
     const bookingQuery = query({
       data: [
         {
@@ -81,18 +81,7 @@ describe('fetchWorkerBookings', () => {
       ],
       error: null,
     });
-    const quoteQuery = query({
-      data: null,
-      error: {
-        code: 'PGRST200',
-        message:
-          "Could not find a relationship between 'service_requests' and 'service_request_offers' in the schema cache",
-      },
-    });
-    mocks.from.mockImplementation((table: string) =>
-      table === 'bookings' ? bookingQuery : quoteQuery,
-    );
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mocks.from.mockImplementation(() => bookingQuery);
     const { fetchWorkerBookings } = await import('./api');
 
     const result = await fetchWorkerBookings();
@@ -109,9 +98,5 @@ describe('fetchWorkerBookings', () => {
         status: 'pending',
       }),
     ]);
-    expect(warn).toHaveBeenCalledWith(
-      '[worker-bookings] selected-worker quotes unavailable:',
-      expect.stringContaining('service_request_offers'),
-    );
   });
 });

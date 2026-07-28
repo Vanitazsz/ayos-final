@@ -12,8 +12,6 @@ import { fetchBookings, subscribeToBookingFeed } from '@/services/api';
 const BOOKING_TABS = ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'];
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  AWAITING_QUOTE: { label: 'Awaiting Quote', color: '#B78103', bg: '#FFF8E1' },
-  QUOTE_RECEIVED: { label: 'Quote Received', color: '#0277BD', bg: '#E1F5FE' },
   PENDING: { label: 'Awaiting Worker Acceptance', color: '#B78103', bg: '#FFF8E1' },
   ACCEPTED: { label: 'Confirmed', color: '#0277BD', bg: '#E1F5FE' },
   WORKER_PREPARING: { label: 'Confirmed · Preparing', color: '#0277BD', bg: '#E1F5FE' },
@@ -121,9 +119,7 @@ export default function BookingsScreen() {
                 key={booking.id} 
                 style={styles.bookingCard}
                 onPress={() =>
-                  booking.recordType === 'quote_request'
-                    ? router.push(`/request/${booking.requestId}`)
-                    : router.push(`/tracking/${booking.id}`)
+                  router.push(`/tracking/${booking.id}`)
                 }
               >
                 <View style={styles.cardHeader}>

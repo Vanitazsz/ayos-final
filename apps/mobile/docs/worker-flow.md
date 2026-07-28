@@ -21,7 +21,7 @@ The application has separate **User** and **Worker** accounts. An authenticated 
 | Mode | Tab Navigator | Tabs |
 |------|---------------|------|
 | User | `(tabs)` | Home, Browse, Bookings, Profile |
-| Worker | `(worker)` | Dashboard, Job Posts, Bookings, Reviews, Profile |
+| Worker | `(worker)` | Dashboard, Bookings, Reviews, Profile |
 
 Shared screens (accessible from both modes): Provider Detail, Booking, Payment, Tracking, Review Modal.
 
@@ -30,7 +30,6 @@ Shared screens (accessible from both modes): Provider Detail, Booking, Payment, 
 | # | Screen | Route | Parent | Presentation | Shared with User? |
 |---|--------|-------|--------|--------------|-------------------|
 | 1 | Dashboard | `/(worker)/` | Tab | tab | No |
-| 2 | Job Posts | `/(worker)/search` | Tab | tab | Yes (search) |
 | 3 | My Bookings | `/(worker)/bookings` | Tab | tab | Yes (bookings) |
 | 4 | My Reviews | `/(worker)/reviews` | Tab | tab | No (hidden from user nav) |
 | 5 | Profile | `/(worker)/profile` | Tab | tab | No |
@@ -56,8 +55,7 @@ flowchart LR
   Start((Start))
   Onboarding[Onboarding Screen]
   WorkerDashboard[Dashboard]
-  Tabs[[Tabs: Dashboard, Job Posts, Bookings, Reviews, Profile]]
-  JobPosts[Job Posts]
+  Tabs[[Tabs: Dashboard, Bookings, Reviews, Profile]]
   BookingsList[My Bookings]
   ReviewsTab[My Reviews]
   ProfileTab[Profile]
@@ -132,7 +130,6 @@ Header shows worker greeting, notification bell, category badge, and experience 
 
 ---
 
-### Job Posts (`/(worker)/search.tsx`)
 
 | Section | Content | Details |
 |---------|---------|---------|
@@ -150,9 +147,7 @@ Header shows worker greeting, notification bell, category badge, and experience 
 | Meta row | Location (left), price (right) — space-between |
 | Action bar | Comment button with count (left), Share button (right) — space-between |
 | Comment section | Newest/Oldest sort toggle, comment input with description + min/max price range |
-| Offer badge | Green pill showing `$min - $max` offer range |
 
-**Actions:** Workers can comment on posts with an offer (description + price range). New comments appear at top immediately.
 
 ---
 
@@ -217,7 +212,6 @@ Source: `constants/workerData.ts`
 
 1. **Launch** → Onboarding (not yet implemented) → Dashboard tab
 2. **View stats** → Dashboard shows today's overview (active, pending, completed, earnings)
-3. **Find work** → Job Posts tab → Filter by urgency/distance/pay → Sort → View posts with images → Comment with offer → Share
 4. **Manage bookings** → Bookings tab → Filter by status → Start Job / Complete / Contact Customer
 5. **Read reviews** → Reviews tab → Filter by stars → Toggle helpful
 6. **View profile** → Profile tab → Stats, menu items, edit avatar
@@ -246,7 +240,6 @@ These screens are accessible from both User and Worker tabs via stack navigation
 | Screen | Data | Source |
 |--------|------|--------|
 | Dashboard | `todayStats`, `activeBookings`, `workerProfile` | Inline in `app/(worker)/index.tsx` + `constants/workerData.ts` |
-| Job Posts | `workerJobs`, `jobComments`, `filterOptions`, `sortOptions` | `constants/workerMockData.ts` + inline in `app/(worker)/search.tsx` |
 | Bookings | `mockWorkerBookings`, `filterTabs`, `statusConfig` | Inline in `app/(worker)/bookings.tsx` |
 | Reviews | `mockWorkerReviews`, `filterOptions` | Inline in `app/(worker)/reviews.tsx` |
 | Profile | `workerProfile`, `menuItems`, `verificationConfig` | `constants/workerData.ts` + inline in `app/(worker)/profile.tsx` |

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type UrgencyLevel = 'ASAP' | 'This Week' | 'Open Bidding';
+export type UrgencyLevel = 'ASAP' | 'This Week';
 
 export type RequestState = {
   photos: string[];

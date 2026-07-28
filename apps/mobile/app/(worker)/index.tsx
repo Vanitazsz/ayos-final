@@ -12,17 +12,14 @@ import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { IncomingJobAlert } from '@/components/IncomingJobAlert';
 import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import {
   fetchWalletTransactions,
   fetchWorkerBookings,
-  fetchWorkerJobs,
   fetchWorkerProfile,
   subscribeToTable,
-  type JobOpportunity,
   type WorkerBooking,
   type WorkerProfile,
 } from '@/services/api';
@@ -58,7 +55,6 @@ export default function WorkerDashboardScreen() {
     null,
   );
   const [workerBookings, setWorkerBookings] = useState<WorkerBooking[]>([]);
-  const [workerJobs, setWorkerJobs] = useState<JobOpportunity[]>([]);
   const [earnings, setEarnings] = useState(0);
   const [dispatchOffers, setDispatchOffers] = useState<DispatchOffer[]>([]);
   const { state: presenceState, message: presenceMessage } =
@@ -70,13 +66,11 @@ export default function WorkerDashboardScreen() {
       void Promise.all([
         fetchWorkerProfile(),
         fetchWorkerBookings(),
-        fetchWorkerJobs(),
         fetchWalletTransactions(),
       ])
-        .then(([profile, bookings, jobs, transactions]) => {
+        .then(([profile, bookings, transactions]) => {
           if (!profile.error) setWorkerProfile(profile.data);
           setWorkerBookings(bookings.data);
-          setWorkerJobs(jobs.data);
           setEarnings(
             transactions.data
               .filter((row) => row.credit)
@@ -142,7 +136,6 @@ export default function WorkerDashboardScreen() {
   const activeBookings = workerBookings.filter(
     (row) => !['completed', 'cancelled'].includes(row.status),
   );
-  const incomingJob = workerJobs[0];
   const completed = workerBookings.filter(
     (row) => row.status === 'completed',
   ).length;
@@ -407,24 +400,6 @@ export default function WorkerDashboardScreen() {
             </View>
           </View>
         ))}
-        {/* Incoming Job Alert */}
-        <View style={styles.section}>
-          {incomingJob && (
-            <IncomingJobAlert
-              service={incomingJob.service}
-              location={incomingJob.location}
-              distance={incomingJob.distance}
-              postedTime={incomingJob.postedTime}
-              onAccept={() =>
-                router.push(`/(worker)/booking-request/${incomingJob.id}`)
-              }
-              onMoreDetails={() =>
-                router.push(`/(worker)/booking-request/${incomingJob.id}`)
-              }
-            />
-          )}
-        </View>
-
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text

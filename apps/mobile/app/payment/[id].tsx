@@ -143,7 +143,7 @@ export default function PaymentScreen() {
             ]}
           >
             {amount == null
-              ? 'Request a quote'
+              ? 'Price pending'
               : `₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
           </Text>
 
@@ -158,7 +158,7 @@ export default function PaymentScreen() {
             </Text>
             <Text style={theme.typography.body2}>
               {amount == null
-                ? 'Request a quote'
+                ? 'Price pending'
                 : `₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
             </Text>
           </View>

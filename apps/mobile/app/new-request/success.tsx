@@ -42,7 +42,7 @@ export default function RequestSuccessScreen() {
           style={styles.subtitle}
         >
           Your request is now live in the marketplace. Verified workers in your
-          area can now view your request and submit their applications or bids.
+          area can now view your request and accept it through live matching.
         </AppText>
 
         <View style={styles.statusBox}>

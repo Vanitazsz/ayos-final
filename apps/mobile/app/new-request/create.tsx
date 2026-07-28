@@ -597,7 +597,6 @@ export default function CreateRequestScreen() {
         budgetMinor: 0,
         requestId: null,
         scheduledAt: null,
-        matchingMode: 'direct',
       });
       router.push(
         useAi ? '/new-request/issue-summary' : '/new-request/matching',

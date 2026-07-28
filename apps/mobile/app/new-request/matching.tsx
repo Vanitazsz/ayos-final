@@ -177,11 +177,6 @@ export default function MatchingScreen() {
           await attachRequestMedia(created.id, draft.media);
       }
 
-      if (draft.matchingMode === 'bidding' || draft.aiResult?.safetyCritical) {
-        router.replace(`/request/${requestId}` as never);
-        return;
-      }
-
       if (!requestId) throw new Error('Service request missing');
       setError('');
       setState('starting');
@@ -458,17 +453,15 @@ function WorkerCard({
   onChoose: () => void;
 }) {
   const accepted = worker.status === 'ACCEPTED';
-  const awaitingQuote =
-    worker.status === 'SELECTED' && worker.rateMinor == null;
   const priceLabel =
     worker.rateMinor == null
-      ? 'Request a quote'
+      ? 'Price pending'
       : `₱${(worker.rateMinor / 100).toLocaleString('en-PH', {
           minimumFractionDigits: 2,
         })} worker rate`;
   return (
     <View
-      style={[styles.card, (accepted || awaitingQuote) && styles.acceptedCard]}
+      style={[styles.card, accepted && styles.acceptedCard]}
     >
       <View style={styles.workerHeader}>
         <Image source={worker.avatar || undefined} style={styles.avatar} />
@@ -481,11 +474,11 @@ function WorkerCard({
         <View
           style={[
             styles.statusPill,
-            (accepted || awaitingQuote) && styles.acceptedPill,
+            accepted && styles.acceptedPill,
           ]}
         >
           <Text style={styles.pillText}>
-            {awaitingQuote ? 'Awaiting Quote' : accepted ? 'Accepted' : 'Notified'}
+            {accepted ? 'Accepted' : 'Notified'}
           </Text>
         </View>
       </View>
@@ -495,11 +488,10 @@ function WorkerCard({
           {Number(worker.rating).toFixed(1)} ({worker.reviewCount})
         </Text>
       </View>
-      {accepted || awaitingQuote ? (
+      {accepted ? (
         <Button
-          title={awaitingQuote ? 'Awaiting Quote' : 'Accept Worker'}
+          title="Accept Worker"
           onPress={onChoose}
-          disabled={awaitingQuote}
           fullWidth
         />
       ) : (

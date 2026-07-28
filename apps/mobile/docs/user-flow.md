@@ -21,7 +21,7 @@ The application has separate **User** and **Worker** accounts. The immutable dat
 | Mode | Tab Navigator | Tabs |
 |------|---------------|------|
 | User | `(tabs)` | Home, Browse, Bookings, Profile |
-| Worker | `(worker)` | Dashboard, Job Posts, Bookings, Reviews, Profile |
+| Worker | `(worker)` | Dashboard, Bookings, Reviews, Profile |
 
 Shared screens (accessible from both modes): Provider Detail, Booking, Payment, Tracking, Review Modal.
 
@@ -62,7 +62,6 @@ flowchart LR
   Urgency[Urgency Selection]
   ASAP[ASAP Review]
   ThisWeek[This Week Schedule]
-  Bidding[Bidding Review]
   Provider[Provider Profile]
   Booking[Schedule Booking]
   Payment[Payment Modal]
@@ -91,7 +90,6 @@ flowchart LR
   NewRequest --> Urgency
   Urgency -->|ASAP| ASAP
   Urgency -->|This Week| ThisWeek
-  Urgency -->|Flexible| Bidding
 
   ASAP -->|Broadcast| Match
   Match -->|Select Worker| Chat
@@ -99,7 +97,6 @@ flowchart LR
   AcceptWorker -->|Confirm| RequestDetails
 
   ThisWeek -->|Post| BookingSuccess
-  Bidding -->|Post| BookingSuccess
   BookingSuccess -->|View| RequestDetails
 
   Search --> Provider
@@ -127,7 +124,6 @@ flowchart LR
   classDef modal fill:#fff8c4,stroke:#b58900;
   classDef decision fill:#e0f7fa,stroke:#00796b,stroke-width:1px;
   classDef tabgroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-  class Start,Onboarding,Home,Search,NewRequest,Urgency,ASAP,ThisWeek,Bidding,Provider,Booking,Tracking,BookingsList,ProfileScreen,AcceptWorker,Chat,Match,RequestDetails,BookingSuccess,PaymentReceived,NotFound screen;
   class Payment,ReviewModal modal;
   class hasAuth decision;
   class Tabs tabgroup;
@@ -150,5 +146,4 @@ To ensure a high-end, native feel, the following UX enhancements have been integ
 6. **Create a new request** → Home tab → New Request → Urgency Selection
    - **ASAP** → Review → Broadcast → Radar Matching → Chat → Hire → Request Details
    - **This Week** → Schedule & Review → Post → Success → Request Details
-   - **Flexible** → Review → Post for Bidding → Success → Request Details
 8. **Hire a worker** → Request Details → View bidders → Select worker → Message → Hire

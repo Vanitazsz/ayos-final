@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Zap, Users, Calendar, ChevronLeft } from 'lucide-react-native';
+import { Zap, Calendar, ChevronLeft } from 'lucide-react-native';
 import { Colors, Layout, Spacing } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -25,34 +25,21 @@ const URGENCY_OPTIONS: { id: UrgencyLevel; title: string; subtitle: string; icon
     color: Colors.primary,
     bg: Colors.primarySurface,
   },
-  {
-    id: 'Open Bidding',
-    title: 'Open Bidding / Receive Offers',
-    subtitle: 'Post your request and wait for workers to bid on it',
-    icon: Users,
-    color: Colors.primary,
-    bg: Colors.primarySurface,
-  },
 ];
 
 export default function UrgencyScreen() {
   const router = useRouter();
   const { request, updateRequest } = useRequest();
-  const setDraft = useRequestStore((state) => state.setDraft);
   
   const [selected, setSelected] = useState<UrgencyLevel | null>(request.urgency);
 
   const handleNext = () => {
     if (!selected) return;
     updateRequest({ urgency: selected });
-    setDraft({ matchingMode: selected === 'Open Bidding' ? 'bidding' : 'direct' });
-    
     if (selected === 'ASAP') {
       router.push('/new-request/asap');
-    } else if (selected === 'This Week') {
-      router.push('/new-request/this-week');
     } else {
-      router.push('/new-request/bidding');
+      router.push('/new-request/this-week');
     }
   };
 

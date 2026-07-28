@@ -34,7 +34,7 @@ export default function PaymentScreen() {
     category: booking?.service_requests?.service_categories?.name ?? '',
     price:
       booking?.agreed_service_amount == null
-        ? 'Request a quote'
+        ? 'Price pending'
         : `₱${Number(booking.agreed_service_amount).toLocaleString()}`,
   };
   useEffect(() => {

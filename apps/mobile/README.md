@@ -48,7 +48,6 @@ app/
 ├── (worker)/
 │   ├── _layout.tsx          # Worker bottom tab navigation
 │   ├── index.tsx            # Dashboard
-│   ├── search.tsx           # Job Posts
 │   ├── bookings.tsx         # Worker bookings
 │   ├── reviews.tsx          # Worker reviews
 │   ├── profile.tsx          # Worker profile
@@ -59,12 +58,10 @@ app/
 │   ├── issue-summary.tsx    # AI summary and Urgency selection
 │   ├── asap.tsx             # ASAP request review
 │   ├── this-week.tsx        # Scheduled (This Week) review and time picker
-│   ├── bidding.tsx          # Open Bidding review
 │   └── success.tsx          # Booking success screen
 ├── accept-worker/[id].tsx   # Accept worker flow
 ├── chat/[id].tsx            # Chat screen
 ├── match/[id].tsx           # ASAP radar matching screen
-├── request/[id].tsx         # Live request details (bids/applicants list)
 ├── booking/[id].tsx         # Traditional schedule booking flow
 ├── payment.tsx              # Payment screen (modal)
 ├── payment-received.tsx     # Payment success (modal)
@@ -93,7 +90,6 @@ components/
 ├── StatCard.tsx             # Stat card
 ├── ProviderCard.tsx         # Provider list item
 ├── ServiceCategoryCard.tsx  # Category grid icon card
-├── JobPostCard.tsx          # LinkedIn-style job post card
 ├── JobSummary.tsx           # Job summary component
 └── StatusTimeline.tsx       # Status timeline component
 
@@ -146,7 +142,7 @@ Use these tokens rather than hard-coded colors to maintain consistency and ensur
 ## Navigation
 
 - **User Tabs**: Home, Browse, Bookings, Profile
-- **Worker Tabs**: Dashboard, Job Posts, Bookings, Reviews, Profile
+- **Worker Tabs**: Dashboard, Bookings, Reviews, Profile
 - **Stack screens**: Provider detail, Booking, Payment, Tracking, Chat, Match, Accept Worker, Request Details
 - **Modals**: Payment, Rate & Review, Booking Success
 
@@ -166,13 +162,10 @@ Use these tokens rather than hard-coded colors to maintain consistency and ensur
     - **Urgency Paths**:
       - **ASAP**: Direct review, posts directly to **Match Radar** screen with live cascading worker discovery.
       - **This Week**: Select Day/Time, then review and post.
-      - **Open Bidding**: Direct review, post to receive bids.
-10. **Request Details**: Compact Job Summary display with a list of incoming worker applications/bids for the user to review and hire.
 
 ### Worker App Screens
 
 11. **Worker Dashboard**: Stats grid (active jobs, pending, completed, earnings) with active bookings list.
-12. **Job Posts**: LinkedIn-style post cards with image previews, comments, and share. Workers can post offers with description + price range.
 13. **Worker Bookings**: Status-filtered booking list with contextual actions (Start Job, Complete, Contact).
 14. **Worker Reviews**: Rating summary with distribution chart, filterable review list.
 15. **Worker Profile**: Real stats, worker-only menu items, verification state, and profile editing.

@@ -39,7 +39,7 @@ export default function ScheduleScreen() {
       scheduledDate,
       status: 'Posted',
     });
-    setDraft({ scheduledAt: scheduledDate.toISOString(), matchingMode: 'direct' });
+    setDraft({ scheduledAt: scheduledDate.toISOString() });
     router.push('/new-request/matching' as any);
   };
 

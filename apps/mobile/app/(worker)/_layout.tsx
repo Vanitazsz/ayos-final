@@ -1,7 +1,7 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
-import { LayoutDashboard, Search, CalendarDays, User, Wallet, MessageSquare } from 'lucide-react-native';
+import { LayoutDashboard, CalendarDays, User, Wallet, MessageSquare } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WorkerPresenceProvider } from '@/context/WorkerPresenceContext';
@@ -76,10 +76,6 @@ export default function WorkerTabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color }) => <User size={24} color={color} strokeWidth={2} />,
         }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{ href: null }}
       />
       <Tabs.Screen
         name="verification"

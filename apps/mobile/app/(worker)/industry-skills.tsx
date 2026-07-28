@@ -278,7 +278,7 @@ export default function WorkerIndustrySkillsScreen() {
                     {isChecked ? (
                       <AppInput
                         label="Your service rate (PHP)"
-                        placeholder="Leave blank to request a quote"
+                        placeholder="Optional service rate"
                         keyboardType="decimal-pad"
                         value={
                           rateBySkillId[skill.id] == null
