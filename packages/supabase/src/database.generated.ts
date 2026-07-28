@@ -1262,6 +1262,8 @@ export type Database = {
       }
       conversations: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           booking_id: string | null
           created_at: string
           id: string
@@ -1270,6 +1272,8 @@ export type Database = {
           worker_account_id: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           booking_id?: string | null
           created_at?: string
           id?: string
@@ -1278,6 +1282,8 @@ export type Database = {
           worker_account_id?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           booking_id?: string | null
           created_at?: string
           id?: string
@@ -1286,6 +1292,13 @@ export type Database = {
           worker_account_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_booking_id_fkey"
             columns: ["booking_id"]
@@ -4794,6 +4807,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      archive_closed_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          booking_id: string | null
+          created_at: string
+          id: string
+          service_request_id: string | null
+          updated_at: string
+          worker_account_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       archive_job: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -4987,6 +5019,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      chat_can_archive: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      chat_can_read: { Args: { p_conversation_id: string }; Returns: boolean }
+      chat_can_send: { Args: { p_conversation_id: string }; Returns: boolean }
+      chat_is_matched: { Args: { p_conversation_id: string }; Returns: boolean }
+      chat_is_member: { Args: { p_conversation_id: string }; Returns: boolean }
       check_expired_subscriptions: { Args: never; Returns: number }
       close_admin_session: { Args: never; Returns: boolean }
       complete_my_profile: {
@@ -5933,23 +5973,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      start_direct_chat: {
-        Args: { p_target_account_id: string }
-        Returns: {
-          booking_id: string | null
-          created_at: string
-          id: string
-          service_request_id: string | null
-          updated_at: string
-          worker_account_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "conversations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       start_live_dispatch: {
         Args: { p_search_radius_meters: number; p_service_request_id: string }
         Returns: Json
@@ -5957,6 +5980,8 @@ export type Database = {
       start_worker_conversation: {
         Args: { p_service_request_id: string; p_worker_id: string }
         Returns: {
+          archived_at: string | null
+          archived_by: string | null
           booking_id: string | null
           created_at: string
           id: string

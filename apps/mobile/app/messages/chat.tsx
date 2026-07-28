@@ -1,36 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
   TextInput as RNTextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { theme } from '@/constants/theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  Send,
-  Paperclip,
-  MapPin,
-  Phone,
   Languages,
+  MapPin,
+  Paperclip,
+  Phone,
+  RotateCcw,
+  Send,
+  Trash2,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { Image } from 'expo-image';
-import {
-  fetchBookingDetail,
-  fetchConversation,
-  fetchConversationForBooking,
-  sendMessage,
-  startDirectConversationWithUser,
-  subscribeToTable,
-} from '@/services/api';
-import { supabase } from '@/lib/supabase';
+import { theme } from '@/constants/theme';
+import { fetchConversationForBooking } from '@/services/api';
+import { useConversationChat } from '@/hooks/useConversationChat';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -38,156 +33,90 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [participant, setParticipant] = useState({ name: '', avatar: '' });
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
-  const scrollRef = React.useRef<ScrollView>(null);
-
-  const rawId = Array.isArray(searchParams.id) ? searchParams.id[0] : searchParams.id;
-  const rawConvId = Array.isArray(searchParams.conversationId)
+  const scrollRef = useRef<ScrollView>(null);
+  const unavailableHandled = useRef(false);
+  const rawBookingId = Array.isArray(searchParams.id)
+    ? searchParams.id[0]
+    : searchParams.id;
+  const rawConversationId = Array.isArray(searchParams.conversationId)
     ? searchParams.conversationId[0]
     : searchParams.conversationId;
-  const rawRecipientId = Array.isArray(searchParams.recipientId)
-    ? searchParams.recipientId[0]
-    : searchParams.recipientId;
-
-  const bookingId = rawId;
+  const { messages, access, sending, error, send, archive } =
+    useConversationChat(conversationId);
 
   useEffect(() => {
-    let stops: (() => void)[] = [];
-    void (async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      let targetConvId: string | null = rawConvId ?? null;
-
-      if (rawRecipientId) {
-        try {
-          const direct = await startDirectConversationWithUser(rawRecipientId);
-          if (direct.data?.id) targetConvId = direct.data.id;
-
-          const [{ data: userProf }, { data: workerProf }] = await Promise.all([
-            supabase.from('user_profiles').select('display_name, avatar_path').eq('account_id', rawRecipientId).maybeSingle(),
-            supabase.from('worker_profiles').select('display_name, avatar_path').eq('account_id', rawRecipientId).maybeSingle(),
-          ]);
-
-          const profile = userProf ?? workerProf;
-          if (profile) {
-            setParticipant({
-              name: profile.display_name ?? 'User',
-              avatar: profile.avatar_path ?? '',
-            });
-          }
-        } catch (err) {
-          console.warn('Failed to start direct conversation:', err);
-        }
-      } else if (bookingId) {
-        const [booking, conversation] = await Promise.all([
-          fetchBookingDetail(bookingId).catch(() => ({ data: null, error: true })),
-          fetchConversationForBooking(bookingId).catch(() => ({ data: null, error: true })),
-        ]);
-
-        if (!booking.error && booking.data) {
-          const isWorker = currentUser?.id === booking.data.worker_account_id;
-          const otherParty = isWorker
-            ? booking.data.user_profiles
-            : booking.data.worker_profiles;
-          setParticipant({
-            name: otherParty?.display_name ?? 'Booking Participant',
-            avatar: otherParty?.avatar_path ?? '',
-          });
-        }
-
-        if (conversation.data?.id) {
-          targetConvId = conversation.data.id;
-        } else if (!targetConvId) {
-          targetConvId = bookingId;
-        }
+    if (rawConversationId) {
+      setConversationId(rawConversationId);
+      return;
+    }
+    if (!rawBookingId) return;
+    void fetchConversationForBooking(rawBookingId).then((result) => {
+      if (!result.error && result.data?.id) {
+        setConversationId(result.data.id);
       }
+    });
+  }, [rawBookingId, rawConversationId]);
 
-      if (!targetConvId) return;
-      setConversationId(targetConvId);
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+  }, [messages.length]);
 
-      const activeConvId = targetConvId;
-      const load = () =>
-        void fetchConversation(activeConvId).then((result) => {
-          if (result.error || !result.data || !Array.isArray(result.data.messages)) {
-            setMessages([]);
-            return;
-          }
-          setMessages(result.data.messages);
-          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
-        });
-
-      loadRef.current = load;
-      load();
-
-      const timer = setInterval(load, 1500);
-      stops = [
-        () => clearInterval(timer),
-        subscribeToTable(
-          'messages',
-          load,
-          `conversation_id=eq.${activeConvId}`,
-        ),
-        subscribeToTable('message_translations', load),
-      ];
-    })();
-
-    return () => stops.forEach((stop) => stop());
-  }, [rawId, rawConvId, rawRecipientId]);
-
-  const loadRef = React.useRef<() => void>(() => {});
+  useEffect(() => {
+    if (
+      conversationId &&
+      error === 'Conversation is unavailable' &&
+      !unavailableHandled.current
+    ) {
+      unavailableHandled.current = true;
+      Alert.alert(
+        'Conversation deleted',
+        'This conversation is no longer available.',
+        [{ text: 'OK', onPress: () => router.back() }],
+      );
+    }
+  }, [conversationId, error, router]);
 
   const handleSend = async () => {
-    if (!message.trim()) return;
-    let activeConvId = conversationId;
-
-    if (!activeConvId && rawRecipientId) {
-      try {
-        const res = await startDirectConversationWithUser(rawRecipientId);
-        if (res.data?.id) {
-          activeConvId = res.data.id;
-          setConversationId(activeConvId);
-        }
-      } catch (err) {
-        console.warn('Failed to provision conversation on send:', err);
-      }
-    }
-
-    if (!activeConvId) return;
-
+    const normalized = message.trim();
+    if (!normalized || !access.canSend) return;
+    setMessage('');
     try {
-      const text = message.trim();
-      setMessage('');
-
-      // Optimistically append message to chat UI immediately
-      const tempId = 'temp_' + Date.now();
-      const optimisticMessage = {
-        id: tempId,
-        text: text,
-        originalText: text,
-        translatedText: null,
-        isTranslated: false,
-        sender: 'self',
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      };
-
-      setMessages((prev) => [...prev, optimisticMessage]);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
-
-      await sendMessage(activeConvId, text);
-      loadRef.current();
-    } catch (sendErr) {
-      console.warn('Failed to send message:', sendErr);
+      await send(normalized);
+    } catch {
+      setMessage(normalized);
     }
+  };
+
+  const confirmArchive = () => {
+    Alert.alert(
+      'Delete conversation?',
+      'This closed conversation will be removed from both participants. An administrator-only record will be retained.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            void archive()
+              .then(() => router.back())
+              .catch((archiveError) =>
+                Alert.alert(
+                  'Unable to delete',
+                  archiveError instanceof Error
+                    ? archiveError.message
+                    : 'Try again.',
+                ),
+              ),
+        },
+      ],
+    );
   };
 
   const handleHire = () => {
     setShowConfirm(false);
-    if (bookingId) router.push(`/tracking/${bookingId}`);
+    if (rawBookingId) router.push(`/tracking/${rawBookingId}`);
   };
 
   return (
@@ -206,7 +135,7 @@ export default function ChatScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Image
-            source={participant.avatar}
+            source={access.participant.avatar}
             style={styles.headerAvatar}
             contentFit="cover"
           />
@@ -214,7 +143,7 @@ export default function ChatScreen() {
             <Text
               style={[theme.typography.h4, { color: theme.colors.textPrimary }]}
             >
-              {participant.name}
+              {access.participant.name || 'Booking Participant'}
             </Text>
             <Text
               style={[
@@ -222,33 +151,73 @@ export default function ChatScreen() {
                 { color: theme.colors.textSecondary },
               ]}
             >
-              Booking participant
+              {access.canSend ? 'Matched conversation' : 'Read-only history'}
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.callButton}>
-          <Phone color={theme.colors.primary} size={20} />
+        <TouchableOpacity
+          style={styles.callButton}
+          disabled={!access.canSend}
+        >
+          <Phone
+            color={
+              access.canSend ? theme.colors.primary : theme.colors.textTertiary
+            }
+            size={20}
+          />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.hireBanner}>
-        <Text style={[theme.typography.body2, { flex: 1 }]}>
-          Ready to start the job?
-        </Text>
-        <TouchableOpacity
-          style={styles.hireButton}
-          onPress={() => setShowConfirm(true)}
-        >
-          <Text
-            style={[
-              theme.typography.button,
-              { color: theme.colors.surface, fontSize: 14 },
-            ]}
-          >
-            Hire Worker
+      {access.canSend && rawBookingId ? (
+        <View style={styles.hireBanner}>
+          <Text style={[theme.typography.body2, { flex: 1 }]}>
+            Ready to start the job?
           </Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.hireButton}
+            onPress={() => setShowConfirm(true)}
+          >
+            <Text
+              style={[
+                theme.typography.button,
+                { color: theme.colors.surface, fontSize: 14 },
+              ]}
+            >
+              Hire Worker
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {!access.canSend && access.status ? (
+        <View style={styles.closedBanner}>
+          <Text style={[theme.typography.body2, styles.closedText]}>
+            This conversation is read-only because the job is closed.
+          </Text>
+          <View style={styles.closedActions}>
+            {access.canHireAgain && (
+              <TouchableOpacity
+                style={styles.secondaryAction}
+                onPress={() => router.push('/new-request/create')}
+              >
+                <RotateCcw size={16} color={theme.colors.primary} />
+                <Text style={styles.secondaryActionText}>Hire Again</Text>
+              </TouchableOpacity>
+            )}
+            {access.canArchive && (
+              <TouchableOpacity
+                style={styles.deleteAction}
+                onPress={confirmArchive}
+              >
+                <Trash2 size={16} color={theme.colors.error} />
+                <Text style={styles.deleteActionText}>
+                  Delete Conversation
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      ) : null}
 
       <ScrollView
         ref={scrollRef}
@@ -256,78 +225,86 @@ export default function ChatScreen() {
         contentContainerStyle={styles.chatScrollContent}
       >
         {messages.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 }}>
-            <Text style={[theme.typography.body1, { color: theme.colors.textSecondary }]}>
+          <View style={styles.emptyChat}>
+            <Text
+              style={[
+                theme.typography.body1,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
               No messages yet. Say hello! 👋
             </Text>
           </View>
         ) : (
           messages.map((row) => {
             const original = showOriginal.has(row.id);
+            const ownMessage = row.sender === 'self';
             return (
               <View
                 key={row.id}
                 style={
-                  row.sender === 'self'
+                  ownMessage
                     ? styles.messageBubbleSender
                     : styles.messageBubbleReceiver
                 }
               >
-              <Text
-                style={[
-                  theme.typography.body1,
-                  row.sender === 'self' && { color: theme.colors.surface },
-                ]}
-              >
-                {original ? row.originalText : row.text}
-              </Text>
-              {row.isTranslated && (
-                <TouchableOpacity
-                  accessibilityLabel={
-                    original ? 'Show translation' : 'Show original'
-                  }
-                  style={styles.translationToggle}
-                  onPress={() =>
-                    setShowOriginal((current) => {
-                      const next = new Set(current);
-                      if (next.has(row.id)) next.delete(row.id);
-                      else next.add(row.id);
-                      return next;
-                    })
-                  }
+                <Text
+                  style={[
+                    theme.typography.body1,
+                    ownMessage && { color: theme.colors.surface },
+                  ]}
                 >
-                  <Languages
-                    size={12}
-                    color={
-                      row.sender === 'self'
-                        ? theme.colors.surface
-                        : theme.colors.primary
+                  {original ? row.originalText : row.text}
+                </Text>
+                {row.isTranslated && (
+                  <TouchableOpacity
+                    accessibilityLabel={
+                      original ? 'Show translation' : 'Show original'
                     }
-                  />
-                  <Text
-                    style={[
-                      styles.translationLabel,
-                      row.sender === 'self' && { color: theme.colors.surface },
-                    ]}
+                    style={styles.translationToggle}
+                    onPress={() =>
+                      setShowOriginal((current) => {
+                        const next = new Set(current);
+                        if (next.has(row.id)) next.delete(row.id);
+                        else next.add(row.id);
+                        return next;
+                      })
+                    }
                   >
-                    {original ? 'Show translation' : 'Show original'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <Text
-                style={[
-                  styles.messageTime,
-                  row.sender === 'self' && { color: theme.colors.borderLight },
-                ]}
-              >
-                {row.isTranslated ? '🌐 ' : ''}
-                {row.timestamp}
-              </Text>
-            </View>
-          );
-        })
+                    <Languages
+                      size={12}
+                      color={
+                        ownMessage
+                          ? theme.colors.surface
+                          : theme.colors.primary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.translationLabel,
+                        ownMessage && { color: theme.colors.surface },
+                      ]}
+                    >
+                      {original ? 'Show translation' : 'Show original'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <Text
+                  style={[
+                    styles.messageTime,
+                    ownMessage && { color: theme.colors.borderLight },
+                  ]}
+                >
+                  {row.isTranslated ? '🌐 ' : ''}
+                  {row.timestamp}
+                </Text>
+              </View>
+            );
+          })
         )}
       </ScrollView>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <View
         style={[
@@ -335,28 +312,49 @@ export default function ChatScreen() {
           { paddingBottom: insets.bottom || theme.spacing.md },
         ]}
       >
-        <TouchableOpacity style={styles.attachBtn}>
-          <Paperclip color={theme.colors.textSecondary} size={20} />
+        <TouchableOpacity style={styles.attachBtn} disabled={!access.canSend}>
+          <Paperclip
+            color={
+              access.canSend
+                ? theme.colors.textSecondary
+                : theme.colors.textTertiary
+            }
+            size={20}
+          />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.attachBtn}>
-          <MapPin color={theme.colors.textSecondary} size={20} />
+        <TouchableOpacity style={styles.attachBtn} disabled={!access.canSend}>
+          <MapPin
+            color={
+              access.canSend
+                ? theme.colors.textSecondary
+                : theme.colors.textTertiary
+            }
+            size={20}
+          />
         </TouchableOpacity>
         <View style={styles.textInputWrapper}>
           <RNTextInput
             style={styles.textInput}
-            placeholder="Type a message..."
+            placeholder={
+              access.canSend ? 'Type a message...' : 'Conversation is read-only'
+            }
             value={message}
             onChangeText={setMessage}
             multiline
+            editable={access.canSend}
           />
         </View>
         <TouchableOpacity
           style={styles.sendBtn}
-          disabled={!message.trim()}
+          disabled={!message.trim() || !access.canSend || sending}
           onPress={() => void handleSend()}
         >
           <Send
-            color={message.trim() ? theme.colors.primary : theme.colors.border}
+            color={
+              message.trim() && access.canSend && !sending
+                ? theme.colors.primary
+                : theme.colors.border
+            }
             size={20}
           />
         </TouchableOpacity>
@@ -370,17 +368,9 @@ export default function ChatScreen() {
             >
               Confirm Hiring
             </Text>
-            <Text
-              style={[
-                theme.typography.body1,
-                {
-                  color: theme.colors.textSecondary,
-                  marginBottom: theme.spacing.xl,
-                  textAlign: 'center',
-                },
-              ]}
-            >
-              Continue to live tracking for {participant.name}?
+            <Text style={styles.modalDescription}>
+              Continue to live tracking for{' '}
+              {access.participant.name || 'this worker'}?
             </Text>
             <TouchableOpacity
               style={[
@@ -431,6 +421,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   backButton: {
     width: 40,
@@ -449,6 +440,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     marginRight: theme.spacing.sm,
+    backgroundColor: theme.colors.borderLight,
   },
   callButton: {
     width: 40,
@@ -456,8 +448,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
+  hireBanner: {
+    backgroundColor: theme.colors.infoBackground,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  hireButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+    borderRadius: theme.radius.md,
+  },
+  closedBanner: {
+    backgroundColor: theme.colors.infoBackground,
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  closedText: {
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  closedActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  secondaryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+  },
+  secondaryActionText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  deleteAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+  },
+  deleteActionText: {
+    color: theme.colors.error,
+    fontWeight: '600',
+  },
   chatArea: { flex: 1 },
   chatScrollContent: { padding: theme.spacing.md },
+  emptyChat: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
   messageBubbleReceiver: {
     backgroundColor: theme.colors.surface,
     alignSelf: 'flex-start',
@@ -495,6 +548,12 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
+  errorText: {
+    color: theme.colors.error,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.surface,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -531,20 +590,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  hireBanner: {
-    backgroundColor: theme.colors.infoBackground,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  hireButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 8,
-    borderRadius: theme.radius.md,
-  },
   modalOverlay: {
     position: 'absolute',
     top: 0,
@@ -562,6 +607,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
     borderRadius: theme.radius.lg,
     alignItems: 'center',
+  },
+  modalDescription: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
+    textAlign: 'center',
   },
   modalButton: {
     width: '100%',

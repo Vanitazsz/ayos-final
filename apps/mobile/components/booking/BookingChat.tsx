@@ -4,14 +4,8 @@ import { Send } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Avatar } from '@/components/Avatar';
-import { fetchConversation, fetchConversationForBooking, sendMessage, subscribeToTable } from '@/services/api';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'worker' | 'customer';
-  timestamp: string;
-}
+import { fetchConversationForBooking } from '@/services/api';
+import { useConversationChat } from '@/hooks/useConversationChat';
 
 interface BookingChatProps {
   customerName: string;
@@ -28,21 +22,24 @@ export const BookingChat = React.memo(function BookingChat({
   bookingId,
   bookingStatus,
 }: BookingChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationId,setConversationId]=useState<string|null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const { messages, access, sending, send } =
+    useConversationChat(conversationId);
 
   const handleSend = async () => {
     const trimmed = inputText.trim();
-    if (!trimmed) return;
-
-    if(!conversationId)return;
-    await sendMessage(conversationId,trimmed);
+    if (!trimmed || !access.canSend) return;
+    await send(trimmed);
     setInputText('');
   };
 
-  useEffect(()=>{let stop=()=>{};const load=async()=>{const result=await fetchConversationForBooking(bookingId);if(result.error)return;setConversationId(result.data.id);const refresh=()=>void fetchConversation(result.data.id).then((value)=>{if(value.error||!value.data||!Array.isArray(value.data.messages)){setMessages([]);return;}setMessages(value.data.messages.map((row:any)=>({id:row.id,text:row.text,sender:row.sender==='self'?'worker':'customer',timestamp:row.timestamp})))});refresh();stop=subscribeToTable('messages',refresh,`conversation_id=eq.${result.data.id}`);};void load();return()=>stop();},[bookingId]);
+  useEffect(() => {
+    void fetchConversationForBooking(bookingId).then((result) => {
+      if (!result.error && result.data?.id) setConversationId(result.data.id);
+    });
+  }, [bookingId]);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -75,18 +72,18 @@ export const BookingChat = React.memo(function BookingChat({
             key={msg.id}
             style={[
               styles.messageBubble,
-              msg.sender === 'worker' ? styles.workerBubble : styles.customerBubble,
+              msg.sender === 'self' ? styles.workerBubble : styles.customerBubble,
             ]}
           >
             <AppText
               variant="bodySm"
-              color={msg.sender === 'worker' ? Colors.white : Colors.textPrimary}
+              color={msg.sender === 'self' ? Colors.white : Colors.textPrimary}
             >
               {msg.text}
             </AppText>
             <AppText
               variant="caption"
-              color={msg.sender === 'worker' ? 'rgba(255,255,255,0.7)' : Colors.textTertiary}
+              color={msg.sender === 'self' ? 'rgba(255,255,255,0.7)' : Colors.textTertiary}
               style={styles.msgTime}
             >
               {msg.timestamp}
@@ -104,11 +101,16 @@ export const BookingChat = React.memo(function BookingChat({
           onChangeText={setInputText}
           multiline
           maxLength={500}
+          editable={access.canSend}
         />
         <Pressable
-          style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
-          onPress={handleSend}
-          disabled={!inputText.trim()}
+          style={[
+            styles.sendBtn,
+            (!inputText.trim() || !access.canSend || sending) &&
+              styles.sendBtnDisabled,
+          ]}
+          onPress={() => void handleSend()}
+          disabled={!inputText.trim() || !access.canSend || sending}
         >
           <Send size={18} color={Colors.white} />
         </Pressable>

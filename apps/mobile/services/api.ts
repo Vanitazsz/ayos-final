@@ -208,6 +208,21 @@ export function subscribeToTable(
   };
 }
 
+export function subscribeToConversationBroadcast(
+  conversationId: string,
+  onChange: () => void,
+) {
+  const channel = supabase
+    .channel(`conversation:${conversationId}:messages`, {
+      config: { private: true },
+    })
+    .on('broadcast', { event: '*' }, onChange)
+    .subscribe();
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 export async function subscribeToBookingFeed(
   role: 'customer' | 'worker',
   onChange: () => void,
@@ -1206,12 +1221,26 @@ export async function fetchConversation(conversationId: string) {
     const preferredLocale =
       profile.role === 'ADMIN' ? 'en' : profile.preferredLocale;
 
-    const { data: messages, error: messageError } = await supabase
-      .from('messages')
-      .select('*,message_translations(target_locale,translated)')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+    const [
+      { data: conversation, error: conversationError },
+      { data: messages, error: messageError },
+    ] = await Promise.all([
+      supabase
+        .from('conversations')
+        .select(
+          'id,booking_id,service_request_id,worker_account_id,archived_at,bookings:booking_id(status,user_account_id,worker_account_id),service_requests:service_request_id(status,user_account_id,selected_worker_id),conversation_participants(account_id,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path))',
+        )
+        .eq('id', conversationId)
+        .maybeSingle(),
+      supabase
+        .from('messages')
+        .select('*,message_translations(target_locale,translated)')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true }),
+    ]);
 
+    if (conversationError) throw conversationError;
+    if (!conversation) throw new Error('Conversation is unavailable');
     if (messageError) throw messageError;
 
     try {
@@ -1222,8 +1251,40 @@ export async function fetchConversation(conversationId: string) {
       // Ignore read marking error
     }
 
+    const booking = Array.isArray((conversation as any).bookings)
+      ? (conversation as any).bookings[0]
+      : (conversation as any).bookings;
+    const request = Array.isArray((conversation as any).service_requests)
+      ? (conversation as any).service_requests[0]
+      : (conversation as any).service_requests;
+    const rawStatus = String(booking?.status ?? request?.status ?? '');
+    const closed = ['COMPLETED', 'CANCELLED', 'CLOSED'].includes(rawStatus);
+    const otherParticipant = (
+      (conversation as any).conversation_participants ?? []
+    ).find((item: any) => item.account_id !== user.id);
+    const participantProfile =
+      otherParticipant?.user_profiles ?? otherParticipant?.worker_profiles;
+
     return {
       preferredLocale,
+      id: conversation.id,
+      bookingId: conversation.booking_id,
+      serviceRequestId: conversation.service_request_id,
+      workerAccountId:
+        conversation.worker_account_id ?? booking?.worker_account_id ?? null,
+      status: rawStatus,
+      canSend: !closed && !(conversation as any).archived_at,
+      canArchive: closed && !(conversation as any).archived_at,
+      canHireAgain:
+        profile.role === 'USER' &&
+        closed &&
+        !(conversation as any).archived_at,
+      participant: {
+        name: participantProfile?.display_name ?? 'Booking Participant',
+        avatar: await resolveProfileAvatar(
+          participantProfile?.avatar_path ?? '',
+        ),
+      },
       messages: (messages ?? []).map((row: any) => {
         const translation = (row.message_translations ?? []).find(
           (item: any) => item.target_locale === preferredLocale,
@@ -1235,6 +1296,7 @@ export async function fetchConversation(conversationId: string) {
           translatedText: translation?.translated ?? null,
           isTranslated: Boolean(translation),
           sender: row.sender_id === user.id ? 'self' : 'other',
+          createdAt: row.created_at,
           timestamp: new Date(row.created_at).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -1249,13 +1311,11 @@ export async function sendMessage(
   body: string,
   locale?: 'en' | 'fil',
 ) {
-  const user = await requireUser();
   const ownProfile = await getMyProfile();
   const sourceLocale =
     locale ?? (ownProfile.role === 'ADMIN' ? 'en' : ownProfile.preferredLocale);
 
-  // Try RPC first for atomic insert & notification delivery
-  const { data: rpcData, error: rpcError } = await supabase.rpc(
+  const { data, error } = await supabase.rpc(
     'send_chat_message',
     {
       p_conversation_id: conversationId,
@@ -1263,54 +1323,8 @@ export async function sendMessage(
       p_original_locale: sourceLocale,
     },
   );
-
-  let data = rpcData;
-
-  if (rpcError || !data) {
-    // Fallback to direct client insert if RPC is not yet deployed
-    const { data: inserted, error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        body: body.trim(),
-        original_locale: sourceLocale,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    data = inserted;
-
-    void supabase
-      .from('conversations')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', conversationId);
-
-    void (async () => {
-      try {
-        const { data: participants } = await supabase
-          .from('conversation_participants')
-          .select('account_id')
-          .eq('conversation_id', conversationId);
-
-        const recipientId = participants?.find(
-          (p: any) => p.account_id !== user.id,
-        )?.account_id;
-
-        if (recipientId) {
-          await supabase.from('notifications').insert({
-            recipient_id: recipientId,
-            title: 'New Chat Message 💬',
-            body: `${ownProfile.displayName || 'Participant'}: ${body.trim().slice(0, 80)}`,
-            type: 'CHAT',
-            payload: { conversation_id: conversationId },
-          });
-        }
-      } catch (notifErr) {
-        console.warn('Chat notification error:', notifErr);
-      }
-    })();
-  }
+  if (error) throw error;
+  if (!data) throw new Error('Message could not be sent');
 
   const { data: recipientLocale } = await supabase.rpc(
     'get_conversation_recipient_locale',
@@ -1339,44 +1353,12 @@ export async function setPreferredLocale(locale: 'en' | 'fil') {
 }
 export async function fetchConversationForBooking(bookingId: string) {
   return wrap(async () => {
-    let { data } = await supabase
+    const { data, error } = await supabase
       .from('conversations')
       .select('id')
       .eq('booking_id', bookingId)
       .maybeSingle();
-
-    if (!data) {
-      // Find booking details to retrieve user and worker IDs
-      const { data: booking } = await supabase
-        .from('bookings')
-        .select('user_account_id, worker_account_id')
-        .eq('id', bookingId)
-        .maybeSingle();
-
-      if (booking) {
-        const { data: newConv } = await supabase
-          .from('conversations')
-          .insert({ booking_id: bookingId })
-          .select('id')
-          .single();
-
-        if (newConv) {
-          data = newConv;
-          const participants = [
-            booking.user_account_id,
-            booking.worker_account_id,
-          ].filter(Boolean);
-          if (participants.length > 0) {
-            await supabase.from('conversation_participants').insert(
-              participants.map((accId) => ({
-                conversation_id: newConv.id,
-                account_id: accId,
-              })),
-            );
-          }
-        }
-      }
-    }
+    if (error) throw error;
     if (!data) throw new Error('Conversation not available for this booking');
     return data;
   });
@@ -1384,15 +1366,27 @@ export async function fetchConversationForBooking(bookingId: string) {
 export async function fetchConversations() {
   return wrap(async () => {
     const user = await requireUser();
+    const profile = await getMyProfile();
     const { data, error } = await supabase
       .from('conversations')
       .select(
-        'id,booking_id,updated_at,conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
+        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,bookings:booking_id(status,worker_account_id),service_requests:service_request_id(status),conversation_participants(account_id,last_read_at,user_profiles:account_id(display_name,avatar_path),worker_profiles:account_id(display_name,avatar_path)),messages(id,body,created_at,sender_id)',
       )
+      .is('archived_at', null)
       .order('updated_at', { ascending: false });
     if (error) throw error;
     return Promise.all(
       (data ?? []).map(async (row: any) => {
+        const booking = Array.isArray(row.bookings)
+          ? row.bookings[0]
+          : row.bookings;
+        const request = Array.isArray(row.service_requests)
+          ? row.service_requests[0]
+          : row.service_requests;
+        const rawStatus = String(booking?.status ?? request?.status ?? '');
+        const closed = ['COMPLETED', 'CANCELLED', 'CLOSED'].includes(
+          rawStatus,
+        );
         const participant = (row.conversation_participants ?? []).find(
           (item: any) => item.account_id !== user.id,
         );
@@ -1426,105 +1420,22 @@ export async function fetchConversations() {
               message.sender_id !== user.id &&
               (!readAt || new Date(message.created_at) > new Date(readAt)),
           ).length,
+          status: rawStatus,
+          canSend: !closed,
+          canArchive: closed,
+          canHireAgain: profile.role === 'USER' && closed,
         };
       }),
     );
   });
 }
-export async function startDirectConversationWithUser(targetAccountId: string) {
-  return wrap(async () => {
-    const user = await requireUser();
-
-    // Try RPC first for atomic creation & bypassing client insert RLS
-    const { data: rpcData } = await supabase.rpc('start_direct_chat', {
-      p_target_account_id: targetAccountId,
-    });
-    if (rpcData?.id) return { id: rpcData.id };
-
-    const { data: myConvs } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('account_id', user.id);
-
-    if (myConvs && myConvs.length > 0) {
-      const convIds = myConvs.map((c: any) => c.conversation_id);
-      const { data: shared } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .in('conversation_id', convIds)
-        .eq('account_id', targetAccountId)
-        .maybeSingle();
-
-      if (shared) {
-        return { id: shared.conversation_id };
-      }
-    }
-
-    const { data: newConv, error: convErr } = await supabase
-      .from('conversations')
-      .insert({})
-      .select('id')
-      .single();
-
-    if (convErr || !newConv)
-      throw convErr ?? new Error('Failed to create conversation');
-
-    await supabase.from('conversation_participants').insert([
-      { conversation_id: newConv.id, account_id: user.id },
-      { conversation_id: newConv.id, account_id: targetAccountId },
-    ]);
-
-    return { id: newConv.id };
+export async function archiveConversation(conversationId: string) {
+  const { data, error } = await supabase.rpc('archive_closed_conversation', {
+    p_conversation_id: conversationId,
   });
-}
-export async function fetchAllAccountsForPoC() {
-  return wrap(async () => {
-    const user = await requireUser();
-    const [{ data: userProfiles }, { data: workerProfiles }] =
-      await Promise.all([
-        supabase
-          .from('user_profiles')
-          .select('account_id, display_name, avatar_path'),
-        supabase
-          .from('worker_profiles')
-          .select('account_id, display_name, avatar_path'),
-      ]);
-
-    const map = new Map<
-      string,
-      { id: string; name: string; avatar: string; role: string }
-    >();
-
-    (userProfiles ?? []).forEach((row: any) => {
-      if (row.account_id && row.account_id !== user.id) {
-        map.set(row.account_id, {
-          id: row.account_id,
-          name: row.display_name || 'Customer',
-          avatar: row.avatar_path || '',
-          role: 'Customer',
-        });
-      }
-    });
-
-    (workerProfiles ?? []).forEach((row: any) => {
-      if (row.account_id && row.account_id !== user.id) {
-        map.set(row.account_id, {
-          id: row.account_id,
-          name: row.display_name || 'Worker',
-          avatar: row.avatar_path || '',
-          role: 'Worker',
-        });
-      }
-    });
-
-    const items = Array.from(map.values());
-    return Promise.all(
-      items.map(async (item) => ({
-        ...item,
-        avatar: await resolveProfileAvatar(item.avatar),
-      })),
-    );
-  });
+  if (error) throw error;
+  if (!data) throw new Error('Conversation could not be deleted');
+  return data;
 }
 export async function fetchNotifications() {
   return wrap(async () => {

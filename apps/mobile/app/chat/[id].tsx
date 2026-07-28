@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Send, Camera, Image as ImageIcon } from 'lucide-react-native';
+import { ChevronLeft, Send, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Avatar } from '@/components/Avatar';
-import { fetchConversation, fetchProviderProfile, sendMessage, startConversation, subscribeToTable } from '@/services/api';
+import { fetchProviderProfile, startConversation } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
+import { useConversationChat } from '@/hooks/useConversationChat';
 
 const QUICK_REPLIES = [
   "Can you come today?",
@@ -22,12 +23,14 @@ export default function ChatScreen() {
   const [provider,setProvider]=useState<any>({id,name:'',avatarUri:''});const[conversationId,setConversationId]=useState<string|null>(null);const draft=useRequestStore();
   
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<any[]>([]);
-  useEffect(()=>{if(!id)return;let stop=()=>{};void fetchProviderProfile(id).then(result=>{if(!result.error)setProvider(result.data)});if(draft.requestId)void startConversation(draft.requestId,id).then((conversation:any)=>{setConversationId(conversation.id);const load=()=>void fetchConversation(conversation.id).then(result=>{if(result.error||!result.data||!Array.isArray(result.data.messages)){setMessages([]);return;}setMessages(result.data.messages.map((row:any)=>({id:row.id,text:row.text,sender:row.sender==='self'?'user':'worker',time:row.timestamp})))});load();stop=subscribeToTable('messages',load,`conversation_id=eq.${conversation.id}`);});return()=>stop();},[id,draft.requestId]);
+  const { messages, access, sending, send } =
+    useConversationChat(conversationId);
+  useEffect(()=>{if(!id)return;void fetchProviderProfile(id).then(result=>{if(!result.error)setProvider(result.data)});if(draft.requestId)void startConversation(draft.requestId,id).then((conversation:any)=>{setConversationId(conversation.id);});},[id,draft.requestId]);
 
-  const handleSend = (text: string) => {
-    if (!text.trim()||!conversationId) return;
-    void sendMessage(conversationId,text).then(()=>setMessage(''));
+  const handleSend = async (text: string) => {
+    if (!text.trim() || !conversationId || !access.canSend) return;
+    await send(text);
+    setMessage('');
   };
 
   const handleBack = () => router.back();
@@ -64,21 +67,21 @@ export default function ChatScreen() {
               key={msg.id} 
               style={[
                 styles.messageBubble, 
-                msg.sender === 'user' ? styles.userBubble : styles.workerBubble
+                msg.sender === 'self' ? styles.userBubble : styles.workerBubble
               ]}
             >
-              <AppText 
-                variant="body" 
-                color={msg.sender === 'user' ? Colors.white : Colors.textPrimary}
+              <AppText
+                variant="body"
+                color={msg.sender === 'self' ? Colors.white : Colors.textPrimary}
               >
                 {msg.text}
               </AppText>
-              <AppText 
-                variant="caption" 
-                color={msg.sender === 'user' ? 'rgba(255,255,255,0.7)' : Colors.textTertiary} 
+              <AppText
+                variant="caption"
+                color={msg.sender === 'self' ? 'rgba(255,255,255,0.7)' : Colors.textTertiary}
                 style={styles.timeText}
               >
-                {msg.time}
+                {msg.timestamp}
               </AppText>
             </View>
           ))}
@@ -88,7 +91,12 @@ export default function ChatScreen() {
         <View style={styles.quickRepliesContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRepliesList}>
             {QUICK_REPLIES.map((reply, idx) => (
-              <Pressable key={idx} style={styles.quickReplyChip} onPress={() => handleSend(reply)}>
+              <Pressable
+                key={idx}
+                style={styles.quickReplyChip}
+                onPress={() => void handleSend(reply)}
+                disabled={!access.canSend || sending}
+              >
                 <AppText variant="bodySm" color={Colors.primary}>{reply}</AppText>
               </Pressable>
             ))}
@@ -107,12 +115,18 @@ export default function ChatScreen() {
               value={message}
               onChangeText={setMessage}
               multiline
+              editable={access.canSend}
             />
           </View>
           <Pressable 
-            style={[styles.sendBtn, !message.trim() && { opacity: 0.5 }]} 
-            onPress={() => handleSend(message)}
-            disabled={!message.trim()}
+            style={[
+              styles.sendBtn,
+              (!message.trim() || !access.canSend || sending) && {
+                opacity: 0.5,
+              },
+            ]}
+            onPress={() => void handleSend(message)}
+            disabled={!message.trim() || !access.canSend || sending}
           >
             <Send size={20} color={Colors.white} />
           </Pressable>
