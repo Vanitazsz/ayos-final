@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, StyleSheet, FlatList, ListRenderItem, Alert, Share } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { randomUUID } from '@/lib/crypto';
 import { Colors, Spacing } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -7,12 +8,13 @@ import { SearchBar } from '@/components/SearchBar';
 import { Chip } from '@/components/Chip';
 import { JobPostCard } from '@/components/JobPostCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { fetchWorkerJobs, submitBid, subscribeToTable, type JobOpportunity, type JobComment } from '@/services/api';
+import { fetchWorkerJobs, submitBid, submitSelectedWorkerQuote, subscribeToTable, type JobOpportunity, type JobComment } from '@/services/api';
 
 const filterOptions = ['All', 'Urgent', 'Nearby', 'High Pay'];
 const sortOptions = ['Nearest', 'Highest Pay', 'Most Recent'];
 
 export default function WorkerBrowseScreen() {
+  const { requestId } = useLocalSearchParams<{ requestId?: string }>();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [sortBy, setSortBy] = useState('Nearest');
@@ -23,6 +25,7 @@ export default function WorkerBrowseScreen() {
 
   const filteredJobs = useMemo(() => {
     let result = [...jobs];
+    if (requestId) result = result.filter((job) => job.id === requestId);
 
     if (query) {
       const q = query.toLowerCase();
@@ -40,13 +43,14 @@ export default function WorkerBrowseScreen() {
     if (sortBy === 'Most Recent') result.sort((a, b) => a.postedTime.localeCompare(b.postedTime));
 
     return result;
-  }, [query, activeFilter, sortBy, jobs]);
+  }, [query, activeFilter, sortBy, jobs, requestId]);
 
   const handleComment = useCallback((jobId: string, text: string, offerMin: string, offerMax: string) => {
     const amount=Number(offerMin||offerMax);
     if(!Number.isFinite(amount)||amount<=0){Alert.alert('Offer required','Enter a valid offer in PHP.');return;}
-  void submitBid(jobId,Math.round(amount*100),text,60).then(()=>{setAllComments((prev)=>({...prev,[jobId]:[{id:randomUUID(),jobId,author:'You',avatarUri:'',text,offerMin:`₱${amount.toLocaleString()}`,postedTime:'Just now'},...(prev[jobId]||[])]}));}).catch((error)=>Alert.alert('Bid not submitted',error instanceof Error?error.message:'Please try again.'));
-  }, []);
+  const submit = requestId === jobId ? submitSelectedWorkerQuote : submitBid;
+  void submit(jobId,Math.round(amount*100),text,60).then(()=>{setAllComments((prev)=>({...prev,[jobId]:[{id:randomUUID(),jobId,author:'You',avatarUri:'',text,offerMin:`₱${amount.toLocaleString()}`,postedTime:'Just now'},...(prev[jobId]||[])]}));}).catch((error)=>Alert.alert(requestId === jobId ? 'Quote not submitted' : 'Bid not submitted',error instanceof Error?error.message:'Please try again.'));
+  }, [requestId]);
 
   const handleShare = useCallback((jobId: string) => { void Share.share({message:`A-yos service request ${jobId}`}); }, []);
 
@@ -59,9 +63,11 @@ export default function WorkerBrowseScreen() {
         onToggleSort={() => setCommentSortNewest(!commentSortNewest)}
         onComment={handleComment}
         onShare={handleShare}
+        initiallyExpanded={requestId === item.id}
+        quoteMode={requestId === item.id}
       />
     ),
-    [allComments, commentSortNewest, handleComment, handleShare],
+    [allComments, commentSortNewest, handleComment, handleShare, requestId],
   );
 
   const keyExtractor = useCallback((item: JobOpportunity) => item.id, []);
