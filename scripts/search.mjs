@@ -17,15 +17,23 @@ if (!pattern || !paths.length) process.exit(2);
 
 let expression;
 const javascriptPattern = pattern.replaceAll('[[:space:]]', '\\s');
-try { expression = new RegExp(javascriptPattern, 'gmi'); }
-catch (error) { console.error(`Invalid search pattern: ${error.message}`); process.exit(2); }
+try {
+  expression = new RegExp(javascriptPattern, 'gmi');
+} catch (error) {
+  console.error(`Invalid search pattern: ${error.message}`);
+  process.exit(2);
+}
 
 const ignored = (name) => name === '.git' || name === 'node_modules' || name.startsWith('.env');
 const files = [];
 async function collect(path) {
   let entries;
-  try { entries = await readdir(path, { withFileTypes: true }); }
-  catch { files.push(path); return; }
+  try {
+    entries = await readdir(path, { withFileTypes: true });
+  } catch {
+    files.push(path);
+    return;
+  }
   for (const entry of entries) {
     if (ignored(entry.name)) continue;
     const child = join(path, entry.name);
@@ -38,7 +46,11 @@ for (const path of paths) await collect(path);
 const matches = new Set();
 for (const file of files) {
   let source;
-  try { source = await readFile(file, 'utf8'); } catch { continue; }
+  try {
+    source = await readFile(file, 'utf8');
+  } catch {
+    continue;
+  }
   if (source.includes('\0')) continue;
   expression.lastIndex = 0;
   for (const match of source.matchAll(expression)) matches.add(extract ? match[0] : file);

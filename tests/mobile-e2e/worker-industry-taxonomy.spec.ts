@@ -17,24 +17,16 @@ async function openIndustryStep(page: Page) {
   await page.goto('/register-worker');
   await page.getByPlaceholder('Enter first name').fill('Taxonomy');
   await page.getByPlaceholder('Enter last name').fill('Worker');
-  await page
-    .getByPlaceholder('Enter email address')
-    .fill('taxonomy.worker@example.test');
+  await page.getByPlaceholder('Enter email address').fill('taxonomy.worker@example.test');
   await page.getByPlaceholder('Enter mobile number').fill('09171234567');
   await page.getByPlaceholder('MM/DD/YYYY').fill('01011990');
-  await page
-    .getByPlaceholder('Min. 8 chars, 1 Upper, 1 Number, 1 Special')
-    .fill('Taxonomy1!');
+  await page.getByPlaceholder('Min. 8 chars, 1 Upper, 1 Number, 1 Special').fill('Taxonomy1!');
   await page.getByPlaceholder('Re-type password').fill('Taxonomy1!');
   await page.getByText('Next Step', { exact: true }).click();
-  await expect(
-    page.getByText('Industry & Skills', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('Industry & Skills', { exact: true })).toBeVisible();
 }
 
-test('worker registration loads and searches all hosted industries', async ({
-  page,
-}) => {
+test('worker registration loads and searches all hosted industries', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openIndustryStep(page);
 
@@ -43,11 +35,7 @@ test('worker registration loads and searches all hosted industries', async ({
   const dropdown = page.getByTestId('autocomplete-suggestions');
   await expect(dropdown).toBeVisible();
   await expect
-    .poll(() =>
-      dropdown.evaluate(
-        (element) => element.scrollHeight > element.clientHeight,
-      ),
-    )
+    .poll(() => dropdown.evaluate((element) => element.scrollHeight > element.clientHeight))
     .toBe(true);
   for (const industry of industries) {
     await expect(page.getByText(industry, { exact: true })).toBeVisible();
@@ -58,14 +46,10 @@ test('worker registration loads and searches all hosted industries', async ({
   await page.getByText('Roofing & Waterproofing', { exact: true }).click();
   await expect(page.getByPlaceholder('Type or select skills')).toBeVisible();
   await page.getByPlaceholder('Type or select skills').click();
-  await expect(
-    page.getByText('Roof Inspection & Repair', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('Roof Inspection & Repair', { exact: true })).toBeVisible();
   await expect(page.getByText('Waterproofing', { exact: true })).toBeVisible();
 
-  await page
-    .getByPlaceholder('Type or select skills')
-    .fill('fictional custom skill');
+  await page.getByPlaceholder('Type or select skills').fill('fictional custom skill');
   await expect(page.getByText(/as custom/i)).toHaveCount(0);
 });
 
@@ -73,16 +57,12 @@ test('industry step has no desktop horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openIndustryStep(page);
   const overflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test('worker signup normalizes the mobile number and opens email OTP', async ({
-  page,
-}) => {
+test('worker signup normalizes the mobile number and opens email OTP', async ({ page }) => {
   let signupBody: { data?: { mobile?: string } } | null = null;
   await page.route('**/auth/v1/signup*', async (route) => {
     signupBody = route.request().postDataJSON() as {
@@ -110,14 +90,10 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({
   await page.goto('/register-worker');
   await page.getByPlaceholder('Enter first name').fill('Phone');
   await page.getByPlaceholder('Enter last name').fill('Worker');
-  await page
-    .getByPlaceholder('Enter email address')
-    .fill('phone.worker@example.test');
+  await page.getByPlaceholder('Enter email address').fill('phone.worker@example.test');
   await page.getByPlaceholder('Enter mobile number').fill('0917 123 4567');
   await page.getByPlaceholder('MM/DD/YYYY').fill('01011990');
-  await page
-    .getByPlaceholder('Min. 8 chars, 1 Upper, 1 Number, 1 Special')
-    .fill('Taxonomy1!');
+  await page.getByPlaceholder('Min. 8 chars, 1 Upper, 1 Number, 1 Special').fill('Taxonomy1!');
   await page.getByPlaceholder('Re-type password').fill('Taxonomy1!');
   await page.getByText('Next Step', { exact: true }).click();
 
@@ -146,10 +122,7 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({
   );
   for (const upload of [0, 1]) {
     const chooserPromise = page.waitForEvent('filechooser');
-    await page
-      .getByText('Upload from Gallery', { exact: true })
-      .first()
-      .click();
+    await page.getByText('Upload from Gallery', { exact: true }).first().click();
     const chooser = await chooserPromise;
     await chooser.setFiles({
       name: `id-${upload}.png`,

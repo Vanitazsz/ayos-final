@@ -6,5 +6,8 @@ apps/mobile/expo-env.d.ts
 **/node_modules/**
 packages/*/lib/**
 test-results/**
+ayos-try/**
+**/pnpm-lock.yaml
+**/database.generated.ts
 apps/admin/**
 apps/mobile/**
