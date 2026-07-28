@@ -100,6 +100,8 @@ export interface JobComment {
 }
 export interface WorkerBooking {
   id: string;
+  requestId?: string;
+  recordType?: 'booking' | 'quote_request';
   customerName: string;
   customerAvatar: string;
   service: string;
@@ -216,6 +218,7 @@ export function subscribeToTable(
   table: string,
   onChange: () => void,
   filter?: string,
+  onStatus?: (status: string) => void,
 ) {
   const channel = supabase
     .channel(`${table}:${filter ?? 'all'}:${randomUUID()}`)
@@ -224,9 +227,56 @@ export function subscribeToTable(
       { event: '*', schema: 'public', table, filter },
       onChange,
     )
-    .subscribe();
+    .subscribe((status) => onStatus?.(status));
   return () => {
     void supabase.removeChannel(channel);
+  };
+}
+
+export async function subscribeToBookingFeed(
+  role: 'customer' | 'worker',
+  onChange: () => void,
+) {
+  const user = await requireUser();
+  const statuses = new Map<string, string>([
+    ['bookings', 'CONNECTING'],
+    ['service_requests', 'CONNECTING'],
+  ]);
+  let fallback: ReturnType<typeof setInterval> | null = null;
+  const syncFallback = () => {
+    const connected = [...statuses.values()].every(
+      (status) => status === 'SUBSCRIBED',
+    );
+    if (connected && fallback) {
+      clearInterval(fallback);
+      fallback = null;
+    } else if (!connected && !fallback) {
+      fallback = setInterval(onChange, 10000);
+    }
+  };
+  const track = (table: string) => (status: string) => {
+    statuses.set(table, status);
+    if (status === 'SUBSCRIBED') onChange();
+    syncFallback();
+  };
+  const stops = [
+    subscribeToTable(
+      'bookings',
+      onChange,
+      `${role === 'customer' ? 'user_account_id' : 'worker_account_id'}=eq.${user.id}`,
+      track('bookings'),
+    ),
+    subscribeToTable(
+      'service_requests',
+      onChange,
+      `${role === 'customer' ? 'user_account_id' : 'selected_worker_id'}=eq.${user.id}`,
+      track('service_requests'),
+    ),
+  ];
+  syncFallback();
+  return () => {
+    stops.forEach((stop) => stop());
+    if (fallback) clearInterval(fallback);
   };
 }
 
@@ -394,19 +444,34 @@ export async function fetchReviews(): Promise<ApiResponse<ReviewData[]>> {
 export async function fetchBookings(): Promise<ApiResponse<any[]>> {
   return wrap(async () => {
     const user = await requireUser();
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(
-        'id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews:account_id(stars))',
-      )
-      .eq('user_account_id', user.id)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => {
+    const [bookingResult, quoteRequestResult] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select(
+          'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars))',
+        )
+        .eq('user_account_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('service_requests')
+        .select(
+          'id,selected_worker_id,status,created_at,updated_at,scheduled_at,addresses(line1,barangay,city),service_categories(name),worker_profiles:selected_worker_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars)),service_request_offers(id,worker_id,amount,status,updated_at)',
+        )
+        .eq('user_account_id', user.id)
+        .eq('status', 'MATCHED')
+        .not('selected_worker_id', 'is', null)
+        .order('updated_at', { ascending: false }),
+    ]);
+    if (bookingResult.error) throw bookingResult.error;
+    if (quoteRequestResult.error) throw quoteRequestResult.error;
+
+    const bookings = await Promise.all(
+      (bookingResult.data ?? []).map(async (row: any) => {
         const reviews = row.worker_profiles?.reviews ?? [];
         return {
           id: row.id,
+          requestId: row.service_request_id,
+          recordType: 'booking',
           providerId: row.worker_account_id,
           providerName: requireIdentity(
             row.worker_profiles?.display_name,
@@ -456,6 +521,56 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
         };
       }),
     );
+    const quoteRequests = await Promise.all(
+      (quoteRequestResult.data ?? []).map(async (row: any) => {
+        const reviews = row.worker_profiles?.reviews ?? [];
+        const quote = (row.service_request_offers ?? []).find(
+          (offer: any) =>
+            offer.worker_id === row.selected_worker_id &&
+            ['SUBMITTED', 'UPDATED'].includes(offer.status),
+        );
+        return {
+          id: `quote:${row.id}`,
+          requestId: row.id,
+          recordType: 'quote_request',
+          providerId: row.selected_worker_id,
+          providerName: requireIdentity(
+            row.worker_profiles?.display_name,
+            'Selected worker',
+          ),
+          category: requireIdentity(
+            row.service_categories?.name,
+            'Requested service',
+          ),
+          avatarUri: await resolveProfileAvatar(
+            row.worker_profiles?.avatar_path,
+          ),
+          date: new Date(row.scheduled_at ?? row.created_at).toLocaleDateString(),
+          time: new Date(row.scheduled_at ?? row.created_at).toLocaleTimeString(
+            [],
+            { hour: '2-digit', minute: '2-digit' },
+          ),
+          status: 'upcoming',
+          rawStatus: quote ? 'QUOTE_RECEIVED' : 'AWAITING_QUOTE',
+          address: [
+            row.addresses?.line1,
+            row.addresses?.barangay,
+            row.addresses?.city,
+          ]
+            .filter(Boolean)
+            .join(', '),
+          price: quote ? money(quote.amount) : 'Awaiting quote',
+          rating: reviews.length
+            ? reviews.reduce(
+                (sum: number, item: any) => sum + Number(item.stars),
+                0,
+              ) / reviews.length
+            : 0,
+          updatedAt: quote?.updated_at ?? row.updated_at,
+        };
+      }),
+    );
+    return [...quoteRequests, ...bookings];
   });
 }
 export async function fetchServiceCategories() {
@@ -663,17 +778,31 @@ export async function fetchWorkerBookings(): Promise<
 > {
   return wrap(async () => {
     const user = await requireUser();
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(
-        'id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)',
-      )
-      .eq('worker_account_id', user.id)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => ({
+    const [bookingResult, quoteRequestResult] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select(
+          'id,service_request_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)',
+        )
+        .eq('worker_account_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('service_requests')
+        .select(
+          'id,status,created_at,updated_at,scheduled_at,user_profiles:user_account_id(display_name,avatar_path),addresses(line1,barangay,city),service_categories(name),service_request_offers(id,worker_id,amount,status,updated_at)',
+        )
+        .eq('selected_worker_id', user.id)
+        .eq('status', 'MATCHED')
+        .order('updated_at', { ascending: false }),
+    ]);
+    if (bookingResult.error) throw bookingResult.error;
+    if (quoteRequestResult.error) throw quoteRequestResult.error;
+
+    const bookings = await Promise.all(
+      (bookingResult.data ?? []).map(async (row: any) => ({
         id: row.id,
+        requestId: row.service_request_id,
+        recordType: 'booking' as const,
         customerName: requireIdentity(
           row.user_profiles?.display_name,
           'Booking customer',
@@ -703,6 +832,43 @@ export async function fetchWorkerBookings(): Promise<
         distance: '',
       })),
     );
+    const quoteRequests = await Promise.all(
+      (quoteRequestResult.data ?? []).map(async (row: any) => {
+        const quote = (row.service_request_offers ?? []).find(
+          (offer: any) =>
+            offer.worker_id === user.id &&
+            ['SUBMITTED', 'UPDATED'].includes(offer.status),
+        );
+        return {
+          id: `quote:${row.id}`,
+          requestId: row.id,
+          recordType: 'quote_request' as const,
+          customerName: requireIdentity(
+            row.user_profiles?.display_name,
+            'Request customer',
+          ),
+          customerAvatar: await resolveProfileAvatar(
+            row.user_profiles?.avatar_path,
+          ),
+          service: requireIdentity(
+            row.service_categories?.name,
+            'Requested service',
+          ),
+          date: new Date(row.scheduled_at ?? row.created_at).toLocaleDateString(),
+          time: new Date(row.scheduled_at ?? row.created_at).toLocaleTimeString(
+            [],
+            { hour: '2-digit', minute: '2-digit' },
+          ),
+          address: [row.addresses?.barangay, row.addresses?.city]
+            .filter(Boolean)
+            .join(', '),
+          price: quote ? money(quote.amount) : 'Quote required',
+          status: quote ? 'quote_submitted' : 'awaiting_quote',
+          distance: '',
+        };
+      }),
+    );
+    return [...quoteRequests, ...bookings];
   });
 }
 async function transition(bookingId: string, status: string, reason?: string) {
@@ -906,6 +1072,21 @@ export async function submitBid(
   if (error) throw error;
   return data;
 }
+export async function submitSelectedWorkerQuote(
+  serviceRequestId: string,
+  amountMinor: number,
+  message: string,
+  durationMinutes: number,
+) {
+  const { data, error } = await supabase.rpc('submit_selected_worker_quote', {
+    p_service_request_id: serviceRequestId,
+    p_amount_minor: amountMinor,
+    p_message: message,
+    p_duration_minutes: durationMinutes,
+  });
+  if (error) throw error;
+  return data;
+}
 export async function fetchRequestBids(serviceRequestId: string) {
   return wrap(async () => {
     const { data, error } = await supabase
@@ -948,6 +1129,24 @@ export async function selectWorker(serviceRequestId: string, workerId: string) {
   const { data, error } = await supabase.rpc('select_worker', {
     p_service_request_id: serviceRequestId,
     p_worker_id: workerId,
+  });
+  if (error) throw error;
+  return data;
+}
+export async function selectWorkerForQuote(
+  serviceRequestId: string,
+  workerId: string,
+) {
+  const { data, error } = await supabase.rpc('select_worker_for_quote', {
+    p_service_request_id: serviceRequestId,
+    p_worker_id: workerId,
+  });
+  if (error) throw error;
+  return data;
+}
+export async function acceptServiceOffer(offerId: string) {
+  const { data, error } = await supabase.rpc('accept_service_offer', {
+    p_offer_id: offerId,
   });
   if (error) throw error;
   return data;
