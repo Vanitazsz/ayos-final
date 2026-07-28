@@ -22,6 +22,8 @@ interface JobPostCardProps {
   onToggleSort: () => void;
   onComment: (jobId: string, text: string, offerMin: string, offerMax: string) => void;
   onShare: (jobId: string) => void;
+  initiallyExpanded?: boolean;
+  quoteMode?: boolean;
 }
 
 export const JobPostCard: React.FC<JobPostCardProps> = ({
@@ -31,8 +33,10 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
   onToggleSort,
   onComment,
   onShare,
+  initiallyExpanded = false,
+  quoteMode = false,
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const [commentText, setCommentText] = useState('');
   const [offerMin, setOfferMin] = useState('');
   const [offerMax, setOfferMax] = useState('');
@@ -118,7 +122,7 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
             weight={expanded ? 'semiBold' : 'regular'}
             color={expanded ? Colors.primary : Colors.textTertiary}
           >
-            Comment ({job.commentCount})
+            {quoteMode ? 'Submit Quote' : `Comment (${job.commentCount})`}
           </AppText>
         </Pressable>
         <Pressable
@@ -160,17 +164,19 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
             />
             <View style={styles.offerRow}>
               <View style={styles.offerInputWrapper}>
-                <AppText variant="caption" color={Colors.textTertiary}>Min ($)</AppText>
+                <AppText variant="caption" color={Colors.textTertiary}>
+                  {quoteMode ? 'Quote (₱)' : 'Min ($)'}
+                </AppText>
                 <TextInput
                   style={styles.offerInput}
-                  placeholder="50"
+                  placeholder={quoteMode ? 'Enter amount' : '50'}
                   placeholderTextColor={Colors.textTertiary}
                   value={offerMin}
                   onChangeText={setOfferMin}
                   keyboardType="number-pad"
                 />
               </View>
-              <View style={styles.offerInputWrapper}>
+              {!quoteMode && <View style={styles.offerInputWrapper}>
                 <AppText variant="caption" color={Colors.textTertiary}>Max ($)</AppText>
                 <TextInput
                   style={styles.offerInput}
@@ -180,7 +186,7 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
                   onChangeText={setOfferMax}
                   keyboardType="number-pad"
                 />
-              </View>
+              </View>}
               <Pressable
                 style={[styles.postButton, !commentText.trim() && styles.postButtonDisabled]}
                 onPress={handleSubmitComment}
