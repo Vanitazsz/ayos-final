@@ -7,6 +7,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -41,6 +42,7 @@ export default function WorkerIndustrySkillsScreen() {
     Record<string, number | null>
   >({});
   const [saving, setSaving] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -99,16 +101,7 @@ export default function WorkerIndustrySkillsScreen() {
         rateBySkillId,
       });
       if (result.error) throw new Error(result.error);
-      Alert.alert(
-        'Industry & Skills Saved! ✅',
-        'Your skills and worker-set rates are now used for matching and pricing.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(worker)/profile' as any),
-          },
-        ],
-      );
+      setShowSaveConfirmation(true);
     } catch (err) {
       setError(
         err instanceof Error
@@ -278,6 +271,7 @@ export default function WorkerIndustrySkillsScreen() {
                     {isChecked ? (
                       <AppInput
                         label="Your service rate (PHP)"
+                        accessibilityLabel={`${skill.name} service rate in PHP`}
                         placeholder="Optional service rate"
                         keyboardType="decimal-pad"
                         value={
@@ -340,10 +334,50 @@ export default function WorkerIndustrySkillsScreen() {
           label="Save Industry & Skills"
           variant="primary"
           fullWidth
-          onPress={handleSave}
+          onPress={() => void handleSave()}
           loading={saving}
         />
       </View>
+
+      <Modal
+        visible={showSaveConfirmation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSaveConfirmation(false)}
+      >
+        <View style={styles.confirmationOverlay}>
+          <View
+            style={styles.confirmationDialog}
+            accessibilityRole="alert"
+            accessibilityViewIsModal
+          >
+            <View style={styles.confirmationIcon}>
+              <Check size={28} color={theme.colors.surface} />
+            </View>
+            <Text style={[theme.typography.h3, styles.confirmationTitle]}>
+              Industry & Skills Saved!
+            </Text>
+            <Text
+              style={[
+                theme.typography.body2,
+                styles.confirmationDescription,
+              ]}
+            >
+              Your skills and worker-set rates are now used for matching and
+              pricing.
+            </Text>
+            <AppButton
+              label="OK"
+              variant="primary"
+              fullWidth
+              onPress={() => {
+                setShowSaveConfirmation(false);
+                router.replace('/(worker)/profile');
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -488,5 +522,39 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderLight,
+  },
+  confirmationOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.layout.screenPadding,
+    backgroundColor: theme.colors.overlay,
+  },
+  confirmationDialog: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.lg,
+  },
+  confirmationIcon: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.success,
+  },
+  confirmationTitle: {
+    textAlign: 'center',
+    color: theme.colors.textPrimary,
+  },
+  confirmationDescription: {
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+    color: theme.colors.textSecondary,
   },
 });
