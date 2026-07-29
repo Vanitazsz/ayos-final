@@ -10,7 +10,9 @@
     "lint": "expo lint",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit",
-    "check:no-mocks": "node scripts/check-no-production-mocks.mjs"
+    "check:no-mocks": "node scripts/check-no-production-mocks.mjs",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

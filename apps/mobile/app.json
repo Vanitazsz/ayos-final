@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ayos.app"
+      "bundleIdentifier": "com.ayos.app.dev"
     },
     "android": {
       "package": "com.ayos.app"
