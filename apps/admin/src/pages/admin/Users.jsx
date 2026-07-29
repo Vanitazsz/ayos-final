@@ -23,6 +23,7 @@ import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
 import Modal from '../../components/ui/Modal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import {
   loadCustomerVerifications,
   loadUsers,
@@ -46,6 +47,8 @@ const Users = () => {
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
   const [selectedUser, setSelectedUser] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
@@ -89,23 +92,8 @@ const Users = () => {
   }, []);
   const decide = async (decision) => {
     if (!selectedVerification) return;
-    if (
-      !window.confirm(
-        `${decision === 'approved' ? 'Approve' : 'Reject'} this identity verification?`,
-      )
-    )
-      return;
-    setReviewing(true);
-    try {
-      await reviewCustomerVerification(selectedVerification.id, decision, reviewNotes);
-      setSelectedVerification(null);
-      setReviewNotes('');
-      await refresh();
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setReviewing(false);
-    }
+    const label = decision === 'approved' ? 'Approve' : 'Reject';
+    setConfirm({ isOpen: true, title: `${label} Verification`, message: `${label} this identity verification?`, onConfirm: async () => { setReviewing(true); try { await reviewCustomerVerification(selectedVerification.id, decision, reviewNotes); setSelectedVerification(null); setReviewNotes(''); await refresh(); } catch (error) { toast.error('Verification failed', error instanceof Error ? error.message : 'Unable to complete verification.'); } finally { setReviewing(false); } } });
   };
 
   const toggleActionMenu = (id) => {
@@ -160,18 +148,7 @@ const Users = () => {
   };
 
   const handleDelete = async (user) => {
-    if (!window.confirm(`Permanently delete ${user.name} and all related Supabase records? This cannot be undone.`)) return;
-    setActionLoadingId(`${user.id}:delete`);
-    setActionMenuOpenId(null);
-    try {
-      await deleteAccount(user.id, user.email);
-      await refresh();
-      toast.success('User deleted', `${user.name} and related Supabase records were permanently deleted.`);
-    } catch (error) {
-      toast.error('Delete failed', error instanceof Error ? error.message : 'Unable to permanently delete user.');
-    } finally {
-      setActionLoadingId(null);
-    }
+    setConfirm({ isOpen: true, title: 'Delete User', message: `Permanently delete ${user.name} and all related Supabase records? This cannot be undone.`, onConfirm: async () => { setActionLoadingId(`${user.id}:delete`); setActionMenuOpenId(null); try { await deleteAccount(user.id, user.email); await refresh(); toast.success('User deleted', `${user.name} and related Supabase records were permanently deleted.`); } catch (error) { toast.error('Delete failed', error instanceof Error ? error.message : 'Unable to permanently delete user.'); } finally { setActionLoadingId(null); } } });
   };
 
   // Filter
@@ -203,10 +180,10 @@ const Users = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 p-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-navy tracking-tight">
+          <h1 className="text-2xl font-bold text-gray-900">
             Users Management
           </h1>
           <p className="text-gray-500 mt-1">
@@ -241,6 +218,7 @@ const Users = () => {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 type="text"
+                aria-label="Search by name, email, or ID..."
                 placeholder="Search by name, email, or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -256,19 +234,19 @@ const Users = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 text-center">
+                  <TableHead scope="col" className="w-12 text-center">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300 text-primary focus:ring-primary"
                     />
                   </TableHead>
-                  <TableHead>User Details</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Registration Date</TableHead>
-                  <TableHead>Bookings</TableHead>
-                  <TableHead>Verification</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead scope="col">User Details</TableHead>
+                  <TableHead scope="col">Contact</TableHead>
+                  <TableHead scope="col">Registration Date</TableHead>
+                  <TableHead scope="col">Bookings</TableHead>
+                  <TableHead scope="col">Verification</TableHead>
+                  <TableHead scope="col">Status</TableHead>
+                  <TableHead scope="col" className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -378,23 +356,26 @@ const Users = () => {
                       <TableCell className="text-right relative">
                         <button
                           onClick={() => toggleActionMenu(user.id)}
+                          aria-haspopup="true"
+                          aria-expanded={actionMenuOpenId === user.id}
+                          aria-label={`Open actions for ${user.name}`}
                           className="text-gray-400 hover:text-navy p-1 rounded-full hover:bg-gray-100 transition-colors"
                         >
                           <MoreVertical size={20} />
                         </button>
 
                         {actionMenuOpenId === user.id && (
-                          <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-border z-10 py-1 text-left">
-                            <button onClick={() => handleViewProfile(user)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                          <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-border z-10 py-1 text-left" role="menu">
+                            <button onClick={() => handleViewProfile(user)} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                               <Eye size={16} className="mr-2 text-gray-400" /> View Profile
                             </button>
-                            <button onClick={() => handleEditUser(user)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            <button onClick={() => handleEditUser(user)} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                               <Edit size={16} className="mr-2 text-gray-400" /> Edit User
                             </button>
-                            <button onClick={() => void handleToggleStatus(user)} disabled={actionLoadingId === `${user.id}:status`} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                            <button onClick={() => void handleToggleStatus(user)} disabled={actionLoadingId === `${user.id}:status`} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                               <Ban size={16} className="mr-2 text-gray-400" /> {user.status === 'Active' ? 'Suspend' : 'Reactivate'}
                             </button>
-                            <button onClick={() => void handleDelete(user)} disabled={actionLoadingId === `${user.id}:delete`} className="flex items-center w-full px-4 py-2 text-sm text-danger hover:bg-danger/5 disabled:opacity-50">
+                            <button onClick={() => void handleDelete(user)} disabled={actionLoadingId === `${user.id}:delete`} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-danger hover:bg-danger/5 disabled:opacity-50">
                               <Trash2 size={16} className="mr-2 text-danger" /> Delete Account
                             </button>
                           </div>
@@ -474,10 +455,10 @@ const Users = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>ID Type</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Documents</TableHead>
+                  <TableHead scope="col">Customer</TableHead>
+                  <TableHead scope="col">ID Type</TableHead>
+                  <TableHead scope="col">Submitted</TableHead>
+                  <TableHead scope="col">Documents</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -628,6 +609,7 @@ const Users = () => {
           </form>
         ) : null}
       </Modal>
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Yes" variant="danger" />
     </div>
   );
 };
