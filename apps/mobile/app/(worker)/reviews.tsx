@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
 import { ReviewsTab } from '@/components/ReviewsTab';
@@ -11,7 +12,11 @@ export default function WorkerReviewsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [reviews, setReviews] = useState<ReviewData[]>([]);
 
-  useEffect(() => { void fetchWorkerReviews().then((result) => setReviews(result.data)); }, []);
+  const loadReviews = useCallback(() => {
+    void fetchWorkerReviews().then((result) => setReviews(result.data));
+  }, []);
+
+  useFocusEffect(loadReviews);
 
   const filteredReviews = useMemo(() => {
     if (!searchQuery.trim()) return reviews;

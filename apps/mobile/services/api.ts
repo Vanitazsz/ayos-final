@@ -12,6 +12,7 @@ import {
   resolveProfileAvatar,
   resolveStorageImage,
 } from '@/services/profile';
+import { averageRating } from '@/services/reviewRatings';
 
 export interface ApiResponse<T> {
   data: T;
@@ -72,6 +73,7 @@ export interface ReviewData {
   date: string;
   comment: string;
   serviceType: string;
+  moderationStatus?: 'PENDING' | 'PUBLISHED' | 'REJECTED';
 }
 export interface WorkerBooking {
   id: string;
@@ -294,14 +296,16 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
     const { data, error } = await supabase
       .from('worker_profiles')
       .select(
-        'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name)),reviews:account_id(stars)',
+        'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name)),reviews:account_id(stars,moderation_status)',
       )
       .eq('approval_status', 'APPROVED')
       .eq('is_available', true);
     if (error) throw error;
     return Promise.all(
       (data ?? []).map(async (row: any) => {
-        const reviews = row.reviews ?? [];
+        const reviews = (row.reviews ?? []).filter(
+          (review: any) => review.moderation_status === 'PUBLISHED',
+        );
         return {
           id: row.account_id,
           name: requireIdentity(row.display_name, 'Worker'),
@@ -310,12 +314,7 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
             'Worker service',
           ),
           avatarUri: await resolveProfileAvatar(row.avatar_path),
-          rating: reviews.length
-            ? reviews.reduce(
-                (sum: number, item: any) => sum + Number(item.stars),
-                0,
-              ) / reviews.length
-            : 0,
+          rating: averageRating(reviews),
           reviewCount: reviews.length,
           distance: '',
           eta: '',
@@ -378,9 +377,7 @@ export async function fetchProviderProfile(id: string) {
     const workerRates = (skills ?? [])
       .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
-    const rating = rows.length
-      ? rows.reduce((sum, row) => sum + row.stars, 0) / rows.length
-      : 0;
+    const rating = averageRating(rows);
     return {
       id: profile.account_id,
       name: requireIdentity(profile.display_name, 'Worker'),
@@ -456,7 +453,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     const bookingResult = await supabase
         .from('bookings')
         .select(
-          'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars))',
+          'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars,moderation_status))',
         )
         .eq('user_account_id', user.id)
         .order('created_at', { ascending: false });
@@ -464,7 +461,9 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
 
     const bookings = await Promise.all(
       (bookingResult.data ?? []).map(async (row: any) => {
-        const reviews = row.worker_profiles?.reviews ?? [];
+        const reviews = (row.worker_profiles?.reviews ?? []).filter(
+          (review: any) => review.moderation_status === 'PUBLISHED',
+        );
         return {
           id: row.id,
           requestId: row.service_request_id,
@@ -509,12 +508,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
             row.agreed_service_amount == null
               ? 'Pending price'
               : money(row.agreed_service_amount),
-          rating: reviews.length
-            ? reviews.reduce(
-                (sum: number, item: any) => sum + Number(item.stars),
-                0,
-              ) / reviews.length
-            : 0,
+          rating: averageRating(reviews),
         };
       }),
     );
@@ -572,9 +566,8 @@ export async function fetchWorkerProfile(): Promise<
         .single(),
       supabase
         .from('reviews')
-        .select('stars')
-        .eq('worker_account_id', user.id)
-        .eq('moderation_status', 'PUBLISHED'),
+        .select('stars,moderation_status')
+        .eq('worker_account_id', user.id),
       supabase
         .from('bookings')
         .select('id')
@@ -598,10 +591,10 @@ export async function fetchWorkerProfile(): Promise<
     ]);
     if (accountError) throw accountError;
     if (profileError) throw profileError;
-    const rating = (reviews ?? []).length
-      ? (reviews ?? []).reduce((sum, row) => sum + row.stars, 0) /
-        (reviews ?? []).length
-      : 0;
+    const accountReviews = (reviews ?? []).filter(
+      (row) => row.moderation_status !== 'REJECTED',
+    );
+    const rating = averageRating(accountReviews);
     const prices = (skills ?? [])
       .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
@@ -632,7 +625,7 @@ export async function fetchWorkerProfile(): Promise<
           0,
         ),
         rating,
-        reviewCount: (reviews ?? []).length,
+        reviewCount: accountReviews.length,
         completedJobs: (bookings ?? []).length,
         earnings: money(earnings),
         hourlyRate: prices.length
@@ -672,7 +665,37 @@ export async function fetchWorkerVerification() {
   });
 }
 export async function fetchWorkerReviews() {
-  return fetchReviews();
+  return wrap(async () => {
+    const user = await requireUser();
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(
+        'id,stars,body,created_at,moderation_status,user_profiles:user_account_id(display_name,avatar_path),service:bookings(service_requests(service_categories(name)))',
+      )
+      .eq('worker_account_id', user.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const result: ReviewData[] = [];
+    for (const row of (data ?? []) as any[]) {
+      result.push({
+        id: row.id,
+        author: requireIdentity(
+          row.user_profiles?.display_name,
+          'Review author',
+        ),
+        avatarUri: await resolveProfileAvatar(row.user_profiles?.avatar_path),
+        rating: Number(row.stars),
+        date: relative(row.created_at),
+        comment: row.body,
+        serviceType: requireIdentity(
+          row.service?.service_requests?.service_categories?.name,
+          'Reviewed service',
+        ),
+        moderationStatus: row.moderation_status,
+      });
+    }
+    return result;
+  });
 }
 export async function fetchWorkerBookings(): Promise<
   ApiResponse<WorkerBooking[]>

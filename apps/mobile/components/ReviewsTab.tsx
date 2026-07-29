@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar';
 import { RatingStars } from '@/components/RatingStars';
 import { Chip } from '@/components/Chip';
 import type { ReviewData } from '@/services/api';
+import { averageRating, formatRating } from '@/services/reviewRatings';
 
 const filterOptions = ['All', '5 Stars', '4 Stars', '3 Stars', 'Recent'];
 
@@ -29,17 +30,27 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
   }, [activeFilter, reviews]);
 
   const avgRating = useMemo(() => {
-    const total = reviews.reduce((sum, r) => sum + r.rating, 0);
-    return reviews.length ? (total / reviews.length).toFixed(1) : '0.0';
+    return formatRating(
+      averageRating(
+        reviews
+          .filter((review) => review.moderationStatus !== 'REJECTED')
+          .map((review) => ({ stars: review.rating })),
+      ),
+    );
   }, [reviews]);
 
   const ratingDistribution = useMemo(() => {
     const dist: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach((r) => {
+    reviews
+      .filter((review) => review.moderationStatus !== 'REJECTED')
+      .forEach((r) => {
       dist[r.rating] = (dist[r.rating] || 0) + 1;
-    });
+      });
     return dist;
   }, [reviews]);
+  const ratedReviewCount = reviews.filter(
+    (review) => review.moderationStatus !== 'REJECTED',
+  ).length;
 
   const toggleLike = useCallback((id: string) => {
     setLikedReviews((prev) => {
@@ -69,7 +80,12 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
         <AppText variant="bodySm" color={Colors.textSecondary} style={{ marginTop: Spacing['3'], lineHeight: 22 }}>
           {item.comment}
         </AppText>
-        <View style={styles.reviewFooter}>
+          <View style={styles.reviewFooter}>
+          {item.moderationStatus && item.moderationStatus !== 'PUBLISHED' ? (
+            <AppText variant="caption" color={Colors.textTertiary}>
+              Status: {item.moderationStatus.toLowerCase()}
+            </AppText>
+          ) : null}
           <Pressable
             onPress={() => toggleLike(item.id)}
             style={styles.likeBtn}
@@ -105,7 +121,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
               <AppText variant="h1" weight="bold" color={Colors.cta}>{avgRating}</AppText>
               <RatingStars rating={parseFloat(avgRating)} size={16} />
               <AppText variant="caption" color={Colors.textSecondary} style={{ marginTop: Spacing['1'] }}>
-                {reviews.length} reviews
+                {ratedReviewCount} reviews
               </AppText>
             </View>
             <View style={styles.summaryRight}>
@@ -117,7 +133,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
                     <View style={[
                       styles.distFill,
                       {
-                        width: `${(ratingDistribution[star] / reviews.length) * 100}%`,
+                        width: `${ratedReviewCount ? (ratingDistribution[star] / ratedReviewCount) * 100 : 0}%`,
                         backgroundColor: Colors.cta,
                       },
                     ]} />

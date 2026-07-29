@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import {
   ChevronRight,
@@ -32,6 +32,7 @@ import {
   PlusCircle,
 } from 'lucide-react-native';
 import { fetchWorkerProfile } from '@/services/api';
+import { formatRating } from '@/services/reviewRatings';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -94,7 +95,7 @@ export default function WorkerProfileScreen() {
   const [bio, setBio] = useState('');
   const [subdivisions, setSubdivisions] = useState<Subdivision[]>([]);
   const [subdivisionId, setSubdivisionId] = useState('');
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoadError('');
     try {
       const result = await fetchWorkerProfile();
@@ -146,10 +147,12 @@ export default function WorkerProfileScreen() {
           : 'Unable to load worker profile',
       );
     }
-  };
-  useEffect(() => {
-    void load();
   }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
   const chooseAvatar = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -406,7 +409,7 @@ export default function WorkerProfileScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Star color="#F59E0B" size={16} fill="#F59E0B" />
                   <Text style={[theme.typography.h3, { marginLeft: 4 }]}>
-                    {workerProfile.rating}
+                    {formatRating(workerProfile.rating)}
                   </Text>
                 </View>
                 <Text

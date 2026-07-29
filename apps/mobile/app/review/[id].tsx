@@ -75,7 +75,11 @@ export default function ReviewScreen() {
       }
       await createReview(bookingId, rating, commentText, recommend, media);
       Alert.alert('Review Submitted! ⭐', 'Thank you for your feedback.', [
-        { text: 'Done', onPress: () => router.replace('/(tabs)/home' as any) },
+        {
+          text: 'Done',
+          onPress: () =>
+            router.replace('/(tabs)/bookings?filter=Completed' as any),
+        },
       ]);
     } catch (error) {
       Alert.alert(
@@ -86,6 +90,8 @@ export default function ReviewScreen() {
       setLoading(false);
     }
   };
+
+  const hasValidReviewText = review.trim().length >= 3;
 
   const handleUpload = async () => {
     if (photos.length >= 3) return;
@@ -238,7 +244,7 @@ export default function ReviewScreen() {
         <Button
           title="Submit Review"
           onPress={handleSubmit}
-          disabled={rating === 0}
+          disabled={rating === 0 || !hasValidReviewText}
           loading={loading}
           fullWidth
         />
