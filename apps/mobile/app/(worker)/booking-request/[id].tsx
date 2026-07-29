@@ -56,6 +56,7 @@ import {
 } from '@/services/api';
 import { uploadBookingProof } from '@/services/uploads';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
+import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import type { WorkerBooking } from '@/services/api';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
@@ -132,6 +133,10 @@ export default function BookingRequestScreen() {
             ? row.payments[0]
             : row.payments;
           setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
+          const earningsAmount = resolveWorkerEarningsAmount(
+            row.agreed_service_amount,
+            payment,
+          );
           const address = request?.addresses;
           const status = viewStatus(row.status);
           if (row.accepted_at && row.completed_at) {
@@ -169,14 +174,14 @@ export default function BookingRequestScreen() {
               .filter(Boolean)
               .join(', '),
             price:
-              row.agreed_service_amount == null
+              earningsAmount == null
                 ? 'Price pending'
-                : `₱${Number(row.agreed_service_amount).toLocaleString()}`,
+                : `₱${earningsAmount.toLocaleString()}`,
             status,
             distance: '',
             lat: Number(address?.latitude ?? 0),
             lng: Number(address?.longitude ?? 0),
-            hourlyRate: Number(row.agreed_service_amount ?? 0),
+            hourlyRate: earningsAmount ?? 0,
           });
           setJob({
             id: request?.id,
