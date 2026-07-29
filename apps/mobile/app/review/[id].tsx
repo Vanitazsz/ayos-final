@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { randomUUID } from '@/lib/crypto';
 import { createReview, fetchBookingDetail } from '@/services/api';
 import { supabase } from '@/lib/supabase';
-import { withReviewTimeout } from '@/services/reviewSubmission';
 
 export default function ReviewScreen() {
   const router = useRouter();
@@ -31,7 +30,6 @@ export default function ReviewScreen() {
   const [recommend, setRecommend] = useState(true);
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const submittingRef = useRef(false);
 
   const bookingId = Array.isArray(id) ? id[0] : id;
   const [booking, setBooking] = useState<any>(null);
@@ -42,7 +40,6 @@ export default function ReviewScreen() {
       });
   }, [bookingId]);
   const handleSubmit = async () => {
-    if (submittingRef.current) return;
     if (rating === 0) {
       Alert.alert('Rating Required', 'Please select at least 1 star.');
       return;
@@ -56,34 +53,27 @@ export default function ReviewScreen() {
       );
       return;
     }
-    submittingRef.current = true;
     setLoading(true);
     try {
       const {
         data: { user },
-      } = await withReviewTimeout('Authentication', supabase.auth.getUser());
+      } = await supabase.auth.getUser();
       const media = [];
       if (user && photos.length > 0) {
         for (const uri of photos) {
-          const response = await withReviewTimeout('Photo upload', fetch(uri));
+          const response = await fetch(uri);
           const bytes = await response.arrayBuffer();
           const contentType =
             response.headers.get('content-type') ?? 'image/jpeg';
           const path = `${user.id}/${randomUUID()}.jpg`;
-          const { error } = await withReviewTimeout(
-            'Photo upload',
-            supabase.storage.from('review-media').upload(path, bytes, {
-              contentType,
-            }),
-          );
+          const { error } = await supabase.storage
+            .from('review-media')
+            .upload(path, bytes, { contentType });
           if (error) throw error;
           media.push({ path, contentType, byteSize: bytes.byteLength });
         }
       }
-      await withReviewTimeout(
-        'Review submission',
-        createReview(bookingId, rating, commentText, recommend, media),
-      );
+      await createReview(bookingId, rating, commentText, recommend, media);
       Alert.alert('Review Submitted! ⭐', 'Thank you for your feedback.', [
         {
           text: 'Done',
@@ -97,7 +87,6 @@ export default function ReviewScreen() {
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
-      submittingRef.current = false;
       setLoading(false);
     }
   };

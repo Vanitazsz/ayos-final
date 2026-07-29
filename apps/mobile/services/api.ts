@@ -13,7 +13,6 @@ import {
   resolveStorageImage,
 } from '@/services/profile';
 import { averageRating } from '@/services/reviewRatings';
-import { withReviewTimeout } from '@/services/reviewSubmission';
 
 export interface ApiResponse<T> {
   data: T;
@@ -1043,28 +1042,20 @@ export async function createReview(
   recommendWorker: boolean,
   media: { path: string; contentType: string; byteSize: number }[] = [],
 ) {
-  const { data, error } = await withReviewTimeout<{ data: any; error: any }>(
-    'Review submission',
-    supabase.rpc('create_review', {
-      p_booking_id: bookingId,
-      stars,
-      body,
-      recommend_worker: recommendWorker,
-    }),
-  );
+  const { data, error } = await supabase.rpc('create_review', {
+    p_booking_id: bookingId,
+    stars,
+    body,
+    recommend_worker: recommendWorker,
+  });
   if (error) throw error;
   for (const item of media) {
-    const { error: mediaError } = await withReviewTimeout<{
-      error: any;
-    }>(
-      'Photo attachment',
-      supabase.rpc('attach_review_media', {
-        p_review_id: (data as any).id,
-        p_storage_path: item.path,
-        p_content_type: item.contentType,
-        p_byte_size: item.byteSize,
-      }),
-    );
+    const { error: mediaError } = await supabase.rpc('attach_review_media', {
+      p_review_id: (data as any).id,
+      p_storage_path: item.path,
+      p_content_type: item.contentType,
+      p_byte_size: item.byteSize,
+    });
     if (mediaError) throw mediaError;
   }
   return data;
