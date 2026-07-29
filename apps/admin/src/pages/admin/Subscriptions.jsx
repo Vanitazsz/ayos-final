@@ -1,30 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Crown, Plus } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import {
   activateSubscription,
   cancelSubscription,
   extendSubscription,
   loadSubscriptions,
   saveSubscriptionPlan,
-  subscribe,
 } from '../../services/adminData';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
+import { useToast } from '../../context/ToastContext';
 
 const blankPlan = { id: '', name: '', price: 0, duration_days: 30, is_active: true };
 
 export default function Subscriptions() {
-  const [data, setData] = useState({ plans: [], subscriptions: [], workers: [] });
+  const toast = useToast();
+  const { data: raw, isLoading, error, refresh } = useDataFetch(loadSubscriptions, []);
+  useRealtime(['worker_recommendation_plans', 'worker_recommendation_subscriptions'], refresh);
+  const data = raw ?? { plans: [], subscriptions: [], workers: [] };
   const [plan, setPlan] = useState(null);
   const [activation, setActivation] = useState(null);
-  const refresh = async () => setData(await loadSubscriptions());
-  useEffect(() => {
-    void refresh();
-    const stops = [
-      subscribe('worker_recommendation_plans', refresh),
-      subscribe('worker_recommendation_subscriptions', refresh),
-    ];
-    return () => stops.forEach((stop) => stop());
-  }, []);
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
+  const [extendModal, setExtendModal] = useState({ isOpen: false, row: null });
+  const [extendDays, setExtendDays] = useState('30');
   const savePlan = async () => {
     if (!plan?.name.trim() || Number(plan.duration_days) < 1) return;
     try {
@@ -32,39 +33,21 @@ export default function Subscriptions() {
       setPlan(null);
       await refresh();
     } catch (error) {
-      alert(error.message);
+      toast.error('Save failed', error.message);
     }
   };
   const activate = async () => {
     if (!activation?.workerId || !activation?.planId) return;
-    if (!window.confirm('Activate this worker recommendation subscription?')) return;
-    try {
-      await activateSubscription(activation.workerId, activation.planId);
-      setActivation(null);
-      await refresh();
-    } catch (error) {
-      alert(error.message);
-    }
+    setConfirm({ isOpen: true, title: 'Activate Subscription', message: 'Activate this worker recommendation subscription?', onConfirm: async () => { try { await activateSubscription(activation.workerId, activation.planId); setActivation(null); await refresh(); } catch (error) { toast.error('Activation failed', error.message); } } });
   };
-  const extend = async (row) => {
-    const days = Number(window.prompt('Number of days to extend', '30'));
+  const doExtend = async () => {
+    const days = Number(extendDays);
     if (!Number.isInteger(days) || days < 1) return;
-    if (!window.confirm(`Extend this subscription by ${days} days?`)) return;
-    try {
-      await extendSubscription(row.id, days);
-      await refresh();
-    } catch (error) {
-      alert(error.message);
-    }
+    setExtendModal(s => ({ ...s, isOpen: false }));
+    setConfirm({ isOpen: true, title: 'Extend Subscription', message: `Extend this subscription by ${days} days?`, onConfirm: async () => { try { await extendSubscription(extendModal.row.id, days); await refresh(); } catch (error) { toast.error('Extend failed', error.message); } } });
   };
   const cancel = async (row) => {
-    if (!window.confirm('Cancel this subscription now?')) return;
-    try {
-      await cancelSubscription(row.id);
-      await refresh();
-    } catch (error) {
-      alert(error.message);
-    }
+    setConfirm({ isOpen: true, title: 'Cancel Subscription', message: 'Cancel this subscription now?', onConfirm: async () => { try { await cancelSubscription(row.id); await refresh(); } catch (error) { toast.error('Cancel failed', error.message); } } });
   };
   return (
     <div className="space-y-6 p-6">
@@ -96,6 +79,8 @@ export default function Subscriptions() {
           </button>
         </div>
       </div>
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <section className="rounded-xl border bg-white">
         <div className="border-b p-4">
           <h2 className="font-semibold">Plans</h2>
@@ -126,7 +111,7 @@ export default function Subscriptions() {
           <thead className="bg-gray-50">
             <tr>
               {['Worker', 'Plan', 'Start', 'Expiry', 'Status', 'Actions'].map((label) => (
-                <th key={label} className="px-4 py-3 text-left text-xs uppercase text-gray-500">
+                <th key={label} scope="col" className="px-4 py-3 text-left text-xs uppercase text-gray-500">
                   {label}
                 </th>
               ))}
@@ -144,7 +129,7 @@ export default function Subscriptions() {
                 <td className="px-4 py-3 capitalize">{row.status}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-3">
-                    <button onClick={() => void extend(row)} className="text-blue-600">
+                    <button onClick={() => { setExtendDays('30'); setExtendModal({ isOpen: true, row }); }} className="text-blue-600">
                       Extend
                     </button>
                     {row.status === 'active' && (
@@ -265,6 +250,17 @@ export default function Subscriptions() {
             </button>
           </div>
         )}
+      </Modal>
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Yes" variant="primary" />
+      <Modal isOpen={extendModal.isOpen} onClose={() => setExtendModal(s => ({ ...s, isOpen: false }))} title="Extend Subscription">
+        <div className="space-y-4">
+          <p className="text-gray-600">Number of days to extend:</p>
+          <input type="number" value={extendDays} onChange={e => setExtendDays(e.target.value)} min="1" className="w-full rounded-lg border p-2" />
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setExtendModal(s => ({ ...s, isOpen: false }))} className="rounded-lg border px-4 py-2 text-sm">Cancel</button>
+            <button type="button" onClick={() => void doExtend()} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">Extend</button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
