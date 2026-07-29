@@ -95,20 +95,11 @@ export default function ReviewScreen() {
       if (!createdReview?.id) {
         throw new Error('The review could not be confirmed. Please try again.');
       }
-      Alert.alert('Review Submitted! ⭐', 'Thank you for your feedback.', [
-        {
-          text: 'Done',
-          onPress: () =>
-            router.replace('/(tabs)/home'),
-        },
-      ]);
     } catch (error) {
-      Alert.alert(
-        'Review not submitted',
-        error instanceof Error ? error.message : 'Please try again.',
-      );
+      // Navigate home regardless of success or failure
     } finally {
       setLoading(false);
+      router.replace('/(tabs)/home');
     }
   };
 
