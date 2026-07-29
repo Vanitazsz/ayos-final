@@ -27,10 +27,12 @@ import {
   setAccountStatus,
   setWorkerAvailability,
   deleteAccount,
-  subscribe,
 } from '../../services/adminData';
+import { useRealtime } from '../../hooks/useRealtime';
+import { useToast } from '../../context/ToastContext';
 
 const Workers = () => {
+  const toast = useToast();
   const [workers, setWorkers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -58,20 +60,8 @@ const Workers = () => {
       setIsLoading(false);
     }
   };
-  useEffect(() => {
-    void refresh();
-    const stops = [
-      subscribe('worker_profiles', refresh),
-      subscribe('worker_verifications', refresh),
-      subscribe('worker_skills', refresh),
-      subscribe('accounts', refresh),
-    ];
-    const fallbackRefresh = window.setInterval(() => void refresh(), 30_000);
-    return () => {
-      window.clearInterval(fallbackRefresh);
-      stops.forEach((stop) => stop());
-    };
-  }, []);
+  useEffect(() => { void refresh(); }, []);
+  useRealtime(['worker_profiles', 'worker_verifications', 'worker_skills', 'accounts'], refresh);
 
   const needsReview = (worker) =>
     Boolean(worker.verificationId) && worker.verificationStatus !== 'APPROVED';
@@ -143,7 +133,7 @@ const Workers = () => {
       await refresh();
       setIsDeleteModalOpen(false);
     } catch (error) {
-      alert(error.message);
+      toast.error('Delete failed', error.message);
     }
   };
 
@@ -152,7 +142,7 @@ const Workers = () => {
       await setAccountStatus(worker.id, worker.status === 'Active' ? 'SUSPENDED' : 'ACTIVE');
       await refresh();
     } catch (error) {
-      alert(error.message);
+      toast.error('Status update failed', error.message);
     } finally {
       setActionMenuOpenId(null);
     }
@@ -164,7 +154,7 @@ const Workers = () => {
       await reviewWorker(worker.verificationId, 'APPROVED', null);
       await refresh();
     } catch (error) {
-      alert(error.message);
+      toast.error('Approval failed', error.message);
     } finally {
       setActionMenuOpenId(null);
     }
@@ -184,7 +174,7 @@ const Workers = () => {
       await refresh();
       setIsRemarksModalOpen(false);
     } catch (error) {
-      alert(error.message);
+      toast.error('Document request failed', error.message);
     }
   };
 
@@ -193,7 +183,7 @@ const Workers = () => {
       await setWorkerAvailability(worker.id, worker.availability !== 'Online');
       await refresh();
     } catch (error) {
-      alert(error.message);
+      toast.error('Availability update failed', error.message);
     } finally {
       setActionMenuOpenId(null);
     }
@@ -263,6 +253,7 @@ const Workers = () => {
           </div>
           <input
             type="text"
+            aria-label="Search workers by name, ID, or category..."
             placeholder="Search workers by name, ID, or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -298,25 +289,25 @@ const Workers = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Worker
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Rating
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Verification
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Matching
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -403,6 +394,9 @@ const Workers = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                     <button
                       onClick={() => toggleActionMenu(worker.id)}
+                      aria-haspopup="true"
+                      aria-expanded={actionMenuOpenId === worker.id}
+                      aria-label={`Open actions for ${worker.name}`}
                       className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                     >
                       <MoreVertical size={20} />
@@ -410,9 +404,10 @@ const Workers = () => {
 
                     {/* Action Dropdown */}
                     {actionMenuOpenId === worker.id && (
-                      <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
+                      <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1" role="menu">
                         <button
                           onClick={() => handleViewDetails(worker)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
                         >
                           <Eye size={16} className="mr-2 text-gray-400" /> View Details
@@ -422,6 +417,7 @@ const Workers = () => {
                           <>
                             <button
                               onClick={() => approveWorker(worker)}
+                              role="menuitem"
                               className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50 text-left"
                             >
                               <CheckCircle size={16} className="mr-2 text-green-500" /> Approve
@@ -429,6 +425,7 @@ const Workers = () => {
                             </button>
                             <button
                               onClick={() => openRemarksModal(worker)}
+                              role="menuitem"
                               className="flex items-center w-full px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 text-left"
                             >
                               <AlertCircle size={16} className="mr-2 text-yellow-500" /> Request
@@ -439,6 +436,7 @@ const Workers = () => {
 
                         <button
                           onClick={() => toggleAvailability(worker)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
                         >
                           <Clock size={16} className="mr-2 text-gray-400" />
@@ -452,6 +450,7 @@ const Workers = () => {
 
                         <button
                           onClick={() => toggleStatus(worker)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
                         >
                           {worker.status === 'Active' ? (
@@ -463,6 +462,7 @@ const Workers = () => {
                         </button>
                         <button
                           onClick={() => handleDeleteClick(worker)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
                         >
                           <Trash2 size={16} className="mr-2 text-red-500" /> Delete Worker
