@@ -96,7 +96,7 @@ export default function ReviewScreen() {
         {
           text: 'Done',
           onPress: () =>
-            router.replace('/(tabs)/bookings?filter=Completed' as any),
+            router.replace('/(tabs)/home'),
         },
       ]);
     } catch (error) {
