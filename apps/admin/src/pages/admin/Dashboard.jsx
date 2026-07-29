@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import Badge from '../../components/ui/Badge';
 import Skeleton from '../../components/ui/Skeleton';
 import { loadDashboard, loadNotifications, loadUsers, loadWorkers, reviewWorker, subscribe } from '../../services/adminData';
+import { useToast } from '../../context/ToastContext';
 
 const StatCard = ({ title, value, icon: Icon, trend, trendValue, subtitle, isLoading }) => (
   <Card className="animate-fade-in-up">
@@ -51,6 +52,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, subtitle, isLoa
 );
 
 const Dashboard = () => {
+  const toast = useToast();
   const [isLoading,setIsLoading]=useState(true);
   const [activities,setActivities]=useState([]);
   const [metrics,setMetrics]=useState({});
@@ -66,7 +68,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-navy tracking-tight">Dashboard Overview</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
           <p className="text-gray-500 mt-1">Here's what's happening in your ecosystem today.</p>
         </div>
         <div className="flex space-x-2">
@@ -210,7 +212,7 @@ const Dashboard = () => {
             <CardDescription>Latest actions across the platform.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
+    <div className="space-y-6 p-6">
               {activities.map((activity, index) => (
                 <div key={activity.id} className="flex items-start animate-fade-in-up transition-all duration-500">
                   <div className="relative">
@@ -244,10 +246,10 @@ const Dashboard = () => {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-gray-500 bg-gray-50/50 uppercase border-y border-border">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Worker</th>
-                    <th className="px-4 py-3 font-medium">Service</th>
-                    <th className="px-4 py-3 font-medium">Date Applied</th>
-                    <th className="px-4 py-3 font-medium text-right">Action</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Worker</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Service</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Date Applied</th>
+                    <th scope="col" className="px-4 py-3 font-medium text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -268,10 +270,10 @@ const Dashboard = () => {
                       <td className="px-4 py-3 text-gray-500">{worker.registeredDate}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end space-x-2">
-                          <button onClick={async()=>{try{await reviewWorker(worker.verificationId,'APPROVED',null);window.location.reload()}catch(error){alert(error.message)}}} className="text-success hover:bg-success/10 p-1.5 rounded-md transition-colors" title="Approve">
+                          <button onClick={async()=>{try{await reviewWorker(worker.verificationId,'APPROVED',null);window.location.reload()}catch(error){toast.error('Approval failed',error.message)}}} className="text-success hover:bg-success/10 p-1.5 rounded-md transition-colors" title="Approve">
                             <CheckCircle className="h-4 w-4" />
                           </button>
-                          <button onClick={async()=>{try{await reviewWorker(worker.verificationId,'REJECTED','Rejected by administrator');window.location.reload()}catch(error){alert(error.message)}}} className="text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors" title="Reject">
+                          <button onClick={async()=>{try{await reviewWorker(worker.verificationId,'REJECTED','Rejected by administrator');window.location.reload()}catch(error){toast.error('Rejection failed',error.message)}}} className="text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors" title="Reject">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
