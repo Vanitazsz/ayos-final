@@ -15,6 +15,7 @@ import {
 import Drawer from '../../components/ui/Drawer';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 import {
   cancelBookingAsAdmin,
@@ -22,8 +23,10 @@ import {
   reassignBookingAsAdmin,
   subscribe,
 } from '../../services/adminData';
+import { useToast } from '../../context/ToastContext';
 
 const Bookings = () => {
+  const toast = useToast();
   const [bookings, setBookings] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -35,6 +38,8 @@ const Bookings = () => {
   const [actionReason, setActionReason] = useState('');
   const [replacementWorker, setReplacementWorker] = useState('');
   const [savingAction, setSavingAction] = useState(false);
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
 
   const bookingsPerPage = 10;
   useEffect(() => {
@@ -124,11 +129,9 @@ const Bookings = () => {
     setActionMenuOpenId(null);
   };
 
-  const submitAction = async () => {
+  const executeAction = async () => {
     if (!action || actionReason.trim().length < 3) return;
     if (action.type === 'reassign' && !replacementWorker) return;
-    const label = action.type === 'cancel' ? 'cancel this booking' : 'reassign this booking';
-    if (!window.confirm(`Confirm that you want to ${label}?`)) return;
     setSavingAction(true);
     try {
       if (action.type === 'cancel')
@@ -138,10 +141,16 @@ const Bookings = () => {
       setBookings(await loadBookings());
       setIsDrawerOpen(false);
     } catch (error) {
-      alert(error.message);
+      toast.error('Action failed', error.message);
     } finally {
       setSavingAction(false);
     }
+  };
+  const submitAction = () => {
+    if (!action || actionReason.trim().length < 3) return;
+    if (action.type === 'reassign' && !replacementWorker) return;
+    const label = action.type === 'cancel' ? 'cancel this booking' : 'reassign this booking';
+    setConfirm({ isOpen: true, title: 'Confirm Action', message: `Confirm that you want to ${label}?`, onConfirm: executeAction });
   };
 
   return (
@@ -179,6 +188,7 @@ const Bookings = () => {
           </div>
           <input
             type="text"
+            aria-label="Search by ID, customer, or service..."
             placeholder="Search by ID, customer, or service..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -206,22 +216,22 @@ const Bookings = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Booking ID & Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Service Details
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Customer & Worker
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Amount
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -243,7 +253,7 @@ const Bookings = () => {
                     <div className="text-sm font-medium text-gray-900">{booking.service}</div>
                     <div className="text-xs text-gray-500">{booking.category}</div>
                     <div
-                      className="text-xs text-gray-500 mt-1 truncate max-w-[150px]"
+                      className="text-xs text-gray-500 mt-1 truncate"
                       title={booking.address}
                     >
                       <MapPin size={12} className="inline mr-1" /> {booking.address}
@@ -275,27 +285,33 @@ const Bookings = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                     <button
                       onClick={() => toggleActionMenu(booking.id)}
+                      aria-haspopup="true"
+                      aria-expanded={actionMenuOpenId === booking.id}
+                      aria-label={`Open actions for ${booking.id}`}
                       className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                     >
                       <MoreVertical size={20} />
                     </button>
 
                     {actionMenuOpenId === booking.id && (
-                      <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
+                      <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1" role="menu">
                         <button
                           onClick={() => handleViewDetails(booking)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
                         >
                           <Eye size={16} className="mr-2 text-gray-400" /> View Details
                         </button>
                         <button
                           onClick={() => openAction('reassign', booking)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
                         >
                           <User size={16} className="mr-2 text-gray-400" /> Reassign Worker
                         </button>
                         <button
                           onClick={() => openAction('cancel', booking)}
+                          role="menuitem"
                           className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
                         >
                           <XCircle size={16} className="mr-2 text-red-500" /> Cancel Booking
@@ -529,6 +545,7 @@ const Bookings = () => {
           </div>
         )}
       </Modal>
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Yes" variant="primary" />
     </div>
   );
 };
