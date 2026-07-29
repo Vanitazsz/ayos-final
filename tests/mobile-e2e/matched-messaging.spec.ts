@@ -46,13 +46,10 @@ test.beforeEach(async ({ page }, testInfo) => {
     },
   };
 
-  await page.addInitScript(
-    ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
-    {
-      key: 'sb-qsurouiyvisykjkgjqmz-auth-token',
-      value: session,
-    },
-  );
+  await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
+    key: 'sb-qsurouiyvisykjkgjqmz-auth-token',
+    value: session,
+  });
   await page.route('**/auth/v1/user', (route) =>
     route.fulfill({
       status: 200,
@@ -90,25 +87,21 @@ test.beforeEach(async ({ page }, testInfo) => {
       body: JSON.stringify(null),
     }),
   );
-  await page.route(
-    '**/rest/v1/rpc/get_my_worker_matching_readiness',
-    (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          matchable: false,
-          setupComplete: false,
-          online: false,
-        }),
+  await page.route('**/rest/v1/rpc/get_my_worker_matching_readiness', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        matchable: false,
+        setupComplete: false,
+        online: false,
       }),
+    }),
   );
   await page.route('**/rest/v1/conversations?*', (route) => {
     const url = new URL(route.request().url());
     const detail = url.searchParams.has('id');
-    expect(url.searchParams.get('select')).toContain(
-      'accounts:account_id(user_profiles',
-    );
+    expect(url.searchParams.get('select')).toContain('accounts:account_id(user_profiles');
     if (conversationFetchFails) {
       return route.fulfill({
         status: 400,
@@ -203,9 +196,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
 });
 
-test('only matched conversations are listed and closed chat is read-only', async ({
-  page,
-}) => {
+test('only matched conversations are listed and closed chat is read-only', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(page.getByText('Matched Conversations')).toBeVisible();
@@ -222,14 +213,10 @@ test('only matched conversations are listed and closed chat is read-only', async
   ).toBeVisible();
   await expect(page.getByText('Hire Again')).toBeVisible();
   await expect(page.getByText('Delete Conversation')).toBeVisible();
-  await expect(
-    page.getByPlaceholder('Conversation is read-only'),
-  ).toHaveAttribute('readonly', '');
+  await expect(page.getByPlaceholder('Conversation is read-only')).toHaveAttribute('readonly', '');
 });
 
-test('active matched conversation accepts and displays a sent message', async ({
-  page,
-}) => {
+test('active matched conversation accepts and displays a sent message', async ({ page }) => {
   bookingStatus = 'ACCEPTED';
   requestStatus = 'MATCHED';
 
@@ -244,9 +231,7 @@ test('active matched conversation accepts and displays a sent message', async ({
   await expect(page.getByText('Request failed')).toHaveCount(0);
 });
 
-test('active matched worker conversation loads the customer and sends', async ({
-  page,
-}) => {
+test('active matched worker conversation loads the customer and sends', async ({ page }) => {
   bookingStatus = 'ACCEPTED';
   requestStatus = 'MATCHED';
 
@@ -260,9 +245,7 @@ test('active matched worker conversation loads the customer and sends', async ({
   await expect(page.getByText('Hello customer')).toBeVisible();
 });
 
-test('fetch failure shows retry instead of read-only history', async ({
-  page,
-}) => {
+test('fetch failure shows retry instead of read-only history', async ({ page }) => {
   bookingStatus = 'ACCEPTED';
   requestStatus = 'MATCHED';
   conversationFetchFails = true;
@@ -272,9 +255,7 @@ test('fetch failure shows retry instead of read-only history', async ({
   await expect(page.getByText('Unable to load conversation')).toBeVisible();
   await expect(page.getByText('Conversation profile query failed')).toBeVisible();
   await expect(page.getByText('Read-only history')).toHaveCount(0);
-  await expect(
-    page.getByPlaceholder('Conversation unavailable'),
-  ).toHaveAttribute('readonly', '');
+  await expect(page.getByPlaceholder('Conversation unavailable')).toHaveAttribute('readonly', '');
 
   conversationFetchFails = false;
   await page.getByRole('button', { name: 'Retry' }).click();
