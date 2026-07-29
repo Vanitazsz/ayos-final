@@ -5,9 +5,11 @@ import {
   Wrench, Box, CheckCircle, XCircle, Grid, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import Pagination from '../../components/ui/Pagination';
 
-import { loadCatalog, saveCategory, saveService, subscribe } from '../../services/adminData';
+import { loadCatalog, loadMostBookedService, saveCategory, saveService, subscribe } from '../../services/adminData';
+import { useToast } from '../../context/ToastContext';
 
 const Services = () => {
   const [services, setServices] = useState([]);
@@ -19,11 +21,15 @@ const Services = () => {
   const [currentService, setCurrentService] = useState(null);
   const [activeTab, setActiveTab] = useState('services'); // 'services' or 'categories'
   const [categoriesData, setCategoriesData] = useState([]);
+  const toast = useToast();
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
+  const [mostBooked, setMostBooked] = useState(null);
 
   const servicesPerPage = 8;
-  const refresh=async()=>{const value=await loadCatalog();setServices(value.services);setCategoriesData(value.categories)};
+  const refresh=async()=>{const[value,booked]=await Promise.all([loadCatalog(),loadMostBookedService()]);setServices(value.services);setCategoriesData(value.categories);setMostBooked(booked)};
   useEffect(()=>{void refresh();const stopServices=subscribe('services',refresh);const stopCategories=subscribe('service_categories',refresh);return()=>{stopServices();stopCategories()}},[]);
 
   const categories = ['All', ...new Set(services.map(s => s.category))];
@@ -41,7 +47,7 @@ const Services = () => {
   const stats = [
     { label: 'Total Services', value: services.length, icon: <Layers className="text-blue-500" />, bg: 'bg-blue-50' },
     { label: 'Active Services', value: services.filter(s => s.status === 'Active').length, icon: <CheckCircle className="text-green-500" />, bg: 'bg-green-50' },
-    { label: 'Most Booked', value: 'Deep Cleaning', icon: <ArrowUpRight className="text-indigo-500" />, bg: 'bg-indigo-50' },
+    { label: 'Most Booked', value: mostBooked ?? '—', icon: <ArrowUpRight className="text-indigo-500" />, bg: 'bg-indigo-50' },
     { label: 'Hidden/Inactive', value: services.filter(s => s.status === 'Inactive').length, icon: <XCircle className="text-gray-500" />, bg: 'bg-gray-50' },
   ];
 
@@ -58,9 +64,7 @@ const Services = () => {
   };
 
   const handleDelete = async (id) => {
-    if(window.confirm('Are you sure you want to delete this service?')) {
-      const service=services.find(item=>item.id===id);try{await saveService({...service,status:'Inactive'},categoriesData);await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Delete Service', message: 'Are you sure you want to delete this service?', onConfirm: async () => { const service=services.find(item=>item.id===id);try{await saveService({...service,status:'Inactive'},categoriesData);await refresh()}catch(error){toast.error('Operation failed',error.message)} }});
   };
 
   const handleOpenAddCategoryModal = () => {
@@ -76,27 +80,25 @@ const Services = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    if(window.confirm('Are you sure you want to delete this category? Note: This action may affect services.')) {
-      const category=categoriesData.find(item=>item.id===id);try{await saveCategory({...category,status:'Disabled'});await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Delete Category', message: 'Are you sure you want to delete this category? Note: This action may affect services.', onConfirm: async () => { const category=categoriesData.find(item=>item.id===id);try{await saveCategory({...category,status:'Disabled'});await refresh()}catch(error){toast.error('Operation failed',error.message)} }});
   };
 
   const toggleCategoryStatus = async (id) => {
-    const category=categoriesData.find(item=>item.id===id);try{await saveCategory({...category,status:category.status==='Enabled'?'Disabled':'Enabled'});await refresh()}catch(error){alert(error.message)}
+    const category=categoriesData.find(item=>item.id===id);try{await saveCategory({...category,status:category.status==='Enabled'?'Disabled':'Enabled'});await refresh()}catch(error){toast.error('Operation failed',error.message)}
   };
 
   const handleDuplicate = async (service) => {
-    try{await saveService({...service,id:null,name:`${service.name} Copy`},categoriesData);await refresh()}catch(error){alert(error.message)}
+    try{await saveService({...service,id:null,name:`${service.name} Copy`},categoriesData);await refresh()}catch(error){toast.error('Operation failed',error.message)}
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    try{await saveService(currentService,categoriesData);await refresh();setIsModalOpen(false)}catch(error){alert(error.message)}
+    try{await saveService(currentService,categoriesData);await refresh();setIsModalOpen(false)}catch(error){toast.error('Operation failed',error.message)}
   };
 
   const handleSaveCategory = async (e) => {
     e.preventDefault();
-    try{await saveCategory(currentCategory);await refresh();setIsCategoryModalOpen(false)}catch(error){alert(error.message)}
+    try{await saveCategory(currentCategory);await refresh();setIsCategoryModalOpen(false)}catch(error){toast.error('Operation failed',error.message)}
   };
 
   return (
@@ -153,6 +155,7 @@ const Services = () => {
           </div>
           <input
             type="text"
+            aria-label="Search services by name or ID..."
             placeholder="Search services by name or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -181,12 +184,12 @@ const Services = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing & Time</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Popularity</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing & Time</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Popularity</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -277,10 +280,10 @@ const Services = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Services</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Services</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -484,7 +487,7 @@ const Services = () => {
           </div>
         </form>
       </Modal>
-
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Delete" variant="danger" />
     </div>
   );
 };
