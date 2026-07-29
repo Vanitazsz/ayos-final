@@ -8,33 +8,30 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
 import { ArrowLeft, Wallet } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRequestStore } from '@/store/useRequestStore';
 
 const BUDGET_PRESETS = [
-  { id: '1', label: '₱ 0 - 500', min: '0', max: '500' },
-  { id: '2', label: '₱ 500 - 1,500', min: '500', max: '1500' },
-  { id: '3', label: '₱ 1,500 - 3,000', min: '1500', max: '3000' },
-  { id: '4', label: '₱ 3,000+', min: '3000', max: '10000' },
+  { id: '1', label: 'Up to ₱500', max: '500' },
+  { id: '2', label: 'Up to ₱1,500', max: '1500' },
+  { id: '3', label: 'Up to ₱3,000', max: '3000' },
+  { id: '4', label: 'Up to ₱10,000', max: '10000' },
 ];
 
 export default function BudgetConfigScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { next } = useLocalSearchParams<{ next?: 'ai' | 'manual' }>();
   const setDraft = useRequestStore((state) => state.setDraft);
 
   const [activePreset, setActivePreset] = useState<string | null>('2');
-  const [minBudget, setMinBudget] = useState('500');
   const [maxBudget, setMaxBudget] = useState('1500');
 
   const handlePresetSelect = (preset: any) => {
     setActivePreset(preset.id);
-    setMinBudget(preset.min);
     setMaxBudget(preset.max);
   };
 
@@ -43,17 +40,12 @@ export default function BudgetConfigScreen() {
   };
 
   const handleSave = () => {
-    const minimum = Math.round(Number(minBudget) * 100);
     const maximum = Math.round(Number(maxBudget) * 100);
-    if (
-      !Number.isFinite(minimum) ||
-      !Number.isFinite(maximum) ||
-      minimum < 0 ||
-      maximum < minimum
-    )
-      return;
+    if (!Number.isFinite(maximum) || maximum < 100) return;
     setDraft({ budgetMinor: maximum });
-    router.back();
+    if (next === 'ai') router.replace('/new-request/issue-summary');
+    else if (next === 'manual') router.replace('/new-request/matching');
+    else router.back();
   };
 
   return (
@@ -153,45 +145,22 @@ export default function BudgetConfigScreen() {
               { marginTop: theme.spacing.xl, marginBottom: theme.spacing.md },
             ]}
           >
-            Custom Range (₱)
+            Custom Maximum (₱)
           </Text>
-          <View style={styles.customRow}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>₱</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={minBudget}
-                onChangeText={(val) => {
-                  setMinBudget(val);
-                  handleCustomInput();
-                }}
-                placeholder="Min"
-                placeholderTextColor={theme.colors.textTertiary}
-              />
-            </View>
-            <Text
-              style={{
-                marginHorizontal: theme.spacing.md,
-                color: theme.colors.textSecondary,
+          <View style={styles.inputContainer}>
+            <Text style={styles.currencySymbol}>₱</Text>
+            <TextInput
+              accessibilityLabel="Maximum budget in PHP"
+              style={styles.input}
+              keyboardType="numeric"
+              value={maxBudget}
+              onChangeText={(val) => {
+                setMaxBudget(val);
+                handleCustomInput();
               }}
-            >
-              to
-            </Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>₱</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={maxBudget}
-                onChangeText={(val) => {
-                  setMaxBudget(val);
-                  handleCustomInput();
-                }}
-                placeholder="Max"
-                placeholderTextColor={theme.colors.textTertiary}
-              />
-            </View>
+              placeholder="Maximum budget"
+              placeholderTextColor={theme.colors.textTertiary}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -200,7 +169,7 @@ export default function BudgetConfigScreen() {
         <Button
           title="Save Budget"
           onPress={handleSave}
-          disabled={!minBudget || !maxBudget}
+          disabled={!maxBudget || Number(maxBudget) < 1}
           fullWidth
         />
       </View>
@@ -269,13 +238,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
 
-  customRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   inputContainer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.background,

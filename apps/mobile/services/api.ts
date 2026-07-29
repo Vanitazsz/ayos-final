@@ -1628,6 +1628,43 @@ export async function processAiJob(jobId: string) {
   }
 }
 
+export type WorkerRateEstimate = {
+  minimumRateMinor: number | null;
+  maximumRateMinor: number | null;
+  workerCount: number;
+};
+
+export async function fetchWorkerRateEstimate(input: {
+  categoryId: string;
+  latitude: number;
+  longitude: number;
+  scheduledAt: string;
+  searchRadiusMeters: number;
+  maximumBudgetMinor: number;
+}): Promise<WorkerRateEstimate> {
+  const { data, error } = await supabase.rpc('get_worker_rate_estimate', {
+    p_category_id: input.categoryId,
+    p_latitude: input.latitude,
+    p_longitude: input.longitude,
+    p_scheduled_at: input.scheduledAt,
+    p_search_radius_meters: input.searchRadiusMeters,
+    p_max_budget_minor: input.maximumBudgetMinor,
+  });
+  if (error) throw error;
+  const result = (data ?? {}) as Record<string, unknown>;
+  return {
+    minimumRateMinor:
+      result.minimumRateMinor == null
+        ? null
+        : Number(result.minimumRateMinor),
+    maximumRateMinor:
+      result.maximumRateMinor == null
+        ? null
+        : Number(result.maximumRateMinor),
+    workerCount: Number(result.workerCount ?? 0),
+  };
+}
+
 export interface MediaAssistResult {
   analysisId: string;
   inputType: 'VOICE' | 'IMAGE';

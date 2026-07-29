@@ -29,6 +29,7 @@ import {
   Paintbrush,
   Navigation,
   Camera,
+  ImageUp,
   Mic,
   Info,
   ChevronDown,
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import type { CameraCapturedPicture } from 'expo-camera';
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -68,6 +70,7 @@ import {
 } from '@/services/addresses';
 import { randomUUID } from '@/lib/crypto';
 import type { MediaInput } from '@/types/ai';
+import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 
 type MediaKind = 'photo' | 'voice';
 type MediaStatus =
@@ -127,6 +130,7 @@ export default function CreateRequestScreen() {
   const [saving, setSaving] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
   const [cameraPhoto, setCameraPhoto] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [customerProfile, setCustomerProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
@@ -439,6 +443,27 @@ export default function CreateRequestScreen() {
     [runMediaAssist],
   );
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let active = true;
+    void ImagePicker.getPendingResultAsync().then((pending) => {
+      if (
+        !active ||
+        !pending ||
+        'code' in pending ||
+        pending.canceled ||
+        !pending.assets[0]
+      )
+        return;
+      const asset = pending.assets[0];
+      setCameraPhoto(asset.uri);
+      queueCapturedMedia('photo', asset.uri, asset.mimeType ?? 'image/jpeg');
+    });
+    return () => {
+      active = false;
+    };
+  }, [queueCapturedMedia]);
+
   const removeMedia = (kind: MediaKind) => {
     mediaGenerationRef.current[kind] += 1;
     mediaIdempotencyRef.current[kind] = '';
@@ -596,10 +621,10 @@ export default function CreateRequestScreen() {
         aiResult: null,
         budgetMinor: 0,
         requestId: null,
-        scheduledAt: null,
+        scheduledAt: new Date(Date.now() + 30 * 60_000).toISOString(),
       });
       router.push(
-        useAi ? '/new-request/issue-summary' : '/new-request/matching',
+        `/new-request/budget-config?next=${useAi ? 'ai' : 'manual'}` as never,
       );
     } catch (error) {
       setSubmissionError(
@@ -750,13 +775,14 @@ export default function CreateRequestScreen() {
       setLocationWarning('');
   };
 
-  const handleCameraClick = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Camera permission required');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
+  const useCapturedPhoto = (photo: CameraCapturedPicture) => {
+    setCameraOpen(false);
+    setCameraPhoto(photo.uri);
+    queueCapturedMedia('photo', photo.uri, 'image/jpeg');
+  };
+
+  const handleUploadPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
     });
@@ -867,6 +893,11 @@ export default function CreateRequestScreen() {
 
   return (
     <Screen safeArea scrollable scrollViewRef={scrollRef}>
+      <PhotoCaptureModal
+        visible={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onUsePhoto={useCapturedPhoto}
+      />
       <View
         style={[
           styles.header,
@@ -1095,20 +1126,40 @@ export default function CreateRequestScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity
-            style={styles.mediaUploadBtn}
-            onPress={handleCameraClick}
-          >
-            <Camera color={theme.colors.primary} size={32} />
-            <Text
-              style={[
-                theme.typography.caption,
-                { color: theme.colors.primary, marginTop: theme.spacing.xs },
-              ]}
+          <View style={styles.photoActionRow}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Take Photo"
+              style={[styles.mediaUploadBtn, styles.photoAction]}
+              onPress={() => setCameraOpen(true)}
             >
-              Take Photo
-            </Text>
-          </TouchableOpacity>
+              <Camera color={theme.colors.primary} size={32} />
+              <Text
+                style={[
+                  theme.typography.caption,
+                  { color: theme.colors.primary, marginTop: theme.spacing.xs },
+                ]}
+              >
+                Take Photo
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Upload Photo"
+              style={[styles.mediaUploadBtn, styles.photoAction]}
+              onPress={() => void handleUploadPhoto()}
+            >
+              <ImageUp color={theme.colors.primary} size={32} />
+              <Text
+                style={[
+                  theme.typography.caption,
+                  { color: theme.colors.primary, marginTop: theme.spacing.xs },
+                ]}
+              >
+                Upload Photo
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
         {cameraPhoto && photoStatus !== 'idle' ? (
           <View style={styles.mediaStatusRow}>
@@ -1729,6 +1780,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.infoBackground,
     marginBottom: theme.spacing.sm,
+  },
+  photoActionRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  photoAction: {
+    flex: 1,
+    width: undefined,
   },
   mediaPreview: {
     width: '100%',

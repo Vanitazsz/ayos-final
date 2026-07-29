@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(33);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -9,6 +9,12 @@ select has_table('public', 'booking_disputes', 'booking disputes are persisted')
 select has_table('public', 'booking_proof_media', 'proof-of-work metadata is persisted');
 select has_function('public', 'save_my_worker_skills', array['uuid', 'jsonb'], 'worker rate save RPC exists');
 select has_function('public', 'decline_assigned_booking', array['uuid', 'integer', 'text'], 'assigned booking decline RPC exists');
+select has_function(
+  'public',
+  'get_worker_rate_estimate',
+  array['uuid', 'numeric', 'numeric', 'timestamp with time zone', 'integer', 'bigint'],
+  'worker rate estimate RPC exists'
+);
 
 insert into auth.users(
   instance_id,
@@ -96,6 +102,48 @@ select set_config(
   true
 );
 set local role authenticated;
+select is(
+  (
+    public.get_worker_rate_estimate(
+      '94000000-0000-0000-0000-000000000001',
+      14,
+      121,
+      now() + interval '1 day',
+      10000,
+      100000
+    )->>'minimumRateMinor'
+  )::bigint,
+  50000::bigint,
+  'estimate uses the lowest eligible worker rate'
+);
+select is(
+  (
+    public.get_worker_rate_estimate(
+      '94000000-0000-0000-0000-000000000001',
+      14,
+      121,
+      now() + interval '1 day',
+      10000,
+      60000
+    )->>'workerCount'
+  )::integer,
+  1,
+  'estimate excludes rates above the customer budget'
+);
+select is(
+  (
+    public.get_worker_rate_estimate(
+      '94000000-0000-0000-0000-000000000001',
+      14,
+      121,
+      now() + interval '1 day',
+      10000,
+      40000
+    )->>'workerCount'
+  )::integer,
+  0,
+  'estimate returns no workers instead of inventing a fallback price'
+);
 select lives_ok(
   $$select public.save_my_worker_skills(
     '93000000-0000-0000-0000-000000000001',
@@ -274,17 +322,6 @@ select lives_ok(
 );
 
 reset role;
-update public.worker_skills
-set rate_minor = null
-where worker_id = (
-  select worker_id
-  from public.service_request_dispatches
-  where service_request_id = '96000000-0000-0000-0000-000000000001'
-    and status = 'ACCEPTED'
-  limit 1
-)
-and category_id = '94000000-0000-0000-0000-000000000001';
-
 select set_config(
   'request.jwt.claims',
   '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
@@ -310,8 +347,14 @@ select is(
     from public.bookings
     where service_request_id = '96000000-0000-0000-0000-000000000001'
   ),
-  2000::numeric,
-  'customer budget is used when the selected worker has no configured rate'
+  (
+    select skill.rate_minor::numeric / 100
+    from public.worker_skills skill
+    join public.bookings booking on booking.worker_account_id = skill.worker_id
+    where booking.service_request_id = '96000000-0000-0000-0000-000000000001'
+      and skill.category_id = '94000000-0000-0000-0000-000000000001'
+  ),
+  'selected worker saved rate is the booking amount'
 );
 select is(
   (

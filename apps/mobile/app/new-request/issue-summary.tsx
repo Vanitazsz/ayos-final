@@ -9,6 +9,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
+import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
 import {
   ArrowLeft,
@@ -16,7 +17,12 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react-native';
-import { processAiJob, queueAiAnalysis } from '@/services/api';
+import {
+  fetchWorkerRateEstimate,
+  processAiJob,
+  queueAiAnalysis,
+  type WorkerRateEstimate,
+} from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import { useRequestStore } from '@/store/useRequestStore';
 import { randomUUID } from '@/lib/crypto';
@@ -28,6 +34,12 @@ export default function IssueSummaryScreen() {
     'loading',
   );
   const [error, setError] = useState('');
+  const [editableDraft, setEditableDraft] = useState('');
+  const [rateEstimate, setRateEstimate] = useState<WorkerRateEstimate | null>(
+    null,
+  );
+  const [rateLoading, setRateLoading] = useState(true);
+  const [rateError, setRateError] = useState('');
 
   const start = useCallback(async () => {
     setStatus('loading');
@@ -98,6 +110,89 @@ export default function IssueSummaryScreen() {
   }, []);
 
   const result = draft.aiResult;
+
+  useEffect(() => {
+    if (typeof result?.requestDraft === 'string')
+      setEditableDraft(result.requestDraft);
+  }, [result?.requestDraft]);
+
+  useEffect(() => {
+    if (
+      !draft.categoryId ||
+      !draft.coords ||
+      !draft.scheduledAt ||
+      draft.budgetMinor < 100
+    ) {
+      setRateLoading(false);
+      setRateError('Complete the service budget and location to see rates.');
+      return;
+    }
+    let active = true;
+    setRateLoading(true);
+    setRateError('');
+    void fetchWorkerRateEstimate({
+      categoryId: draft.categoryId,
+      latitude: draft.coords.latitude,
+      longitude: draft.coords.longitude,
+      scheduledAt: draft.scheduledAt,
+      searchRadiusMeters: draft.searchRadiusKm * 1000,
+      maximumBudgetMinor: draft.budgetMinor,
+    })
+      .then((estimate) => {
+        if (active) setRateEstimate(estimate);
+      })
+      .catch(() => {
+        if (active) {
+          setRateEstimate(null);
+          setRateError(
+            'No live worker-rate estimate is currently available.',
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setRateLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [
+    draft.budgetMinor,
+    draft.categoryId,
+    draft.coords,
+    draft.scheduledAt,
+    draft.searchRadiusKm,
+  ]);
+
+  const rateLabel = (() => {
+    if (rateLoading) return 'Checking eligible worker rates…';
+    const minimum = rateEstimate?.minimumRateMinor;
+    const maximum = rateEstimate?.maximumRateMinor;
+    if (
+      rateError ||
+      minimum == null ||
+      maximum == null ||
+      !rateEstimate?.workerCount
+    )
+      return 'No live worker-rate estimate is currently available.';
+    const format = (minor: number) =>
+      `₱${(minor / 100).toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+    return minimum === maximum
+      ? `${format(minimum)} worker rate`
+      : `${format(minimum)} – ${format(maximum)} worker-rate range`;
+  })();
+
+  const continueToMatching = () => {
+    const nextDescription = editableDraft.trim();
+    if (nextDescription.length < 10) return;
+    draft.setDraft({
+      description: nextDescription,
+      aiResult: { ...(draft.aiResult ?? {}), requestDraft: nextDescription },
+    });
+    router.push('/new-request/matching');
+  };
 
   return (
     <Screen safeArea scrollable>
@@ -235,11 +330,34 @@ export default function IssueSummaryScreen() {
                   { marginBottom: theme.spacing.md },
                 ]}
               >
-                Price is confirmed when a matched worker accepts the request.
+                {rateLabel}
               </Text>
+              {!rateLoading && rateEstimate?.workerCount ? (
+                <Text style={styles.rateNote}>
+                  Based on {rateEstimate.workerCount} currently eligible{' '}
+                  {rateEstimate.workerCount === 1 ? 'worker' : 'workers'} within
+                  your ₱
+                  {(draft.budgetMinor / 100).toLocaleString('en-PH')} maximum.
+                  The selected worker&apos;s saved rate is the booking price.
+                </Text>
+              ) : null}
 
               <Text style={styles.label}>Editable Request Draft</Text>
-              <Text style={theme.typography.body1}>{result?.requestDraft}</Text>
+              <TextInput
+                accessibilityLabel="Editable request draft"
+                multiline
+                numberOfLines={5}
+                value={editableDraft}
+                onChangeText={setEditableDraft}
+                error={
+                  editableDraft.trim().length > 0 &&
+                  editableDraft.trim().length < 10
+                    ? 'Enter at least 10 characters.'
+                    : undefined
+                }
+                style={styles.requestDraftInput}
+                textAlignVertical="top"
+              />
             </View>
           </View>
         )}
@@ -252,8 +370,8 @@ export default function IssueSummaryScreen() {
               ? 'Continue to manual request'
               : 'Continue to AI Matching'
           }
-          onPress={() => router.push('/new-request/matching')}
-          disabled={status !== 'success'}
+          onPress={continueToMatching}
+          disabled={status !== 'success' || editableDraft.trim().length < 10}
           fullWidth
         />
       </View>
@@ -297,6 +415,15 @@ const styles = StyleSheet.create({
     ...theme.typography.label,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
+  },
+  rateNote: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginTop: -theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  requestDraftInput: {
+    minHeight: 120,
   },
   footer: { paddingVertical: theme.spacing.md },
 });
