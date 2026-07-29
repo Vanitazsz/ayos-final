@@ -1,197 +1,101 @@
-# A-yos Production Supabase Platform
+# A-YOS
 
-A-yos is a multi-role Philippine services marketplace with a standalone administrator web application and a unified Expo customer/worker application. Supabase project `qsurouiyvisykjkgjqmz` is the production backend and provides Postgres/PostGIS, Auth, Storage, Realtime, RPCs, and TypeScript Edge Functions.
+A-YOS is a local service-matching and booking platform with the approved Expo application for customer and worker accounts and the approved Vite/React administrator dashboard. Supabase provides PostgreSQL/PostGIS, Auth, Data APIs, Storage, Realtime, Queues, Cron, Vault, and Edge Functions. This working tree merges those frontends with backend commit `1c7f0e147a1b419d76091f32f72a0fc08632a3ab` from `Vanitazsz/ayos-try`.
 
-The approved layouts, routes, component names, styling, and field vocabulary are preserved. Business data now comes from Supabase rather than mock arrays, fixed identities, random events, fixed OTPs, temporary IDs, placeholder maps, or simulated success handlers.
+## Main features
 
-## Implemented features
+- Supabase email/password authentication, email OTP verification and recovery, persistent mobile sessions, and administrator TOTP MFA.
+- Permanently separated User/Worker accounts, structured worker verification, categories, availability, matching, booking lifecycle, Cash settlement, receipts, reviews, support, reports, audit, Trash, and Restore.
+- Cash-only customer settlement plus administrator-verified manual GCash/bank Worker top-ups and transactional payout holds, completion, and reversal.
+- Direct RLS-protected reads and low-risk updates; sensitive workflow changes use transactional security-definer RPC functions.
+- Private media buckets, signed access, private Realtime channels, PGMQ jobs, and scheduled queue consumption.
+- Authenticated queued AI processing with per-request consent, Gemini primary analysis, retryable OpenAI fallback, and persisted provider-attempt audit data.
+- OpenRouteService forward/reverse geocoding and routes behind Edge Functions, with PostGIS coordinates and MapLibre rendering.
+- Supabase-backed industry and service discovery with a scrollable 10-industry worker catalog, live service search, incremental customer service grids, and confirmed Philippine address/GPS selection.
+- Customer-only Help Center and Privacy Policy pages backed by administrator-manageable published Supabase content.
 
-- Email/password Auth, verification, recovery, persistent refreshable sessions, logout, account status enforcement, roles, memberships, permissions, and AAL2 administrator writes.
-- Google OAuth client flow for Expo/web using PKCE and `ayos://auth/callback`; provider activation still requires Google credentials in Supabase.
-- Customer request capture with real camera, audio, Storage upload, consent, manual non-AI path, geocoded address, PostGIS point, scheduling, budget, bids, and deterministic matching.
-- Worker registration, verification documents, skills, availability, jobs, bids, bookings, lifecycle transitions, wallet ledger, payout requests, reviews, and messaging.
-- Cash confirmation, receipts, notifications, support tickets/messages, audit history, report exports, and administrator management screens.
-- Gemini-primary AI jobs with Realtime status, strict structured output, retry rules, OpenAI fallback contract, catalog/cost validation, translation cache, review insights, provider attempts, quotas, and feature flags.
-- Authenticated OpenRouteService search, reverse geocoding, routing, caching, Philippine bounds, distance, and ETA.
-- MapLibre native/web maps with PostGIS coordinates, markers, service radius, and route GeoJSON.
-- CSV, XLSX, and PDF report generation into the private `report-exports` bucket.
+## Technology used
 
-## Technology stack
-
-| Layer | Technology |
-| --- | --- |
-| Languages | TypeScript, JavaScript, Shell, PL/pgSQL |
-| Mobile/web client | Expo, React Native, Expo Router, React 19, Zustand, React Query |
-| Administrator | React 19, Vite, Supabase JS |
-| Maps | MapLibre GL, `@maplibre/maplibre-react-native`, GeoJSON |
-| Geospatial | PostgreSQL/PostGIS, OpenRouteService |
-| Backend | Supabase Auth, PostgREST, RPC, Realtime, Storage, Edge Functions |
-| Tooling | Supabase CLI, Docker, Deno, TypeScript, ESLint/Oxlint, Prettier |
-
-## Source locations
-
-| Area | Path |
-| --- | --- |
-| Backend, migrations, functions, docs | `/Users/jhonfiel/Documents/A-YOS` |
-| Administrator app | `/Users/jhonfiel/Downloads/A-yos-Project-main/admin-webapp` |
-| Unified Expo app | `/Users/jhonfiel/Downloads/A-yos-Project-workerfrontend-refactor` |
-| Archived incompatible drafts | `supabase/migrations_archive/incompatible-local-draft-2026-07-21` |
-| Pre-deployment snapshot | `backups/2026-07-21-production-baseline` (git-ignored, sensitive) |
+| Layer                  | Technology and current version                                                                       | Use in A-YOS                                                                                                                                                                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Languages              | TypeScript 5.9.3, JavaScript, Shell, PL/pgSQL                                                        | TypeScript is the application language; JavaScript is limited to ecosystem configuration; guarded Shell scripts orchestrate local/CI work; PL/pgSQL implements RLS helpers, triggers, queues, geospatial queries, and transactional RPCs. |
+| User/Worker frontend   | Expo 54, Expo Router 6, React 19.1, React Native 0.81, React Native Web 0.21                         | Android, iOS, and web route groups with Supabase sessions and separate customer/worker workspaces.                                                                                                                                        |
+| Administrator frontend | Vite 8, React 19.2, React Router 7, `@supabase/supabase-js` 2.110                                    | Client-rendered administrator dashboard with Supabase session, role, profile, and MFA checks.                                                                                                                                             |
+| Maps                   | MapLibre GL JS 5.24, MapLibre React Native 11.3, PostGIS                                             | Platform-specific map rendering, GeoJSON contracts, nearby-worker filtering, distance ordering, private live tracking, and provider-backed route/ETA requests.                                                                            |
+| Backend                | Supabase PostgreSQL 17/PostGIS, Auth, Data API, Storage, Realtime, Edge Functions, PGMQ, Cron, Vault | The sole backend and schema authority; no NestJS, Prisma, Redis, Socket.IO, MinIO, or custom token runtime is required.                                                                                                                   |
+| Client API             | `@supabase/supabase-js` 2.110, `@supabase/ssr` 0.8                                                   | Direct RLS-protected access, Auth, RPC, Storage, Realtime, and Edge Functions.                                                                                                                                                            |
+| AI                     | Gemini structured output; OpenAI Responses and Transcriptions                                        | The approved frontend flow queues Gemini as primary and invokes OpenAI only after eligible retryable failures. Results are schema-validated and persisted.                                                                                |
+| Tooling                | pnpm 11.9, Turborepo 2.5, ESLint 9.38, Prettier 3.6, Supabase CLI 2.109, Docker                      | Workspace builds, static checks, local Supabase, deterministic migrations, generated database types, and CI.                                                                                                                              |
 
 ## Prerequisites
 
-- Node.js 22+
-- npm
-- Docker Desktop
-- Supabase CLI 2.109+
-- Deno 2+
-- Access to Supabase project `qsurouiyvisykjkgjqmz`
+- Node.js 22.23 or newer and pnpm 11.9
+- Docker Desktop or a running Docker-compatible daemon
+- Supabase CLI dependencies installed by `pnpm install`
+- Android Studio or Xcode only for native simulator builds
 
-## Install and run locally
+## Local setup
 
-Backend:
-
-```sh
-cd /Users/jhonfiel/Documents/A-YOS
-npm install
-npm run supabase:start
-npm run db:reset
-npm run db:types
-npm run functions:check
-npm run typecheck
-npm run test:integration
+```bash
+cp .env.example .env
+pnpm install
+pnpm supabase:start
+pnpm db:reset
+pnpm db:types
+pnpm admin:bootstrap
+pnpm dev
 ```
 
-Administrator:
+Copy the local URL, publishable key, and secret key printed by `supabase start` into `.env`. Never place `SUPABASE_SECRET_KEY` in a `NEXT_PUBLIC_*`, `VITE_*`, or `EXPO_PUBLIC_*` variable.
 
-```sh
-cd /Users/jhonfiel/Downloads/A-yos-Project-main/admin-webapp
-npm install
-npm run dev
+`pnpm admin:bootstrap` loads `.env.local` when present. It prepares a hashed, ten-minute, single-use database ticket, creates the Auth identity, provisions the protected Administrator account, removes the raw ticket from Auth metadata, and verifies the final records. Creating an Administrator directly in the Supabase Dashboard is intentionally rejected.
+
+Local endpoints use Supabase API `http://127.0.0.1:54321`, database port `54332`, Studio `http://127.0.0.1:54323`, Mailpit `http://127.0.0.1:54324`, admin `http://localhost:5173`, and the Expo URL printed by its development server. Optional local Supabase analytics is disabled because it is not required by the application and its Docker-socket collector is incompatible with the configured Colima mount.
+
+The seed contains development-only legal content. Migrations `20260722000500` and `20260722000600` install and reconcile the production reference taxonomy of 10 industries and 50 skills idempotently across clean and hosted schemas; they do not create sample workers or business records. Replace all legal content before production.
+
+## Validation
+
+```bash
+pnpm db:reset
+pnpm db:lint
+pnpm test:db
+pnpm db:types
+pnpm traceability:check
+pnpm contracts:check
+pnpm functions:check
+pnpm functions:test
+pnpm verify:stack
+pnpm verify
+pnpm test:e2e
 ```
 
-Expo:
+`db:reset`, database tests, type generation, and local Edge Function execution require the Supabase Docker stack.
+The imported Playwright suites describe the previous repository frontends and are not an acceptance gate for the approved layouts. Admin and Expo production builds, database tests, Edge Function checks, and package tests are the current merge gates. Authenticated lifecycle acceptance still requires dedicated User, Worker, and AAL2 Admin fixtures.
 
-```sh
-cd /Users/jhonfiel/Downloads/A-yos-Project-workerfrontend-refactor
-npm install
-npx expo start
-```
+See [MERGE_REPORT.md](./MERGE_REPORT.md) for source provenance, conflict decisions, compatibility migrations, and verification evidence.
 
-Use an Expo development/production build for native OAuth acceptance. Expo Go is not an OAuth acceptance environment.
+## Staging and production
 
-## Environment variables
+The Admin and Expo clients target hosted project `qsurouiyvisykjkgjqmz`. User credentials, account roles, profiles, and business records are stored in hosted Supabase rather than on a device. A user changing devices signs in again with the same verified identity; the account remains available even though the previous device's local session is not copied.
 
-Client-safe variables:
+A restricted hosted schema/data/roles backup was captured on 2026-07-22. A linked comparison of the full canonical migration result against hosted `public` and Storage schemas returned an empty diff, so no duplicate migration replay or history repair was performed. Hosted/local migration version histories remain different but resolve to the same schema. Do not delete accounts or force the clean-cutover history into this project.
 
-| Variable | Purpose |
-| --- | --- |
-| `EXPO_PUBLIC_SUPABASE_URL` / `VITE_SUPABASE_URL` | Project URL |
-| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PUBLISHABLE_KEY` | Publishable key; RLS remains authoritative |
-| `EXPO_PUBLIC_MAP_STYLE_URL` | MapLibre style URL; OpenFreeMap Liberty is the default |
-| `EXPO_PUBLIC_AI_CONSENT_VERSION` | Must match `system_settings.ai.consent_version` |
+Configure `GEMINI_API_KEY`, `OPENAI_API_KEY`, `OPENROUTESERVICE_API_KEY`, `EXPO_ACCESS_TOKEN`, and `EDGE_FUNCTION_SHARED_SECRET` only as server/Edge Function secrets. Set `GOOGLE_OAUTH_ENABLED` after configuring Supabase Auth Google credentials. `EXPO_PUBLIC_MAP_STYLE_URL`, `EXPO_PUBLIC_EAS_PROJECT_ID`, and the Supabase publishable client settings are public client configuration. Missing bindings return stable fail-closed errors.
 
-Edge-only secrets:
+## Troubleshooting and limitations
 
-| Secret | Status/purpose |
-| --- | --- |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | Present in hosted secret inventory; live output accuracy not yet accepted |
-| `OPENAI_API_KEY` | Required and not supplied |
-| `OPENAI_MODEL` | Configured as `gpt-5.6-terra` |
-| `OPENAI_TRANSCRIPTION_MODEL` | Configured as `gpt-4o-mini-transcribe-2025-12-15` |
-| `OPENROUTESERVICE_API_KEY` | Present in hosted secret inventory |
-| `AI_TIMEOUT_MS` | Provider timeout, currently 45000 |
-| `ALLOWED_ORIGINS` | Browser CORS allowlist; add the production admin/web domains before web release |
+- **Supabase will not start:** start Docker Desktop/Colima and rerun `pnpm supabase:start`.
+- **Registration unavailable:** publish Terms; the account-provisioning trigger fails closed without them.
+- **OTP not received:** inspect local Mailpit or configure hosted Supabase SMTP and email templates.
+- **Administrator rejected:** apply the secure bootstrap migration and run `pnpm admin:bootstrap`; Dashboard creation and self-registration as Administrator are prohibited.
+- **Administrator command requires MFA:** complete authenticator-app enrollment and use an AAL2 session.
+- **Account deletion blocked:** Administrator and protected accounts cannot be deleted. Remove private Storage objects first; accounts referenced by retained bookings, payments, messages, support, or other business records must be suspended instead.
+- **Provider unavailable:** configure the corresponding Edge Function provider and secret.
+- **Manual top-up remains pending:** verify the private proof and settlement reference in Admin Finance. Only an AAL2 administrator approval credits the immutable ledger.
+- **Map not rendered:** configure `EXPO_PUBLIC_MAP_STYLE_URL`; this value must be safe for a public client bundle.
+- **Database tests unavailable:** start Docker Desktop or Colima before running the local Supabase reset and pgTAP suite.
+- **Worker industries unavailable:** apply migrations through `20260722000600_reconcile_hosted_industry_taxonomy.sql`; registration reads active `industries` and their active `service_categories` directly from Supabase.
+- Provider sandbox credentials, new Supabase project identifiers, OAuth callback domains, final legal content, native signing identifiers, retention rules, performance thresholds, RPO, and RTO remain unspecified. **Insufficient data to verify.**
 
-Never put service-role, secret, Gemini, OpenAI, Google client-secret, or OpenRouteService keys in frontend bundles.
-
-## Database and migrations
-
-The first seven local migration versions reproduce the hosted baseline. Production additions are:
-
-- `20260721010000_production_domains.sql`
-- `20260721011000_admin_operations.sql`
-- `20260721012000_client_operations.sql`
-
-All three were applied to the linked project on 2026-07-21. A post-deployment `public,private` migration-to-linked diff was empty. Only stable taxonomy and cancellation-reason data is seeded. Do not run files in `migrations_archive`.
-
-## Edge API overview
-
-Every active function requires a valid Supabase JWT:
-
-- `api`
-- `ai-analyze-request`, `ai-process-job`, `ai-translate-message`, `ai-review-insights`, `ai-provider-health`
-- `geocode-search`, `geocode-reverse`, `route`
-- `report-generate`
-
-`ai-recommendation` is retained only as an authenticated `410 endpoint_replaced` response and never fabricates results.
-
-Responses follow:
-
-```json
-{ "success": true, "message": "Request completed", "data": {} }
-```
-
-or:
-
-```json
-{ "success": false, "code": "machine_code", "message": "Human-readable message", "errors": {} }
-```
-
-## Common commands
-
-```sh
-npm run db:reset
-npm run db:lint
-npm run db:types
-npm run functions:check
-npm run typecheck
-npm run test:integration
-supabase migration list --linked
-supabase db push --linked --dry-run
-supabase functions deploy --project-ref qsurouiyvisykjkgjqmz --use-api
-```
-
-`--use-api` is required in this environment because local Docker bundling returned an opaque bundler error; server-side bundling deployed successfully.
-
-## Production deployment
-
-1. Create a fresh schema/data/Auth/Storage snapshot.
-2. Reset and test the local database.
-3. Confirm the linked dry run contains only reviewed additive migrations.
-4. Apply migrations and confirm a zero post-deployment diff.
-5. Configure Edge secrets and deploy authenticated functions.
-6. Configure Google OAuth consent/client credentials and Supabase Google provider.
-7. Add production redirect URLs and browser origins.
-8. Build native development clients and test iOS, Android, and web callbacks.
-9. Run disposable customer, worker, and AAL2 administrator workflows.
-10. Enable `ai.enabled` only after provider credentials and acceptance thresholds pass.
-
-## Current activation blockers
-
-- `OPENAI_API_KEY` has not been supplied.
-- Google OAuth client ID/secret and production web domain have not been supplied/configured.
-- AI is intentionally disabled in `system_settings`; the required curated evaluation has not been executed. Insufficient data to verify the 90% category-accuracy acceptance target.
-- Native iOS/Android development builds and Google callback tests have not been executed. Insufficient data to verify native OAuth acceptance.
-- GCash/card, SMS, Apple/X login, and push delivery remain unavailable and return no fake success.
-
-## Troubleshooting
-
-- `CONTENT_NOT_CONFIGURED`: publish the Terms page before registration/request creation.
-- `AAL2 administrator required`: complete MFA/AAL2 before an administrator mutation.
-- `AI analysis is currently disabled`: continue manually or enable only after the documented gate.
-- OAuth returns to the browser: verify `ayos`, `com.ayos.app`, callback URLs, and use a development build.
-- No matches: confirm worker approval, category skill, availability window, service origin/radius, and request coordinates.
-- Address save fails: confirm a Philippine point; missing provider subdivisions are stored as `Not provided` without changing the confirmed point.
-## Real profile data and Storage
-
-Profiles are persisted in `user_profiles`, `worker_profiles`, and `admin_profiles`; clients must not substitute Auth metadata, email addresses, or role labels for missing profile rows. Migration `20260721233000_real_profiles_zero_mock_records.sql` adds profile completion, administrator personal fields, password-change timestamps, authentication events, conversation reads, worker portfolio media, and owned private Storage buckets.
-
-Profile avatars use `profile-avatars/<account-uuid>/<file>` and worker portfolio images use `worker-portfolio/<account-uuid>/<file>`. Both buckets are private. Clients resolve signed URLs after authentication. Run `npm run check:no-mocks` in each frontend before release.
-
-Deploy profile infrastructure with:
-
-```sh
-supabase db push --linked
-supabase functions deploy record-auth-session --use-api
-```
+See [REQUIREMENTS.md](./REQUIREMENTS.md) and [PROJECT_INSPECTION.md](./PROJECT_INSPECTION.md) for requirement-level evidence.

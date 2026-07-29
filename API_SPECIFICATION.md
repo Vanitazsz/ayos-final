@@ -1,317 +1,90 @@
 # API Specification
 
-## Conventions
+## Contract conventions
 
-Base URL: `https://qsurouiyvisykjkgjqmz.supabase.co/functions/v1`
+The clients use Supabase Auth, PostgREST, PostgreSQL RPC, Storage, Realtime, and Edge Functions. RLS applies to all direct reads. Sensitive mutations use authenticated RPCs or Edge Functions. Database errors use stable domain codes; Edge Functions return JSON with an error code/message and an appropriate HTTP status. No endpoint returns a fictional identity or simulated success.
 
-All deployed Edge Functions require:
+All Edge Function requests use `Authorization: Bearer <access-token>` unless explicitly documented by the function as a protected service/queue invocation. JSON requests use `Content-Type: application/json`. IDs are UUIDs and money is represented in PHP minor units.
 
-```http
-Authorization: Bearer <supabase-access-token>
-apikey: <publishable-key>
-Content-Type: application/json
-```
+## Edge Functions
 
-Success:
+| Function               | Method/body                                                            | Purpose and response                                                                                       | Authorization and validation                                                     |
+| ---------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `record-auth-session`  | `POST {}`                                                              | Records the current application login event using server-derived request metadata                          | Authenticated account only                                                       |
+| `ai-analyze-request`   | `POST` request text/media references, consent version, idempotency key | Creates or returns an `ai_analysis_jobs` row; `202` while queued                                           | Active owner, explicit consent, media ownership/type/size, quota and idempotency |
+| `ai-process-job`       | `POST` queued job reference                                            | Runs Gemini and eligible OpenAI fallback, validates structured output, persists analysis and attempt audit | Protected worker invocation; job ownership/state enforced                        |
+| `geocode-search`       | `GET ?q=<query>&lat=<latitude>&lon=<longitude>`                        | Returns up to 5 normalized Philippine address candidates by default                                        | Authenticated; 3–200 character query, result cap, rate limit, cache              |
+| `geocode-reverse`      | `GET ?lat=<latitude>&lon=<longitude>`                                  | Returns a normalized address for a Philippine coordinate                                                   | Authenticated; coordinate bounds and cache                                       |
+| `route`                | `POST` origin/destination coordinates                                  | Returns GeoJSON, meters, seconds, and persisted route metadata                                             | Authenticated booking/request participant; `[longitude, latitude]` ordering      |
+| `report-export`        | `POST` report type/filter/format                                       | Generates CSV/XLSX/PDF, stores it privately, and returns export metadata                                   | Administrator/AAL2 where required; bounded filters                               |
+| `admin-invite-account` | `POST` email/name/role                                                 | Sends a real Supabase invitation                                                                           | AAL2 Administrator; role allowlist and duplicate checks                          |
+| `queue-consumer`       | `POST` queue invocation                                                | Claims, executes, retries, and archives background work                                                    | Shared-secret/service invocation only                                            |
 
-```json
-{ "success": true, "message": "Request completed", "data": {} }
-```
-
-Application failure:
-
-```json
-{ "success": false, "code": "machine_code", "message": "Human-readable message", "errors": {} }
-```
-
-Common status codes: `200` success, `201` created, `202` queued, `400` malformed, `401` missing/invalid JWT, `403` role/owner denial, `404` unavailable entity, `409` state/idempotency conflict, `415` non-JSON, `422` validation, `429` quota/rate limit, `500` sanitized internal error, `503` disabled/provider unavailable.
-
-## AI endpoints
-
-### POST `/ai-analyze-request`
-
-Queues an owned analysis job. It does not call a provider synchronously.
-
-Headers: `idempotency-key` (16–128 characters). Authentication required.
+Example queued AI request:
 
 ```json
 {
-  "description": "The kitchen sink leaks below the cabinet when the tap runs.",
-  "locale": "en-PH",
-  "media": [
-    {
-      "bucket": "service-request-media",
-      "path": "<auth-uuid>/request/photo.jpg",
-      "contentType": "image/jpeg"
-    }
-  ],
-  "consent": { "accepted": true, "version": "2026-07-21" }
+  "description": "The kitchen sink leaks below the trap.",
+  "mediaPaths": [],
+  "consentVersion": "2026-07-22",
+  "idempotencyKey": "9e8cdd18-2639-4f12-b5c5-a2143bd1af25"
 }
 ```
 
-Validation: active account, `ai.enabled`, current consent version, 10–4000 description characters, daily quota, idempotency, at most three images/one audio, and owner-prefixed paths. Returns `202` with an `ai_analysis_jobs` row. Duplicate owner/key returns the existing row with `200`.
-
-Errors include `consent_required`, `consent_version_invalid`, `ai_disabled`, `ai_quota_exceeded`, and `invalid_idempotency_key`.
-
-### POST `/ai-process-job`
-
-Processes a queued/failed job owned by the caller.
-
-```json
-{ "jobId": "uuid" }
-```
-
-Returns the completed job row. The `result` contains:
-
-```json
-{
-  "detectedIssue": "string",
-  "possibleCauses": ["string"],
-  "suggestedCategoryIds": ["uuid"],
-  "suggestedServiceIds": ["uuid"],
-  "severity": "LOW|MEDIUM|HIGH|CRITICAL",
-  "urgency": "ROUTINE|SOON|URGENT|EMERGENCY",
-  "estimatedDurationMinutes": 60,
-  "estimatedCostMinimumMinor": 50000,
-  "estimatedCostMaximumMinor": 150000,
-  "safetyAdvice": ["string"],
-  "followUpQuestions": ["string"],
-  "confidence": 0.8,
-  "requestDraft": "string",
-  "transcript": "string",
-  "safetyCritical": false,
-  "costOutlier": false,
-  "provider": "GEMINI|OPENAI",
-  "model": "string",
-  "providerReference": "string|null",
-  "analysisId": "uuid"
-}
-```
-
-Gemini receives two attempts only for retryable timeout/429/5xx/schema failure. OpenAI is called only after both retryable failures. Missing consent/auth, invalid media/input, and safety rejection do not trigger fallback. Failure persists a retryable/non-retryable job state and never returns fabricated analysis.
-
-### POST `/ai-translate-message`
-
-```json
-{ "messageId": "uuid", "targetLocale": "tl-PH" }
-```
-
-Caller must be a conversation participant. If original locale already matches, the original is returned. Otherwise an existing `(message,target_locale)` cache row is returned or a new translation is stored. The original message is unchanged.
-
-### POST `/ai-review-insights`
-
-Administrator-only advisory sentiment analysis.
-
-```json
-{ "reviewId": "uuid" }
-```
-
-Returns/stores sentiment, topics, risk flags, confidence, provider/model/reference. It cannot alter `moderation_status`.
-
-### GET `/ai-provider-health`
-
-Administrator-only. Returns configured flags/model labels and 24-hour attempts, successes, success rate, average latency, last error, and fallback policy. It never exposes keys.
-
-### Any `/ai-recommendation`
-
-Authenticated legacy endpoint. Returns `410 endpoint_replaced`. Use the queue/process workflow.
-
-## Geocoding endpoints
-
-### GET `/geocode-search?q=<text>&limit=5&lat=<latitude>&lon=<longitude>`
-
-Authentication required. Query length 3–200; limit 1–10. Focus defaults to Manila, country is restricted to `PH`, results outside Philippine bounds are dropped, and normalized query/focus/limit is cached.
+Example accepted response:
 
 ```json
 {
   "success": true,
   "data": {
-    "items": [
-      {
-        "line": "string",
-        "barangay": "string|null",
-        "city": "string|null",
-        "province": "string|null",
-        "postalCode": "string|null",
-        "displayLabel": "string",
-        "confidence": 0.9,
-        "longitude": 120.9842,
-        "latitude": 14.5995,
-        "providerId": "string"
-      }
-    ],
-    "cached": false,
-    "attribution": "© OpenStreetMap contributors, OpenRouteService"
+    "jobId": "0d937deb-d0e6-451a-9b41-63716f43522e",
+    "status": "QUEUED"
   }
 }
 ```
 
-### GET `/geocode-reverse?lat=<latitude>&lon=<longitude>`
+## PostgreSQL RPC groups
 
-Authentication required. Coordinates must be finite and within Philippine bounds. The result uses the same normalized address model and a coordinate-rounded cache key. Missing barangay/postal fields are permitted.
+### Industry catalog
 
-### POST `/route`
+`GET /rest/v1/industries?is_active=eq.true&select=id,slug,name,sort_order,service_categories(id,slug,name,is_active)` is available to anonymous and authenticated registration clients through RLS. Results are ordered by `sort_order`; clients expose only active nested skills and never submit custom labels.
 
-```json
-{
-  "start": [120.9842, 14.5995],
-  "end": [121.0244, 14.5547],
-  "bookingId": "optional-uuid"
-}
+`submit_worker_application` retains its JSONB interface. `identityData.industryId` is an active industry UUID and `identityData.skillIds` contains 1–10 distinct active category UUIDs belonging to that industry. Invalid, inactive, duplicate, custom, or cross-industry values return `INVALID_WORKER_ONBOARDING` or `INVALID_WORKER_SKILLS` and no partial records are committed.
+
+Hosted verification on 2026-07-22 returned 10 active industries with five active skills each. Cleaning, Electrical, and Plumbing retained their pre-migration UUIDs.
+
+### Published customer content
+
+`GET /rest/v1/content_pages?key=eq.{HELP_CENTER|PRIVACY}&published_at=not.is.null&select=title,body,version,updated_at` returns the published customer Help Center or Privacy Policy through the existing content-page RLS policy. The mobile service maps the row to `ContentPageViewModel`; no row returns the unavailable state, and query failure returns the retry state. Content remains administrator-managed and is not embedded in the Profile component.
+
+The SQL migration containing each function is the executable request/response authority. Literal frontend calls are checked by `pnpm contracts:check`.
+
+| Group                      | RPCs                                                                                                                                                                                                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Profiles and roles         | `get_my_profile`, `update_my_profile`, `complete_my_profile`, `set_my_avatar`, `record_my_password_change`; `accounts.role` is immutable and authoritative                                                                                                                                      |
+| Addresses and geospatial   | `upsert_my_address`, `set_address_location`, `save_geocoded_address`, `snapshot_request_address`, `record_worker_location`, `get_booking_tracking`                                                                                                                                              |
+| Catalog and worker         | Active `industries`/`service_categories` reads; `admin_upsert_category`, `admin_upsert_service`, `admin_set_worker_availability`, `submit_worker_application`, `submit_worker_onboarding_identity`, `submit_verification_document`, `review_worker_verification`, `set_recommendation_priority` |
+| Requests and matching      | `create_service_request`, `attach_request_media`, `generate_matches`, `submit_request_bid`, `submit_service_offer`, `withdraw_service_offer`, `select_worker`, `accept_service_offer`                                                                                                           |
+| Booking and payment        | `transition_booking`, `cancel_booking`, `get_booking_payment`, `confirm_cash_payment`, `decide_refund`                                                                                                                                                                                          |
+| Wallet and payout          | `get_my_wallet_summary`, `submit_manual_wallet_topup`, `admin_review_wallet_topup`, `upsert_payout_destination`, `request_payout`, `admin_decide_payout`                                                                                                                                        |
+| Messages and notifications | `start_worker_conversation`, `mark_conversation_read`, `mark_notification_read`, `admin_create_notification_draft`, `admin_publish_campaign`, `admin_send_notification_now`, `admin_archive_notification`                                                                                       |
+| Support and reviews        | `create_support_ticket`, `send_support_message`, `update_support_ticket`, `create_review`, `moderate_review`, media attachment RPCs                                                                                                                                                             |
+| AI                         | `persist_ai_analysis`, `save_ai_analysis`                                                                                                                                                                                                                                                       |
+| Administration             | `get_admin_dashboard_metrics`, `set_account_status`, `admin_delete_account`, content/settings/promotion/service commands, report/trash/restore commands, bootstrap/session/MFA commands                                                                                                         |
+
+RPC example:
+
+```ts
+const { data, error } = await supabase.rpc('get_my_profile');
+if (error) throw error;
 ```
 
-Coordinates are `[longitude, latitude]`; both points must be in the Philippines. If `bookingId` is present, caller must be a booking party/admin. Returns route GeoJSON, `distanceMeters`, `durationSeconds`, `cached`, coordinate-order label, and attribution. Noncached booking routes are persisted in `route_snapshots`.
+Common statuses are `200` for successful reads/commands, `201` for created resources, `202` for queued jobs, `400` for invalid input, `401` for missing/invalid authentication, `403` for role/ownership/AAL failure, `404` for an inaccessible resource, `409` for idempotency/version/state conflicts, `422` for a valid request that violates a domain rule, `429` for quotas/rate limits, and `500`/`502`/`503` for internal or provider failure. RLS can intentionally make unauthorized resources appear absent.
 
-## Report endpoint
+## Storage and Realtime
 
-### POST `/report-generate`
+Clients upload only to private workflow buckets and UUID-prefixed paths. Database/RPC ownership is established before uploads are committed. Realtime subscriptions follow authorized account, booking, conversation, notification, and AI-job rows; Realtime is a delivery mechanism, not an authorization bypass.
 
-Requires administrator AAL2.
+## Unverified production behavior
 
-```json
-{
-  "reportType": "FINANCIAL|WORKERS|CUSTOMERS|SERVICES|REVIEWS",
-  "format": "CSV|XLSX|PDF",
-  "filters": {}
-}
-```
-
-Creates a `report_exports` row, reads at most 10,000 rows from the allowed source, generates the file, uploads `<admin-uuid>/<export-uuid>.<extension>` to private `report-exports`, and returns a COMPLETED row (`201`). Failure persists FAILED with a reason. Clients create a short-lived signed download URL.
-
-## Compatibility API
-
-The following endpoints are under `/api`. All require authentication; RLS determines visible rows.
-
-### GET `/api/health`
-
-Returns authenticated readiness and project reference.
-
-### GET `/api/me`
-
-Returns current account/profile/role context. Suspended/deleted navigation is rejected by client/account checks.
-
-### GET `/api/categories?page=1&limit=20`
-
-Active service categories plus service count and pagination metadata.
-
-### GET `/api/services?page=1&limit=20&search=<text>&categoryId=<uuid>`
-
-Active normalized services with optional escaped substring search/category filter.
-
-### GET `/api/providers?page=1&limit=20`
-
-Approved/available worker profiles with skills and offerings; request-specific distance/eligibility comes from matching, not this catalog call.
-
-### GET `/api/requests?page=1&limit=20`
-
-RLS-visible requests with category/address/bids.
-
-### POST `/api/requests`
-
-```json
-{
-  "categoryId": "uuid",
-  "addressId": "uuid",
-  "description": "10–4000 chars",
-  "scheduledAt": "ISO-8601 future timestamp",
-  "budget": 500,
-  "notes": null,
-  "aiAnalysisId": null,
-  "notifyOnMatch": true
-}
-```
-
-Calls `create_service_request`; requires customer role, owned geocoded address, published Terms, positive budget, and owned optional AI analysis. Returns `201`.
-
-### GET `/api/bookings?page=1&limit=20`
-
-RLS-visible bookings, requests, payments, and status events.
-
-### POST `/api/bookings/{uuid}/transitions`
-
-Compatibility transition request. Maintained Expo clients use the authoritative typed booking RPC wrappers directly.
-
-### GET `/api/conversations?page=1&limit=20`
-
-Current participant conversations/messages/attachments.
-
-### POST `/api/conversations/{uuid}/messages`
-
-```json
-{ "text": "non-empty message", "locale": "en-PH" }
-```
-
-RLS requires participation; returns inserted message (`201`).
-
-### GET `/api/notifications?page=1&limit=20`
-
-Returns current recipient notifications.
-
-### PATCH `/api/notifications/{uuid}/read`
-
-Marks one owned notification read.
-
-### GET `/api/admin/dashboard`
-
-Administrator metrics via `admin_dashboard_metrics`.
-
-### GET `/api/admin/{users|workers|bookings|payments|reviews|support|audit|settings|reports|ai-jobs}`
-
-Administrator paginated operational rows. Maintained admin screens also use direct RLS/RPC service adapters.
-
-## Transactional RPC contracts
-
-RPCs are called through `supabase.rpc(name, parameters)`. Database errors use PostgreSQL codes/messages and are mapped by clients.
-
-| RPC | Primary parameters | Result/rules |
-| --- | --- | --- |
-| `save_geocoded_address` | label/address parts/lat/lon/provider/confidence/payload/default | Owned address; PH bounds; text/point atomic |
-| `create_service_request` | category/address/description/schedule/budget/notes/analysis/notify | Owned customer request; future schedule/published Terms |
-| `generate_matches` | `p_service_request_id` | Up to five auditable eligible candidates; owner only |
-| `submit_request_bid` | request/amount minor/message/duration | Approved worker/open request; one active bid |
-| `withdraw_request_bid` | bid ID | Bid owner/submitted state |
-| `select_worker` | request/worker | Request owner; eligible worker; booking+conversation transaction |
-| Booking transitions | booking ID and required expected state/reason | Participant/state/version validation + event |
-| `confirm_cash_payment` | booking/idempotency | Real cash result, receipt, one wallet credit |
-| `create_review` | booking/stars/body/recommend | Customer/completed booking/one review |
-| `attach_review_media` | review/path/type/bytes | Review owner/UUID private path/type/size |
-| `set_review_vote` | review/helpful | One vote/account/review |
-| `mark_notification_read` | notification ID | Recipient only |
-| `submit_worker_application` | identity/doc paths/bio/experience | WORKER role, owner document paths |
-| `request_payout` | method/amount minor/idempotency | Owner method/balance; wallet lock |
-| `admin_decide_payout` | payout/decision/notes | ADMIN+AAL2; pending only |
-| `admin_dashboard_metrics` | none | Administrator aggregate JSON |
-| `admin_upsert_category/service` | validated catalog fields | ADMIN+AAL2 |
-| `admin_set_worker_availability` | worker/boolean | ADMIN+AAL2 |
-| `admin_publish_campaign` | campaign ID | ADMIN+AAL2; draft delivery materialization |
-
-Generated table/type details are in `packages/client/src/database.types.ts`; database relationships and RLS are in `DATABASE_DESIGN.md`.
-
-## Storage contracts
-
-| Bucket | Private path | Allowed data |
-| --- | --- | --- |
-| `service-request-media` | `<auth-uuid>/...` | JPEG/PNG/WebP/HEIC, supported audio; max 15 MB/file |
-| `review-media` | `<auth-uuid>/...` | Images; max 10 MB |
-| `verification-documents` | `<auth-uuid>/...` | Images/PDF; max 15 MB |
-| `chat-attachments` | `<auth-uuid>/...` | Images/PDF; max 15 MB |
-| `support-attachments` | `<auth-uuid>/...` | Images/PDF; max 15 MB |
-| `report-exports` | `<admin-uuid>/...` | CSV/XLSX/PDF; max 50 MB |
-
-## Realtime channels
-
-Clients subscribe to filtered changes for `ai_analysis_jobs`, `request_bids`, bookings/events, messages, notifications/deliveries, wallets/payouts, support messages, review insights, route snapshots, report exports, and relevant dashboard activity. RLS remains effective for Realtime delivery.
-## Profile RPCs and function
-
-| Interface | Input | Success data | Authentication |
-|---|---|---|---|
-| `get_my_profile()` | None | account, active role, role profile, default address, email/profile completion flags | Required |
-| `update_my_profile(...)` | Display name, mobile and role-specific optional fields | Refreshed profile envelope | Owner |
-| `complete_my_profile(...)` | Same as update | Refreshed profile with completion timestamp | Owner |
-| `set_my_avatar(path)` | Owned Storage path or null | Refreshed profile envelope | Owner |
-| `record_my_password_change()` | None, called only after Auth password update | Timestamp | Owner |
-| `mark_conversation_read(uuid)` | Conversation ID | Read timestamp | Participant |
-| `admin_update_support_details(...)` | Ticket, category, priority, assignee | Updated ticket | AAL2 administrator |
-| `POST /functions/v1/record-auth-session` | Empty JSON object | Recorded/deduplicated authentication event | Required JWT |
-
-Profile endpoints never return a fabricated identity. `PROFILE_NAME_REQUIRED`, `PROFILE_NOT_FOUND`, and integrity errors require completion or data repair.
+Google OAuth, Gemini, OpenAI fallback, OpenRouteService, SMTP, push delivery, and hosted callbacks were not exercised during the local merge. **Insufficient data to verify.**

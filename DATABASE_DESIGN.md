@@ -1,131 +1,72 @@
 # Database Design
 
-## Design principles
+## Authority and migration strategy
 
-The hosted Supabase schema is authoritative. Existing IDs/tables were retained. New domains are additive and normalized. Business state changes use row locks, constraints, idempotency, append-only ledgers/events, and fixed-search-path functions. All new application tables have RLS; service-role access is reserved for validated Edge/background work.
+Supabase PostgreSQL/PostGIS is the only data authority. The schema is defined by ordered files in `supabase/migrations`; clients do not create schema. Migrations `20260722000100` through `20260722000600` add the approved frontend compatibility layer, permanent single-role enforcement, and normalized industry/skill taxonomy without deleting application records. Migration `20260722000600` idempotently reconciles the hosted project's pre-existing earlier `industries` shape. Hosted project `qsurouiyvisykjkgjqmz` is the deployed authority; its complete `public` and Storage schema has an empty diff from the canonical migration result.
 
-## Core ERD
+Only stable categories, published Help/Privacy content, local Terms/Refund placeholders, and settings are seeded. Users, profiles, requests, bookings, messages, payments, reviews, wallet activity, notifications, and AI jobs are never seeded as production sample data.
 
-```mermaid
-erDiagram
-  AUTH_USERS ||--|| ACCOUNTS : provisions
-  ACCOUNTS ||--o| USER_PROFILES : has
-  ACCOUNTS ||--o| WORKER_PROFILES : has
-  ACCOUNTS ||--o| ADMIN_PROFILES : has
-  ACCOUNTS ||--o{ ACCOUNT_ROLE_MEMBERSHIPS : owns
-  ACCOUNTS ||--o{ ADDRESSES : owns
-  SERVICE_CATEGORIES ||--o{ SERVICES : contains
-  INDUSTRIES ||--o{ SKILLS : contains
-  WORKER_PROFILES ||--o{ WORKER_SKILLS : qualifies
-  WORKER_PROFILES ||--o{ WORKER_OFFERINGS : offers
-  SERVICES ||--o{ WORKER_OFFERINGS : offered_as
-  ACCOUNTS ||--o{ SERVICE_REQUESTS : creates
-  ADDRESSES ||--o{ SERVICE_REQUESTS : locates
-  SERVICE_CATEGORIES ||--o{ SERVICE_REQUESTS : classifies
-  SERVICE_REQUESTS ||--o{ MATCH_CANDIDATES : ranks
-  SERVICE_REQUESTS ||--o{ REQUEST_BIDS : receives
-  SERVICE_REQUESTS ||--o| BOOKINGS : becomes
-  BOOKINGS ||--o{ BOOKING_STATUS_EVENTS : records
-  BOOKINGS ||--|| CONVERSATIONS : opens
-  CONVERSATIONS ||--o{ MESSAGES : contains
-  MESSAGES ||--o{ MESSAGE_ATTACHMENTS : carries
-  MESSAGES ||--o{ MESSAGE_TRANSLATIONS : caches
-  BOOKINGS ||--o| PAYMENTS : settles
-  PAYMENTS ||--o| RECEIPTS : produces
-  ACCOUNTS ||--|| WALLETS : owns
-  WALLETS ||--o{ WALLET_TRANSACTIONS : records
-  ACCOUNTS ||--o{ PAYOUT_METHODS : owns
-  PAYOUT_METHODS ||--o{ PAYOUT_REQUESTS : funds
-  BOOKINGS ||--o| REVIEWS : receives
-  REVIEWS ||--o{ REVIEW_MEDIA : includes
-  REVIEWS ||--o{ REVIEW_VOTES : receives
-  REVIEWS ||--o{ REVIEW_REPORTS : receives
-  REVIEWS ||--o{ REVIEW_REPLIES : receives
-  REVIEWS ||--o| REVIEW_AI_INSIGHTS : analyzed_as
-  ACCOUNTS ||--o{ SUPPORT_TICKETS : opens
-  SUPPORT_TICKETS ||--o{ SUPPORT_MESSAGES : contains
-  SUPPORT_MESSAGES ||--o{ SUPPORT_ATTACHMENTS : includes
-  ACCOUNTS ||--o{ AI_PROCESSING_CONSENTS : grants
-  AI_PROCESSING_CONSENTS ||--o{ AI_ANALYSIS_JOBS : authorizes
-  AI_ANALYSIS_JOBS ||--o{ AI_ANALYSIS_ATTEMPTS : logs
-  BOOKINGS ||--o{ ROUTE_SNAPSHOTS : stores
-```
-
-## Additive tables
-
-| Domain | Tables | Key constraints/relationships |
-| --- | --- | --- |
-| Catalog | `industries`, `skills`, `services`, `worker_offerings` | Unique slugs/worker-service; category/industry foreign keys; active flags; price bounds |
-| Marketplace | `request_bids` | Unique active worker/request intent; positive minor amount; bounded duration/status |
-| Wallet | `wallets`, `wallet_transactions`, `payout_methods`, `payout_requests` | One wallet/account; nonnegative balances; immutable transactions; idempotency keys |
-| Support | `support_messages`, `support_attachments` | Ticket/message ownership; UUID Storage path |
-| Reviews | `review_votes`, `review_reports`, `review_replies`, `review_ai_insights` | Unique vote/account/review; human moderation remains baseline authority |
-| Campaigns | `notification_campaigns`, `notification_deliveries` | Creator/recipient keys; delivery status metrics |
-| Reference | `cancellation_reasons` | Unique stable code and audience |
-| AI | `ai_processing_consents`, `ai_analysis_jobs` plus extended attempts | Consent version/provider list; owner/idempotency; durable states/results |
-| Geospatial | `geocoding_cache`, `route_snapshots` | Hash/expiry cache; booking/requester; GeoJSON/meters/seconds/geography points |
-
-## Important baseline tables retained
-
-`accounts`, profiles, role memberships/session roles, permissions, `service_categories`, `worker_skills`, `worker_availability`, `worker_verifications`, `addresses`, `service_requests`, `match_candidates`, `bookings`, status events, conversations/participants/messages/attachments/translations, tracking updates, payments/receipts/refunds, reviews/media, notifications, support tickets, audit logs, report exports, content pages, system settings, trash entries, and AI analyses/attempts.
-
-## PostGIS
-
-- `addresses.location`, request service location, worker service origin, tracking, and route endpoints use SRID 4326 geography points.
-- GiST indexes support `ST_DWithin` eligibility and `ST_Distance` ranking.
-- Route providers receive `[longitude, latitude]`; client map props map back to named latitude/longitude.
-- `save_geocoded_address` validates Philippine bounds and writes normalized text/point together.
-
-## Indexes
-
-Composite indexes cover common owner/status/date queries for bids, payouts, campaigns/deliveries, support, AI jobs, and routes. Unique indexes protect slugs, idempotency keys, vote identity, and wallet ownership. Spatial GiST indexes cover geography columns. Existing foreign-key/status indexes remain authoritative.
-
-## Constraints and integrity
-
-- Enumerated/check-constrained lifecycle states.
-- Positive budgets/amounts and bounded text/duration/media sizes.
-- Foreign keys use deliberate cascade/restrict/set-null behavior.
-- Wallet mutation trigger rejects update/delete of ledger rows.
-- Worker wallet credit trigger fires once after successful payment transition.
-- Security functions lock mutable rows and check owner, role, membership, status, AAL, and expected transition.
-- Storage policies require `split_part(path,'/',1)=auth.uid()`.
-
-## RLS model
-
-| Principal | Access |
-| --- | --- |
-| Anonymous | Active public taxonomy/content only |
-| Customer | Own profile/address/request/payment/review/notification/support; participant booking/chat |
-| Worker | Own worker/verification/offering/wallet/payout; eligible jobs/bids; participant booking/chat |
-| Administrator | Operational reads; writes through permission/AAL functions |
-| Background/service role | Validated Edge/report/provider workflows; bypass must not be exposed to clients |
-
-## Migration strategy and evidence
-
-- Seven timestamp versions represent the pulled hosted baseline.
-- Incompatible local drafts were archived and never pushed.
-- Three additive 20260721 migrations were reset/linted locally and deployed.
-- Local smoke tests create/delete a disposable user and verify Auth, Edge API, RLS isolation, and Storage ownership.
-- Post-deployment migration-to-linked diff for `public,private` is empty.
-- Future changes require a new timestamped migration; do not edit deployed files.
-
-## Seed data
-
-`supabase/seed.sql` upserts stable service categories only. Migrations idempotently seed normalized reference taxonomy/settings/cancellation reasons. No users, jobs, bookings, messages, payments, reviews, wallet entries, or AI results are seeded.
-## Real-profile schema extension
+## Core entity relationships
 
 ```mermaid
 erDiagram
-  ACCOUNTS ||--o| USER_PROFILES : owns
-  ACCOUNTS ||--o| WORKER_PROFILES : owns
-  ACCOUNTS ||--o| ADMIN_PROFILES : owns
-  ACCOUNTS ||--o{ AUTHENTICATION_EVENTS : records
-  ACCOUNTS ||--o{ CONVERSATION_READS : marks
-  WORKER_PROFILES ||--o{ WORKER_PORTFOLIO_MEDIA : publishes
-  CONVERSATIONS ||--o{ CONVERSATION_READS : tracks
-  ACCOUNTS ||--o{ SUPPORT_TICKETS : assigned_to
+  accounts ||--o| user_profiles : owns
+  accounts ||--o| worker_profiles : owns
+  accounts ||--o| admin_profiles : owns
+  accounts ||--o{ account_role_memberships : preserves_history
+  accounts ||--o{ addresses : saves
+  industries ||--o{ service_categories : groups
+  industries ||--o{ worker_profiles : primary_for
+  service_categories ||--o{ service_templates : contains
+  worker_profiles ||--o{ worker_skills : has
+  service_templates ||--o{ worker_skills : qualifies
+  accounts ||--o{ service_requests : creates
+  service_requests ||--o{ service_request_offers : receives
+  service_requests ||--o{ match_candidates : ranks
+  service_requests ||--o| bookings : becomes
+  bookings ||--o{ booking_status_events : records
+  bookings ||--o| payments : settles
+  bookings ||--o| reviews : receives
+  conversations ||--o{ conversation_participants : authorizes
+  conversations ||--o{ messages : contains
+  accounts ||--o| wallet_accounts : owns
+  wallet_accounts ||--o{ wallet_transactions : records
+  accounts ||--o{ notifications : receives
+  service_requests ||--o{ ai_analysis_jobs : analyzes
+  ai_analysis_jobs ||--o{ ai_analysis_attempts : audits
 ```
 
-`accounts.profile_completed_at` distinguishes verified real input from legacy placeholder profiles. `admin_profiles` persists given name, family name, location, bio, and avatar path. `authentication_events` stores server-observed IP/user-agent and a one-way session identifier hash. Storage object paths and portfolio rows are constrained to the owner UUID.
+## Domain tables
 
-`on_auth_user_confirmed` synchronizes confirmed Auth email/status changes into `accounts`; this prevents a real profile from becoming unreachable through a stale `PENDING_VERIFICATION` state.
+| Domain                        | Tables and views                                                                                                                                                                  | Integrity model                                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Identity                      | `accounts`, historical `account_role_memberships`/`account_session_roles`, `user_profiles`, `worker_profiles`, `admin_profiles`, `authentication_events`, `admin_session_history` | Auth UUID keys, immutable primary role, inactive historical memberships, profile completion, no identity fallback                  |
+| Catalog and worker capability | `industries`, `service_categories`, `service_templates`, `services` view, `worker_skills`, `worker_availability`, `worker_portfolio_items`, `worker_verifications`                | Ten ordered industries, 50 UUID-backed skills, primary-industry FK, transactional onboarding, verified capability and availability |
+| Requests and matching         | `service_requests`, `request_media`, `match_candidates`, `service_request_offers`, `cancellation_reasons`, `cancellations`                                                        | Owner FKs, idempotent offers, PostGIS request point, bounded state transitions                                                     |
+| Bookings and tracking         | `bookings`, `booking_status_events`, `location_updates`, `route_snapshots`                                                                                                        | Optimistic versioning, party authorization, PostGIS points, append-only events                                                     |
+| Payments and wallets          | `payments`, `payment_attempts`, `cash_confirmations`, `receipts`, `wallet_accounts`, `wallet_transactions`, `wallet_topups`, `payout_destinations`, `payout_requests`, `refunds`  | Minor-unit amounts, idempotency keys, immutable ledger transactions, balanced holds/reversals                                      |
+| Communication                 | `conversations`, `conversation_participants`, `messages`, `message_attachments`, `message_translations`, `notifications`, `notification_deliveries`, `push_subscriptions`         | Participant RLS, read timestamps, original-message preservation, per-recipient delivery state                                      |
+| Support and review            | `support_tickets`, `support_ticket_messages`, `support_message_attachments`, `reviews`, `review_media`                                                                            | Participant/admin access, booking eligibility, moderation state                                                                    |
+| AI and geospatial             | `ai_processing_consents`, `ai_analysis_jobs`, `ai_analysis_attempts`, `ai_analyses`, `geocoding_cache`, `route_snapshots`                                                         | Versioned consent, owner/idempotency checks, provider-attempt audit, expiring normalized cache                                     |
+| Administration                | `system_settings`, `audit_logs`, `report_exports`, `content_pages`, `promotions`, `trash_entries`                                                                                 | AAL2-sensitive commands, append-only audit, private report files, guarded restore/delete                                           |
+
+## Indexes and constraints
+
+- Primary and foreign keys enforce account, request, booking, conversation, payment, and catalog ownership.
+- Unique and partial unique indexes protect idempotency, one-profile-per-account, one-wallet-per-owner, one active offer per worker/request, and provider event replay.
+- GiST indexes support `ST_DWithin` and `ST_Distance` over `geography(Point,4326)` columns.
+- Check constraints bound enums, ratings, money ranges, latitude/longitude, media metadata, and lifecycle state.
+- RLS is enabled for application tables. Security-definer functions use a fixed `search_path`, role/ownership checks, bounded inputs, and explicit grants.
+- `worker_profiles.primary_industry_id` identifies the worker's selected industry; every onboarding `worker_skills.category_id` must reference an active category under that same active industry. Direct authenticated skill writes are revoked.
+
+## Storage
+
+All application buckets are private. Paths begin with the authenticated UUID and policies validate ownership and workflow membership. The compatibility migration adds `profile-avatars`; existing buckets retain request/review/support/verification/portfolio/payment/report assets. Clients store paths, not fabricated public URLs, and resolve authorized signed URLs when required.
+
+## Rollback and hosted deployment
+
+Local acceptance requires `supabase db reset`, `supabase test db`, and a generated-schema diff. Before the taxonomy rollout, hosted `public`, `private`, and `storage` schema/data snapshots were written outside the repository under `/Users/jhonfiel/Documents/A-YOS/.hosted-backups/20260722-primary-industry`. Migrations `20260722000500` and `20260722000600` were then applied in isolation; live REST and post-deployment schema dumps verified 10 industries, 50 active skills, both foreign keys, the validated onboarding RPC, select-only client access to `worker_skills`, and preservation of existing core category UUIDs.
+
+On 2026-07-22, a second restricted schema/data/roles backup was captured under `/Users/jhonfiel/Documents/A-YOS/backups/supabase-qsurouiyvisykjkgjqmz-20260722`. The backup inventory includes Auth identities, application accounts/profiles, business tables, buckets, and Storage object metadata. A linked comparison of every canonical migration against hosted `public,storage` returned a zero-byte diff. Migration histories remain intentionally different; replay or history repair is prohibited while the resulting schemas are identical.
+
+Migration `20260723120000` updates only placeholder-version `HELP_CENTER` and `PRIVACY` rows, preserving their IDs and later administrator edits. It was applied in isolation to the hosted project and recorded as applied after verification of both original UUIDs, published status, version, and content sections.
