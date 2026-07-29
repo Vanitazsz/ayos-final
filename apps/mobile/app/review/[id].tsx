@@ -44,7 +44,13 @@ export default function ReviewScreen() {
       Alert.alert('Rating Required', 'Please select at least 1 star.');
       return;
     }
-    if (!bookingId) return;
+    if (!bookingId) {
+      Alert.alert(
+        'Review unavailable',
+        'This review is missing its booking reference. Please return to your completed bookings and try again.',
+      );
+      return;
+    }
     const commentText = review.trim();
     if (commentText.length < 3) {
       Alert.alert(
@@ -58,8 +64,11 @@ export default function ReviewScreen() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Your session has expired. Please sign in again and retry.');
+      }
       const media = [];
-      if (user && photos.length > 0) {
+      if (photos.length > 0) {
         for (const uri of photos) {
           const response = await fetch(uri);
           const bytes = await response.arrayBuffer();
@@ -73,7 +82,16 @@ export default function ReviewScreen() {
           media.push({ path, contentType, byteSize: bytes.byteLength });
         }
       }
-      await createReview(bookingId, rating, commentText, recommend, media);
+      const createdReview = await createReview(
+        bookingId,
+        rating,
+        commentText,
+        recommend,
+        media,
+      );
+      if (!createdReview?.id) {
+        throw new Error('The review could not be confirmed. Please try again.');
+      }
       Alert.alert('Review Submitted! ⭐', 'Thank you for your feedback.', [
         {
           text: 'Done',

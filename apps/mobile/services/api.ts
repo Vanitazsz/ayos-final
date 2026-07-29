@@ -1049,6 +1049,9 @@ export async function createReview(
     recommend_worker: recommendWorker,
   });
   if (error) throw error;
+  if (!data?.id) {
+    throw new Error('Review submission returned no review record.');
+  }
   for (const item of media) {
     const { error: mediaError } = await supabase.rpc('attach_review_media', {
       p_review_id: (data as any).id,
