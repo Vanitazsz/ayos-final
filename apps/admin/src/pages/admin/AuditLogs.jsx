@@ -1,24 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, Search, Filter, Monitor, Smartphone, 
   Globe, AlertTriangle, CheckCircle, XCircle
 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 
-import { loadAuditLogs, subscribe } from '../../services/adminData';
+import { loadAuditLogs } from '../../services/adminData';
 import { supabase } from '../../lib/supabase';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
 
 const AuditLogs = () => {
-  const [logs,setLogs] = useState([]);
+  const { data: logs, isLoading, error, refresh } = useDataFetch(loadAuditLogs, []);
+  useRealtime('audit_logs', refresh);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSessions,setActiveSessions]=useState(0);
 
   const logsPerPage = 12;
-  useEffect(()=>{const refresh=async()=>setLogs(await loadAuditLogs());void refresh();void supabase.auth.getSession().then(({data})=>setActiveSessions(data.session?1:0));return subscribe('audit_logs',refresh)},[]);
+  useEffect(()=>{void supabase.auth.getSession().then(({data})=>setActiveSessions(data.session?1:0))},[]);
+  const safeLogs = logs ?? [];
 
-  const filteredLogs = logs.filter(l => {
+  const filteredLogs = safeLogs.filter(l => {
     const matchesSearch = l.admin.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           l.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           l.ip.includes(searchTerm);
@@ -30,9 +34,9 @@ const AuditLogs = () => {
   const paginatedLogs = filteredLogs.slice((currentPage - 1) * logsPerPage, currentPage * logsPerPage);
 
   const stats = [
-    { label: "Recent Activities", value: logs.length, icon: <ShieldAlert className="text-blue-500" />, bg: 'bg-blue-50' },
-    { label: 'Failed Actions', value: logs.filter(log=>log.status==='Failed').length, icon: <XCircle className="text-red-500" />, bg: 'bg-red-50' },
-    { label: 'Critical Actions', value: logs.filter(log=>String(log.metadata?.severity??'').toUpperCase()==='CRITICAL').length, icon: <AlertTriangle className="text-orange-500" />, bg: 'bg-orange-50' },
+    { label: "Recent Activities", value: safeLogs.length, icon: <ShieldAlert className="text-blue-500" />, bg: 'bg-blue-50' },
+    { label: 'Failed Actions', value: safeLogs.filter(log=>log.status==='Failed').length, icon: <XCircle className="text-red-500" />, bg: 'bg-red-50' },
+    { label: 'Critical Actions', value: safeLogs.filter(log=>String(log.metadata?.severity??'').toUpperCase()==='CRITICAL').length, icon: <AlertTriangle className="text-orange-500" />, bg: 'bg-orange-50' },
     { label: 'Active Sessions', value: activeSessions, icon: <CheckCircle className="text-green-500" />, bg: 'bg-green-50' },
   ];
 
@@ -44,7 +48,8 @@ const AuditLogs = () => {
           <p className="text-gray-500 mt-1">Track and monitor all administrator activities</p>
         </div>
       </div>
-
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center">
@@ -66,6 +71,7 @@ const AuditLogs = () => {
           </div>
           <input
             type="text"
+            aria-label="Search by Admin, Action, or IP..."
             placeholder="Search by Admin, Action, or IP..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -92,13 +98,13 @@ const AuditLogs = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action & Target</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action & Target</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200 text-sm">
