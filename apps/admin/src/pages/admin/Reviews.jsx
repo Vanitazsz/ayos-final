@@ -5,15 +5,20 @@ import {
   CheckCircle, EyeOff, Trash2
 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 import { loadReviews, moderateReview, subscribe } from '../../services/adminData';
+import { useToast } from '../../context/ToastContext';
 
 const Reviews = () => {
+  const toast = useToast();
   const [reviews, setReviews] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
 
   const reviewsPerPage = 10;
   const refresh=async()=>setReviews(await loadReviews());
@@ -30,19 +35,22 @@ const Reviews = () => {
   const totalPages = Math.ceil(filteredReviews.length / reviewsPerPage);
   const paginatedReviews = filteredReviews.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
 
+  const avgRating = reviews.length
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : '0.0';
   const stats = [
-    { label: 'Average Rating', value: '4.2', icon: <Star className="text-yellow-500 fill-current" />, bg: 'bg-yellow-50' },
+    { label: 'Average Rating', value: avgRating, icon: <Star className="text-yellow-500 fill-current" />, bg: 'bg-yellow-50' },
     { label: 'Positive Reviews', value: reviews.filter(r => r.rating >= 4).length, icon: <ThumbsUp className="text-green-500" />, bg: 'bg-green-50' },
     { label: 'Negative Reviews', value: reviews.filter(r => r.rating <= 2).length, icon: <ThumbsDown className="text-red-500" />, bg: 'bg-red-50' },
     { label: 'Flagged / Reported', value: reviews.filter(r => r.status === 'Flagged').length, icon: <AlertTriangle className="text-orange-500" />, bg: 'bg-orange-50' },
   ];
 
   const toggleStatus = async (id, newStatus) => {
-    try { await moderateReview(id,newStatus==='Published'?'PUBLISHED':'REJECTED'); await refresh(); } catch(error) { alert(error.message); } finally { setActionMenuOpenId(null); }
+    try { await moderateReview(id,newStatus==='Published'?'PUBLISHED':'REJECTED'); await refresh(); } catch(error) { toast.error('Moderation failed', error.message); } finally { setActionMenuOpenId(null); }
   };
 
   const deleteReview = async (id) => {
-    if(window.confirm('Reject and hide this review?')) await toggleStatus(id,'Hidden');
+    setConfirm({ isOpen: true, title: 'Reject Review', message: 'Reject and hide this review?', onConfirm: async () => { await toggleStatus(id,'Hidden'); }});
   };
 
   const renderStars = (rating) => {
@@ -91,6 +99,7 @@ const Reviews = () => {
           </div>
           <input
             type="text"
+            aria-label="Search reviews, customers, or workers..."
             placeholder="Search reviews, customers, or workers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -119,10 +128,10 @@ const Reviews = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Customer / Worker</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">Review</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer / Worker</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -155,24 +164,27 @@ const Reviews = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                   <button 
                     onClick={() => setActionMenuOpenId(actionMenuOpenId === review.id ? null : review.id)}
+                    aria-haspopup="true"
+                    aria-expanded={actionMenuOpenId === review.id}
+                    aria-label={`Open actions for ${review.customer}`}
                     className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                   >
                     <MoreVertical size={20} />
                   </button>
                   
                   {actionMenuOpenId === review.id && (
-                    <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
+                    <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1" role="menu">
                       {review.status !== 'Hidden' ? (
-                        <button onClick={() => toggleStatus(review.id, 'Hidden')} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
+                        <button onClick={() => toggleStatus(review.id, 'Hidden')} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
                           <EyeOff size={16} className="mr-2 text-gray-400" /> Hide Review
                         </button>
                       ) : (
-                        <button onClick={() => toggleStatus(review.id, 'Published')} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
+                        <button onClick={() => toggleStatus(review.id, 'Published')} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
                           <CheckCircle size={16} className="mr-2 text-green-500" /> Publish Review
                         </button>
                       )}
                       
-                      <button onClick={() => deleteReview(review.id)} className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left border-t border-gray-100 mt-1 pt-1">
+                      <button onClick={() => deleteReview(review.id)} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left border-t border-gray-100 mt-1 pt-1">
                         <Trash2 size={16} className="mr-2 text-red-500" /> Delete
                       </button>
                     </div>
@@ -200,6 +212,7 @@ const Reviews = () => {
           onPageChange={setCurrentPage} 
         />
       )}
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Reject" variant="danger" />
     </div>
   );
 };
