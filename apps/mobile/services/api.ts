@@ -1510,6 +1510,34 @@ export async function archiveConversation(conversationId: string) {
   if (!data) throw new Error('Conversation could not be deleted');
   return data;
 }
+export async function archiveConversations(conversationIds: string[]) {
+  const results = await Promise.allSettled(
+    conversationIds.map((conversationId) =>
+      archiveConversation(conversationId),
+    ),
+  );
+  return results.reduce<{
+    deleted: string[];
+    failed: { id: string; error: string }[];
+  }>(
+    (summary, result, index) => {
+      const id = conversationIds[index];
+      if (result.status === 'fulfilled') {
+        summary.deleted.push(id);
+      } else {
+        summary.failed.push({
+          id,
+          error:
+            result.reason instanceof Error
+              ? result.reason.message
+              : 'Conversation could not be deleted',
+        });
+      }
+      return summary;
+    },
+    { deleted: [], failed: [] },
+  );
+}
 export async function fetchNotifications() {
   return wrap(async () => {
     const user = await requireUser();

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import {
-  archiveConversation,
   fetchConversation,
   sendMessage,
   subscribeToTable,
@@ -205,11 +204,6 @@ export function useConversationChat(conversationId: string | null) {
     [access.canSend, conversationId, refresh, sending],
   );
 
-  const archive = useCallback(async () => {
-    if (!conversationId || !access.canArchive) return;
-    await archiveConversation(conversationId);
-  }, [access.canArchive, conversationId]);
-
   return {
     messages,
     access,
@@ -218,6 +212,5 @@ export function useConversationChat(conversationId: string | null) {
     error,
     refresh,
     send,
-    archive,
   };
 }

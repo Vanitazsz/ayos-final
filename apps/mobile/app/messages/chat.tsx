@@ -20,7 +20,6 @@ import {
   Phone,
   RotateCcw,
   Send,
-  Trash2,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -44,7 +43,7 @@ export default function ChatScreen() {
   const rawConversationId = Array.isArray(searchParams.conversationId)
     ? searchParams.conversationId[0]
     : searchParams.conversationId;
-  const { messages, access, loading, sending, error, refresh, send, archive } =
+  const { messages, access, loading, sending, error, refresh, send } =
     useConversationChat(conversationId);
   const conversationLabel = loading
     ? 'Loading conversation…'
@@ -97,31 +96,6 @@ export default function ChatScreen() {
     } catch {
       setMessage(normalized);
     }
-  };
-
-  const confirmArchive = () => {
-    Alert.alert(
-      'Delete conversation?',
-      'This closed conversation will be removed from both participants. An administrator-only record will be retained.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () =>
-            void archive()
-              .then(() => router.back())
-              .catch((archiveError) =>
-                Alert.alert(
-                  'Unable to delete',
-                  archiveError instanceof Error
-                    ? archiveError.message
-                    : 'Try again.',
-                ),
-              ),
-        },
-      ],
-    );
   };
 
   const handleHire = () => {
@@ -204,28 +178,15 @@ export default function ChatScreen() {
           <Text style={[theme.typography.body2, styles.closedText]}>
             This conversation is read-only because the job is closed.
           </Text>
-          <View style={styles.closedActions}>
-            {access.canHireAgain && (
-              <TouchableOpacity
-                style={styles.secondaryAction}
-                onPress={() => router.push('/new-request/create')}
-              >
-                <RotateCcw size={16} color={theme.colors.primary} />
-                <Text style={styles.secondaryActionText}>Hire Again</Text>
-              </TouchableOpacity>
-            )}
-            {access.canArchive && (
-              <TouchableOpacity
-                style={styles.deleteAction}
-                onPress={confirmArchive}
-              >
-                <Trash2 size={16} color={theme.colors.error} />
-                <Text style={styles.deleteActionText}>
-                  Delete Conversation
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {access.canHireAgain && (
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={() => router.push('/new-request/create')}
+            >
+              <RotateCcw size={16} color={theme.colors.primary} />
+              <Text style={styles.secondaryActionText}>Hire Again</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : null}
 
@@ -505,11 +466,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
-  closedActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
   secondaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -521,19 +477,6 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     color: theme.colors.primary,
-    fontWeight: '600',
-  },
-  deleteAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 8,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-  },
-  deleteActionText: {
-    color: theme.colors.error,
     fontWeight: '600',
   },
   chatArea: { flex: 1 },
