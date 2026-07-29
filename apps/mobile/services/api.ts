@@ -1273,7 +1273,7 @@ export async function fetchConversation(conversationId: string) {
       supabase
         .from('conversations')
         .select(
-          'id,booking_id,service_request_id,worker_account_id,archived_at,bookings:booking_id(status,user_account_id,worker_account_id),service_requests:service_request_id(status,user_account_id,selected_worker_id),conversation_participants(account_id,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path)))',
+          'id,booking_id,service_request_id,worker_account_id,archived_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path)))',
         )
         .eq('id', conversationId)
         .maybeSingle(),
@@ -1311,6 +1311,18 @@ export async function fetchConversation(conversationId: string) {
     const participantProfile =
       firstRelation((participantAccount as any)?.user_profiles) ??
       firstRelation((participantAccount as any)?.worker_profiles);
+    const matchedProfile =
+      profile.role === 'USER'
+        ? firstRelation((conversation as any).worker_profiles) ??
+          firstRelation(booking?.worker_profiles) ??
+          firstRelation(request?.worker_profiles)
+        : firstRelation(booking?.user_profiles) ??
+          firstRelation(request?.user_profiles);
+    const resolvedParticipantProfile =
+      matchedProfile ?? participantProfile;
+    if (!resolvedParticipantProfile?.display_name) {
+      throw new Error('Matched participant profile is unavailable');
+    }
 
     return {
       preferredLocale,
@@ -1327,9 +1339,9 @@ export async function fetchConversation(conversationId: string) {
         closed &&
         !(conversation as any).archived_at,
       participant: {
-        name: participantProfile?.display_name ?? 'Booking Participant',
+        name: resolvedParticipantProfile.display_name,
         avatar: await resolveProfileAvatar(
-          participantProfile?.avatar_path ?? '',
+          resolvedParticipantProfile.avatar_path ?? '',
         ),
       },
       messages: (messages ?? []).map((row: any) => {
@@ -1417,7 +1429,7 @@ export async function fetchConversations() {
     const { data, error } = await supabase
       .from('conversations')
       .select(
-        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,bookings:booking_id(status,worker_account_id),service_requests:service_request_id(status),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
+        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
       )
       .is('archived_at', null)
       .order('updated_at', { ascending: false });
@@ -1450,9 +1462,19 @@ export async function fetchConversations() {
         const participantProfile =
           firstRelation((participantAccount as any)?.user_profiles) ??
           firstRelation((participantAccount as any)?.worker_profiles);
-        const participantName =
-          (participantProfile as any)?.display_name ?? 'Chat Participant';
-        const avatarPath = (participantProfile as any)?.avatar_path ?? '';
+        const matchedProfile =
+          profile.role === 'USER'
+            ? firstRelation(row.worker_profiles) ??
+              firstRelation(booking?.worker_profiles) ??
+              firstRelation(request?.worker_profiles)
+            : firstRelation(booking?.user_profiles) ??
+              firstRelation(request?.user_profiles);
+        const resolvedParticipantProfile =
+          matchedProfile ?? participantProfile;
+        if (!(resolvedParticipantProfile as any)?.display_name) return null;
+        const participantName = (resolvedParticipantProfile as any).display_name;
+        const avatarPath =
+          (resolvedParticipantProfile as any).avatar_path ?? '';
 
         return {
           id: row.id,
@@ -1472,6 +1494,11 @@ export async function fetchConversations() {
           canHireAgain: profile.role === 'USER' && closed,
         };
       }),
+    ).then((conversations) =>
+      conversations.filter(
+        (conversation): conversation is NonNullable<typeof conversation> =>
+          conversation !== null,
+      ),
     );
   });
 }

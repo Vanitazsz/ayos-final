@@ -292,25 +292,10 @@ export default function ProviderProfileScreen() {
         </View>
 
         {isApplicant === 'true' ? (
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              marginLeft: Spacing['4'],
-              gap: Spacing['2'],
-            }}
-          >
-            <AppButton
-              label="Message"
-              variant="outline"
-              size="lg"
-              style={{ flex: 1 }}
-              onPress={() => router.push(`/chat/${provider.id}` as any)}
-            />
+          <View style={{ flex: 1, marginLeft: Spacing['4'] }}>
             <AppButton
               label="Hire Worker"
               size="lg"
-              style={{ flex: 1 }}
               onPress={() =>
                 router.push(`/accept-worker/${provider.id}` as any)
               }

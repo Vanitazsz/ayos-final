@@ -101,7 +101,8 @@ test.beforeEach(async ({ page }, testInfo) => {
   await page.route('**/rest/v1/conversations?*', (route) => {
     const url = new URL(route.request().url());
     const detail = url.searchParams.has('id');
-    expect(url.searchParams.get('select')).toContain('accounts:account_id(user_profiles');
+    expect(url.searchParams.get('select')).toContain('worker_profiles:worker_account_id');
+    expect(url.searchParams.get('select')).toContain('user_profiles:user_account_id');
     if (conversationFetchFails) {
       return route.fulfill({
         status: 400,
@@ -119,38 +120,46 @@ test.beforeEach(async ({ page }, testInfo) => {
       worker_account_id: workerId,
       archived_at: null,
       updated_at: '2026-07-28T08:00:00.000Z',
+      worker_profiles: {
+        display_name: 'Matched Worker',
+        avatar_path: '',
+      },
       bookings: {
         status: bookingStatus,
         user_account_id: customerId,
         worker_account_id: workerId,
+        user_profiles: {
+          display_name: 'Matched Customer',
+          avatar_path: '',
+        },
+        worker_profiles: {
+          display_name: 'Matched Worker',
+          avatar_path: '',
+        },
       },
       service_requests: {
         status: requestStatus,
         user_account_id: customerId,
         selected_worker_id: workerId,
+        user_profiles: {
+          display_name: 'Matched Customer',
+          avatar_path: '',
+        },
+        worker_profiles: {
+          display_name: 'Matched Worker',
+          avatar_path: '',
+        },
       },
       conversation_participants: [
         {
           account_id: customerId,
           last_read_at: '2026-07-28T08:00:00.000Z',
-          accounts: {
-            user_profiles: {
-              display_name: 'Matched Customer',
-              avatar_path: '',
-            },
-            worker_profiles: null,
-          },
+          accounts: null,
         },
         {
           account_id: workerId,
           last_read_at: null,
-          accounts: {
-            user_profiles: null,
-            worker_profiles: {
-              display_name: 'Matched Worker',
-              avatar_path: '',
-            },
-          },
+          accounts: null,
         },
       ],
       messages: [
@@ -201,6 +210,7 @@ test('only matched conversations are listed and closed chat is read-only', async
 
   await expect(page.getByText('Matched Conversations')).toBeVisible();
   await expect(page.getByText('Matched Worker')).toBeVisible();
+  await expect(page.getByText('Chat Participant')).toHaveCount(0);
   await expect(page.getByText('Read only')).toBeVisible();
   await expect(page.getByText('PoC Demo', { exact: false })).toHaveCount(0);
   await expect(page.getByText('Tap to Chat', { exact: false })).toHaveCount(0);
@@ -276,6 +286,7 @@ test('worker conversation list fetch failure shows retry', async ({ page }) => {
   conversationFetchFails = false;
   await page.getByRole('button', { name: 'Retry' }).click();
   await expect(page.getByText('Matched Customer')).toBeVisible();
+  await expect(page.getByText('Chat Participant')).toHaveCount(0);
 });
 
 test('customer conversation list fetch failure shows retry', async ({ page }) => {
@@ -290,4 +301,5 @@ test('customer conversation list fetch failure shows retry', async ({ page }) =>
   conversationFetchFails = false;
   await page.getByRole('button', { name: 'Retry' }).click();
   await expect(page.getByText('Matched Worker')).toBeVisible();
+  await expect(page.getByText('Chat Participant')).toHaveCount(0);
 });

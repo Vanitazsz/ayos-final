@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(20);
 
 select has_column(
   'public',
@@ -206,6 +206,13 @@ select lives_ok(
   )$$,
   'matched customer can send'
 );
+select lives_ok(
+  $$select public.start_worker_conversation(
+    'a5000000-0000-0000-0000-000000000001',
+    'a2000000-0000-0000-0000-000000000001'
+  )$$,
+  'customer can open the selected worker conversation'
+);
 select throws_ok(
   $$select public.archive_closed_conversation(
     'a6000000-0000-0000-0000-000000000001'
@@ -237,6 +244,35 @@ select throws_ok(
 );
 
 reset role;
+update public.service_requests
+set selected_worker_id = null
+where id = 'a5000000-0000-0000-0000-000000000001';
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a1000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+select ok(
+  not public.chat_can_read('a6000000-0000-0000-0000-000000000001'),
+  'conversation is unavailable when its worker is no longer selected'
+);
+select throws_ok(
+  $$select public.start_worker_conversation(
+    'a5000000-0000-0000-0000-000000000001',
+    'a2000000-0000-0000-0000-000000000001'
+  )$$,
+  '42501',
+  'CONVERSATION_UNAVAILABLE',
+  'customer cannot open a conversation with an unselected worker'
+);
+
+reset role;
+update public.service_requests
+set selected_worker_id = 'a2000000-0000-0000-0000-000000000001'
+where id = 'a5000000-0000-0000-0000-000000000001';
+
 update public.service_requests
 set status = 'CANCELLED'
 where id = 'a5000000-0000-0000-0000-000000000001';
