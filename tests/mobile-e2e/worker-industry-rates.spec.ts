@@ -143,6 +143,7 @@ test('worker saves per-skill rates and confirms before returning to profile', as
 
   await page.goto('/industry-skills');
   await expect(page.getByText('Plumbing Skills & Services', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your service rate (PHP/₱)', { exact: true })).toHaveCount(2);
   await page.getByLabel('Drain Unclogging service rate in PHP').fill('650');
   await page.getByLabel('Fixture Installation service rate in PHP').fill('825.50');
   await page.getByRole('button', { name: 'Save Industry & Skills' }).click();

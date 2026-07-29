@@ -270,10 +270,13 @@ export default function WorkerIndustrySkillsScreen() {
                     </Pressable>
                     {isChecked ? (
                       <AppInput
-                        label="Your service rate (PHP)"
+                        label="Your service rate (PHP/₱)"
                         accessibilityLabel={`${skill.name} service rate in PHP`}
                         placeholder="Optional service rate"
                         keyboardType="decimal-pad"
+                        leftIcon={
+                          <Text style={styles.currencyPrefix}>₱</Text>
+                        }
                         value={
                           rateBySkillId[skill.id] == null
                             ? ''
@@ -556,5 +559,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
     color: theme.colors.textSecondary,
+  },
+  currencyPrefix: {
+    ...theme.typography.body1,
+    color: theme.colors.textPrimary,
   },
 });

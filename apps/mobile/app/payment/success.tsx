@@ -43,7 +43,9 @@ export default function PaymentSuccessScreen() {
           <Text style={[theme.typography.body1, styles.subtitle]}>{error}</Text>
           <Button
             title="Back to Booking"
-            onPress={() => router.replace(`/tracking/${bookingId}`)}
+            onPress={() =>
+              router.replace('/(tabs)/bookings?filter=Completed')
+            }
             fullWidth
           />
         </View>

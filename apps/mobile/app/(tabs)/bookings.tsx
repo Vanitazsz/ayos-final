@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AppState, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,8 +8,10 @@ import { MapPin, Calendar as CalendarIcon, Clock, ChevronRight } from 'lucide-re
 
 import { EmptyState } from '@/components/layout/EmptyState';
 import { fetchBookings, subscribeToBookingFeed } from '@/services/api';
-
-const BOOKING_TABS = ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'];
+import {
+  CUSTOMER_BOOKING_TABS,
+  getInitialCustomerBookingTab,
+} from '@/services/bookingTabs';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'Awaiting Worker Acceptance', color: '#B78103', bg: '#FFF8E1' },
@@ -25,9 +27,16 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 
 export default function BookingsScreen() {
   const router = useRouter();
+  const { filter } = useLocalSearchParams<{ filter?: string | string[] }>();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState('Upcoming');
+  const [activeTab, setActiveTab] = useState(() =>
+    getInitialCustomerBookingTab(filter),
+  );
   const [bookings, setBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    setActiveTab(getInitialCustomerBookingTab(filter));
+  }, [filter]);
 
   const load = () =>
     void fetchBookings().then((result) => {
@@ -90,7 +99,7 @@ export default function BookingsScreen() {
       {/* Custom Tab Bar */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {BOOKING_TABS.map((tab) => (
+          {CUSTOMER_BOOKING_TABS.map((tab) => (
             <TouchableOpacity 
               key={tab} 
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
