@@ -53,10 +53,24 @@ export default function WorkerIndustrySkillsScreen() {
           setError(res.error);
         } else {
           setIndustries(res.data.industries);
-          setSelectedIndustryId(
-            res.data.primaryIndustryId || res.data.industries[0]?.id || null,
+          const nextIndustryId =
+            res.data.primaryIndustryId || res.data.industries[0]?.id || null;
+          const nextIndustry = res.data.industries.find(
+            (industry) => industry.id === nextIndustryId,
           );
-          setSelectedSkillIds(res.data.selectedSkillIds || []);
+          const industrySkillIds = new Set(
+            nextIndustry?.skills.map((skill) => skill.id) ?? [],
+          );
+          const compatibleSkillIds = (res.data.selectedSkillIds || []).filter(
+            (skillId) => industrySkillIds.has(skillId),
+          );
+          setSelectedIndustryId(nextIndustryId);
+          setSelectedSkillIds(
+            compatibleSkillIds.length
+              ? compatibleSkillIds
+              : (nextIndustry?.skills.slice(0, 2).map((skill) => skill.id) ??
+                []),
+          );
           setYearsExperience(res.data.yearsExperience || 3);
           setRateBySkillId(res.data.rateBySkillId ?? {});
         }
@@ -185,14 +199,24 @@ export default function WorkerIndustrySkillsScreen() {
                   ]}
                   onPress={() => {
                     setSelectedIndustryId(ind.id);
-                    // Automatically add skills from this industry if none selected
-                    const skillIdsInInd = ind.skills.map((s) => s.id);
-                    if (
-                      skillIdsInInd.length > 0 &&
-                      selectedSkillIds.length === 0
-                    ) {
-                      setSelectedSkillIds(skillIdsInInd.slice(0, 2));
-                    }
+                    const skillIdsInInd = new Set(
+                      ind.skills.map((skill) => skill.id),
+                    );
+                    setSelectedSkillIds((current) => {
+                      const compatible = current.filter((skillId) =>
+                        skillIdsInInd.has(skillId),
+                      );
+                      return compatible.length
+                        ? compatible
+                        : ind.skills.slice(0, 2).map((skill) => skill.id);
+                    });
+                    setRateBySkillId((current) =>
+                      Object.fromEntries(
+                        Object.entries(current).filter(([skillId]) =>
+                          skillIdsInInd.has(skillId),
+                        ),
+                      ),
+                    );
                   }}
                 >
                   <Text

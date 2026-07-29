@@ -4,6 +4,8 @@ const workerId = '99000000-0000-4000-8000-000000000011';
 const industryId = '99000000-0000-4000-8000-000000000012';
 const drainSkillId = '99000000-0000-4000-8000-000000000013';
 const fixtureSkillId = '99000000-0000-4000-8000-000000000014';
+const staleSkillId = '99000000-0000-4000-8000-000000000015';
+const staleIndustryId = '99000000-0000-4000-8000-000000000016';
 const authStorageKey = 'sb-qsurouiyvisykjkgjqmz-auth-token';
 
 function accessToken() {
@@ -94,6 +96,20 @@ async function useWorkerFixture(page: Page) {
             },
           ],
         },
+        {
+          id: staleIndustryId,
+          slug: 'electrical',
+          name: 'Electrical',
+          sort_order: 2,
+          service_categories: [
+            {
+              id: staleSkillId,
+              slug: 'stale-electrical-skill',
+              name: 'Stale Electrical Skill',
+              is_active: true,
+            },
+          ],
+        },
       ]),
     }),
   );
@@ -118,6 +134,11 @@ async function useWorkerFixture(page: Page) {
           category_id: fixtureSkillId,
           years: 4,
           rate_minor: 70_000,
+        },
+        {
+          category_id: staleSkillId,
+          years: 4,
+          rate_minor: 80_000,
         },
       ]),
     }),
