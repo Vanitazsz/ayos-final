@@ -17,11 +17,13 @@ import {
   loadSafetyCases,
   loadSupport,
   sendSupportReply,
-  subscribe,
   updateSupport,
 } from '../../services/adminData';
+import { useRealtime } from '../../hooks/useRealtime';
+import { useToast } from '../../context/ToastContext';
 
 const Support = () => {
+  const toast = useToast();
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -40,15 +42,10 @@ const Support = () => {
       current ? (rows.find((row) => row.id === current.id) ?? null) : null,
     );
   }, []);
-  useEffect(() => {
-    void refresh();
-    const stops = [
-      subscribe('support_tickets', refresh),
-      subscribe('account_reports', refresh),
-      subscribe('booking_disputes', refresh),
-    ];
-    return () => stops.forEach((stop) => stop());
-  }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh]);
+  useRealtime(['support_tickets', 'account_reports', 'booking_disputes'], refresh);
+
+
 
   const filteredTickets = tickets.filter((t) => {
     const matchesSearch =
@@ -117,7 +114,7 @@ const Support = () => {
       setReplyText('');
       await refresh();
     } catch (error) {
-      alert(error.message);
+      toast.error('Send failed', error.message);
     }
   };
 
@@ -131,7 +128,7 @@ const Support = () => {
       await refresh();
       setSelectedTicket({ ...selectedTicket, status: 'Resolved' });
     } catch (error) {
-      alert(error.message);
+      toast.error('Send failed', error.message);
     }
   };
 
@@ -141,7 +138,7 @@ const Support = () => {
       await refresh();
       setSelectedTicket({ ...selectedTicket, status: 'Escalated' });
     } catch (error) {
-      alert(error.message);
+      toast.error('Send failed', error.message);
     }
   };
 
@@ -151,7 +148,7 @@ const Support = () => {
       await refresh();
       setSelectedTicket({ ...selectedTicket, status: 'Open' });
     } catch (error) {
-      alert(error.message);
+      toast.error('Send failed', error.message);
     }
   };
 
@@ -187,19 +184,19 @@ const Support = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Type
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Booking
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Reason
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Created
               </th>
             </tr>
@@ -235,6 +232,7 @@ const Support = () => {
           </div>
           <input
             type="text"
+            aria-label="Search tickets by ID or subject..."
             placeholder="Search tickets by ID or subject..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -260,22 +258,22 @@ const Support = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ticket Info
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Subject & Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Assigned To
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Priority
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -294,7 +292,7 @@ const Support = () => {
                     <div className="text-xs text-blue-600 mt-1 font-medium">{ticket.customer}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
+                    <div className="text-sm font-medium text-gray-900 truncate">
                       {ticket.subject}
                     </div>
                     <div className="text-xs text-gray-500">{ticket.category}</div>
