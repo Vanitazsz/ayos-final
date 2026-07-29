@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -30,6 +30,7 @@ export default function ReviewScreen() {
   const [recommend, setRecommend] = useState(true);
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const bookingId = Array.isArray(id) ? id[0] : id;
   const [booking, setBooking] = useState<any>(null);
@@ -40,6 +41,7 @@ export default function ReviewScreen() {
       });
   }, [bookingId]);
   const handleSubmit = async () => {
+    if (submittingRef.current) return;
     if (rating === 0) {
       Alert.alert('Rating Required', 'Please select at least 1 star.');
       return;
@@ -59,6 +61,7 @@ export default function ReviewScreen() {
       );
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
       const {
@@ -108,8 +111,6 @@ export default function ReviewScreen() {
       setLoading(false);
     }
   };
-
-  const hasValidReviewText = review.trim().length >= 3;
 
   const handleUpload = async () => {
     if (photos.length >= 3) return;
@@ -262,7 +263,6 @@ export default function ReviewScreen() {
         <Button
           title="Submit Review"
           onPress={handleSubmit}
-          disabled={rating === 0 || !hasValidReviewText}
           loading={loading}
           fullWidth
         />
