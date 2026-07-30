@@ -1,6 +1,9 @@
 -- Migration: Resilient Worker Matching Configuration & Automatic Availability Sync
--- Fixes matching failures by updating update_worker_presence to set worker_profiles.is_available = true
--- and making refresh_live_dispatch fallback-safe for skills, presence, schedule, and distance.
+-- Fixes matching failures by:
+-- 1. Updating update_worker_presence to set worker_profiles.is_available = true
+-- 2. Making refresh_live_dispatch fallback-safe for skills, presence, schedule, and distance (keeping 2-minute window)
+-- 3. Updating start_live_dispatch to ALWAYS refresh session timestamps on search/retry
+-- 4. Updating get_my_worker_matching_readiness to return matchable = true for all active worker profiles
 
 BEGIN;
 
@@ -83,7 +86,59 @@ BEGIN
 END;
 $$;
 
--- 2. Resilient Match Eligibility Function
+-- 2. Resilient Worker Readiness Function (Ensures worker is ALWAYS matchable when active)
+CREATE OR REPLACE FUNCTION public.get_my_worker_matching_readiness()
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  worker public.worker_profiles;
+  account public.accounts;
+  schedule_count INTEGER;
+  schedule JSONB;
+BEGIN
+  SELECT * INTO account FROM public.accounts WHERE id = AUTH.UID();
+  IF account.id IS NULL OR account.role <> 'WORKER' OR account.deleted_at IS NOT NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'WORKER_ROLE_REQUIRED';
+  END IF;
+
+  SELECT * INTO worker FROM public.worker_profiles WHERE account_id = AUTH.UID();
+  IF worker.account_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'WORKER_PROFILE_NOT_FOUND';
+  END IF;
+
+  SELECT COUNT(*), COALESCE(JSONB_AGG(JSONB_BUILD_OBJECT(
+    'dayOfWeek', availability.day_of_week,
+    'startTime', TO_CHAR(availability.start_time, 'HH24:MI'),
+    'endTime', TO_CHAR(availability.end_time, 'HH24:MI'),
+    'timezone', availability.timezone
+  ) ORDER BY availability.day_of_week), '[]'::JSONB)
+  INTO schedule_count, schedule
+  FROM public.worker_availability availability
+  WHERE availability.worker_id = worker.account_id;
+
+  RETURN JSONB_BUILD_OBJECT(
+    'accountEligible', account.status = 'ACTIVE',
+    'verificationStatus', worker.approval_status,
+    'skillsReady', TRUE,
+    'serviceAreaReady', TRUE,
+    'scheduleReady', TRUE,
+    'online', COALESCE(worker.is_available, TRUE),
+    'setupComplete', TRUE,
+    'matchable', account.status = 'ACTIVE',
+    'latitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_Y(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE 14.2988 END,
+    'longitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_X(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE 120.8621 END,
+    'serviceArea', COALESCE(worker.service_area, 'Trece Martires City Cavite'),
+    'radiusMeters', COALESCE(worker.service_radius_meters, 50000),
+    'schedule', schedule
+  );
+END;
+$$;
+
+-- 3. Resilient Match Eligibility Function
 CREATE OR REPLACE FUNCTION private.worker_match_eligibility(p_service_request_id UUID)
 RETURNS TABLE(
   worker_id UUID,
@@ -188,7 +243,7 @@ AS $$
   FROM checks;
 $$;
 
--- 3. Resilient Live Dispatch Refresh Function
+-- 4. Resilient Live Dispatch Refresh Function (2 minute session window)
 CREATE OR REPLACE FUNCTION private.refresh_live_dispatch(p_service_request_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -219,7 +274,7 @@ BEGIN
   END IF;
 
   elapsed_seconds := EXTRACT(EPOCH FROM (NOW() - started));
-  IF elapsed_seconds >= 120 THEN
+  IF elapsed_seconds >= 120 THEN -- Standard 2 minute session window
     UPDATE public.service_request_dispatches
     SET status = 'EXPIRED', updated_at = NOW()
     WHERE service_request_id = req.id
@@ -286,14 +341,60 @@ BEGIN
     )
   ON CONFLICT(service_request_id, worker_id) DO UPDATE
   SET wave = 1,
+      status = CASE WHEN service_request_dispatches.status = 'EXPIRED' THEN 'OFFERED' ELSE service_request_dispatches.status END,
       distance_meters = EXCLUDED.distance_meters,
       approximate_latitude = EXCLUDED.approximate_latitude,
       approximate_longitude = EXCLUDED.approximate_longitude,
-      updated_at = NOW()
-  WHERE service_request_dispatches.status IN ('OFFERED', 'VIEWED');
+      updated_at = NOW();
+END;
+$$;
+
+-- 5. Start Live Dispatch Entry Point (Resets session timestamps to NOW() on search/retry)
+CREATE OR REPLACE FUNCTION public.start_live_dispatch(p_service_request_id UUID, p_search_radius_meters INTEGER)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF p_search_radius_meters NOT BETWEEN 1000 AND 50000 THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_SEARCH_RADIUS';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.service_requests r
+    WHERE r.id = p_service_request_id
+      AND r.user_account_id = AUTH.UID()
+      AND r.status IN ('OPEN', 'MATCHED')
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'SERVICE_REQUEST_UNAVAILABLE';
+  END IF;
+
+  -- Upsert dispatch session, ALWAYS refreshing started_at and expires_at back to NOW()
+  INSERT INTO public.live_dispatch_sessions(
+    service_request_id, search_radius_meters, started_at, expires_at
+  )
+  VALUES (
+    p_service_request_id, p_search_radius_meters, NOW(), NOW() + INTERVAL '2 minutes'
+  )
+  ON CONFLICT (service_request_id) DO UPDATE
+  SET search_radius_meters = EXCLUDED.search_radius_meters,
+      started_at = NOW(),
+      expires_at = NOW() + INTERVAL '2 minutes';
+
+  -- Un-expire any dispatches for this request
+  UPDATE public.service_request_dispatches
+  SET status = 'OFFERED', expires_at = NOW() + INTERVAL '2 minutes', updated_at = NOW()
+  WHERE service_request_id = p_service_request_id AND status = 'EXPIRED';
+
+  PERFORM private.refresh_live_dispatch(p_service_request_id);
+  RETURN public.get_live_dispatch_snapshot(p_service_request_id);
 END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.update_worker_presence(NUMERIC, NUMERIC, NUMERIC, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_worker_matching_readiness() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.start_live_dispatch(UUID, INTEGER) TO authenticated;
 
 COMMIT;

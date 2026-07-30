@@ -70,7 +70,58 @@ BEGIN
 END;
 $$;
 
--- 2. Restore previous private.worker_match_eligibility function
+-- 2. Restore previous public.get_my_worker_matching_readiness function
+CREATE OR REPLACE FUNCTION public.get_my_worker_matching_readiness()
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  worker public.worker_profiles;
+  account public.accounts;
+  schedule_count INTEGER;
+  schedule JSONB;
+BEGIN
+  SELECT * INTO account FROM public.accounts WHERE id = AUTH.UID();
+  IF account.id IS NULL OR account.role <> 'WORKER' OR account.deleted_at IS NOT NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'WORKER_ROLE_REQUIRED';
+  END IF;
+  SELECT * INTO worker FROM public.worker_profiles WHERE account_id = AUTH.UID();
+  IF worker.account_id IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'WORKER_PROFILE_NOT_FOUND';
+  END IF;
+
+  SELECT COUNT(*), COALESCE(JSONB_AGG(JSONB_BUILD_OBJECT(
+    'dayOfWeek', availability.day_of_week,
+    'startTime', TO_CHAR(availability.start_time, 'HH24:MI'),
+    'endTime', TO_CHAR(availability.end_time, 'HH24:MI'),
+    'timezone', availability.timezone
+  ) ORDER BY availability.day_of_week), '[]'::JSONB)
+  INTO schedule_count, schedule
+  FROM public.worker_availability availability
+  WHERE availability.worker_id = worker.account_id;
+
+  RETURN JSONB_BUILD_OBJECT(
+    'accountEligible', account.status = 'ACTIVE',
+    'verificationStatus', worker.approval_status,
+    'skillsReady', TRUE,
+    'serviceAreaReady', worker.service_origin IS NOT NULL AND worker.service_radius_meters IS NOT NULL,
+    'scheduleReady', schedule_count > 0,
+    'online', worker.is_available,
+    'setupComplete', worker.service_origin IS NOT NULL AND worker.service_radius_meters IS NOT NULL AND schedule_count > 0,
+    'matchable', account.status = 'ACTIVE' AND worker.approval_status = 'APPROVED' AND worker.service_origin IS NOT NULL AND worker.service_radius_meters IS NOT NULL AND schedule_count > 0 AND worker.is_available,
+    'latitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_Y(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE NULL END,
+    'longitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_X(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE NULL END,
+    'serviceArea', worker.service_area,
+    'radiusMeters', worker.service_radius_meters,
+    'schedule', schedule
+  );
+END;
+$$;
+
+-- 3. Restore previous private.worker_match_eligibility function
 CREATE OR REPLACE FUNCTION private.worker_match_eligibility(p_service_request_id UUID)
 RETURNS TABLE(
   worker_id UUID,
@@ -161,7 +212,7 @@ AS $$
   FROM checks;
 $$;
 
--- 3. Restore previous private.refresh_live_dispatch function
+-- 4. Restore previous private.refresh_live_dispatch function
 CREATE OR REPLACE FUNCTION private.refresh_live_dispatch(p_service_request_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -253,6 +304,34 @@ BEGIN
       approximate_longitude = EXCLUDED.approximate_longitude,
       updated_at = NOW()
   WHERE service_request_dispatches.status IN ('OFFERED', 'VIEWED');
+END;
+$$;
+
+-- 5. Restore previous public.start_live_dispatch function
+CREATE OR REPLACE FUNCTION public.start_live_dispatch(p_service_request_id UUID, p_search_radius_meters INTEGER)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF p_search_radius_meters NOT BETWEEN 1000 AND 50000 THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_SEARCH_RADIUS';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.service_requests r
+    WHERE r.id = p_service_request_id
+      AND r.user_account_id = AUTH.UID()
+      AND r.status IN ('OPEN', 'MATCHED')
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'SERVICE_REQUEST_UNAVAILABLE';
+  END IF;
+  INSERT INTO public.live_dispatch_sessions(service_request_id, search_radius_meters)
+  VALUES (p_service_request_id, p_search_radius_meters)
+  ON CONFLICT (service_request_id) DO NOTHING;
+  PERFORM private.refresh_live_dispatch(p_service_request_id);
+  RETURN public.get_live_dispatch_snapshot(p_service_request_id);
 END;
 $$;
 
