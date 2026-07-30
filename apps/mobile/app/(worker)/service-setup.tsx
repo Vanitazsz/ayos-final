@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle2, MapPin } from 'lucide-react-native';
+import { ArrowLeft, MapPin } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
 import { AppInput } from '@/components/AppInput';
 import { AppSelect } from '@/components/AppSelect';
@@ -142,29 +142,6 @@ export default function WorkerServiceSetupScreen() {
       ),
     [schedule],
   );
-
-  const toggleDay = (dayOfWeek: number) => {
-    setSchedule((current) => ({
-      ...current,
-      [dayOfWeek]: {
-        ...current[dayOfWeek],
-        enabled: !current[dayOfWeek].enabled,
-      },
-    }));
-    setSaved(false);
-  };
-
-  const updateTime = (
-    dayOfWeek: number,
-    field: 'startTime' | 'endTime',
-    value: string,
-  ) => {
-    setSchedule((current) => ({
-      ...current,
-      [dayOfWeek]: { ...current[dayOfWeek], [field]: value },
-    }));
-    setSaved(false);
-  };
 
   const save = async () => {
     setError('');
@@ -334,68 +311,6 @@ export default function WorkerServiceSetupScreen() {
             </View>
 
             <View style={styles.card}>
-              <AppText variant="body" weight="bold">
-                Weekly schedule
-              </AppText>
-              <AppText variant="caption" color={Colors.textSecondary}>
-                Times use Philippine Standard Time.
-              </AppText>
-              {DAYS.map(({ dayOfWeek, label }) => {
-                const value = schedule[dayOfWeek];
-                return (
-                  <View key={dayOfWeek} style={styles.dayRow}>
-                    <Pressable
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: value.enabled }}
-                      accessibilityLabel={label}
-                      onPress={() => toggleDay(dayOfWeek)}
-                      style={styles.dayToggle}
-                    >
-                      <View
-                        style={[
-                          styles.checkbox,
-                          value.enabled && styles.checkboxSelected,
-                        ]}
-                      >
-                        {value.enabled ? (
-                          <CheckCircle2 size={14} color={Colors.white} />
-                        ) : null}
-                      </View>
-                      <AppText variant="bodySm" weight="medium">
-                        {label}
-                      </AppText>
-                    </Pressable>
-                    {value.enabled ? (
-                      <View style={styles.timeInputs}>
-                        <AppInput
-                          placeholder="08:00"
-                          value={value.startTime}
-                          maxLength={5}
-                          onChangeText={(text) =>
-                            updateTime(dayOfWeek, 'startTime', text)
-                          }
-                          containerStyle={styles.timeInput}
-                        />
-                        <AppText variant="caption" color={Colors.textSecondary}>
-                          to
-                        </AppText>
-                        <AppInput
-                          placeholder="17:00"
-                          value={value.endTime}
-                          maxLength={5}
-                          onChangeText={(text) =>
-                            updateTime(dayOfWeek, 'endTime', text)
-                          }
-                          containerStyle={styles.timeInput}
-                        />
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.card}>
               <View style={styles.onlineRow}>
                 <View style={styles.onlineCopy}>
                   <AppText variant="body" weight="bold">
@@ -486,28 +401,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   readinessDotReady: { backgroundColor: Colors.verified },
-  dayRow: {
-    gap: Spacing['2'],
-    paddingVertical: Spacing['2'],
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  dayToggle: { flexDirection: 'row', alignItems: 'center', gap: Spacing['2'] },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: Radius.sm,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  timeInputs: { flexDirection: 'row', alignItems: 'center', gap: Spacing['2'] },
-  timeInput: { flex: 1 },
   onlineRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing['3'] },
   onlineCopy: { flex: 1, gap: Spacing['1'] },
   errorCard: {
