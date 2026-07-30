@@ -23,11 +23,11 @@ import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
 import Modal from '../../components/ui/Modal';
+import AccountDeleteModal from '../../components/admin/AccountDeleteModal';
 import {
   loadCustomerVerifications,
   loadUsers,
   reviewCustomerVerification,
-  deleteAccount,
   setAccountStatus,
   subscribe,
   updateUser,
@@ -52,6 +52,7 @@ const Users = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSavingUser, setIsSavingUser] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const toast = useToast();
   const itemsPerPage = 10;
   const refresh = async () => {
@@ -160,18 +161,8 @@ const Users = () => {
   };
 
   const handleDelete = async (user) => {
-    if (!window.confirm(`Permanently delete ${user.name} and all related Supabase records? This cannot be undone.`)) return;
-    setActionLoadingId(`${user.id}:delete`);
     setActionMenuOpenId(null);
-    try {
-      await deleteAccount(user.id, user.email);
-      await refresh();
-      toast.success('User deleted', `${user.name} and related Supabase records were permanently deleted.`);
-    } catch (error) {
-      toast.error('Delete failed', error instanceof Error ? error.message : 'Unable to permanently delete user.');
-    } finally {
-      setActionLoadingId(null);
-    }
+    setDeleteTarget(user);
   };
 
   // Filter
@@ -628,6 +619,17 @@ const Users = () => {
           </form>
         ) : null}
       </Modal>
+      <AccountDeleteModal
+        account={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={async (deletedUser) => {
+          await refresh();
+          toast.success(
+            'User deleted',
+            `${deletedUser.name} and all related records were permanently deleted.`,
+          );
+        }}
+      />
     </div>
   );
 };

@@ -20,13 +20,13 @@ import {
 import Drawer from '../../components/ui/Drawer';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
+import AccountDeleteModal from '../../components/admin/AccountDeleteModal';
 
 import {
   loadWorkers,
   reviewWorker,
   setAccountStatus,
   setWorkerAvailability,
-  deleteAccount,
   subscribe,
 } from '../../services/adminData';
 
@@ -37,7 +37,6 @@ const Workers = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [workerToDelete, setWorkerToDelete] = useState(null);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -133,18 +132,7 @@ const Workers = () => {
 
   const handleDeleteClick = (worker) => {
     setWorkerToDelete(worker);
-    setIsDeleteModalOpen(true);
     setActionMenuOpenId(null);
-  };
-
-  const confirmDelete = async () => {
-    try {
-      await deleteAccount(workerToDelete.id, workerToDelete.email);
-      await refresh();
-      setIsDeleteModalOpen(false);
-    } catch (error) {
-      alert(error.message);
-    }
   };
 
   const toggleStatus = async (worker) => {
@@ -584,37 +572,13 @@ const Workers = () => {
         )}
       </Drawer>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        title="Confirm Deletion"
-      >
-        <div className="flex flex-col items-center text-center pb-4">
-          <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
-            <AlertCircle size={24} className="text-red-600" />
-          </div>
-          <p className="text-gray-600 mb-6">
-            Permanently delete worker{' '}
-            <span className="font-semibold text-gray-900">"{workerToDelete?.name}"</span>? This
-            will delete the account and all related Supabase records. This cannot be undone.
-          </p>
-          <div className="flex w-full space-x-3">
-            <button
-              onClick={() => setIsDeleteModalOpen(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirmDelete}
-              className="flex-1 px-4 py-2 bg-red-600 rounded-lg text-sm font-medium text-white hover:bg-red-700 transition-colors"
-            >
-              Yes, Delete Permanently
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <AccountDeleteModal
+        account={workerToDelete}
+        onClose={() => setWorkerToDelete(null)}
+        onDeleted={async () => {
+          await refresh();
+        }}
+      />
 
       {/* Request Docs Remarks Modal */}
       <Modal

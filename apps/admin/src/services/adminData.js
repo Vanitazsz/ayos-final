@@ -263,32 +263,24 @@ export async function reviewWorker(verificationId, decision, notes) {
   return data;
 }
 export async function deleteAccount(id, email) {
-  const { data: storageObjects, error: storageListError } = await supabase.rpc(
-    'admin_list_account_storage_objects',
-    { p_account_id: id },
-  );
-  if (storageListError) throw storageListError;
-
-  const filesByBucket = new Map();
-  for (const object of storageObjects ?? []) {
-    if (!filesByBucket.has(object.bucket_id)) filesByBucket.set(object.bucket_id, new Set());
-    filesByBucket.get(object.bucket_id).add(object.name);
-  }
-  for (const [bucket, paths] of filesByBucket) {
-    const filePaths = [...paths];
-    for (let index = 0; index < filePaths.length; index += 100) {
-      const { error } = await supabase.storage
-        .from(bucket)
-        .remove(filePaths.slice(index, index + 100));
-      if (error) throw error;
-    }
-  }
-
   const { error } = await supabase.rpc('admin_delete_account', {
     p_account_id: id,
     p_confirmation_email: email,
   });
   if (error) throw error;
+}
+export async function previewAccountPurge(id) {
+  const { data, error } = await supabase.rpc('admin_preview_account_purge', {
+    p_account_id: id,
+  });
+  if (error) throw error;
+  return {
+    totalRows: Number(data?.total_rows ?? 0),
+    storageFiles: Number(data?.storage_files ?? 0),
+    tables: Object.entries(data?.tables ?? {})
+      .map(([table, count]) => ({ table, count: Number(count) }))
+      .sort((left, right) => right.count - left.count || left.table.localeCompare(right.table)),
+  };
 }
 export async function loadBookings() {
   const { data, error } = await supabase
