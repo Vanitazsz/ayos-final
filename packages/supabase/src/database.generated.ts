@@ -5298,6 +5298,7 @@ export type Database = {
       }
       get_my_worker_live_status: { Args: never; Returns: Json }
       get_my_worker_matching_readiness: { Args: never; Returns: Json }
+      get_my_worker_skills: { Args: never; Returns: Json }
       get_platform_fee_settings: { Args: never; Returns: Json }
       get_worker_wallet_balances: {
         Args: { p_worker_ids: string[] }
@@ -7172,4 +7173,3 @@ export const Constants = {
     },
   },
 } as const
-

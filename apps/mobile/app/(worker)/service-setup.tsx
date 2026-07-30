@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, MapPin } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
 import { AppInput } from '@/components/AppInput';
@@ -87,38 +92,43 @@ export default function WorkerServiceSetupScreen() {
   const [warning, setWarning] = useState('');
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    void getWorkerMatchingReadiness()
-      .then((result) => {
-        if (!active) return;
-        setReadiness(result);
-        if (result.latitude != null && result.longitude != null) {
-          setCoords({
-            latitude: Number(result.latitude),
-            longitude: Number(result.longitude),
-          });
-        }
-        setServiceArea(result.serviceArea ?? '');
-        setRadius(String(result.radiusMeters ?? 10000));
-        setSchedule(scheduleFromRows(result.schedule ?? []));
-        setOnline(result.online);
-      })
-      .catch((reason) => {
-        if (active)
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : 'Unable to load matching setup.',
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoading(true);
+      setError('');
+      void getWorkerMatchingReadiness()
+        .then((result) => {
+          if (!active) return;
+          setReadiness(result);
+          if (result.latitude != null && result.longitude != null) {
+            setCoords({
+              latitude: Number(result.latitude),
+              longitude: Number(result.longitude),
+            });
+          }
+          setServiceArea(result.serviceArea ?? '');
+          setRadius(String(result.radiusMeters ?? 10000));
+          setSchedule(scheduleFromRows(result.schedule ?? []));
+          setOnline(result.online);
+        })
+        .catch((reason) => {
+          if (active)
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : 'Unable to load matching setup.',
+            );
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const selectedSchedule = useMemo(
     () =>

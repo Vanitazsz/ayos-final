@@ -119,7 +119,10 @@ test('approved worker can complete setup and go online', async ({ page }) => {
   await page.goto('/service-setup');
   await expect(page.getByText('Service Availability', { exact: true })).toBeVisible();
   await expect(page.getByText('Admin verification approved')).toBeVisible();
-  await expect(page.getByText('Service rate set in Industry & Skills')).toBeVisible();
+  await expect(page.getByText('Service rate set in Industry & Skills')).toHaveCSS(
+    'color',
+    'rgb(16, 185, 129)',
+  );
   await expect(page.getByText('Service origin and radius')).toBeVisible();
 
   await page.getByLabel('Available for matching').click();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ArrowLeft,
   Check,
@@ -44,14 +44,19 @@ export default function WorkerIndustrySkillsScreen() {
   const [saving, setSaving] = useState(false);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    void fetchMyWorkerSkillsAndIndustry()
-      .then((res) => {
-        if (!active) return;
-        if (res.error) {
-          setError(res.error);
-        } else {
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoading(true);
+      setError('');
+      void fetchMyWorkerSkillsAndIndustry()
+        .then((res) => {
+          if (!active) return;
+          if (res.error) {
+            setError(res.error);
+            return;
+          }
+
           setIndustries(res.data.industries);
           const nextIndustryId =
             res.data.primaryIndustryId || res.data.industries[0]?.id || null;
@@ -61,34 +66,29 @@ export default function WorkerIndustrySkillsScreen() {
           const industrySkillIds = new Set(
             nextIndustry?.skills.map((skill) => skill.id) ?? [],
           );
-          const compatibleSkillIds = (res.data.selectedSkillIds || []).filter(
+          const compatibleSkillIds = res.data.selectedSkillIds.filter(
             (skillId) => industrySkillIds.has(skillId),
           );
           setSelectedIndustryId(nextIndustryId);
-          setSelectedSkillIds(
-            compatibleSkillIds.length
-              ? compatibleSkillIds
-              : (nextIndustry?.skills.slice(0, 2).map((skill) => skill.id) ??
-                []),
-          );
+          setSelectedSkillIds(compatibleSkillIds);
           setYearsExperience(res.data.yearsExperience || 3);
-          setRateBySkillId(res.data.rateBySkillId ?? {});
-        }
-      })
-      .catch((err) => {
-        if (active)
-          setError(
-            err instanceof Error ? err.message : 'Unable to load skills',
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+          setRateBySkillId(res.data.rateBySkillId);
+        })
+        .catch((err) => {
+          if (active)
+            setError(
+              err instanceof Error ? err.message : 'Unable to load skills',
+            );
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
 
-    return () => {
-      active = false;
-    };
-  }, []);
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const toggleSkill = (skillId: string) => {
     setSelectedSkillIds((prev) =>
@@ -203,12 +203,9 @@ export default function WorkerIndustrySkillsScreen() {
                       ind.skills.map((skill) => skill.id),
                     );
                     setSelectedSkillIds((current) => {
-                      const compatible = current.filter((skillId) =>
+                      return current.filter((skillId) =>
                         skillIdsInInd.has(skillId),
                       );
-                      return compatible.length
-                        ? compatible
-                        : ind.skills.slice(0, 2).map((skill) => skill.id);
                     });
                     setRateBySkillId((current) =>
                       Object.fromEntries(

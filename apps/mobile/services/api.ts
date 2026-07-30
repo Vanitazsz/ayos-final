@@ -1759,33 +1759,35 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
   }>
 > {
   return wrap(async () => {
-    const user = await requireUser();
-    const [industriesRes, profileRes, skillsRes] = await Promise.all([
+    await requireUser();
+    const [industriesRes, savedSkillsRes] = await Promise.all([
       fetchIndustriesAndSkills(),
-      supabase
-        .from('worker_profiles')
-        .select('primary_industry_id')
-        .eq('account_id', user.id)
-        .maybeSingle(),
-      supabase
-        .from('worker_skills')
-        .select('category_id,years,rate_minor')
-        .eq('worker_id', user.id),
+      supabase.rpc('get_my_worker_skills'),
     ]);
 
+    if (industriesRes.error) throw new Error(industriesRes.error);
+    if (savedSkillsRes.error) throw savedSkillsRes.error;
+
+    const savedState = (savedSkillsRes.data ?? {}) as {
+      primaryIndustryId?: string | null;
+      skills?: Array<{
+        categoryId: string;
+        years: number | null;
+        rateMinor: number | null;
+      }>;
+    };
+    const savedSkills = savedState.skills ?? [];
     const industries = industriesRes.data ?? [];
-    const primaryIndustryId = profileRes.data?.primary_industry_id ?? null;
-    const selectedSkillIds = (skillsRes.data ?? []).map(
-      (row: any) => row.category_id,
-    );
+    const primaryIndustryId = savedState.primaryIndustryId ?? null;
+    const selectedSkillIds = savedSkills.map((skill) => skill.categoryId);
     const yearsExperience = Math.max(
-      ...(skillsRes.data ?? []).map((row: any) => row.years ?? 0),
+      ...savedSkills.map((skill) => skill.years ?? 0),
       1,
     );
     const rateBySkillId = Object.fromEntries(
-      (skillsRes.data ?? []).map((row: any) => [
-        row.category_id,
-        row.rate_minor == null ? null : Number(row.rate_minor),
+      savedSkills.map((skill) => [
+        skill.categoryId,
+        skill.rateMinor == null ? null : Number(skill.rateMinor),
       ]),
     );
 

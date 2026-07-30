@@ -8,6 +8,12 @@ const staleSkillId = '99000000-0000-4000-8000-000000000015';
 const staleIndustryId = '99000000-0000-4000-8000-000000000016';
 const authStorageKey = 'sb-qsurouiyvisykjkgjqmz-auth-token';
 
+type SavedSkill = {
+  categoryId: string;
+  years: number;
+  rateMinor: number | null;
+};
+
 function accessToken() {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
@@ -18,7 +24,14 @@ function accessToken() {
   })}.test-signature`;
 }
 
-async function useWorkerFixture(page: Page) {
+async function useWorkerFixture(
+  page: Page,
+  savedSkills: SavedSkill[] = [
+    { categoryId: drainSkillId, years: 4, rateMinor: 60_000 },
+    { categoryId: fixtureSkillId, years: 4, rateMinor: 70_000 },
+    { categoryId: staleSkillId, years: 4, rateMinor: 80_000 },
+  ],
+) {
   const token = accessToken();
   const user = {
     id: workerId,
@@ -88,6 +101,17 @@ async function useWorkerFixture(page: Page) {
       }),
     }),
   );
+  await page.route('**/rest/v1/rpc/get_my_worker_skills', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        primaryIndustryId: industryId,
+        skills: savedSkills,
+        rateReady: savedSkills.some((skill) => skill.rateMinor != null),
+      }),
+    }),
+  );
   await page.route('**/rest/v1/industries*', (route) =>
     route.fulfill({
       status: 200,
@@ -130,37 +154,17 @@ async function useWorkerFixture(page: Page) {
       ]),
     }),
   );
-  await page.route('**/rest/v1/worker_profiles*', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ primary_industry_id: industryId }),
-    }),
-  );
-  await page.route('**/rest/v1/worker_skills*', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          category_id: drainSkillId,
-          years: 4,
-          rate_minor: 60_000,
-        },
-        {
-          category_id: fixtureSkillId,
-          years: 4,
-          rate_minor: 70_000,
-        },
-        {
-          category_id: staleSkillId,
-          years: 4,
-          rate_minor: 80_000,
-        },
-      ]),
-    }),
-  );
 }
+
+test('worker sees only the exact skills and rates last saved', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await useWorkerFixture(page, [{ categoryId: fixtureSkillId, years: 5, rateMinor: 82_550 }]);
+
+  await page.goto('/industry-skills');
+  await expect(page.getByLabel('Drain Unclogging service rate in PHP')).toHaveCount(0);
+  await expect(page.getByLabel('Fixture Installation service rate in PHP')).toHaveValue('825.5');
+  await expect(page.getByText('Your service rate (PHP/₱)', { exact: true })).toHaveCount(1);
+});
 
 test('worker saves per-skill rates and confirms before returning to profile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
