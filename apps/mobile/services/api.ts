@@ -1759,16 +1759,14 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
   }>
 > {
   return wrap(async () => {
-    await requireUser();
+    const user = await requireUser();
     const [industriesRes, savedSkillsRes] = await Promise.all([
       fetchIndustriesAndSkills(),
       supabase.rpc('get_my_worker_skills'),
     ]);
 
     if (industriesRes.error) throw new Error(industriesRes.error);
-    if (savedSkillsRes.error) throw savedSkillsRes.error;
-
-    const savedState = (savedSkillsRes.data ?? {}) as {
+    let savedState = (savedSkillsRes.data ?? {}) as {
       primaryIndustryId?: string | null;
       skills?: Array<{
         categoryId: string;
@@ -1776,6 +1774,34 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
         rateMinor: number | null;
       }>;
     };
+
+    // Older deployments may not have the read RPC in PostgREST's schema
+    // cache yet. Fall back to the existing row-level reads until it is
+    // available, while preserving the same saved-data shape.
+    if (savedSkillsRes.error) {
+      const [profileRes, skillsRes] = await Promise.all([
+        supabase
+          .from('worker_profiles')
+          .select('primary_industry_id')
+          .eq('account_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('worker_skills')
+          .select('category_id,years,rate_minor')
+          .eq('worker_id', user.id),
+      ]);
+      if (profileRes.error) throw profileRes.error;
+      if (skillsRes.error) throw skillsRes.error;
+      savedState = {
+        primaryIndustryId: profileRes.data?.primary_industry_id ?? null,
+        skills: (skillsRes.data ?? []).map((skill) => ({
+          categoryId: skill.category_id,
+          years: skill.years,
+          rateMinor: skill.rate_minor == null ? null : Number(skill.rate_minor),
+        })),
+      };
+    }
+
     const savedSkills = savedState.skills ?? [];
     const industries = industriesRes.data ?? [];
     const primaryIndustryId = savedState.primaryIndustryId ?? null;
