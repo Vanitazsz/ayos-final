@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(34);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -263,6 +263,22 @@ select set_config(
   true
 );
 set local role authenticated;
+select is(
+  (public.get_my_dispatch_offers()->0->>'rateMinor')::bigint,
+  (
+    select skill.rate_minor
+    from public.service_request_dispatches dispatch
+    join public.service_requests request
+      on request.id = dispatch.service_request_id
+    join public.worker_skills skill
+      on skill.worker_id = dispatch.worker_id
+     and skill.category_id = request.category_id
+    where dispatch.service_request_id = '96000000-0000-0000-0000-000000000001'
+      and dispatch.status = 'OFFERED'
+    limit 1
+  ),
+  'worker dispatch offer exposes the worker saved service rate'
+);
 select lives_ok(
   $$select public.respond_to_dispatch(
     (

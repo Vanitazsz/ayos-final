@@ -139,21 +139,12 @@ export default function MatchingScreen() {
     0,
     Math.ceil((new Date(snapshot?.expiresAt ?? 0).getTime() - now) / 1000),
   );
-  const selectedBudgetMinor =
-    Number.isInteger(draft.budgetMinor) && draft.budgetMinor >= 100
-      ? draft.budgetMinor
-      : 0;
-  const budgetMinor = selectedBudgetMinor;
 
   const startMatching = async () => {
     try {
       if (!draft.coords)
         throw new Error('A confirmed service location is required.');
       if (!draft.categoryId) throw new Error('A service category is required.');
-      if (budgetMinor < 100)
-        throw new Error(
-          'Set and confirm your customer budget before matching.',
-        );
       draft.setDraft({ searchRadiusKm: radiusKm });
 
       let requestId = draft.requestId;
@@ -173,7 +164,6 @@ export default function MatchingScreen() {
           latitude: draft.coords.latitude,
           longitude: draft.coords.longitude,
           scheduledAt,
-          budgetMinor,
           analysisId: draft.aiResult?.analysisId ?? null,
         });
         requestId = created.id;
@@ -247,9 +237,7 @@ export default function MatchingScreen() {
         <RadiusConfiguration
           center={draft.coords}
           radiusKm={radiusKm}
-          budgetMinor={draft.budgetMinor}
           onChange={setRadiusKm}
-          onBudgetPress={() => router.push('/new-request/budget-config')}
           onStart={() => void startMatching()}
         />
       ) : null}
@@ -346,16 +334,12 @@ export default function MatchingScreen() {
 function RadiusConfiguration({
   center,
   radiusKm,
-  budgetMinor,
   onChange,
-  onBudgetPress,
   onStart,
 }: {
   center: { latitude: number; longitude: number } | null;
   radiusKm: number;
-  budgetMinor: number;
   onChange: (radius: number) => void;
-  onBudgetPress: () => void;
   onStart: () => void;
 }) {
   return (
@@ -427,21 +411,10 @@ function RadiusConfiguration({
         <Text style={theme.typography.caption}>1 km</Text>
         <Text style={theme.typography.caption}>50 km</Text>
       </View>
-      <View style={styles.budgetCard}>
-        <View>
-          <Text style={theme.typography.label}>Customer budget limit</Text>
-          <Text style={styles.secondary}>
-            {budgetMinor >= 100
-              ? `₱${(budgetMinor / 100).toLocaleString('en-PH')}`
-              : 'Not set'}
-          </Text>
-        </View>
-        <Button
-          title={budgetMinor >= 100 ? 'Change Budget' : 'Set Budget'}
-          variant="outlined"
-          onPress={onBudgetPress}
-        />
-      </View>
+      <Text style={styles.rateNotice}>
+        Each matched worker&apos;s saved service rate is shown before you
+        choose who to book.
+      </Text>
       <Button
         title={`Start Matching within ${radiusKm} km`}
         onPress={onStart}
@@ -590,16 +563,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: theme.spacing.xl,
   },
-  budgetCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: theme.spacing.md,
+  rateNotice: {
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.infoBackground,
     borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
+    marginBottom: theme.spacing.md,
   },
   status: {
     marginHorizontal: theme.layout.screenPadding,

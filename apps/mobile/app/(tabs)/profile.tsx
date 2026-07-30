@@ -25,7 +25,6 @@ import {
   Heart,
   BookOpen,
   Fingerprint,
-  Wallet,
   Languages,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
@@ -84,12 +83,6 @@ const SETTINGS_SECTIONS = [
   {
     title: 'Preferences',
     items: [
-      {
-        id: 'budget',
-        title: 'Budget & Price Range',
-        icon: Wallet,
-        route: '/new-request/budget-config',
-      },
       {
         id: 'notifications',
         title: 'Notifications',

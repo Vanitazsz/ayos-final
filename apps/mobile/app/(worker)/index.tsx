@@ -365,8 +365,13 @@ export default function WorkerDashboardScreen() {
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                {offer.area} · {(offer.distanceMeters / 1000).toFixed(1)} km · ₱
-                {Number(offer.budget).toLocaleString()}
+                {offer.area} · {(offer.distanceMeters / 1000).toFixed(1)} km ·{' '}
+                {offer.rateMinor == null
+                  ? 'Rate unavailable'
+                  : `₱${(offer.rateMinor / 100).toLocaleString('en-PH', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })} service rate`}
               </Text>
               <Text style={theme.typography.body2}>{offer.description}</Text>
               {offer.status === 'ACCEPTED' ? (

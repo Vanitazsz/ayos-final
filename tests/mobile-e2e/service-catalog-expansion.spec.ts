@@ -226,9 +226,8 @@ test('request requires a confirmed point and continues after selecting a geocode
   await page.getByRole('button', { name: `Use address ${geocodedAddress.displayLabel}` }).click();
   await expect(page.getByText('✓ Location Verified', { exact: true })).toBeVisible();
   await page.getByText('Continue without AI', { exact: true }).click();
-  await expect(page).toHaveURL(/\/new-request\/budget-config\?next=manual/);
-  await page.getByText('Save Budget', { exact: true }).click();
   await expect(page).toHaveURL(/\/new-request\/matching/);
+  await expect(page.getByText(/Each matched worker's saved service rate/)).toBeVisible();
 });
 
 test('header current-location control confirms GPS and reverse-geocoded address', async ({
@@ -290,8 +289,6 @@ test('GPS point remains usable when reverse geocoding is unavailable', async ({
   await page.getByPlaceholder('City or municipality').fill('Makati');
   await page.getByPlaceholder('Province').fill('Metro Manila');
   await page.getByText('Continue without AI', { exact: true }).click();
-  await expect(page).toHaveURL(/\/new-request\/budget-config\?next=manual/);
-  await page.getByText('Save Budget', { exact: true }).click();
   await expect(page).toHaveURL(/\/new-request\/matching/);
 });
 
@@ -336,8 +333,6 @@ test('AI consent blocks only the AI continuation path', async ({ page }) => {
   await expect(page.getByText(/Accept AI processing consent/)).toBeVisible();
   await page.getByRole('checkbox').click();
   await page.getByText('Continue', { exact: true }).click();
-  await expect(page).toHaveURL(/\/new-request\/budget-config\?next=ai/);
-  await page.getByText('Save Budget', { exact: true }).click();
   await expect(page).toHaveURL(/\/new-request\/issue-summary/);
 });
 
@@ -569,7 +564,6 @@ test('AI summary shows eligible worker rates and saves the edited request', asyn
   await page.getByRole('button', { name: `Use address ${geocodedAddress.displayLabel}` }).click();
   await page.getByRole('checkbox').click();
   await page.getByText('Continue', { exact: true }).click();
-  await page.getByText('Save Budget', { exact: true }).click();
 
   await expect(page.getByText('Analysis Complete', { exact: true })).toBeVisible();
   await expect(page.getByText('₱500.00 – ₱700.00 worker-rate range')).toBeVisible();
@@ -577,7 +571,7 @@ test('AI summary shows eligible worker rates and saves the edited request', asyn
   await editable.fill('Inspect the kitchen pipe and repair the active leak.');
   await page.getByText('Continue to AI Matching', { exact: true }).click();
   await expect(page).toHaveURL(/\/new-request\/matching/);
-  await expect(page.getByText('Customer budget limit', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Each matched worker's saved service rate/)).toBeVisible();
 });
 
 for (const viewport of [

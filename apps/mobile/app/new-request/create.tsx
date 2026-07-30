@@ -619,12 +619,11 @@ export default function CreateRequestScreen() {
         aiConsent: useAi && consent,
         aiJobId: null,
         aiResult: null,
-        budgetMinor: 0,
         requestId: null,
         scheduledAt: new Date(Date.now() + 30 * 60_000).toISOString(),
       });
       router.push(
-        `/new-request/budget-config?next=${useAi ? 'ai' : 'manual'}` as never,
+        useAi ? '/new-request/issue-summary' : '/new-request/matching',
       );
     } catch (error) {
       setSubmissionError(

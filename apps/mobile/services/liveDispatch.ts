@@ -61,7 +61,7 @@ export type DispatchOffer = {
   expiresAt: string;
   category: string;
   description: string;
-  budget: number;
+  rateMinor: number | null;
   area: string;
 };
 export type PresenceState =

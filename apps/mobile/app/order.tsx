@@ -107,7 +107,11 @@ export default function OrderDetailsScreen() {
           <View style={styles.card}>
             <View style={styles.priceRow}>
               <AppText variant="body">Total Amount</AppText>
-              <AppText variant="h3" weight="bold" color={Colors.cta}>₱{Number(request.budget??0).toLocaleString()}</AppText>
+              <AppText variant="h3" weight="bold" color={Colors.cta}>
+                {booking?.agreed_service_amount == null
+                  ? 'Price pending'
+                  : `₱${Number(booking.agreed_service_amount).toLocaleString()}`}
+              </AppText>
             </View>
             <AppText variant="caption" color={Colors.success} style={{ textAlign: 'right', marginTop: 4 }}>
               {booking?.status==='COMPLETED'?'Ready for cash confirmation':'Cash due after completion'}

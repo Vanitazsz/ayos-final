@@ -120,11 +120,10 @@ export default function IssueSummaryScreen() {
     if (
       !draft.categoryId ||
       !draft.coords ||
-      !draft.scheduledAt ||
-      draft.budgetMinor < 100
+      !draft.scheduledAt
     ) {
       setRateLoading(false);
-      setRateError('Complete the service budget and location to see rates.');
+      setRateError('Complete the service location to see worker rates.');
       return;
     }
     let active = true;
@@ -136,7 +135,6 @@ export default function IssueSummaryScreen() {
       longitude: draft.coords.longitude,
       scheduledAt: draft.scheduledAt,
       searchRadiusMeters: draft.searchRadiusKm * 1000,
-      maximumBudgetMinor: draft.budgetMinor,
     })
       .then((estimate) => {
         if (active) setRateEstimate(estimate);
@@ -156,7 +154,6 @@ export default function IssueSummaryScreen() {
       active = false;
     };
   }, [
-    draft.budgetMinor,
     draft.categoryId,
     draft.coords,
     draft.scheduledAt,
@@ -335,9 +332,7 @@ export default function IssueSummaryScreen() {
               {!rateLoading && rateEstimate?.workerCount ? (
                 <Text style={styles.rateNote}>
                   Based on {rateEstimate.workerCount} currently eligible{' '}
-                  {rateEstimate.workerCount === 1 ? 'worker' : 'workers'} within
-                  your ₱
-                  {(draft.budgetMinor / 100).toLocaleString('en-PH')} maximum.
+                  {rateEstimate.workerCount === 1 ? 'worker' : 'workers'}.
                   The selected worker&apos;s saved rate is the booking price.
                 </Text>
               ) : null}

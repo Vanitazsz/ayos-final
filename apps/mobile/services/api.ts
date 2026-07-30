@@ -14,6 +14,11 @@ import {
 } from '@/services/profile';
 import { averageRating } from '@/services/reviewRatings';
 
+// The current RPC schema still requires a positive request budget. Using the
+// maximum storable value removes customer-side price filtering; select_worker
+// snapshots the chosen worker's saved rate as the actual booking price.
+const LEGACY_UNCAPPED_REQUEST_BUDGET_MINOR = 999_999_999_999;
+
 export interface ApiResponse<T> {
   data: T;
   error?: string;
@@ -1177,24 +1182,8 @@ export async function publishServiceRequest(input: {
   latitude: number;
   longitude: number;
   scheduledAt: string;
-  budgetMinor: number;
-  minimumBudgetMinor?: number;
   analysisId?: string | null;
 }) {
-  const budgetMinor = Number(input.budgetMinor);
-  const minimumBudgetMinor = Math.max(
-    100,
-    Math.round(Number(input.minimumBudgetMinor ?? 100)),
-  );
-  if (
-    !Number.isFinite(budgetMinor) ||
-    !Number.isInteger(budgetMinor) ||
-    budgetMinor < minimumBudgetMinor
-  ) {
-    throw new Error(
-      `Enter a valid service budget of at least ₱${(minimumBudgetMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`,
-    );
-  }
   const details = input.addressDetails ?? {};
   let addressId = input.addressId ?? null;
   if (!addressId) {
@@ -1224,7 +1213,7 @@ export async function publishServiceRequest(input: {
     address_id: addressId,
     description: input.description,
     scheduled_at: input.scheduledAt,
-    budget: budgetMinor / 100,
+    budget: LEGACY_UNCAPPED_REQUEST_BUDGET_MINOR / 100,
     notes: null,
     ai_analysis_id: input.analysisId ?? null,
     notify_on_match: true,
@@ -1640,7 +1629,6 @@ export async function fetchWorkerRateEstimate(input: {
   longitude: number;
   scheduledAt: string;
   searchRadiusMeters: number;
-  maximumBudgetMinor: number;
 }): Promise<WorkerRateEstimate> {
   const { data, error } = await supabase.rpc('get_worker_rate_estimate', {
     p_category_id: input.categoryId,
@@ -1648,7 +1636,7 @@ export async function fetchWorkerRateEstimate(input: {
     p_longitude: input.longitude,
     p_scheduled_at: input.scheduledAt,
     p_search_radius_meters: input.searchRadiusMeters,
-    p_max_budget_minor: input.maximumBudgetMinor,
+    p_max_budget_minor: LEGACY_UNCAPPED_REQUEST_BUDGET_MINOR,
   });
   if (error) throw error;
   const result = (data ?? {}) as Record<string, unknown>;

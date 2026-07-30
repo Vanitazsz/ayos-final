@@ -13,6 +13,8 @@ import {
   getInitialCustomerBookingTab,
 } from '@/services/bookingTabs';
 
+const RECENT_BOOKINGS_LIMIT = 5;
+
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'Awaiting Worker Acceptance', color: '#B78103', bg: '#FFF8E1' },
   ACCEPTED: { label: 'Confirmed', color: '#0277BD', bg: '#E1F5FE' },
@@ -33,9 +35,11 @@ export default function BookingsScreen() {
     getInitialCustomerBookingTab(filter),
   );
   const [bookings, setBookings] = useState<any[]>([]);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     setActiveTab(getInitialCustomerBookingTab(filter));
+    setShowAll(false);
   }, [filter]);
 
   const load = () =>
@@ -89,6 +93,9 @@ export default function BookingsScreen() {
   }, []);
 
   const filteredBookings = bookings.filter((b) => b.tabGroup === activeTab);
+  const visibleBookings = showAll
+    ? filteredBookings
+    : filteredBookings.slice(0, RECENT_BOOKINGS_LIMIT);
 
   return (
     <Screen safeArea backgroundColor={theme.colors.background}>
@@ -103,7 +110,10 @@ export default function BookingsScreen() {
             <TouchableOpacity 
               key={tab} 
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                setActiveTab(tab);
+                setShowAll(false);
+              }}
             >
               <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
                 {tab}
@@ -121,11 +131,13 @@ export default function BookingsScreen() {
             description={`You don't have any ${activeTab.toLowerCase()} bookings at the moment. Explore services to book a professional!`}
           />
         ) : (
-          filteredBookings.map((booking) => {
+          <>
+          {visibleBookings.map((booking) => {
             const badge = STATUS_MAP[booking.rawStatus] ?? { label: booking.rawStatus || 'Active', color: theme.colors.primary, bg: '#E3F2FD' };
             return (
               <TouchableOpacity 
                 key={booking.id} 
+                testID="customer-booking-card"
                 style={styles.bookingCard}
                 onPress={() =>
                   router.push(`/tracking/${booking.id}`)
@@ -163,7 +175,17 @@ export default function BookingsScreen() {
                 </View>
               </TouchableOpacity>
             );
-          })
+          })}
+          {!showAll && filteredBookings.length > RECENT_BOOKINGS_LIMIT ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.seeAllButton}
+              onPress={() => setShowAll(true)}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          ) : null}
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -180,6 +202,18 @@ const styles = StyleSheet.create({
   contentInner: { padding: theme.layout.screenPadding },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
   bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.sm },
+  seeAllButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  seeAllText: {
+    ...theme.typography.button,
+    color: theme.colors.primary,
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xs },
   cardDetails: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: theme.colors.borderLight, paddingTop: theme.spacing.sm },
   detailRow: { flexDirection: 'row', alignItems: 'center' },
