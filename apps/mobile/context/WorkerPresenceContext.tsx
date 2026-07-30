@@ -29,7 +29,7 @@ export function WorkerPresenceProvider({ children, enabled = true }: { children:
           if (!active) return;
           setState(next);
           setMessage(detail ?? '');
-          if (next === 'not_ready') scheduleRetry();
+          if (next === 'not_ready' || next === 'error') scheduleRetry();
           else if (retryTimer) {
             clearTimeout(retryTimer);
             retryTimer = null;
@@ -37,6 +37,16 @@ export function WorkerPresenceProvider({ children, enabled = true }: { children:
         });
         if (active) stop = cleanup;
         else cleanup();
+      } catch (error) {
+        if (active) {
+          setState('error');
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : 'Unable to start live matching.',
+          );
+          scheduleRetry();
+        }
       } finally {
         starting = false;
       }
