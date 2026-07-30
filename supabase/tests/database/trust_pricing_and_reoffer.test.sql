@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(38);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -323,6 +323,44 @@ select set_config(
   true
 );
 set local role authenticated;
+reset role;
+update public.worker_skills
+set rate_minor = null
+where worker_id = (
+  select worker_id
+  from public.service_request_dispatches
+  where service_request_id = '96000000-0000-0000-0000-000000000001'
+    and status = 'OFFERED'
+  limit 1
+);
+set local role authenticated;
+select throws_ok(
+  $$select public.respond_to_dispatch(
+    (
+      select id
+      from public.service_request_dispatches
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+        and status = 'OFFERED'
+      limit 1
+    ),
+    'ACCEPTED'
+  )$$,
+  '55000',
+  'WORKER_NOT_READY',
+  'worker without a service rate cannot accept a dispatch'
+);
+
+reset role;
+update public.worker_skills
+set rate_minor = 60000
+where worker_id = (
+  select worker_id
+  from public.service_request_dispatches
+  where service_request_id = '96000000-0000-0000-0000-000000000001'
+    and status = 'OFFERED'
+  limit 1
+);
+set local role authenticated;
 select lives_ok(
   $$select public.respond_to_dispatch(
     (
@@ -404,6 +442,78 @@ select is(
   1::bigint,
   'accepted dispatch is marked selected'
 );
+
+reset role;
+update public.worker_skills
+set rate_minor = null
+where worker_id = (
+  select worker_account_id
+  from public.bookings
+  where service_request_id = '96000000-0000-0000-0000-000000000001'
+);
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub',
+    (
+      select worker_account_id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    'role',
+    'authenticated',
+    'aal',
+    'aal1'
+  )::text,
+  true
+);
+set local role authenticated;
+select throws_ok(
+  $$select public.transition_booking(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    'ACCEPTED',
+    0,
+    null
+  )$$,
+  '55000',
+  'WORKER_NOT_READY',
+  'worker without a service rate cannot accept a booking'
+);
+
+reset role;
+update public.worker_skills
+set rate_minor = 60000
+where worker_id = (
+  select worker_account_id
+  from public.bookings
+  where service_request_id = '96000000-0000-0000-0000-000000000001'
+);
+set local role authenticated;
+select lives_ok(
+  $$select public.transition_booking(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    'ACCEPTED',
+    0,
+    null
+  )$$,
+  'rate-ready worker can accept the booking'
+);
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
 select lives_ok(
   $$select public.report_booking_participant(
     (

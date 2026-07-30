@@ -71,6 +71,23 @@ async function useWorkerFixture(page: Page) {
       }),
     }),
   );
+  await page.route('**/rest/v1/rpc/get_my_worker_matching_readiness', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        accountEligible: true,
+        verificationStatus: 'APPROVED',
+        skillsReady: true,
+        rateReady: true,
+        serviceAreaReady: true,
+        scheduleReady: true,
+        online: false,
+        setupComplete: true,
+        matchable: false,
+      }),
+    }),
+  );
   await page.route('**/rest/v1/industries*', (route) =>
     route.fulfill({
       status: 200,
@@ -212,7 +229,7 @@ test('failed rate save stays on screen and does not show confirmation', async ({
   await expect(page.getByText('Plumbing Skills & Services', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Save Industry & Skills' }).click();
 
-  await expect(page.getByText('Request failed', { exact: true })).toBeVisible();
+  await expect(page.getByText('INVALID_WORKER_SKILLS', { exact: true })).toBeVisible();
   await expect(page.getByText('Industry & Skills Saved!', { exact: true })).toHaveCount(0);
   await expect(page).toHaveURL(/\/industry-skills$/);
 });

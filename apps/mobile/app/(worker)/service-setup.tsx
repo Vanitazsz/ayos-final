@@ -197,7 +197,9 @@ export default function WorkerServiceSetupScreen() {
   };
 
   const canGoOnline =
-    readiness?.verificationStatus === 'APPROVED';
+    readiness?.verificationStatus === 'APPROVED' &&
+    readiness.skillsReady &&
+    readiness.rateReady;
 
   return (
     <Screen safeArea scrollable>
@@ -233,7 +235,14 @@ export default function WorkerServiceSetupScreen() {
                     label: 'Admin verification approved',
                     ready: readiness.verificationStatus === 'APPROVED',
                   },
-                  { label: 'Industry & skills (visual only)', ready: true },
+                  {
+                    label: 'Industry & skills',
+                    ready: readiness.skillsReady,
+                  },
+                  {
+                    label: 'Service rate set in Industry & Skills',
+                    ready: readiness.rateReady,
+                  },
                   { label: 'Service origin and radius', ready: readiness.serviceAreaReady },
                   { label: 'Working schedule', ready: readiness.scheduleReady },
                   { label: 'Available online', ready: readiness.online },
@@ -385,7 +394,7 @@ export default function WorkerServiceSetupScreen() {
                   <AppText variant="caption" color={Colors.textSecondary}>
                     {canGoOnline
                       ? 'Turn this on when you are ready to receive requests.'
-                      : 'Admin approval and at least one skill are required.'}
+                      : 'Admin approval, at least one skill, and a service rate are required.'}
                   </AppText>
                 </View>
                 <Switch

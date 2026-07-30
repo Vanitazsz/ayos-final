@@ -296,7 +296,7 @@ export default function WorkerIndustrySkillsScreen() {
                       <AppInput
                         label="Your service rate (PHP/₱)"
                         accessibilityLabel={`${skill.name} service rate in PHP`}
-                        placeholder="Optional service rate"
+                        placeholder="Set rate to match this service"
                         keyboardType="decimal-pad"
                         leftIcon={
                           <Text style={styles.currencyPrefix}>₱</Text>
