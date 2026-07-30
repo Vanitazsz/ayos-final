@@ -14,7 +14,7 @@ function accessToken() {
   })}.test-signature`;
 }
 
-async function useCompletedBookingFixture(page: Page) {
+async function useCompletedBookingFixture(page: Page, paymentStatus = 'SUCCESSFUL') {
   const token = accessToken();
   const user = {
     id: workerId,
@@ -108,7 +108,7 @@ async function useCompletedBookingFixture(page: Page) {
         },
         payments: [
           {
-            status: 'SUCCESSFUL',
+            status: paymentStatus,
             service_amount: 500,
           },
         ],
@@ -133,4 +133,22 @@ test('worker earnings match the customer confirmed payment', async ({ page }) =>
       exact: true,
     }),
   ).toBeVisible();
+});
+
+test('worker earnings use the payment amount while cash confirmation is pending', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await useCompletedBookingFixture(page, 'AWAITING_CONFIRMATIONS');
+
+  await page.goto(`/booking-request/${bookingId}`);
+
+  await expect(page.getByText('₱500', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('₱5,000', { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText('Confirm only after you have received the cash payment.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm Cash Received' })).toBeVisible();
 });

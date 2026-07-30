@@ -12,10 +12,7 @@ export function resolveWorkerEarningsAmount(
   agreedServiceAmount: unknown,
   payment?: PaymentAmount | null,
 ) {
-  const confirmedAmount =
-    payment?.status === 'SUCCESSFUL'
-      ? validAmount(payment.service_amount)
-      : null;
+  const paymentAmount = validAmount(payment?.service_amount);
 
-  return confirmedAmount ?? validAmount(agreedServiceAmount);
+  return paymentAmount ?? validAmount(agreedServiceAmount);
 }

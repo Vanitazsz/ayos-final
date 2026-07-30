@@ -11,13 +11,13 @@ describe('resolveWorkerEarningsAmount', () => {
     ).toBe(500);
   });
 
-  it('uses the agreed amount until payment is successful', () => {
+  it('uses the payment amount while cash confirmation is pending', () => {
     expect(
       resolveWorkerEarningsAmount(5_000, {
         status: 'AWAITING_CONFIRMATIONS',
         service_amount: 500,
       }),
-    ).toBe(5_000);
+    ).toBe(500);
   });
 
   it('falls back to the agreed amount when confirmed payment data is invalid', () => {
