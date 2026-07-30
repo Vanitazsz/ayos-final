@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import {
   blockAccount,
+  confirmJobCompletion,
   fetchBookingTracking,
   openBookingDispute,
   reportBookingParticipant,
@@ -41,6 +42,7 @@ const STATUS_STEP_MAP: Record<string, number> = {
   WORKER_ARRIVED: 3,
   SERVICE_STARTED: 4,
   IN_PROGRESS: 4,
+  PENDING_CONFIRMATION: 4,
   COMPLETED: 5,
 };
 
@@ -83,6 +85,11 @@ const STATUS_INFO: Record<
     subtitle: 'Work is currently being done.',
     icon: Wrench,
   },
+  PENDING_CONFIRMATION: {
+    title: 'Confirm Job Completion',
+    subtitle: 'Your provider marked the job complete. Please confirm the work.',
+    icon: Clock,
+  },
   COMPLETED: {
     title: 'Service Completed',
     subtitle: 'Your service has been completed. Please confirm and pay.',
@@ -116,6 +123,7 @@ export default function TrackingScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [tracking, setTracking] = useState<any>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const bookingId = Array.isArray(id) ? id[0] : id;
 
   const workerStatus = tracking?.booking?.status as string | undefined;
@@ -162,8 +170,24 @@ export default function TrackingScreen() {
       : 0;
   }, [workerStatus]);
 
-  const handleComplete = () => {
+  const handlePayment = () => {
     router.push(`/payment/${id}`);
+  };
+
+  const handleConfirmCompletion = async () => {
+    if (!bookingId || isConfirming) return;
+    setIsConfirming(true);
+    try {
+      await confirmJobCompletion(bookingId);
+      setTracking(await fetchBookingTracking(bookingId));
+    } catch (error) {
+      Alert.alert(
+        'Confirmation failed',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   const address = tracking?.booking?.service_requests?.addresses;
@@ -175,6 +199,7 @@ export default function TrackingScreen() {
   };
   const StatusIcon = statusInfo.icon;
   const isCompleted = workerStatus === 'COMPLETED';
+  const isPendingConfirmation = workerStatus === 'PENDING_CONFIRMATION';
   const isCancelled = workerStatus === 'CANCELLED';
   const isActive = !isCompleted && !isCancelled;
   const contactAvailable = workerStatus !== 'PENDING';
@@ -534,10 +559,16 @@ export default function TrackingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        {isCompleted ? (
+        {isPendingConfirmation ? (
           <Button
-            title="Confirm Completion & Pay"
-            onPress={handleComplete}
+            title={isConfirming ? 'Confirming...' : 'Confirm Job Completion'}
+            onPress={() => void handleConfirmCompletion()}
+            fullWidth
+          />
+        ) : isCompleted ? (
+          <Button
+            title="Continue to Payment"
+            onPress={handlePayment}
             fullWidth
           />
         ) : isCancelled ? (

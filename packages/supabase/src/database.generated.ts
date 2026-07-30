@@ -6455,6 +6455,7 @@ export type Database = {
         | "WORKER_ARRIVED"
         | "SERVICE_STARTED"
         | "IN_PROGRESS"
+        | "PENDING_CONFIRMATION"
         | "COMPLETED"
         | "CANCELLED"
       cash_confirmation_party: "USER" | "WORKER"
@@ -7167,6 +7168,7 @@ export const Constants = {
         "WORKER_ARRIVED",
         "SERVICE_STARTED",
         "IN_PROGRESS",
+        "PENDING_CONFIRMATION",
         "COMPLETED",
         "CANCELLED",
       ],

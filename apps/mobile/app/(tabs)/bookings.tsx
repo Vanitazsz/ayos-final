@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { fetchBookings, subscribeToBookingFeed } from '@/services/api';
 import {
   CUSTOMER_BOOKING_TABS,
+  getCustomerBookingTab,
   getInitialCustomerBookingTab,
 } from '@/services/bookingTabs';
 
@@ -23,6 +24,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
   WORKER_ARRIVED: { label: 'Arrived 📍', color: '#2E7D32', bg: '#E8F5E9' },
   SERVICE_STARTED: { label: 'In Progress 🛠️', color: '#2E7D32', bg: '#E8F5E9' },
   IN_PROGRESS: { label: 'In Progress 🛠️', color: '#2E7D32', bg: '#E8F5E9' },
+  PENDING_CONFIRMATION: { label: 'Awaiting Your Confirmation', color: '#B78103', bg: '#FFF8E1' },
   COMPLETED: { label: 'Completed ✅', color: '#2E7D32', bg: '#E8F5E9' },
   CANCELLED: { label: 'Cancelled ❌', color: '#C62828', bg: '#FFEBEE' },
 };
@@ -51,16 +53,7 @@ export default function BookingsScreen() {
       setBookings(
         result.data.map((row) => {
           const raw = String(row.rawStatus || row.status || '').toUpperCase();
-          let tabGroup = 'Upcoming';
-          if (raw === 'COMPLETED' || row.status === 'completed') {
-            tabGroup = 'Completed';
-          } else if (raw === 'CANCELLED' || row.status === 'cancelled') {
-            tabGroup = 'Cancelled';
-          } else if (['WORKER_EN_ROUTE', 'WORKER_ARRIVED', 'SERVICE_STARTED', 'IN_PROGRESS'].includes(raw) || row.status === 'ongoing') {
-            tabGroup = 'Ongoing';
-          } else {
-            tabGroup = 'Upcoming';
-          }
+          const tabGroup = getCustomerBookingTab(raw);
 
           return {
             ...row,

@@ -34,6 +34,10 @@ const statusConfig: Record<string, { label: string; variant: string }> = {
   worker_arrived: { label: 'Arrived', variant: 'info' },
   service_started: { label: 'Started', variant: 'warning' },
   in_progress: { label: 'In Progress', variant: 'warning' },
+  pending_confirmation: {
+    label: 'Awaiting Confirmation',
+    variant: 'warning',
+  },
   completed: { label: 'Completed', variant: 'success' },
   cancelled: { label: 'Cancelled', variant: 'error' },
   pending: { label: 'Pending', variant: 'warning' },
@@ -53,6 +57,7 @@ const TAB_FILTERS: Record<string, WorkerBooking['status'][]> = {
     'worker_arrived',
     'service_started',
     'in_progress',
+    'pending_confirmation',
   ],
   Completed: ['completed'],
   Cancelled: ['cancelled'],
@@ -311,7 +316,7 @@ export default function WorkerBookingsScreen() {
                           Paid · {booking.price}
                         </Text>
                       )}
-                      {booking.status === 'pending_review' && (
+                      {booking.status === 'pending_confirmation' && (
                         <Text
                           style={[
                             theme.typography.caption,

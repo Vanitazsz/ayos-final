@@ -789,6 +789,9 @@ export async function markJobInProgress(bookingId: string) {
   return transition(bookingId, 'IN_PROGRESS');
 }
 export async function completeJob(bookingId: string) {
+  return transition(bookingId, 'PENDING_CONFIRMATION');
+}
+export async function confirmJobCompletion(bookingId: string) {
   return transition(bookingId, 'COMPLETED');
 }
 export async function cancelBooking(bookingId: string, reason: string) {

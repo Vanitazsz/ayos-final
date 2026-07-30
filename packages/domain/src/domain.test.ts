@@ -16,6 +16,18 @@ describe('booking lifecycle', () => {
     );
   });
 
+  it('requires worker completion to wait for customer confirmation', () => {
+    expect(() =>
+      assertBookingTransition('IN_PROGRESS', 'PENDING_CONFIRMATION', 'WORKER'),
+    ).not.toThrow();
+    expect(() =>
+      assertBookingTransition('PENDING_CONFIRMATION', 'COMPLETED', 'USER'),
+    ).not.toThrow();
+    expect(() => assertBookingTransition('IN_PROGRESS', 'COMPLETED', 'WORKER')).toThrow(
+      'cannot transition',
+    );
+  });
+
   it('requires a cancellation reason', () => {
     expect(() => assertBookingTransition('PENDING', 'CANCELLED', 'USER')).toThrow(
       'cancellation reason',

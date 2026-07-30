@@ -14,7 +14,11 @@ function accessToken() {
   })}.test-signature`;
 }
 
-async function useCompletedBookingFixture(page: Page, paymentStatus = 'SUCCESSFUL') {
+async function useCompletedBookingFixture(
+  page: Page,
+  paymentStatus = 'SUCCESSFUL',
+  bookingStatus = 'COMPLETED',
+) {
   const token = accessToken();
   const user = {
     id: workerId,
@@ -83,7 +87,7 @@ async function useCompletedBookingFixture(page: Page, paymentStatus = 'SUCCESSFU
       contentType: 'application/json',
       body: JSON.stringify({
         id: bookingId,
-        status: 'COMPLETED',
+        status: bookingStatus,
         accepted_at: '2026-07-29T10:00:00.000Z',
         completed_at: '2026-07-29T11:00:00.000Z',
         agreed_service_amount: 5_000,
@@ -118,6 +122,35 @@ async function useCompletedBookingFixture(page: Page, paymentStatus = 'SUCCESSFU
     }),
   );
 }
+
+test('worker completion waits for customer confirmation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await useCompletedBookingFixture(page, 'PENDING', 'IN_PROGRESS');
+  const transitionRequests: unknown[] = [];
+  await page.route('**/rest/v1/rpc/transition_booking', async (route) => {
+    transitionRequests.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: bookingId,
+        status: 'PENDING_CONFIRMATION',
+        version: 1,
+      }),
+    });
+  });
+
+  await page.goto(`/booking-request/${bookingId}`);
+  await page.getByRole('button', { name: 'Complete Job ✅' }).click();
+
+  await expect(page.getByText('Waiting for Customer', { exact: true })).toBeVisible();
+  expect(transitionRequests).toEqual([
+    expect.objectContaining({
+      p_booking_id: bookingId,
+      p_target_status: 'PENDING_CONFIRMATION',
+    }),
+  ]);
+});
 
 test('worker earnings match the customer confirmed payment', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

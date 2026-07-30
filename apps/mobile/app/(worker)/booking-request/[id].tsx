@@ -75,6 +75,8 @@ const viewStatus = (status: string) =>
         ? 'en_route'
         : status === 'SERVICE_STARTED' || status === 'IN_PROGRESS'
           ? 'in_progress'
+          : status === 'PENDING_CONFIRMATION'
+            ? 'pending_review'
           : status.toLowerCase();
 
 export default function BookingRequestScreen() {
@@ -260,8 +262,8 @@ export default function BookingRequestScreen() {
   const handleComplete = async () => {
     try {
       await completeJob(booking.id);
-      setBackendStatus('COMPLETED');
-      setBooking((b) => ({ ...b, status: 'completed' }));
+      setBackendStatus('PENDING_CONFIRMATION');
+      setBooking((b) => ({ ...b, status: 'pending_review' }));
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleComplete error:', msg, error);
