@@ -10,8 +10,44 @@ export function WorkerPresenceProvider({ children, enabled = true }: { children:
     if (!enabled) return;
     let active = true;
     let stop = () => {};
-    void startForegroundWorkerPresence((next, detail) => { if (active) { setState(next); setMessage(detail ?? ''); } }).then((cleanup) => { if (active) stop = cleanup; else cleanup(); });
-    return () => { active = false; stop(); };
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let starting = false;
+
+    const scheduleRetry = () => {
+      if (!active || retryTimer) return;
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        void start();
+      }, 10_000);
+    };
+
+    const start = async () => {
+      if (!active || starting) return;
+      starting = true;
+      try {
+        const cleanup = await startForegroundWorkerPresence((next, detail) => {
+          if (!active) return;
+          setState(next);
+          setMessage(detail ?? '');
+          if (next === 'not_ready') scheduleRetry();
+          else if (retryTimer) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+          }
+        });
+        if (active) stop = cleanup;
+        else cleanup();
+      } finally {
+        starting = false;
+      }
+    };
+
+    void start();
+    return () => {
+      active = false;
+      stop();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [enabled]);
   return <WorkerPresenceContext.Provider value={{ state, message }}>{children}</WorkerPresenceContext.Provider>;
 }

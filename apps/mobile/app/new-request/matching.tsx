@@ -49,10 +49,13 @@ function diagnosticMessage(
       return 'No workers in this service category are available nearby.';
     case 'NO_APPROVED_WORKERS':
       return 'Matching workers still need approval.';
+    case 'WORKERS_MISSING_SERVICE_AREA':
+      return 'Matching workers have not finished setting their service area.';
     case 'WORKERS_OFFLINE':
     case 'NO_FRESH_PRESENCE':
       return 'Eligible workers are currently offline. Try again later.';
     case 'OUTSIDE_SEARCH_RADIUS':
+    case 'OUTSIDE_SERVICE_RADIUS':
       return 'No eligible workers were found within your selected radius.';
     case 'OUTSIDE_WORKING_HOURS':
       return 'Eligible workers are outside their working schedule.';
