@@ -37,7 +37,6 @@ import { ThreeDotMenu } from '@/components/ThreeDotMenu';
 import { BookingStepIndicator } from '@/components/booking/BookingStepIndicator';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
-import { JobTimer } from '@/components/booking/JobTimer';
 import { CompletedSummary } from '@/components/booking/CompletedSummary';
 import {
   acceptJob,
@@ -646,7 +645,6 @@ export default function BookingRequestScreen() {
 
           {booking.status === 'in_progress' && (
             <View style={{ gap: 12 }}>
-              <JobTimer agreedAmount={booking.hourlyRate ?? 0} />
               <View style={styles.contactRow}>
                 <Pressable style={styles.contactBtn} onPress={handleCall}>
                   <Phone size={18} color={Colors.cta} />
