@@ -357,3 +357,88 @@ export async function startForegroundWorkerPresence(
     void publishOffline();
   };
 }
+
+export type LiveEnRouteLocation = {
+  bookingId: string;
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+  speed: number | null;
+  accuracy: number | null;
+  timestamp: number;
+};
+
+let activeEnRouteSubscription: Location.LocationSubscription | null = null;
+let activeEnRouteChannel: ReturnType<typeof supabase.channel> | null = null;
+
+export async function startEnRouteLocationPublisher(
+  bookingId: string,
+  onLocationUpdate?: (loc: LiveEnRouteLocation) => void,
+) {
+  stopEnRouteLocationPublisher();
+  const channel = supabase.channel(`booking-location:${bookingId}`);
+  await channel.subscribe();
+  activeEnRouteChannel = channel;
+
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== 'granted') return stopEnRouteLocationPublisher;
+
+  activeEnRouteSubscription = await Location.watchPositionAsync(
+    {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 5000,
+      distanceInterval: 5,
+    },
+    (position) => {
+      const payload: LiveEnRouteLocation = {
+        bookingId,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        heading: position.coords.heading ?? null,
+        speed: position.coords.speed ?? null,
+        accuracy: position.coords.accuracy ?? null,
+        timestamp: position.timestamp,
+      };
+      if (activeEnRouteChannel) {
+        void activeEnRouteChannel.send({
+          type: 'broadcast',
+          event: 'location-update',
+          payload,
+        });
+      }
+      onLocationUpdate?.(payload);
+    },
+  );
+
+  return stopEnRouteLocationPublisher;
+}
+
+export function stopEnRouteLocationPublisher() {
+  if (activeEnRouteSubscription) {
+    activeEnRouteSubscription.remove();
+    activeEnRouteSubscription = null;
+  }
+  if (activeEnRouteChannel) {
+    void supabase.removeChannel(activeEnRouteChannel);
+    activeEnRouteChannel = null;
+  }
+}
+
+export function subscribeToEnRouteLocation(
+  bookingId: string,
+  onLocationReceived: (loc: LiveEnRouteLocation) => void,
+) {
+  const channel = supabase.channel(`booking-location:${bookingId}`);
+  channel
+    .on('broadcast', { event: 'location-update' }, (message) => {
+      if (message.payload) {
+        onLocationReceived(message.payload as LiveEnRouteLocation);
+      }
+    })
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+

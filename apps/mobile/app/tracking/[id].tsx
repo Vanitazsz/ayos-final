@@ -29,9 +29,14 @@ import {
   reportBookingParticipant,
   subscribeToTable,
 } from '@/services/api';
+import {
+  subscribeToEnRouteLocation,
+  type LiveEnRouteLocation,
+} from '@/services/liveDispatch';
 import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
+
 
 const STATUS_STEP_MAP: Record<string, number> = {
   PENDING: 0,
@@ -116,7 +121,24 @@ export default function TrackingScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [tracking, setTracking] = useState<any>(null);
+<<<<<<< Updated upstream
+=======
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [liveLocation, setLiveLocation] = useState<LiveEnRouteLocation | null>(
+    null,
+  );
+>>>>>>> Stashed changes
   const bookingId = Array.isArray(id) ? id[0] : id;
+
+  useEffect(() => {
+    if (!bookingId) return;
+    const stopBroadcast = subscribeToEnRouteLocation(bookingId, (loc) => {
+      setLiveLocation(loc);
+    });
+    return () => {
+      stopBroadcast();
+    };
+  }, [bookingId]);
 
   const workerStatus = tracking?.booking?.status as string | undefined;
   useEffect(() => {
@@ -155,6 +177,7 @@ export default function TrackingScreen() {
       clearInterval(poll);
     };
   }, [bookingId, tracking?.booking?.status]);
+
 
   const stepIndex = useMemo(() => {
     return workerStatus && STATUS_STEP_MAP[workerStatus] !== undefined
@@ -307,8 +330,14 @@ export default function TrackingScreen() {
                     ? undefined
                     : Number(tracking.booking.worker_start_lng)
                 }
-                workerLat={latest ? Number(latest.latitude) : undefined}
-                workerLng={latest ? Number(latest.longitude) : undefined}
+                workerLat={
+                  liveLocation?.latitude ??
+                  (latest ? Number(latest.latitude) : undefined)
+                }
+                workerLng={
+                  liveLocation?.longitude ??
+                  (latest ? Number(latest.longitude) : undefined)
+                }
               />
             </View>
           )}
