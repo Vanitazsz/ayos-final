@@ -1,13 +1,14 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(44);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
 select has_table('public', 'account_reports', 'account reports are persisted');
 select has_table('public', 'booking_disputes', 'booking disputes are persisted');
 select has_table('public', 'booking_proof_media', 'proof-of-work metadata is persisted');
-select has_function('public', 'save_my_worker_skills', array['uuid', 'jsonb'], 'worker rate save RPC exists');
+select has_table('public', 'worker_industries', 'worker industries are persisted');
+select has_function('public', 'save_my_worker_skills', array['uuid[]', 'jsonb'], 'multi-industry worker rate save RPC exists');
 select has_function(
   'public',
   'get_my_worker_skills',
@@ -77,6 +78,8 @@ insert into auth.users(
 
 insert into public.industries(id, slug, name, is_active)
 values ('93000000-0000-0000-0000-000000000001', 'trust-services', 'Trust Services', true);
+insert into public.industries(id, slug, name, is_active)
+values ('93000000-0000-0000-0000-000000000002', 'trust-electrical', 'Trust Electrical', true);
 insert into public.service_categories(id, industry_id, slug, name, is_active)
 values (
   '94000000-0000-0000-0000-000000000001',
@@ -152,7 +155,10 @@ select is(
 );
 select lives_ok(
   $$select public.save_my_worker_skills(
-    '93000000-0000-0000-0000-000000000001',
+    array[
+      '93000000-0000-0000-0000-000000000001'::uuid,
+      '93000000-0000-0000-0000-000000000002'::uuid
+    ],
     '[{"categoryId":"94000000-0000-0000-0000-000000000001","years":4,"rateMinor":50000}]'::jsonb
   )$$,
   'worker can persist an owned real service rate'
@@ -166,6 +172,16 @@ select is(
   (public.get_my_worker_skills()->'skills'->0->>'rateMinor')::bigint,
   50000::bigint,
   'saved-skill read model returns the exact persisted rate'
+);
+select is(
+  (select count(*) from public.worker_industries where worker_id = auth.uid()),
+  2::bigint,
+  'worker selected industries are persisted'
+);
+select is(
+  public.get_my_worker_skills()->'selectedIndustryIds'->>1,
+  '93000000-0000-0000-0000-000000000002',
+  'saved-skill read model returns every selected industry'
 );
 
 reset role;

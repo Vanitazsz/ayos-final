@@ -3720,6 +3720,39 @@ export type Database = {
           },
         ]
       }
+      worker_industries: {
+        Row: {
+          created_at: string
+          industry_id: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          industry_id: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          industry_id?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_industries_industry_id_fkey"
+            columns: ["industry_id"]
+            isOneToOne: false
+            referencedRelation: "industries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_industries_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       worker_recommendation_plans: {
         Row: {
           amount: number
@@ -5753,7 +5786,7 @@ export type Database = {
         Returns: Json
       }
       save_my_worker_skills: {
-        Args: { p_primary_industry_id: string; p_skills: Json }
+        Args: { p_industry_ids: string[]; p_skills: Json }
         Returns: Json
       }
       select_worker: {

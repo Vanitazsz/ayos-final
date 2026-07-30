@@ -1753,6 +1753,7 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
   ApiResponse<{
     industries: IndustryWithSkills[];
     primaryIndustryId: string | null;
+    selectedIndustryIds: string[];
     selectedSkillIds: string[];
     yearsExperience: number;
     rateBySkillId: Record<string, number | null>;
@@ -1768,6 +1769,7 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
     if (industriesRes.error) throw new Error(industriesRes.error);
     let savedState = (savedSkillsRes.data ?? {}) as {
       primaryIndustryId?: string | null;
+      selectedIndustryIds?: string[];
       skills?: Array<{
         categoryId: string;
         years: number | null;
@@ -1779,7 +1781,7 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
     // cache yet. Fall back to the existing row-level reads until it is
     // available, while preserving the same saved-data shape.
     if (savedSkillsRes.error) {
-      const [profileRes, skillsRes] = await Promise.all([
+      const [profileRes, skillsRes, workerIndustriesRes] = await Promise.all([
         supabase
           .from('worker_profiles')
           .select('primary_industry_id')
@@ -1789,11 +1791,22 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
           .from('worker_skills')
           .select('category_id,years,rate_minor')
           .eq('worker_id', user.id),
+        supabase
+          .from('worker_industries')
+          .select('industry_id')
+          .eq('worker_id', user.id),
       ]);
       if (profileRes.error) throw profileRes.error;
       if (skillsRes.error) throw skillsRes.error;
       savedState = {
         primaryIndustryId: profileRes.data?.primary_industry_id ?? null,
+        selectedIndustryIds: workerIndustriesRes.error
+          ? profileRes.data?.primary_industry_id
+            ? [profileRes.data.primary_industry_id]
+            : []
+          : (workerIndustriesRes.data ?? []).map((industry) =>
+              industry.industry_id,
+            ),
         skills: (skillsRes.data ?? []).map((skill) => ({
           categoryId: skill.category_id,
           years: skill.years,
@@ -1805,6 +1818,16 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
     const savedSkills = savedState.skills ?? [];
     const industries = industriesRes.data ?? [];
     const primaryIndustryId = savedState.primaryIndustryId ?? null;
+    const selectedIndustryIds = Array.from(
+      new Set(
+        (savedState.selectedIndustryIds?.length
+          ? savedState.selectedIndustryIds
+          : primaryIndustryId
+            ? [primaryIndustryId]
+            : []
+        ).filter((industryId) => industries.some((industry) => industry.id === industryId)),
+      ),
+    );
     const selectedSkillIds = savedSkills.map((skill) => skill.categoryId);
     const yearsExperience = Math.max(
       ...savedSkills.map((skill) => skill.years ?? 0),
@@ -1820,6 +1843,7 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
     return {
       industries,
       primaryIndustryId,
+      selectedIndustryIds,
       selectedSkillIds,
       yearsExperience,
       rateBySkillId,
@@ -1828,14 +1852,14 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
 }
 
 export async function updateMyWorkerSkillsAndIndustry(input: {
-  primaryIndustryId: string;
+  selectedIndustryIds: string[];
   selectedSkillIds: string[];
   yearsExperience?: number;
   rateBySkillId: Record<string, number | null>;
 }): Promise<ApiResponse<boolean>> {
   return wrap(async () => {
     const { error } = await supabase.rpc('save_my_worker_skills', {
-      p_primary_industry_id: input.primaryIndustryId,
+      p_industry_ids: input.selectedIndustryIds,
       p_skills: input.selectedSkillIds.map((categoryId) => ({
         categoryId,
         years: input.yearsExperience ?? 1,

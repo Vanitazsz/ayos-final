@@ -33,9 +33,7 @@ export default function WorkerIndustrySkillsScreen() {
   const [error, setError] = useState('');
 
   const [industries, setIndustries] = useState<IndustryWithSkills[]>([]);
-  const [selectedIndustryId, setSelectedIndustryId] = useState<string | null>(
-    null,
-  );
+  const [selectedIndustryIds, setSelectedIndustryIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [yearsExperience, setYearsExperience] = useState<number>(3);
   const [rateBySkillId, setRateBySkillId] = useState<
@@ -58,18 +56,16 @@ export default function WorkerIndustrySkillsScreen() {
           }
 
           setIndustries(res.data.industries);
-          const nextIndustryId =
-            res.data.primaryIndustryId || res.data.industries[0]?.id || null;
-          const nextIndustry = res.data.industries.find(
-            (industry) => industry.id === nextIndustryId,
-          );
+          const nextIndustryIds = res.data.selectedIndustryIds;
           const industrySkillIds = new Set(
-            nextIndustry?.skills.map((skill) => skill.id) ?? [],
+            res.data.industries
+              .filter((industry) => nextIndustryIds.includes(industry.id))
+              .flatMap((industry) => industry.skills.map((skill) => skill.id)),
           );
           const compatibleSkillIds = res.data.selectedSkillIds.filter(
             (skillId) => industrySkillIds.has(skillId),
           );
-          setSelectedIndustryId(nextIndustryId);
+          setSelectedIndustryIds(nextIndustryIds);
           setSelectedSkillIds(compatibleSkillIds);
           setYearsExperience(res.data.yearsExperience || 3);
           setRateBySkillId(res.data.rateBySkillId);
@@ -98,10 +94,35 @@ export default function WorkerIndustrySkillsScreen() {
     );
   };
 
-  const currentIndustry = industries.find((i) => i.id === selectedIndustryId);
+  const selectedIndustries = industries.filter((industry) =>
+    selectedIndustryIds.includes(industry.id),
+  );
+
+  const toggleIndustry = (industryId: string) => {
+    const industry = industries.find((item) => item.id === industryId);
+    if (!industry) return;
+
+    if (selectedIndustryIds.includes(industryId)) {
+      const skillIds = new Set(industry.skills.map((skill) => skill.id));
+      setSelectedIndustryIds((current) =>
+        current.filter((id) => id !== industryId),
+      );
+      setSelectedSkillIds((current) =>
+        current.filter((skillId) => !skillIds.has(skillId)),
+      );
+      setRateBySkillId((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(([skillId]) => !skillIds.has(skillId)),
+        ),
+      );
+      return;
+    }
+
+    setSelectedIndustryIds((current) => [...current, industryId]);
+  };
 
   const handleSave = async () => {
-    if (!selectedIndustryId || !selectedSkillIds.length) {
+    if (!selectedIndustryIds.length || !selectedSkillIds.length) {
       Alert.alert('Skills required', 'Select at least one service skill.');
       return;
     }
@@ -109,7 +130,7 @@ export default function WorkerIndustrySkillsScreen() {
     setError('');
     try {
       const result = await updateMyWorkerSkillsAndIndustry({
-        primaryIndustryId: selectedIndustryId,
+        selectedIndustryIds,
         selectedSkillIds,
         yearsExperience,
         rateBySkillId,
@@ -169,11 +190,11 @@ export default function WorkerIndustrySkillsScreen() {
           </View>
         ) : null}
 
-        {/* Section 1: Primary Industry */}
+        {/* Section 1: Primary Industries */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
             <Briefcase size={20} color={theme.colors.primary} />
-            <Text style={theme.typography.h4}>Primary Industry</Text>
+            <Text style={theme.typography.h4}>Primary Industries</Text>
           </View>
           <Text
             style={[
@@ -184,12 +205,12 @@ export default function WorkerIndustrySkillsScreen() {
               },
             ]}
           >
-            Select your main line of work or trade category:
+            Select one or more work or trade categories:
           </Text>
 
           <View style={styles.industryGrid}>
             {industries.map((ind) => {
-              const isSelected = selectedIndustryId === ind.id;
+              const isSelected = selectedIndustryIds.includes(ind.id);
               return (
                 <Pressable
                   key={ind.id}
@@ -197,24 +218,7 @@ export default function WorkerIndustrySkillsScreen() {
                     styles.industryChip,
                     isSelected && styles.industryChipActive,
                   ]}
-                  onPress={() => {
-                    setSelectedIndustryId(ind.id);
-                    const skillIdsInInd = new Set(
-                      ind.skills.map((skill) => skill.id),
-                    );
-                    setSelectedSkillIds((current) => {
-                      return current.filter((skillId) =>
-                        skillIdsInInd.has(skillId),
-                      );
-                    });
-                    setRateBySkillId((current) =>
-                      Object.fromEntries(
-                        Object.entries(current).filter(([skillId]) =>
-                          skillIdsInInd.has(skillId),
-                        ),
-                      ),
-                    );
-                  }}
+                  onPress={() => toggleIndustry(ind.id)}
                 >
                   <Text
                     style={[
@@ -238,12 +242,12 @@ export default function WorkerIndustrySkillsScreen() {
         </View>
 
         {/* Section 2: Skills & Services */}
-        {currentIndustry && (
-          <View style={styles.sectionCard}>
+        {selectedIndustries.map((industry) => (
+          <View key={industry.id} style={styles.sectionCard}>
             <View style={styles.sectionTitleRow}>
               <Wrench size={20} color={theme.colors.primary} />
               <Text style={theme.typography.h4}>
-                {currentIndustry.name} Skills & Services
+                {industry.name} Skills & Services
               </Text>
             </View>
             <Text
@@ -259,7 +263,7 @@ export default function WorkerIndustrySkillsScreen() {
             </Text>
 
             <View style={styles.skillsList}>
-              {currentIndustry.skills.map((skill) => {
+              {industry.skills.map((skill) => {
                 const isChecked = selectedSkillIds.includes(skill.id);
                 return (
                   <View key={skill.id} style={styles.skillBlock}>
@@ -321,7 +325,7 @@ export default function WorkerIndustrySkillsScreen() {
               })}
             </View>
           </View>
-        )}
+        ))}
 
         {/* Section 3: Years of Experience */}
         <View style={styles.sectionCard}>
