@@ -1858,15 +1858,25 @@ export async function updateMyWorkerSkillsAndIndustry(input: {
   rateBySkillId: Record<string, number | null>;
 }): Promise<ApiResponse<boolean>> {
   return wrap(async () => {
-    const { error } = await supabase.rpc('save_my_worker_skills', {
+    const skills = input.selectedSkillIds.map((categoryId) => ({
+      categoryId,
+      years: input.yearsExperience ?? 1,
+      rateMinor: input.rateBySkillId[categoryId] ?? null,
+    }));
+    const saveResult = await supabase.rpc('save_my_worker_skills', {
       p_industry_ids: input.selectedIndustryIds,
-      p_skills: input.selectedSkillIds.map((categoryId) => ({
-        categoryId,
-        years: input.yearsExperience ?? 1,
-        rateMinor: input.rateBySkillId[categoryId] ?? null,
-      })),
+      p_skills: skills,
     });
-    if (error) throw error;
+
+    if (saveResult.error && input.selectedIndustryIds.length === 1) {
+      const legacyResult = await supabase.rpc('save_my_worker_skills', {
+        p_primary_industry_id: input.selectedIndustryIds[0],
+        p_skills: skills,
+      });
+      if (!legacyResult.error) return true;
+      throw saveResult.error;
+    }
+    if (saveResult.error) throw saveResult.error;
     return true;
   });
 }

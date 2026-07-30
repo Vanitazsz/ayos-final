@@ -266,3 +266,36 @@ test('failed rate save stays on screen and does not show confirmation', async ({
   await expect(page.getByText('Industry & Skills Saved!', { exact: true })).toHaveCount(0);
   await expect(page).toHaveURL(/\/industry-skills$/);
 });
+
+test('single-industry save falls back to the legacy RPC during migration rollout', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await useWorkerFixture(page, [{ categoryId: fixtureSkillId, years: 5, rateMinor: 82_550 }]);
+  let legacyPayload: Record<string, unknown> | null = null;
+  await page.route('**/rest/v1/rpc/save_my_worker_skills', async (route) => {
+    const payload = route.request().postDataJSON();
+    if ('p_industry_ids' in payload) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'PGRST202',
+          message: 'Could not find the function in the schema cache',
+        }),
+      });
+      return;
+    }
+    legacyPayload = payload;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ primaryIndustryId: industryId, skillCount: 1 }),
+    });
+  });
+
+  await page.goto('/industry-skills');
+  await page.getByRole('button', { name: 'Save Industry & Skills' }).click();
+  await expect(page.getByText('Industry & Skills Saved!', { exact: true })).toBeVisible();
+  expect(legacyPayload).toMatchObject({ p_primary_industry_id: industryId });
+});
