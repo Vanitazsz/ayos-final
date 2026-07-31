@@ -74,7 +74,7 @@ describe('sanitizeAccuracy', () => {
 });
 
 describe('startForegroundWorkerPresence', () => {
-  it('refreshes a stationary worker every ten seconds', async () => {
+  it('does not refresh a stationary worker before the thirty-second interval', async () => {
     vi.useFakeTimers();
     const position = {
       coords: {
@@ -98,6 +98,9 @@ describe('startForegroundWorkerPresence', () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(10000);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(20000);
     expect(mocks.rpc).toHaveBeenCalledTimes(2);
 
     cleanup();

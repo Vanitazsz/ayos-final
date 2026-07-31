@@ -33,6 +33,7 @@ import {
   normalizeSupabaseError,
   startLiveDispatch,
   subscribeToDispatch,
+  LIVE_DISPATCH_REFRESH_INTERVAL_MS,
   type DispatchSnapshot,
   type LiveWorkerCandidate,
 } from '@/services/liveDispatch';
@@ -121,7 +122,10 @@ export default function MatchingScreen() {
       () => void refresh(),
       `service_request_id=eq.${dispatchRequestId}`,
     );
-    poll = setInterval(() => void refresh(), 10000);
+    poll = setInterval(
+      () => void refresh(),
+      LIVE_DISPATCH_REFRESH_INTERVAL_MS,
+    );
     clock = setInterval(() => setNow(Date.now()), 1000);
 
     return () => {

@@ -3,6 +3,9 @@ import { AppState } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { getWorkerMatchingReadiness } from '@/services/workerMatching';
 
+export const WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS = 30_000;
+export const LIVE_DISPATCH_REFRESH_INTERVAL_MS = 30_000;
+
 export type DispatchStatus =
   | 'OFFERED'
   | 'VIEWED'
@@ -281,7 +284,7 @@ export async function startForegroundWorkerPresence(
       subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 10000,
+          timeInterval: WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS,
           distanceInterval: 20,
         },
         (position) => {
@@ -293,7 +296,10 @@ export async function startForegroundWorkerPresence(
             onState('error', message || 'Browser location updates stopped.');
         },
       );
-      heartbeatTimer = setInterval(() => void heartbeat(), 10000);
+      heartbeatTimer = setInterval(
+        () => void heartbeat(),
+        WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS,
+      );
     } catch (error) {
       stopActivePresence();
       if (!stopped)
