@@ -301,6 +301,7 @@ export default function BookingRequestScreen() {
       await markJobInProgress(booking.id);
       setBackendStatus('IN_PROGRESS');
       setBooking((b) => ({ ...b, status: 'in_progress' }));
+      router.replace('/(worker)/bookings?filter=In%20Progress');
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleArrived error:', msg, error);
