@@ -62,6 +62,7 @@ import {
 import { uploadBookingProof } from '@/services/uploads';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
+import { shouldTransitionToArrivedAfterProximityCheck } from '@/utils/arrivalTransition';
 import type { WorkerBooking } from '@/services/api';
 
 
@@ -264,15 +265,19 @@ export default function BookingRequestScreen() {
 
   const handleArrived = async () => {
     try {
+      let locationWasAvailable = false;
+      let withinProximity = false;
       const loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       }).catch(() => null);
       if (loc) {
+        locationWasAvailable = true;
         const proximity = await confirmWorkerArrival(
           booking.id,
           loc.coords.latitude,
           loc.coords.longitude,
         );
+        withinProximity = proximity.data?.within_proximity === true;
         if (proximity.data && !proximity.data.within_proximity) {
           Alert.alert(
             'Outside Arrival Radius',
@@ -283,7 +288,9 @@ export default function BookingRequestScreen() {
         }
       }
       stopEnRouteLocationPublisher();
-      await arriveAtJob(booking.id);
+      if (shouldTransitionToArrivedAfterProximityCheck(locationWasAvailable, withinProximity)) {
+        await arriveAtJob(booking.id);
+      }
       await startJob(booking.id);
       await markJobInProgress(booking.id);
       setBackendStatus('IN_PROGRESS');
