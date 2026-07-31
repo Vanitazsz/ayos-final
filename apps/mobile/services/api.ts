@@ -753,7 +753,21 @@ export async function fetchWorkerBookings(): Promise<
     return bookings;
   });
 }
-async function transition(bookingId: string, status: string, reason?: string) {
+function isBookingVersionConflict(error: unknown) {
+  return (
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: unknown }).code === '40001'
+  );
+}
+
+async function transition(
+  bookingId: string,
+  status: string,
+  reason?: string,
+  retried = false,
+) {
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .select('version')
@@ -767,6 +781,14 @@ async function transition(bookingId: string, status: string, reason?: string) {
     p_expected_version: booking.version,
     p_reason: reason ?? null,
   });
+  if (error && isBookingVersionConflict(error) && !retried) {
+    return transition(
+      bookingId,
+      status,
+      reason,
+      true,
+    );
+  }
   if (error) throw error;
   return { data };
 }
@@ -794,7 +816,11 @@ export async function completeJob(bookingId: string) {
 export async function confirmJobCompletion(bookingId: string) {
   return transition(bookingId, 'COMPLETED');
 }
-export async function cancelBooking(bookingId: string, reason: string) {
+export async function cancelBooking(
+  bookingId: string,
+  reason: string,
+  retried = false,
+) {
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .select('status,version')
@@ -820,6 +846,9 @@ export async function cancelBooking(bookingId: string, reason: string) {
     p_details: reason || 'Worker declined assigned booking',
     p_policy_version: '2026-07-21',
   });
+  if (error && isBookingVersionConflict(error) && !retried) {
+    return cancelBooking(bookingId, reason, true);
+  }
   if (error) throw error;
   return { data };
 }
@@ -827,6 +856,7 @@ export async function cancelBooking(bookingId: string, reason: string) {
 export async function declineAssignedBooking(
   bookingId: string,
   reason: string,
+  retried = false,
 ) {
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
@@ -839,6 +869,9 @@ export async function declineAssignedBooking(
     p_expected_version: booking.version,
     p_reason: reason,
   });
+  if (error && isBookingVersionConflict(error) && !retried) {
+    return declineAssignedBooking(bookingId, reason, true);
+  }
   if (error) throw error;
   return data;
 }

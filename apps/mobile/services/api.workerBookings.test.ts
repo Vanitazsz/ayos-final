@@ -200,4 +200,35 @@ describe('booking completion', () => {
       p_reason: null,
     });
   });
+
+  it('refreshes the version and retries once after a concurrent booking update', async () => {
+    const bookingVersions = [
+      { data: { version: 7 }, error: null },
+      { data: { version: 8 }, error: null },
+    ];
+    mocks.from.mockImplementation(() =>
+      singleQuery(bookingVersions.shift() ?? { data: { version: 8 }, error: null }),
+    );
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: '40001', message: 'BOOKING_VERSION_CONFLICT' },
+      })
+      .mockResolvedValueOnce({
+        data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 9 },
+        error: null,
+      });
+
+    const { completeJob } = await import('./api');
+
+    await expect(completeJob('booking-id')).resolves.toEqual({
+      data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 9 },
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('transition_booking', {
+      p_booking_id: 'booking-id',
+      p_target_status: 'PENDING_CONFIRMATION',
+      p_expected_version: 8,
+      p_reason: null,
+    });
+  });
 });
