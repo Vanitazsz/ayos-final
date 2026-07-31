@@ -63,12 +63,17 @@ async function isAuthenticationError(error: unknown) {
 }
 
 async function expireSession() {
-  useAuthStore.getState().expireSession();
+  const markExpired = () => useAuthStore.getState().expireSession();
+  markExpired();
   try {
     await supabase.auth.signOut({ scope: 'local' });
   } catch {
     // Local app state is already cleared; a failed remote sign-out must not
     // leave protected screens accessible.
+  } finally {
+    // Auth listeners may briefly resynchronize the stale user while sign-out
+    // is in flight. The final fail-closed state and notice must win that race.
+    markExpired();
   }
 }
 
@@ -107,4 +112,3 @@ export async function invokeAuthenticatedFunction<T>(
 
   return result.data as T;
 }
-

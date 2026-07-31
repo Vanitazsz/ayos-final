@@ -43,6 +43,29 @@ insert into auth.users(
   );
 insert into public.service_categories(id, name, is_active)
 values ('98000000-0000-0000-0000-000000000003', 'Privacy Service', true);
+update public.accounts
+set status = 'ACTIVE'
+where id = '98000000-0000-0000-0000-000000000002';
+update public.worker_profiles
+set approval_status = 'APPROVED',
+    is_available = true,
+    service_origin = extensions.st_setsrid(extensions.st_makepoint(121, 14), 4326)::extensions.geography,
+    service_radius_meters = 10000
+where account_id = '98000000-0000-0000-0000-000000000002';
+insert into public.worker_skills(worker_id, category_id, years, rate_minor)
+values (
+  '98000000-0000-0000-0000-000000000002',
+  '98000000-0000-0000-0000-000000000003',
+  3,
+  100000
+);
+insert into public.worker_availability(worker_id, day_of_week, start_time, end_time)
+values (
+  '98000000-0000-0000-0000-000000000002',
+  extract(dow from now() + interval '1 day')::smallint,
+  '00:00',
+  '23:59'
+);
 insert into public.addresses(
   id,
   account_id,

@@ -148,14 +148,16 @@ insert into public.bookings(
   user_account_id,
   worker_account_id,
   status,
-  version
+  version,
+  agreed_service_amount
 ) values (
   'a6000000-0000-0000-0000-000000000001',
   'a5000000-0000-0000-0000-000000000001',
   'a1000000-0000-0000-0000-000000000001',
   'a2000000-0000-0000-0000-000000000001',
   'IN_PROGRESS',
-  0
+  0,
+  2500
 );
 
 select set_config(

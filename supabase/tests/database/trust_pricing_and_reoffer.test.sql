@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(43);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -105,9 +105,43 @@ where account_id in (
   '92000000-0000-0000-0000-000000000002'
 );
 
+insert into public.worker_skills(worker_id, category_id, years, rate_minor)
+values
+  (
+    '92000000-0000-0000-0000-000000000001',
+    '94000000-0000-0000-0000-000000000001',
+    4,
+    50000
+  ),
+  (
+    '92000000-0000-0000-0000-000000000002',
+    '94000000-0000-0000-0000-000000000001',
+    3,
+    70000
+  );
+insert into public.worker_availability(worker_id, day_of_week, start_time, end_time)
+select worker_id, extract(dow from now() + interval '1 day')::smallint, '00:00', '23:59'
+from (
+  values
+    ('92000000-0000-0000-0000-000000000001'::uuid),
+    ('92000000-0000-0000-0000-000000000002'::uuid)
+) workers(worker_id);
+insert into public.worker_presence(worker_id, location, accuracy_meters, online, last_seen_at)
+select
+  worker_id,
+  extensions.st_setsrid(extensions.st_makepoint(121, 14), 4326)::extensions.geography,
+  5,
+  true,
+  now()
+from (
+  values
+    ('92000000-0000-0000-0000-000000000001'::uuid),
+    ('92000000-0000-0000-0000-000000000002'::uuid)
+) workers(worker_id);
+
 select set_config(
   'request.jwt.claims',
-  '{"sub":"92000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
   true
 );
 set local role authenticated;
@@ -153,6 +187,15 @@ select is(
   0,
   'estimate returns no workers instead of inventing a fallback price'
 );
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"92000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+
 select lives_ok(
   $$select public.save_my_worker_skills(
     array[
@@ -185,32 +228,6 @@ select is(
 );
 
 reset role;
-insert into public.worker_skills(worker_id, category_id, years, rate_minor)
-values (
-  '92000000-0000-0000-0000-000000000002',
-  '94000000-0000-0000-0000-000000000001',
-  3,
-  70000
-);
-insert into public.worker_availability(worker_id, day_of_week, start_time, end_time)
-select worker_id, extract(dow from now() + interval '1 day')::smallint, '00:00', '23:59'
-from (
-  values
-    ('92000000-0000-0000-0000-000000000001'::uuid),
-    ('92000000-0000-0000-0000-000000000002'::uuid)
-) workers(worker_id);
-insert into public.worker_presence(worker_id, location, accuracy_meters, online, last_seen_at)
-select
-  worker_id,
-  extensions.st_setsrid(extensions.st_makepoint(121, 14), 4326)::extensions.geography,
-  5,
-  true,
-  now()
-from (
-  values
-    ('92000000-0000-0000-0000-000000000001'::uuid),
-    ('92000000-0000-0000-0000-000000000002'::uuid)
-) workers(worker_id);
 insert into public.addresses(
   id,
   account_id,
@@ -297,18 +314,7 @@ select set_config(
 set local role authenticated;
 select is(
   (public.get_my_dispatch_offers()->0->>'rateMinor')::bigint,
-  (
-    select skill.rate_minor
-    from public.service_request_dispatches dispatch
-    join public.service_requests request
-      on request.id = dispatch.service_request_id
-    join public.worker_skills skill
-      on skill.worker_id = dispatch.worker_id
-     and skill.category_id = request.category_id
-    where dispatch.service_request_id = '96000000-0000-0000-0000-000000000001'
-      and dispatch.status = 'OFFERED'
-    limit 1
-  ),
+  50000::bigint,
   'worker dispatch offer exposes the worker saved service rate'
 );
 select lives_ok(

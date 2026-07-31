@@ -106,9 +106,7 @@ async function purgeAccountStorage(
     throw new Error('INVALID_ACCOUNT_STORAGE_PURGE_JOB');
   const paths = [...new Set(rawPaths as string[])];
   for (let offset = 0; offset < paths.length; offset += 100) {
-    const { error } = await admin.storage
-      .from(bucketId)
-      .remove(paths.slice(offset, offset + 100));
+    const { error } = await admin.storage.from(bucketId).remove(paths.slice(offset, offset + 100));
     assertSuccess(error, 'account storage purge');
   }
 }
