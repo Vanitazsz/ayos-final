@@ -84,7 +84,7 @@ const viewStatus = (status: string) =>
         : status === 'SERVICE_STARTED' || status === 'IN_PROGRESS'
           ? 'in_progress'
           : status === 'PENDING_CONFIRMATION'
-            ? 'pending_review'
+          ? 'pending_review'
           : status.toLowerCase();
 
 export default function BookingRequestScreen() {
@@ -283,8 +283,14 @@ export default function BookingRequestScreen() {
           loc.coords.latitude,
           loc.coords.longitude,
         );
-        withinProximity = proximity.data?.within_proximity === true;
-        if (proximity.data && !proximity.data.within_proximity) {
+        if (!proximity.error) {
+          withinProximity = proximity.data?.within_proximity === true;
+        }
+        if (
+          !proximity.error &&
+          proximity.data &&
+          !proximity.data.within_proximity
+        ) {
           Alert.alert(
             'Outside Arrival Radius',
             proximity.data.message ||
