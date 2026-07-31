@@ -114,6 +114,7 @@ export default function BookingRequestScreen() {
     lng: 0,
     hourlyRate: 0,
   });
+  const [isArriving, setIsArriving] = useState(false);
   const [backendStatus, setBackendStatus] = useState('PENDING');
   const [duration, setDuration] = useState('Not recorded');
   const [routeDetails, setRouteDetails] = useState<any>(null);
@@ -264,12 +265,17 @@ export default function BookingRequestScreen() {
   };
 
   const handleArrived = async () => {
+    if (isArriving) return;
+    setIsArriving(true);
     try {
       let locationWasAvailable = false;
       let withinProximity = false;
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      }).catch(() => null);
+      const loc = await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+      ]);
       if (loc) {
         locationWasAvailable = true;
         const proximity = await confirmWorkerArrival(
@@ -299,6 +305,8 @@ export default function BookingRequestScreen() {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleArrived error:', msg, error);
       Alert.alert('Arrived failed', msg);
+    } finally {
+      setIsArriving(false);
     }
   };
 
@@ -684,6 +692,8 @@ export default function BookingRequestScreen() {
                 variant="primary"
                 leftIcon={<MapPin size={18} color={Colors.white} />}
                 fullWidth
+                loading={isArriving}
+                disabled={isArriving}
                 onPress={handleArrived}
               />
             </View>
