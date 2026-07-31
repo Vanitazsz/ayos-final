@@ -1,26 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Bell, Send, Filter, Search, Trash2,
   Mail, MessageSquare, Smartphone,
   XCircle, Clock
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import Pagination from '../../components/ui/Pagination';
 
-import { createCampaign, deleteCampaign, loadNotifications, publishCampaign, subscribe } from '../../services/adminData';
+import { createCampaign, deleteCampaign, loadNotifications, publishCampaign } from '../../services/adminData';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
+import { useToast } from '../../context/ToastContext';
 
 const Notifications = () => {
-  const [notifications, setNotifications] = useState([]);
+  const toast = useToast();
+  const { data: notifications, isLoading, error, refresh } = useDataFetch(loadNotifications, []);
+  useRealtime('notification_campaigns', refresh);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [campaign,setCampaign]=useState({title:'',audience:'EVERYONE',message:''});
 
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
   const notifsPerPage = 10;
-  useEffect(()=>{const refresh=async()=>setNotifications(await loadNotifications());void refresh();return subscribe('notification_campaigns',refresh)},[]);
+  const safeNotifs = notifications ?? [];
 
-  const filteredNotifs = notifications.filter(n => {
+  const filteredNotifs = safeNotifs.filter(n => {
     const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'All' || n.type === filterType;
     return matchesSearch && matchesType;
@@ -30,10 +38,10 @@ const Notifications = () => {
   const paginatedNotifs = filteredNotifs.slice((currentPage - 1) * notifsPerPage, currentPage * notifsPerPage);
 
   const stats = [
-    { label: 'Sent', value: notifications.filter(n=>n.status==='Sent').length, icon: <Send className="text-blue-500" />, bg: 'bg-blue-50' },
-    { label: 'Scheduled', value: notifications.filter(n=>n.status==='Scheduled').length, icon: <Clock className="text-yellow-500" />, bg: 'bg-yellow-50' },
-    { label: 'Drafts', value: notifications.filter(n=>n.status==='Draft').length, icon: <MessageSquare className="text-gray-500" />, bg: 'bg-gray-50' },
-    { label: 'Failed', value: notifications.filter(n=>n.status==='Failed').length, icon: <XCircle className="text-red-500" />, bg: 'bg-red-50' },
+    { label: 'Sent', value: safeNotifs.filter(n=>n.status==='Sent').length, icon: <Send className="text-blue-500" />, bg: 'bg-blue-50' },
+    { label: 'Scheduled', value: safeNotifs.filter(n=>n.status==='Scheduled').length, icon: <Clock className="text-yellow-500" />, bg: 'bg-yellow-50' },
+    { label: 'Drafts', value: safeNotifs.filter(n=>n.status==='Draft').length, icon: <MessageSquare className="text-gray-500" />, bg: 'bg-gray-50' },
+    { label: 'Failed', value: safeNotifs.filter(n=>n.status==='Failed').length, icon: <XCircle className="text-red-500" />, bg: 'bg-red-50' },
   ];
 
   const getTypeIcon = (type) => {
@@ -52,13 +60,10 @@ const Notifications = () => {
     }
   };
 
-  const refresh=async()=>setNotifications(await loadNotifications());
   const handleDelete = async (id) => {
-    if(window.confirm('Delete this notification?')) {
-      try{await deleteCampaign(id);await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Delete Notification', message: 'Delete this notification?', onConfirm: async () => { try{await deleteCampaign(id);await refresh()}catch(error){toast.error('Delete failed',error.message)} }});
   };
-  const saveCampaign=async(send)=>{try{const row=await createCampaign(campaign);if(send)await publishCampaign(row.id);setIsModalOpen(false);setCampaign({title:'',audience:'EVERYONE',message:''});await refresh()}catch(error){alert(error.message)}};
+  const saveCampaign=async(send)=>{try{const row=await createCampaign(campaign);if(send)await publishCampaign(row.id);setIsModalOpen(false);setCampaign({title:'',audience:'EVERYONE',message:''});await refresh()}catch(error){toast.error('Save failed',error.message)}};
 
   return (
     <div className="p-6">
@@ -74,6 +79,8 @@ const Notifications = () => {
           <Bell size={18} className="mr-2" /> Create Notification
         </button>
       </div>
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
@@ -96,6 +103,7 @@ const Notifications = () => {
           </div>
           <input
             type="text"
+            aria-label="Search campaigns..."
             placeholder="Search campaigns..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,11 +129,11 @@ const Notifications = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Details</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Audience</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Channel</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status / Date</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Details</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Audience</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Channel</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status / Date</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">

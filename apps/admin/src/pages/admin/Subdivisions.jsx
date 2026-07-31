@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Edit, MapPin, Plus, Power } from 'lucide-react';
 import Button from '../../components/ui/Button';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import Modal from '../../components/ui/Modal';
 import SubdivisionMapPicker from '../../components/SubdivisionMapPicker';
-import { loadSubdivisions, saveSubdivision, subscribe } from '../../services/adminData';
+import { loadSubdivisions, saveSubdivision } from '../../services/adminData';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
 
 const emptyForm = {
   id: null,
@@ -16,45 +19,40 @@ const emptyForm = {
 };
 
 export default function Subdivisions() {
-  const [rows, setRows] = useState([]);
+  const { data: rows, isLoading, error, refresh } = useDataFetch(loadSubdivisions, []);
+  useRealtime('subdivisions', refresh);
   const [form, setForm] = useState(emptyForm);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const refresh = async () => setRows(await loadSubdivisions());
-  useEffect(() => {
-    void refresh();
-    return subscribe('subdivisions', refresh);
-  }, []);
+  const [formError, setFormError] = useState('');
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
 
   const edit = (row = emptyForm) => {
     setForm({ ...emptyForm, ...row });
-    setError('');
+    setFormError('');
     setOpen(true);
   };
   const submit = async (event) => {
     event.preventDefault();
     if (!form.name.trim() || Number(form.radius_meters) < 100) {
-      setError('Enter a name and a radius of at least 100 meters.');
+      setFormError('Enter a name and a radius of at least 100 meters.');
       return;
     }
     setSaving(true);
-    setError('');
+    setFormError('');
     try {
       await saveSubdivision(form);
       await refresh();
       setOpen(false);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to save subdivision');
+      setFormError(reason instanceof Error ? reason.message : 'Unable to save subdivision');
     } finally {
       setSaving(false);
     }
   };
   const toggle = async (row) => {
-    if (!window.confirm(`${row.is_active ? 'Deactivate' : 'Activate'} ${row.name}?`)) return;
-    await saveSubdivision({ ...row, is_active: !row.is_active });
-    await refresh();
+    setConfirm({ isOpen: true, title: row.is_active ? 'Deactivate Subdivision' : 'Activate Subdivision', message: `${row.is_active ? 'Deactivate' : 'Activate'} ${row.name}?`, onConfirm: async () => { await saveSubdivision({ ...row, is_active: !row.is_active }); await refresh(); } });
   };
 
   return (
@@ -70,6 +68,8 @@ export default function Subdivisions() {
           <Plus className="mr-2 h-4 w-4" /> Add Subdivision
         </Button>
       </div>
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -77,6 +77,7 @@ export default function Subdivisions() {
               {['Name', 'Center', 'Radius', 'Status', 'Actions'].map((label) => (
                 <th
                   key={label}
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500"
                 >
                   {label}
@@ -191,7 +192,7 @@ export default function Subdivisions() {
               setForm((current) => ({ ...current, center_lat: latitude, center_lng: longitude }))
             }
           />
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
@@ -202,6 +203,7 @@ export default function Subdivisions() {
           </div>
         </form>
       </Modal>
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Yes" variant="primary" />
     </div>
   );
 }

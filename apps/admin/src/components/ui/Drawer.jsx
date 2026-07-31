@@ -22,16 +22,18 @@ const Drawer = ({ isOpen, onClose, title, children, width = 'w-96' }) => {
       <div 
         className="absolute inset-0 bg-black/50 transition-opacity" 
         onClick={onClose}
+        aria-hidden="true"
       />
       
       {/* Drawer */}
-      <div className={`absolute inset-y-0 right-0 flex max-w-full ${width}`}>
+      <div className={`absolute inset-y-0 right-0 flex max-w-full ${width}`} role="dialog" aria-modal="true" aria-labelledby="drawer-title">
         <div className="w-full h-full transform bg-white shadow-2xl transition-all flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+            <h2 id="drawer-title" className="text-xl font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
+              aria-label="Close drawer"
               className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
             >
               <X size={20} />

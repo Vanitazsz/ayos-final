@@ -12,8 +12,10 @@ import {
   Bot,
 } from 'lucide-react';
 import { loadSettings, saveSetting, subscribe } from '../../services/adminData';
+import { useToast } from '../../context/ToastContext';
 
 const Settings = () => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -37,6 +39,15 @@ const Settings = () => {
     cancellationHistory: 0.05,
     recommendationPriority: 0.05,
   });
+  const [autoCancel, setAutoCancel] = useState('1 Hour');
+  const [advanceBooking, setAdvanceBooking] = useState('Up to 7 days');
+  const [require2fa, setRequire2fa] = useState(true);
+  const [sessionTimeout, setSessionTimeout] = useState('30 Minutes');
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [integrationApiKey, setIntegrationApiKey] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
   useEffect(() => {
     const refresh = async () => {
       const value = await loadSettings();
@@ -66,6 +77,15 @@ const Settings = () => {
           ),
         });
       }
+      setAutoCancel(String(value['booking.auto_cancel'] ?? '1 Hour'));
+      setAdvanceBooking(String(value['booking.advance_limit'] ?? 'Up to 7 days'));
+      setRequire2fa(Boolean(value['security.require_2fa'] ?? true));
+      setSessionTimeout(String(value['security.session_timeout'] ?? '30 Minutes'));
+      setPushEnabled(Boolean(value['notifications.push_enabled'] ?? false));
+      setEmailEnabled(Boolean(value['notifications.email_enabled'] ?? false));
+      setSmsEnabled(Boolean(value['notifications.sms_enabled'] ?? false));
+      setIntegrationApiKey(String(value['integrations.api_key'] ?? ''));
+      setWebhookUrl(String(value['integrations.webhook_url'] ?? ''));
     };
     void refresh();
     return subscribe('system_settings', refresh);
@@ -96,11 +116,20 @@ const Settings = () => {
         saveSetting('platform_settings.commission_rate', commissionRate),
         saveSetting('platform_settings.homeowner_charge', homeownerCharge),
         saveSetting('matching.weights', matchingWeights),
+        saveSetting('booking.auto_cancel', autoCancel),
+        saveSetting('booking.advance_limit', advanceBooking),
+        saveSetting('security.require_2fa', require2fa),
+        saveSetting('security.session_timeout', sessionTimeout),
+        saveSetting('notifications.push_enabled', pushEnabled),
+        saveSetting('notifications.email_enabled', emailEnabled),
+        saveSetting('notifications.sms_enabled', smsEnabled),
+        saveSetting('integrations.api_key', integrationApiKey),
+        saveSetting('integrations.webhook_url', webhookUrl),
       ]);
       setIsSaving(false);
       setSaveSuccess(true);
     } catch (error) {
-      alert(error.message);
+      toast.error('Save failed', error.message);
       setIsSaving(false);
     }
   };
@@ -243,7 +272,11 @@ const Settings = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Auto-cancel unassigned bookings after
                     </label>
-                    <select className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500">
+                    <select
+                      value={autoCancel}
+                      onChange={(e) => setAutoCancel(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500"
+                    >
                       <option>1 Hour</option>
                       <option>12 Hours</option>
                       <option>24 Hours</option>
@@ -253,7 +286,11 @@ const Settings = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Advance Booking Limit
                     </label>
-                    <select className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500">
+                    <select
+                      value={advanceBooking}
+                      onChange={(e) => setAdvanceBooking(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500"
+                    >
                       <option>Up to 7 days</option>
                       <option>Up to 30 days</option>
                       <option>Up to 3 months</option>
@@ -322,7 +359,7 @@ const Settings = () => {
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                    <input type="checkbox" className="sr-only peer" checked={require2fa} onChange={(e) => setRequire2fa(e.target.checked)} />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
@@ -332,7 +369,11 @@ const Settings = () => {
                     <p className="font-medium text-gray-900">Session Timeout</p>
                     <p className="text-sm text-gray-500">Automatically logout inactive admins.</p>
                   </div>
-                  <select className="border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-blue-500 text-sm">
+                  <select
+                    value={sessionTimeout}
+                    onChange={(e) => setSessionTimeout(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-blue-500 text-sm"
+                  >
                     <option>15 Minutes</option>
                     <option>30 Minutes</option>
                     <option>1 Hour</option>
@@ -434,11 +475,67 @@ const Settings = () => {
               </div>
             )}
 
-            {/* Other tabs would go here, omitting for brevity in demo */}
-            {(activeTab === 'notifications' || activeTab === 'integrations') && (
-              <div className="py-12 text-center text-gray-500">
-                <SettingsIcon size={48} className="mx-auto mb-4 text-gray-300" />
-                <p>Configuration options for {activeTab} will appear here.</p>
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">Notification Channels</h3>
+                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <div>
+                    <p className="font-medium text-gray-900">Push Notifications</p>
+                    <p className="text-sm text-gray-500">Send push notifications to mobile devices.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={pushEnabled} onChange={(e) => setPushEnabled(e.target.checked)} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <div>
+                    <p className="font-medium text-gray-900">Email Notifications</p>
+                    <p className="text-sm text-gray-500">Send transactional and marketing emails.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={emailEnabled} onChange={(e) => setEmailEnabled(e.target.checked)} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <div>
+                    <p className="font-medium text-gray-900">SMS Notifications</p>
+                    <p className="text-sm text-gray-500">Send SMS alerts for critical updates.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={smsEnabled} onChange={(e) => setSmsEnabled(e.target.checked)} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'integrations' && (
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">Third-Party Integrations</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                  <input
+                    type="text"
+                    value={integrationApiKey}
+                    onChange={(e) => setIntegrationApiKey(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your API key"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Used for third-party service authentication.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Webhook URL</label>
+                  <input
+                    type="url"
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="https://hooks.example.com/events"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Receive real-time event payloads at this endpoint.</p>
+                </div>
               </div>
             )}
 

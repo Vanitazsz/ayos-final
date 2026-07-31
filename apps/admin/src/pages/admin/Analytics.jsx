@@ -9,16 +9,18 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 
-import { loadAnalytics, subscribe } from '../../services/adminData';
+import { loadAnalytics, loadWorkerEarnings, subscribe } from '../../services/adminData';
 
 const Analytics = () => {
   const [kpis, setKpis] = useState([]);
   const [monthlyRevenue, setMonthlyRevenue] = useState([]);
   const [topServices, setTopServices] = useState([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [mau, setMau] = useState(null);
+  const [avgWorkerEarnings, setAvgWorkerEarnings] = useState(null);
   useEffect(() => {
     const refresh = async () => {
-      const value = await loadAnalytics();
+      const [value, earnings] = await Promise.all([loadAnalytics(), loadWorkerEarnings()]);
       const revenue = value.payments.reduce((sum, row) => sum + Number(row.service_amount), 0);
       setTotalRevenue(revenue);
       const months = new Map();
@@ -74,6 +76,13 @@ const Analytics = () => {
           positive: true,
         },
       ]);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+      setMau(value.accounts.filter((a) => new Date(a.created_at) >= thirtyDaysAgo).length);
+      setAvgWorkerEarnings(
+        earnings.workerCount > 0
+          ? Math.round(earnings.totalEarnings / earnings.workerCount / 12)
+          : 0,
+      );
     };
     void refresh();
     return subscribe('payments', refresh);
@@ -195,8 +204,8 @@ const Analytics = () => {
           <div>
             <h4 className="text-gray-500 font-medium">Monthly Active Users (MAU)</h4>
             <div className="flex items-baseline gap-3 mt-1">
-              <span className="text-3xl font-bold text-gray-900">45,200</span>
-              <span className="text-sm font-medium text-green-600">+12%</span>
+              <span className="text-3xl font-bold text-gray-900">{mau ?? '—'}</span>
+              <span className="text-sm font-medium text-green-600">Live</span>
             </div>
             <p className="text-sm text-gray-400 mt-1">Compared to previous month</p>
           </div>
@@ -209,8 +218,8 @@ const Analytics = () => {
           <div>
             <h4 className="text-gray-500 font-medium">Avg. Worker Earnings / Mo</h4>
             <div className="flex items-baseline gap-3 mt-1">
-              <span className="text-3xl font-bold text-gray-900">$1,250</span>
-              <span className="text-sm font-medium text-green-600">+4%</span>
+              <span className="text-3xl font-bold text-gray-900">{avgWorkerEarnings != null ? `₱${avgWorkerEarnings.toLocaleString()}` : '—'}</span>
+              <span className="text-sm font-medium text-green-600">Annual avg</span>
             </div>
             <p className="text-sm text-gray-400 mt-1">Across all verified workers</p>
           </div>

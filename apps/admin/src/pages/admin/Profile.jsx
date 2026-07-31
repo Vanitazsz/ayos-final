@@ -4,6 +4,7 @@ import {
   Camera, CheckCircle, Clock, Monitor
 } from 'lucide-react';
 
+import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { changeAdminPassword, describeUserAgent, loadAdminProfile, saveAdminProfile, uploadAdminAvatar } from '../../services/profileData';
@@ -16,6 +17,8 @@ const Profile = () => {
   const [loadError,setLoadError]=useState('');
 
   const [profile, setProfile] = useState(null);
+  const [passwordModal, setPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const refresh=async()=>{try{const data=await loadAdminProfile();setProfile({...data,firstName:data.givenName||data.displayName,lastName:data.familyName,originalEmail:data.email});setLoadError('');}catch(error){setLoadError(error.message);setProfile(null);}};
   useEffect(()=>{if(user)void refresh();},[user]);
 
@@ -25,7 +28,7 @@ const Profile = () => {
   };
 
   const handleAvatar=async(event)=>{const file=event.target.files?.[0];if(!file)return;try{const updated=await uploadAdminAvatar(file);setProfile({...updated,firstName:updated.givenName||updated.displayName,lastName:updated.familyName});toast.success('Profile photo updated','Your profile photo is now stored securely.');}catch(error){toast.error('Upload failed',error.message);}finally{event.target.value='';}};
-  const handlePassword=async()=>{const password=window.prompt('Enter a new password with at least 8 characters');if(!password)return;if(password.length<8){toast.error('Password not changed','Use at least 8 characters.');return;}try{await changeAdminPassword(password);await refresh();toast.success('Password updated','Your password was changed successfully.');}catch(error){toast.error('Password update failed',error.message);}};
+  const handlePassword=async()=>{const password=newPassword;if(password.length<8){toast.error('Password not changed','Use at least 8 characters.');return;}try{await changeAdminPassword(password);setPasswordModal(false);setNewPassword('');await refresh();toast.success('Password updated','Your password was changed successfully.');}catch(error){toast.error('Password update failed',error.message);}};
 
   if(!profile)return <div className="p-6 max-w-5xl mx-auto"><h1 className="text-2xl font-bold text-gray-900">My Profile</h1><p className={`mt-4 ${loadError?'text-red-600':'text-gray-500'}`}>{loadError||'Loading profile…'}</p></div>;
   const currentEvent=profile.authenticationEvents[0]??null;
@@ -78,7 +81,7 @@ const Profile = () => {
               <div>
                 <p className="text-sm font-medium text-gray-900">Password</p>
                 <p className="text-xs text-gray-500 mb-2">{profile.passwordChangedAt?`Last changed ${new Date(profile.passwordChangedAt).toLocaleDateString()}`:'Change history not recorded'}</p>
-                <button onClick={handlePassword} className="w-full text-sm bg-white border border-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                <button onClick={() => { setNewPassword(''); setPasswordModal(true); }} className="w-full text-sm bg-white border border-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
                   Change Password
                 </button>
               </div>
@@ -240,7 +243,7 @@ const Profile = () => {
           </div>
 
           {/* Login History */}
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
             <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Login History</h2>
@@ -251,10 +254,10 @@ const Profile = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location & IP</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location & IP</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100 text-sm">
@@ -271,6 +274,16 @@ const Profile = () => {
         </div>
 
       </div>
+      <Modal isOpen={passwordModal} onClose={() => setPasswordModal(false)} title="Change Password">
+        <div className="space-y-4">
+          <p className="text-gray-600">Enter a new password with at least 8 characters:</p>
+          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full rounded-lg border p-2" placeholder="New password" />
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setPasswordModal(false)} className="rounded-lg border px-4 py-2 text-sm">Cancel</button>
+            <button type="button" onClick={() => void handlePassword()} disabled={newPassword.length < 8} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50">Update Password</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

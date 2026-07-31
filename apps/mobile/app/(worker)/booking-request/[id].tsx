@@ -38,12 +38,14 @@ import { BookingStepIndicator } from '@/components/booking/BookingStepIndicator'
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { CompletedSummary } from '@/components/booking/CompletedSummary';
+import * as Location from 'expo-location';
 import {
   acceptJob,
   attachBookingProof,
   arriveAtJob,
   completeJob,
   confirmCashPayment,
+  confirmWorkerArrival,
   declineAssignedBooking,
   departForJob,
   fetchBookingDetail,
@@ -53,10 +55,15 @@ import {
   startJob,
   subscribeToTable,
 } from '@/services/api';
+import {
+  startEnRouteLocationPublisher,
+  stopEnRouteLocationPublisher,
+} from '@/services/liveDispatch';
 import { uploadBookingProof } from '@/services/uploads';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import type { WorkerBooking } from '@/services/api';
+
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -215,6 +222,15 @@ export default function BookingRequestScreen() {
     return unsub;
   }, [id, setStoreStatus]);
 
+  useEffect(() => {
+    if (backendStatus === 'WORKER_EN_ROUTE' && booking.id) {
+      void startEnRouteLocationPublisher(booking.id);
+      return () => {
+        stopEnRouteLocationPublisher();
+      };
+    }
+  }, [backendStatus, booking.id]);
+
   const handleDecline = async () => {
     try {
       await declineAssignedBooking(
@@ -236,6 +252,7 @@ export default function BookingRequestScreen() {
       console.log('[handleConfirmDetails] booking.id:', booking.id);
       await prepareJob(booking.id);
       await departForJob(booking.id);
+      void startEnRouteLocationPublisher(booking.id);
       setBackendStatus('WORKER_EN_ROUTE');
       setBooking((b) => ({ ...b, status: 'en_route' }));
     } catch (error: any) {
@@ -247,6 +264,25 @@ export default function BookingRequestScreen() {
 
   const handleArrived = async () => {
     try {
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      }).catch(() => null);
+      if (loc) {
+        const proximity = await confirmWorkerArrival(
+          booking.id,
+          loc.coords.latitude,
+          loc.coords.longitude,
+        );
+        if (proximity.data && !proximity.data.within_proximity) {
+          Alert.alert(
+            'Outside Arrival Radius',
+            proximity.data.message ||
+              `You are ${proximity.data.distance_meters}m away. Please get within 50 meters of the customer address.`,
+          );
+          return;
+        }
+      }
+      stopEnRouteLocationPublisher();
       await arriveAtJob(booking.id);
       await startJob(booking.id);
       await markJobInProgress(booking.id);
@@ -258,6 +294,7 @@ export default function BookingRequestScreen() {
       Alert.alert('Arrived failed', msg);
     }
   };
+
 
   const handleComplete = async () => {
     try {

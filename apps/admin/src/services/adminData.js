@@ -326,6 +326,22 @@ export async function loadBookings() {
       })),
   }));
 }
+export async function loadWorkerEarnings() {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('worker_net_amount,bookings(worker_account_id)')
+    .eq('status', 'SUCCESSFUL')
+    .not('worker_net_amount', 'is', null);
+  if (error) throw error;
+  const earningsByWorker = new Map();
+  for (const row of data ?? []) {
+    const workerId = row.bookings?.worker_account_id;
+    if (workerId) {
+      earningsByWorker.set(workerId, (earningsByWorker.get(workerId) ?? 0) + Number(row.worker_net_amount));
+    }
+  }
+  return { totalEarnings: [...earningsByWorker.values()].reduce((s, v) => s + v, 0), workerCount: earningsByWorker.size };
+}
 export async function cancelBookingAsAdmin(id, reason) {
   const { data, error } = await supabase.rpc('admin_cancel_booking', {
     p_booking_id: id,
@@ -647,6 +663,19 @@ export async function loadCatalog() {
       servicesCount: row.service_templates?.[0]?.count ?? 0,
     })),
   };
+}
+export async function loadMostBookedService() {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('service_requests!inner(service_categories!inner(name))');
+  if (error) throw error;
+  const counts = new Map();
+  for (const row of data ?? []) {
+    const name = row.service_requests?.service_categories?.name;
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  if (!counts.size) return null;
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 export async function saveService(value, categories) {
   const category = categories.find((item) => item.name === value.category);

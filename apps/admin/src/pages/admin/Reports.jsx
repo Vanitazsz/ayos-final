@@ -1,23 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   FileText, Download, Filter, Search, Calendar,
   BarChart2, Users, Briefcase, CreditCard, Star
 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 
-import { downloadReport, generateReport, loadReports, subscribe } from '../../services/adminData';
+import { downloadReport, generateReport, loadReports } from '../../services/adminData';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
+import { useToast } from '../../context/ToastContext';
 
 const Reports = () => {
-  const [reports,setReports] = useState([]);
+  const toast = useToast();
+  const { data: reports, isLoading, error, refresh } = useDataFetch(loadReports, []);
+  useRealtime('report_exports', refresh);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [dateRange, setDateRange] = useState('Last 30 Days');
   const [reportType, setReportType] = useState('All');
 
   const reportsPerPage = 10;
-  useEffect(()=>{const refresh=async()=>setReports(await loadReports());void refresh();return subscribe('report_exports',refresh)},[]);
 
-  const filteredReports = reports.filter(r => {
+  const safeReports = reports ?? [];
+  const filteredReports = safeReports.filter(r => {
     const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = reportType === 'All' || r.type === reportType;
@@ -28,17 +33,17 @@ const Reports = () => {
   const paginatedReports = filteredReports.slice((currentPage - 1) * reportsPerPage, currentPage * reportsPerPage);
 
   const handleDownload = async (id) => {
-    const report=reports.find((item)=>item.id===id);if(!report?.storagePath){alert('Report file is not ready');return;}try{await downloadReport(report.storagePath)}catch(error){alert(error.message)}
+    const report=safeReports.find((item)=>item.id===id);if(!report?.storagePath){toast.error('Download failed','Report file is not ready');return;}try{await downloadReport(report.storagePath)}catch(error){toast.error('Download failed',error.message)}
   };
-
+  
   const handleDownloadExcel = (id) => {
-    const report=reports.find((item)=>item.id===id);if(!report)return;void generateReport(report.reportTypeCode,'XLSX').then((generated)=>downloadReport(generated.storage_path)).catch((error)=>alert(error.message));
+    const report=safeReports.find((item)=>item.id===id);if(!report)return;void generateReport(report.reportTypeCode,'XLSX').then((generated)=>downloadReport(generated.storage_path)).catch((error)=>toast.error('Download failed',error.message));
   };
   const handleDownloadCSV = (id) => {
-    const report=reports.find((item)=>item.id===id);if(!report)return;void generateReport(report.reportTypeCode,'CSV').then((generated)=>downloadReport(generated.storage_path)).catch((error)=>alert(error.message));
+    const report=safeReports.find((item)=>item.id===id);if(!report)return;void generateReport(report.reportTypeCode,'CSV').then((generated)=>downloadReport(generated.storage_path)).catch((error)=>toast.error('Download failed',error.message));
   };
   const reportCodes={All:'FINANCIAL','Financial Summary':'FINANCIAL','Worker Performance':'WORKERS','Customer Activity':'CUSTOMERS','Service Popularity':'SERVICES','Review Sentiment':'REVIEWS'};
-  const handleGenerate=async()=>{try{await generateReport(reportCodes[reportType]??'FINANCIAL','PDF');setReports(await loadReports())}catch(error){alert(error.message)}};
+  const handleGenerate=async()=>{try{await generateReport(reportCodes[reportType]??'FINANCIAL','PDF');await refresh()}catch(error){toast.error('Generation failed',error.message)}};
 
   return (
     <div className="p-6">
@@ -51,18 +56,20 @@ const Reports = () => {
           <FileText size={18} className="mr-2" /> Generate Custom Report
         </button>
       </div>
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       {/* Report Types Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        <div 
+        <button type="button"
           onClick={() => setReportType('All')}
-          className={`rounded-xl shadow-sm border p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${reportType === 'All' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-100 hover:shadow-md text-gray-900'}`}
+          className={`rounded-xl shadow-sm border p-4 flex flex-col items-center justify-center transition-all ${reportType === 'All' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-100 hover:shadow-md text-gray-900'}`}
         >
           <div className={`p-3 rounded-full mb-3 ${reportType === 'All' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
             <Filter size={24} />
           </div>
           <h3 className="text-sm font-bold">All Reports</h3>
-        </div>
+        </button>
         {[
           { name: 'Financial', filterName: 'Financial Summary', icon: <CreditCard />, bg: 'bg-blue-50', activeBg: 'bg-blue-600', color: 'text-blue-500', activeColor: 'text-white' },
           { name: 'Workers', filterName: 'Worker Performance', icon: <Briefcase />, bg: 'bg-purple-50', activeBg: 'bg-purple-600', color: 'text-purple-500', activeColor: 'text-white' },
@@ -72,16 +79,16 @@ const Reports = () => {
         ].map((type, index) => {
           const isActive = reportType === type.filterName;
           return (
-            <div 
+            <button type="button"
               key={index} 
               onClick={() => { setReportType(type.filterName); setCurrentPage(1); }}
-              className={`rounded-xl shadow-sm border p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${isActive ? type.activeBg + ' border-transparent text-white' : 'bg-white border-gray-100 hover:shadow-md text-gray-900'}`}
+              className={`rounded-xl shadow-sm border p-4 flex flex-col items-center justify-center transition-all ${isActive ? type.activeBg + ' border-transparent text-white' : 'bg-white border-gray-100 hover:shadow-md text-gray-900'}`}
             >
               <div className={`p-3 rounded-full mb-3 ${isActive ? 'bg-white/20 text-white' : type.bg + ' ' + type.color}`}>
                 {type.icon}
               </div>
               <h3 className="text-sm font-bold">{type.name}</h3>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -94,6 +101,7 @@ const Reports = () => {
           </div>
           <input
             type="text"
+            aria-label="Search reports by name or ID..."
             placeholder="Search reports by name or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -132,10 +140,10 @@ const Reports = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status / Size</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated Date</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status / Size</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">

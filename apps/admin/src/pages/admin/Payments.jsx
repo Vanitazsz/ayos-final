@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   DollarSign, TrendingUp, CreditCard,
   Search, Filter, ArrowUpRight, ArrowDownRight,
@@ -7,10 +7,13 @@ import {
 import Drawer from '../../components/ui/Drawer';
 import Pagination from '../../components/ui/Pagination';
 
-import { loadPayments, subscribe } from '../../services/adminData';
+import { loadPayments } from '../../services/adminData';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
 
 const Payments = () => {
-  const [transactions,setTransactions] = useState([]);
+  const { data: transactions, isLoading, error, refresh } = useDataFetch(loadPayments, []);
+  useRealtime('payments', refresh);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,7 +23,6 @@ const Payments = () => {
   const [activeTab, setActiveTab] = useState('transactions');
 
   const txnsPerPage = 10;
-  useEffect(()=>{const refresh=async()=>setTransactions(await loadPayments());void refresh();return subscribe('payments',refresh)},[]);
 
   const filteredTxns = transactions.filter(t => {
     const matchesSearch = t.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -69,6 +71,8 @@ const Payments = () => {
           <p className="text-gray-500 mt-1">Monitor revenue, worker payouts, and platform commissions</p>
         </div>
       </div>
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -128,6 +132,7 @@ const Payments = () => {
           </div>
           <input
             type="text"
+            aria-label="Search transactions by ID or name..."
             placeholder="Search transactions by ID or name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -154,12 +159,12 @@ const Payments = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type / Method</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type / Method</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -198,14 +203,17 @@ const Payments = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                   <button 
                     onClick={() => setActionMenuOpenId(actionMenuOpenId === txn.id ? null : txn.id)}
+                    aria-haspopup="true"
+                    aria-expanded={actionMenuOpenId === txn.id}
+                    aria-label={`Open actions for ${txn.id}`}
                     className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                   >
                     <MoreVertical size={20} />
                   </button>
                   
                   {actionMenuOpenId === txn.id && (
-                    <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1">
-                      <button onClick={() => handleViewDetails(txn)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
+                    <div className="absolute right-8 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-100 z-10 py-1" role="menu">
+                      <button onClick={() => handleViewDetails(txn)} role="menuitem" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left">
                         <Eye size={16} className="mr-2 text-gray-400" /> View Details
                       </button>
                     </div>

@@ -1,22 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Trash2, Search, RotateCcw, ShieldAlert,
   AlertCircle
 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
-import { loadTrash, permanentlyDeleteTrash, restoreTrash, subscribe } from '../../services/adminData';
+import { loadTrash, permanentlyDeleteTrash, restoreTrash } from '../../services/adminData';
+import { useDataFetch } from '../../hooks/useDataFetch';
+import { useRealtime } from '../../hooks/useRealtime';
+import { useToast } from '../../context/ToastContext';
 const tabs=['Users','Workers','Bookings','Services','Reviews'];
 
 const Trash = () => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('Users');
-  const [items, setItems] = useState(Object.fromEntries(tabs.map((tab)=>[tab,[]])));
+  const { data: raw, isLoading, error, refresh } = useDataFetch(loadTrash, []);
+  useRealtime('trash_entries', refresh);
+  const items = raw ?? Object.fromEntries(tabs.map((tab)=>[tab,[]]));
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const itemsPerPage = 10;
-  const refresh=async()=>setItems(await loadTrash());
-  useEffect(()=>{void refresh();return subscribe('trash_entries',refresh)},[]);
   const currentItems = items[activeTab];
 
   const filteredItems = currentItems.filter(item => 
@@ -28,28 +34,22 @@ const Trash = () => {
   const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleRestore = async (id) => {
-    if(window.confirm('Restore this item?')) {
-      try{await restoreTrash(id);await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Restore Item', message: 'Restore this item?', onConfirm: async () => { try{await restoreTrash(id);await refresh()}catch(error){toast.error('Restore failed',error.message)} }});
   };
 
   const handlePermanentDelete = async (id) => {
-    if(window.confirm('Permanently delete this item? This CANNOT be undone.')) {
-      try{await permanentlyDeleteTrash(id);await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Permanently Delete', message: 'Permanently delete this item? This CANNOT be undone.', onConfirm: async () => { try{await permanentlyDeleteTrash(id);await refresh()}catch(error){toast.error('Delete failed',error.message)} }});
   };
 
   const handleRestoreAll = async () => {
-    if(window.confirm(`Restore all ${filteredItems.length} items?`)) {
-      try{for(const item of filteredItems)await restoreTrash(item.id);await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Restore All', message: `Restore all ${filteredItems.length} items?`, onConfirm: async () => { try{for(const item of filteredItems)await restoreTrash(item.id);await refresh()}catch(error){toast.error('Restore failed',error.message)} }});
   };
 
   const handleEmptyTrash = async () => {
-    if(window.confirm(`Permanently delete all ${filteredItems.length} items in ${activeTab} trash? This CANNOT be undone.`)) {
-      try{for(const item of filteredItems)await permanentlyDeleteTrash(item.id);await refresh()}catch(error){alert(error.message)}
-    }
+    setConfirm({ isOpen: true, title: 'Empty Trash', message: `Permanently delete all ${filteredItems.length} items in ${activeTab} trash? This CANNOT be undone.`, onConfirm: async () => { try{for(const item of filteredItems)await permanentlyDeleteTrash(item.id);await refresh()}catch(error){toast.error('Delete failed',error.message)} }});
   };
+
+  const closeConfirm = () => setConfirm(s => ({ ...s, isOpen: false }));
 
   return (
     <div className="p-6">
@@ -75,8 +75,10 @@ const Trash = () => {
           </div>
         )}
       </div>
+      {isLoading && <div className="flex justify-center py-8 text-gray-500"><div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2" /> Loading...</div>}
+      {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto mb-6">
         <div className="flex border-b border-gray-200 overflow-x-auto">
           {tabs.map(tab => (
             <button
@@ -98,9 +100,10 @@ const Trash = () => {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={18} className="text-gray-400" />
             </div>
-            <input
-              type="text"
-              placeholder={`Search deleted ${activeTab.toLowerCase()}...`}
+          <input
+            type="text"
+            aria-label={`Search deleted ${activeTab.toLowerCase()}...`}
+            placeholder={`Search deleted ${activeTab.toLowerCase()}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -111,11 +114,11 @@ const Trash = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deleted Item</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deleted By</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Deleted</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Restore Deadline</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deleted Item</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deleted By</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Deleted</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Restore Deadline</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -175,6 +178,7 @@ const Trash = () => {
           </div>
         )}
       </div>
+      <ConfirmModal isOpen={confirm.isOpen} onClose={closeConfirm} title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} confirmLabel="Yes" />
     </div>
   );
 };

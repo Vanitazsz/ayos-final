@@ -28,8 +28,17 @@ vi.mock('react-native', () => ({
   },
 }));
 vi.mock('@/lib/supabase', () => ({
-  supabase: { rpc: mocks.rpc },
+  supabase: {
+    rpc: mocks.rpc,
+    channel: vi.fn(() => ({
+      subscribe: vi.fn(),
+      send: vi.fn(),
+      on: vi.fn().mockReturnThis(),
+    })),
+    removeChannel: vi.fn(),
+  },
 }));
+
 vi.mock('@/services/workerMatching', () => ({
   getWorkerMatchingReadiness: mocks.readiness,
 }));
@@ -37,8 +46,11 @@ vi.mock('@/services/workerMatching', () => ({
 import {
   normalizeSupabaseError,
   sanitizeAccuracy,
+  startEnRouteLocationPublisher,
   startForegroundWorkerPresence,
+  stopEnRouteLocationPublisher,
 } from './liveDispatch';
+
 
 describe('normalizeSupabaseError', () => {
   it('preserves PostgREST messages and codes', () => {
@@ -145,4 +157,17 @@ describe('startForegroundWorkerPresence', () => {
     cleanup();
     vi.useRealTimers();
   });
+
+  it('starts watchPosition and cleans up when stopped', async () => {
+    mocks.requestPermission.mockResolvedValue({ status: 'granted' });
+    mocks.watchPosition.mockResolvedValue({ remove: mocks.removeWatch });
+
+    const stop = await startEnRouteLocationPublisher('test-booking-123');
+    expect(mocks.requestPermission).toHaveBeenCalled();
+    expect(mocks.watchPosition).toHaveBeenCalled();
+
+    stop();
+    expect(mocks.removeWatch).toHaveBeenCalled();
+  });
 });
+

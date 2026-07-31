@@ -1916,3 +1916,32 @@ export async function updateMyWorkerSkillsAndIndustry(input: {
     return true;
   });
 }
+
+export type ProximityArrivalResult = {
+  success: boolean;
+  within_proximity: boolean;
+  distance_meters: number;
+  max_radius_meters?: number;
+  status: string;
+  message?: string;
+};
+
+export async function confirmWorkerArrival(
+  bookingId: string,
+  workerLat: number,
+  workerLng: number,
+): Promise<ApiResponse<ProximityArrivalResult>> {
+  return wrap(async () => {
+    const { data, error } = await supabase.rpc(
+      'validate_and_confirm_worker_arrival',
+      {
+        p_booking_id: bookingId,
+        p_worker_lat: workerLat,
+        p_worker_lng: workerLng,
+      },
+    );
+    if (error) throw error;
+    return data as ProximityArrivalResult;
+  });
+}
+
