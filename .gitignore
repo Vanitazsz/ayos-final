@@ -1,4 +1,5 @@
 node_modules/
+.worktrees/
 apps/*/package-lock.json
 .turbo/
 dist/
