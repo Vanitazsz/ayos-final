@@ -22,56 +22,62 @@ async function sha256(value: string | null): Promise<string | null> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-Deno.serve(async (request) => {
+type RecordAuthSessionDependencies = {
+  requireAccount: typeof requireAccount;
+  adminClient: typeof adminClient;
+};
+
+export async function handleRecordAuthSession(
+  request: Request,
+  dependencies: RecordAuthSessionDependencies = {
+    requireAccount,
+    adminClient,
+  },
+) {
   const preflight = options(request);
   if (preflight) return preflight;
   if (request.method !== 'POST')
     return json({ error: { code: 'METHOD_NOT_ALLOWED', message: 'POST required.' } }, 405);
   try {
-    const { user } = await requireAccount(request);
-    const admin = adminClient();
+    const { user } = await dependencies.requireAccount(request);
+    const admin = dependencies.adminClient();
     const authorization = request.headers.get('authorization') ?? '';
     const sessionHash = await sha256(sessionId(authorization));
+    if (!sessionHash)
+      return json({
+        success: true,
+        message: 'Session has no stable identifier; no duplicate-prone event was written.',
+        created: false,
+        duplicate: false,
+        data: null,
+      });
     const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
     const ipAddress = forwarded || request.headers.get('cf-connecting-ip') || null;
     const userAgent = request.headers.get('user-agent')?.slice(0, 1000) || null;
-    const since = new Date(Date.now() - 5 * 60_000).toISOString();
 
-    let existingQuery = admin
-      .from('authentication_events')
-      .select('*')
-      .eq('account_id', user.id)
-      .eq('event_type', 'SIGNED_IN')
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (sessionHash) existingQuery = existingQuery.eq('session_id_hash', sessionHash);
-    const { data: existing, error: existingError } = await existingQuery.maybeSingle();
-    if (existingError) throw existingError;
-    if (existing)
-      return json({
-        success: true,
-        message: 'Authentication session already recorded.',
-        data: existing,
-      });
-
-    const { data, error } = await admin
-      .from('authentication_events')
-      .insert({
-        account_id: user.id,
-        event_type: 'SIGNED_IN',
-        session_id_hash: sessionHash,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-      })
-      .select()
-      .single();
+    const { data, error } = await admin.rpc('record_auth_session_event', {
+      p_account_id: user.id,
+      p_session_id_hash: sessionHash,
+      p_ip_address: ipAddress,
+      p_user_agent: userAgent,
+    });
     if (error) throw error;
-    return json({ success: true, message: 'Authentication session recorded.', data }, 201);
+    const duplicate = data?.duplicate === true;
+    return json({
+      success: true,
+      message: duplicate
+        ? 'Authentication session already recorded.'
+        : 'Authentication session recorded.',
+      duplicate,
+      created: !duplicate,
+      data: data?.event ?? null,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Authentication session could not be recorded.';
     const status = message === 'UNAUTHENTICATED' ? 401 : message === 'FORBIDDEN' ? 403 : 500;
     return json({ success: false, message, errors: {} }, status);
   }
-});
+}
+
+if (import.meta.main) Deno.serve((request) => handleRecordAuthSession(request));

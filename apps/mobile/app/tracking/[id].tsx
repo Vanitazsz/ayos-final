@@ -34,6 +34,7 @@ import {
   subscribeToEnRouteLocation,
   type LiveEnRouteLocation,
 } from '@/services/liveDispatch';
+import { createRealtimeRefreshController } from '@/services/requestControl';
 import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
@@ -147,40 +148,46 @@ export default function TrackingScreen() {
   const workerStatus = tracking?.booking?.status as string | undefined;
   useEffect(() => {
     if (!bookingId) return;
+    let active = true;
     const load = () =>
       void fetchBookingTracking(bookingId)
-        .then(setTracking)
-        .catch(() => setTracking(null));
+        .then((nextTracking) => {
+          if (active) setTracking(nextTracking);
+        })
+        .catch(() => {
+          if (active) setTracking(null);
+        });
+    const refreshController = createRealtimeRefreshController(load, {
+      coalesceMs: 250,
+      fallbackMs: 60_000,
+    });
     load();
     const stopLocation = subscribeToTable(
       'location_updates',
-      load,
+      refreshController.request,
       `booking_id=eq.${bookingId}`,
+      (status) => refreshController.setStatus('location', status),
     );
     const stopBooking = subscribeToTable(
       'bookings',
-      load,
+      refreshController.request,
       `id=eq.${bookingId}`,
+      (status) => refreshController.setStatus('booking', status),
     );
     const stopStatusEvents = subscribeToTable(
       'booking_status_events',
-      load,
+      refreshController.request,
       `booking_id=eq.${bookingId}`,
+      (status) => refreshController.setStatus('status-events', status),
     );
-    const poll = setInterval(() => {
-      if (
-        !tracking?.booking?.status ||
-        !['COMPLETED', 'CANCELLED'].includes(tracking.booking.status)
-      )
-        load();
-    }, 10000);
     return () => {
+      active = false;
+      refreshController.stop();
       stopLocation();
       stopBooking();
       stopStatusEvents();
-      clearInterval(poll);
     };
-  }, [bookingId, tracking?.booking?.status]);
+  }, [bookingId]);
 
 
   const stepIndex = useMemo(() => {

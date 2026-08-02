@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(12);
 
 select enum_has_labels(
   'public',
@@ -186,6 +186,15 @@ select lives_ok(
     null
   )$$,
   'worker can request customer completion confirmation'
+);
+select lives_ok(
+  $$select public.transition_booking(
+    'a6000000-0000-0000-0000-000000000001',
+    'PENDING_CONFIRMATION',
+    0,
+    null
+  )$$,
+  'repeating an already-applied transition is idempotent'
 );
 select is(
   (

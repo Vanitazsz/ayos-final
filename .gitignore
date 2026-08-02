@@ -18,3 +18,6 @@ supabase/.temp/
 supabase/.env.local
 .DS_Store
 apps/mobile/android/app/debug.keystore
+
+# nested clone of this repo (superseded worktree)
+ayos-try/

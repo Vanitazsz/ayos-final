@@ -27,7 +27,7 @@
     "db:types": "supabase gen types typescript --local > packages/supabase/src/database.generated.ts",
     "functions:serve": "supabase functions serve --env-file supabase/.env.local",
     "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/ai-analyze-request/index.ts supabase/functions/ai-assist-media/index.ts supabase/functions/ai-process-job/index.ts supabase/functions/ai-translate-message/index.ts supabase/functions/geocode-search/index.ts supabase/functions/geocode-reverse/index.ts supabase/functions/route/index.ts supabase/functions/queue-consumer/index.ts supabase/functions/report-export/index.ts supabase/functions/admin-invite-account/index.ts supabase/functions/record-auth-session/index.ts",
-    "functions:test": "deno test --allow-env supabase/functions/_shared/expo-push.test.ts",
+    "functions:test": "deno test --config supabase/functions/deno.json --allow-env supabase/functions/_shared/expo-push.test.ts supabase/functions/_frontend_shared/geocoding.test.ts supabase/functions/record-auth-session/index.test.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "traceability:check": "tsx scripts/check-traceability.ts",
     "contracts:check": "bash scripts/check-frontend-backend-contracts.sh"

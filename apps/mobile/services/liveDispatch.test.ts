@@ -44,8 +44,12 @@ vi.mock('@/services/workerMatching', () => ({
 }));
 
 import {
+  distanceBetweenLocationsMeters,
+  EN_ROUTE_LOCATION_INTERVAL_MS,
+  MIN_LOCATION_MOVEMENT_METERS,
   normalizeSupabaseError,
   sanitizeAccuracy,
+  shouldPublishLocation,
   startEnRouteLocationPublisher,
   startForegroundWorkerPresence,
   stopEnRouteLocationPublisher,
@@ -85,8 +89,41 @@ describe('sanitizeAccuracy', () => {
   );
 });
 
+describe('location write control', () => {
+  const origin = {
+    coords: {
+      latitude: 14.4179,
+      longitude: 120.9795,
+      accuracy: 10,
+      altitude: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+    },
+    timestamp: 1,
+  };
+
+  it('skips a movement update below twenty meters', () => {
+    const nearby = {
+      ...origin,
+      coords: {
+        ...origin.coords,
+        latitude: 14.41795,
+      },
+      timestamp: 2,
+    };
+
+    expect(distanceBetweenLocationsMeters(origin, nearby)).toBeLessThan(20);
+    expect(shouldPublishLocation(origin, nearby)).toBe(false);
+  });
+
+  it('publishes a heartbeat even when the worker is stationary', () => {
+    expect(shouldPublishLocation(origin, origin, true)).toBe(true);
+  });
+});
+
 describe('startForegroundWorkerPresence', () => {
-  it('does not refresh a stationary worker before the thirty-second interval', async () => {
+  it('refreshes available-worker presence every fifteen seconds', async () => {
     vi.useFakeTimers();
     const position = {
       coords: {
@@ -109,10 +146,10 @@ describe('startForegroundWorkerPresence', () => {
     const cleanup = await startForegroundWorkerPresence(vi.fn());
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(10000);
+    await vi.advanceTimersByTimeAsync(14999);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(20000);
+    await vi.advanceTimersByTimeAsync(1);
     expect(mocks.rpc).toHaveBeenCalledTimes(2);
 
     cleanup();
@@ -164,10 +201,15 @@ describe('startForegroundWorkerPresence', () => {
 
     const stop = await startEnRouteLocationPublisher('test-booking-123');
     expect(mocks.requestPermission).toHaveBeenCalled();
-    expect(mocks.watchPosition).toHaveBeenCalled();
+    expect(mocks.watchPosition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeInterval: EN_ROUTE_LOCATION_INTERVAL_MS,
+        distanceInterval: MIN_LOCATION_MOVEMENT_METERS,
+      }),
+      expect.any(Function),
+    );
 
     stop();
     expect(mocks.removeWatch).toHaveBeenCalled();
   });
 });
-
