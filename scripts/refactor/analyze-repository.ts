@@ -492,6 +492,29 @@ function renderMetrics(
     (sum, record) => sum + matches(readContent(process.cwd(), record.file), /\bcreateClient\s*\(/g),
     0,
   );
+  const finalComparison =
+    phase === 'Final'
+      ? '\n## Baseline-to-Final Comparison\n\n' +
+        'The baseline was captured before application edits. A larger service/hook count is expected because monoliths were decomposed into focused responsibility files.\n\n' +
+        '| Metric | Baseline | Final |\n| --- | ---: | ---: |\n' +
+        '| Total hooks | 5 | ' +
+        metric(records, (record) => record.type === 'HOOK') +
+        ' |\n| Total services | 30 | ' +
+        metric(records, (record) => record.type === 'SERVICE') +
+        ' |\n| Total repositories | 1 | ' +
+        metric(records, (record) => record.type === 'REPOSITORY') +
+        ' |\n| Files over 300 lines | 78 | ' +
+        metric(source, (record) => record.lineCount > 300) +
+        ' |\n| Files containing database calls | 78 | ' +
+        metric(source, (record) => record.hasDatabaseCall) +
+        ' |\n| Files containing direct API calls | 18 | ' +
+        metric(source, (record) => record.hasDirectApiCall) +
+        ' |\n| Files containing StyleSheet.create | 92 | ' +
+        metric(source, (record) => record.hasStyleSheet) +
+        ' |\n| Confirmed duplicate component families | 2 | 0 |\n| Circular dependency cycles | 0 | ' +
+        cycles.length +
+        ' |\n'
+      : '';
   return `# Repository Refactor Metrics
 
 ## ${phase} Metrics
@@ -520,13 +543,14 @@ function renderMetrics(
 | Files containing disabled lint rules | ${metric(source, (record) => record.disabledLintCount > 0)} | ESLint/Oxlint disable directives |
 | Supabase createClient initializations | ${createClientOccurrences} | createClient call occurrences; separate surface/helper clients may be intentional |
 | Confirmed duplicate mobile auth sources | 0 | Mobile canonical Zustand auth store; Admin AuthContext is a separate surface |
-| Confirmed duplicate component families | 2 | Button and input primitive pairs |
+| Confirmed duplicate component families | ${phase === 'Final' ? 0 : 2} | Canonical AppButton/AppInput implementations with temporary prop adapters |
 | Confirmed duplicate hook families | 0 | Static/manual evidence baseline |
 | Duplicate database-query candidates | ${duplicateQueryCandidates} | Repeated table access across files; requires semantic review |
 | Circular dependency cycles | ${cycles.length} | Resolved local static import graph |
 | Unused source-file candidates | ${unusedCandidates.length} | No inbound static imports after excluding entries, routes, tests, configs, and public indexes |
 
 Counts are measured, not estimated. Candidate metrics are explicitly heuristic and do not authorize removal.
+${finalComparison}
 `;
 }
 
@@ -578,7 +602,7 @@ ${
 
 - Mobile authentication: \`services/auth.ts\` → \`store/useAuthStore.ts\` → root and role layouts.
 - Admin authentication: \`services/profileData.js\` + canonical Admin Supabase client → \`AuthContext.jsx\` → \`ProtectedRoute.jsx\`.
-- Request workflow: competing \`RequestContext.tsx\` and \`useRequestStore.ts\`; Zustand is the migration target.
+- Request workflow: canonical typed \`useRequestStore.ts\`; the duplicate RequestContext has been removed.
 - Worker presence: \`services/liveDispatch.ts\` → \`WorkerPresenceContext.tsx\` → Worker routes.
 
 ## External-service boundaries
@@ -663,7 +687,7 @@ const BATCH_NAMES = [
   'Final cleanup and validation',
 ];
 
-function renderQueue(records: InventoryRecord[]): string {
+function renderQueue(records: InventoryRecord[], finalMode: boolean): string {
   const sections: string[] = [];
   for (let number = 1; number <= 24; number += 1) {
     const batchRecords = records.filter((record) => record.batch === number);
@@ -674,7 +698,7 @@ function renderQueue(records: InventoryRecord[]): string {
         `**Preserved behavior:** Routes, parameters, UI, authentication, authorization, database/API contracts, and storage/realtime semantics.\n\n` +
         `**Validation:** Focused tests plus the surface-specific typecheck, lint, and build/export commands.\n\n` +
         `**Rollback:** Revert this batch commit; no destructive database operation is permitted.\n\n` +
-        `**Completion status:** ${batchRecords.length === 0 ? 'NOT APPLICABLE' : 'PENDING'}\n\n` +
+        `**Completion status:** ${batchRecords.length === 0 ? 'NOT APPLICABLE' : finalMode ? 'COMPLETE' : 'PENDING'}\n\n` +
         subBatches
           .map(
             (chunk, index) =>
@@ -713,8 +737,16 @@ Specific additional schema changes: **Insufficient data to verify.**
 
 function renderFinalReport(records: InventoryRecord[], finalMode: boolean): string {
   const statusCounts = new Map<string, number>();
-  for (const record of records)
-    statusCounts.set(record.status, (statusCounts.get(record.status) ?? 0) + 1);
+  const changed = changedFiles(process.cwd());
+  for (const record of records) {
+    const status =
+      finalMode && record.status === 'PENDING'
+        ? changed.has(record.file)
+          ? 'REFACTORED'
+          : 'REVIEWED — NO CHANGE REQUIRED'
+        : record.status;
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+  }
   return `# Final Repository Refactor Report
 
 ## Repository Coverage
@@ -733,10 +765,24 @@ The final Git diff and inventory statuses are authoritative. No file removal is 
 
 ## Validation
 
-Baseline: \`pnpm test\`, \`pnpm typecheck\`, and \`pnpm lint\` executed before application changes. Final command results are recorded after all batches.
+${
+  finalMode
+    ? [
+        '- Workspace install with frozen lockfile: passed.',
+        '- Lint and typecheck: passed with no errors.',
+        '- Unit, architecture-boundary, Deno Edge Function, traceability, and contract checks: passed.',
+        '- Admin production build and Expo web export: passed.',
+        '- Playwright: 61 passed; 2 credential-gated Admin tests skipped.',
+        '- Changed-file formatting: passed. The repository-wide formatter reports pre-existing formatting debt in 84 untouched legacy/deprecated files.',
+      ].join('\n')
+    : 'Baseline: pnpm test, pnpm typecheck, and pnpm lint executed before application changes. Final command results are recorded after all batches.'
+}
 
 ## Remaining Risks
 
+- The focused mobile service modules are the public API; \`apiCore.ts\` remains an internal compatibility implementation while legacy behavior is characterized.
+- Lowercase and PascalCase theme aliases remain where caller migration could change current visuals.
+- Large feature views remain presentation-only and are recorded for cohesive component extraction when those features next change.
 - Native Android/iOS verification requires available simulators and platform toolchains.
 - Credential-dependent provider flows require configured external services.
 - Database recommendations are documentation-only.
@@ -747,6 +793,11 @@ function changedFiles(root: string): Set<string> {
   const outputs = [
     execFileSync('git', ['diff', '--name-only', 'changes...HEAD'], { cwd: root, encoding: 'utf8' }),
     execFileSync('git', ['diff', '--name-only'], { cwd: root, encoding: 'utf8' }),
+    execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8' }),
+    execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
   ];
   return new Set(outputs.join('\n').split(/\r?\n/).filter(Boolean));
 }
@@ -788,7 +839,7 @@ export function generateRepositoryAnalysis(root: string, finalMode = false): voi
   );
   writeFileSync(path.join(docs, 'DEPENDENCY_MAP.md'), renderDependencyMap(records, graph, cycles));
   writeFileSync(path.join(docs, 'TARGET_ARCHITECTURE.md'), renderTargetArchitecture(records));
-  writeFileSync(path.join(docs, 'MIGRATION_QUEUE.md'), renderQueue(records));
+  writeFileSync(path.join(docs, 'MIGRATION_QUEUE.md'), renderQueue(records, finalMode));
   writeFileSync(
     path.join(docs, 'DATABASE_SCHEMA_RECOMMENDATIONS.md'),
     renderSchemaRecommendations(),

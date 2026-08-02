@@ -3,6 +3,10 @@ packages:
   - packages/*
   - tests/*
 
+# Expo SDK 54 documents hoisted installs as the compatibility fallback for
+# React Native packages that cannot resolve pnpm's isolated dependency links.
+nodeLinker: hoisted
+
 overrides:
   expo-router>@expo/metro-runtime: '6.1.2'
 

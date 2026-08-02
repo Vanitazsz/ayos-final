@@ -4,79 +4,92 @@
 
 - `apps/mobile/app/(auth)/_layout.tsx` → no resolved local imports
 - `apps/mobile/app/(auth)/landing.tsx` → no resolved local imports
-- `apps/mobile/app/(auth)/login.tsx` → `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/auth.ts`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(auth)/otp.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/auth.ts`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(auth)/register.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/TextInput.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/workerRegistration.ts`, `apps/mobile/services/auth.ts`
+- `apps/mobile/app/(auth)/login.tsx` → `apps/mobile/features/auth/screens/AuthLoginScreen.tsx`
+- `apps/mobile/app/(auth)/otp.tsx` → `apps/mobile/features/auth/screens/AuthOtpScreen.tsx`
+- `apps/mobile/app/(auth)/register.tsx` → `apps/mobile/features/auth/screens/AuthRegisterScreen.tsx`
 - `apps/mobile/app/(auth)/sign-in.tsx` → `apps/mobile/app/(auth)/login.tsx`
-- `apps/mobile/app/(auth)/verify-identity.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppSelect.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/ImageUploadCard.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/customerVerification.ts`, `apps/mobile/services/subdivisions.ts`
-- `apps/mobile/app/(tabs)/_layout.tsx` → `apps/mobile/constants/theme.ts`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(tabs)/bookings.tsx` → `apps/mobile/components/layout/EmptyState.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/bookingTabs.ts`
+- `apps/mobile/app/(auth)/verify-identity.tsx` → `apps/mobile/features/auth/screens/AuthVerifyIdentityScreen.tsx`
+- `apps/mobile/app/(tabs)/_layout.tsx` → `apps/mobile/features/navigation/screens/TabsLayoutScreen.tsx`
+- `apps/mobile/app/(tabs)/bookings.tsx` → `apps/mobile/features/bookings/screens/TabsBookingsScreen.tsx`
 - `apps/mobile/app/(tabs)/create.tsx` → no resolved local imports
 - `apps/mobile/app/(tabs)/help-center.tsx` → `apps/mobile/components/content/PublishedContentPage.tsx`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(tabs)/home.tsx` → `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/catalogSearch.ts`, `apps/mobile/store/useAuthStore.ts`
+- `apps/mobile/app/(tabs)/home.tsx` → `apps/mobile/features/discovery/screens/TabsHomeScreen.tsx`
 - `apps/mobile/app/(tabs)/messages.tsx` → `apps/mobile/components/ConversationListScreen.tsx`
 - `apps/mobile/app/(tabs)/privacy-policy.tsx` → `apps/mobile/components/content/PublishedContentPage.tsx`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(tabs)/profile.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/profile.ts`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(worker)/_layout.tsx` → `apps/mobile/constants/theme.ts`, `apps/mobile/context/WorkerPresenceContext.tsx`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/(worker)/booking-request/[id].tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/components/Badge.tsx`, `apps/mobile/components/ThreeDotMenu.tsx`, `apps/mobile/components/booking/BookingMap.tsx`, `apps/mobile/components/booking/BookingStepIndicator.tsx`, `apps/mobile/components/booking/CompletedSummary.tsx`, `apps/mobile/components/booking/RouteSummaryCard.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/liveDispatch.ts`, `apps/mobile/services/uploads.ts`, `apps/mobile/store/useWorkerBookingStore.ts`, `apps/mobile/utils/arrivalTransition.ts`, `apps/mobile/utils/bookingPayment.ts`
-- `apps/mobile/app/(worker)/bookings.tsx` → `apps/mobile/components/Avatar.tsx`, `apps/mobile/components/Badge.tsx`, `apps/mobile/components/layout/EmptyState.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/WorkerPresenceContext.tsx`, `apps/mobile/services/api.ts`, `apps/mobile/store/useWorkerBookingStore.ts`
-- `apps/mobile/app/(worker)/cancel-service/[id].tsx` → `apps/mobile/components/AccordionSection.tsx`, `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/CancellationConfirmation.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/(worker)/index.tsx` → `apps/mobile/components/Avatar.tsx`, `apps/mobile/components/Badge.tsx`, `apps/mobile/components/QuickActionsGrid.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/WorkerPresenceContext.tsx`, `apps/mobile/services/api.ts`, `apps/mobile/services/liveDispatch.ts`, `apps/mobile/store/useWorkerBookingStore.ts`
-- `apps/mobile/app/(worker)/industry-skills.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppInput.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
+- `apps/mobile/app/(tabs)/profile.tsx` → `apps/mobile/features/account/screens/TabsProfileScreen.tsx`
+- `apps/mobile/app/(worker)/_layout.tsx` → `apps/mobile/features/navigation/screens/WorkerLayoutScreen.tsx`
+- `apps/mobile/app/(worker)/booking-request/[id].tsx` → `apps/mobile/features/worker/screens/WorkerBookingRequestIdScreen.tsx`
+- `apps/mobile/app/(worker)/bookings.tsx` → `apps/mobile/features/bookings/screens/WorkerBookingsScreen.tsx`
+- `apps/mobile/app/(worker)/cancel-service/[id].tsx` → `apps/mobile/features/worker/screens/WorkerCancelServiceIdScreen.tsx`
+- `apps/mobile/app/(worker)/index.tsx` → `apps/mobile/features/worker/screens/WorkerIndexScreen.tsx`
+- `apps/mobile/app/(worker)/industry-skills.tsx` → `apps/mobile/features/worker/screens/WorkerIndustrySkillsScreen.tsx`
 - `apps/mobile/app/(worker)/messages.tsx` → `apps/mobile/components/ConversationListScreen.tsx`
-- `apps/mobile/app/(worker)/profile.tsx` → `apps/mobile/components/AppSelect.tsx`, `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/profile.ts`, `apps/mobile/services/reviewRatings.ts`, `apps/mobile/services/subdivisions.ts`
-- `apps/mobile/app/(worker)/reviews.tsx` → `apps/mobile/components/ReviewsTab.tsx`, `apps/mobile/components/SearchBar.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/(worker)/service-setup.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppInput.tsx`, `apps/mobile/components/AppSelect.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/LocationPicker.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/workerMatching.ts`
-- `apps/mobile/app/(worker)/settings.tsx` → `apps/mobile/components/SearchBar.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`
-- `apps/mobile/app/(worker)/transactions-history.tsx` → `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Chip.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/(worker)/verification.tsx` → `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Pill.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/(worker)/wallet.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Badge.tsx`, `apps/mobile/components/Chip.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/+not-found.tsx` → no resolved local imports
-- `apps/mobile/app/_layout.tsx` → `apps/mobile/constants/theme.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/auth.ts`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/accept-worker/[id].tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/auth/callback.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/auth.ts`, `apps/mobile/store/useAuthStore.ts`
-- `apps/mobile/app/booking/[id].tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppInput.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/components/Badge.tsx`, `apps/mobile/components/RatingStars.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/category/[id].tsx` → no resolved local imports
-- `apps/mobile/app/chat/[id].tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/hooks/useConversationChat.ts`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/index.tsx` → `apps/mobile/constants/theme.ts`, `apps/mobile/store/useAuthStore.ts`
+- `apps/mobile/app/(worker)/profile.tsx` → `apps/mobile/features/worker/screens/WorkerProfileScreen.tsx`
+- `apps/mobile/app/(worker)/reviews.tsx` → `apps/mobile/features/worker/screens/WorkerReviewsScreen.tsx`
+- `apps/mobile/app/(worker)/service-setup.tsx` → `apps/mobile/features/worker/screens/WorkerServiceSetupScreen.tsx`
+- `apps/mobile/app/(worker)/settings.tsx` → `apps/mobile/features/worker/screens/WorkerSettingsScreen.tsx`
+- `apps/mobile/app/(worker)/transactions-history.tsx` → `apps/mobile/features/worker/screens/WorkerTransactionsHistoryScreen.tsx`
+- `apps/mobile/app/(worker)/verification.tsx` → `apps/mobile/features/worker/screens/WorkerVerificationScreen.tsx`
+- `apps/mobile/app/(worker)/wallet.tsx` → `apps/mobile/features/worker/screens/WorkerWalletScreen.tsx`
+- `apps/mobile/app/+not-found.tsx` → `apps/mobile/features/+not-found/screens/NotFoundScreen.tsx`
+- `apps/mobile/app/_layout.tsx` → `apps/mobile/features/navigation/screens/LayoutScreen.tsx`
+- `apps/mobile/app/accept-worker/[id].tsx` → `apps/mobile/features/requests/screens/AcceptWorkerIdScreen.tsx`
+- `apps/mobile/app/auth/callback.tsx` → `apps/mobile/features/auth/screens/AuthCallbackScreen.tsx`
+- `apps/mobile/app/booking/[id].tsx` → `apps/mobile/features/bookings/screens/BookingIdScreen.tsx`
+- `apps/mobile/app/category/[id].tsx` → `apps/mobile/features/discovery/screens/CategoryIdScreen.tsx`
+- `apps/mobile/app/chat/[id].tsx` → `apps/mobile/features/messaging/screens/ChatIdScreen.tsx`
+- `apps/mobile/app/index.tsx` → `apps/mobile/features/index/screens/IndexScreen.tsx`
 - `apps/mobile/app/match/[id].tsx` → no resolved local imports
-- `apps/mobile/app/messages/chat.tsx` → `apps/mobile/constants/theme.ts`, `apps/mobile/hooks/useConversationChat.ts`, `apps/mobile/services/api.ts`
+- `apps/mobile/app/messages/chat.tsx` → `apps/mobile/features/messaging/screens/MessagesChatScreen.tsx`
 - `apps/mobile/app/new-request/_layout.tsx` → no resolved local imports
-- `apps/mobile/app/new-request/asap.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/JobSummary.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/RequestContext.tsx`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/new-request/create.tsx` → `apps/mobile/components/LocationPicker.tsx`, `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/TextInput.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/components/media/PhotoCaptureModal.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/crypto.ts`, `apps/mobile/services/addresses.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/catalogSearch.ts`, `apps/mobile/services/uploads.ts`, `apps/mobile/store/useRequestStore.ts`, `apps/mobile/types/ai.ts`
-- `apps/mobile/app/new-request/issue-summary.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/TextInput.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/crypto.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/new-request/matching.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/RadiusSlider.d.ts`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/components/maps/MapSurface.d.ts`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/liveDispatch.ts`, `apps/mobile/services/workerSelection.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/new-request/radius-config.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/RadiusSlider.d.ts`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/components/maps/MapSurface.d.ts`, `apps/mobile/constants/theme.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/new-request/success.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/RequestContext.tsx`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/new-request/this-week.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/JobSummary.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/RequestContext.tsx`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/new-request/urgency.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/RequestContext.tsx`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/notifications.tsx` → `apps/mobile/components/layout/EmptyState.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`
-- `apps/mobile/app/onboarding.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/constants/theme.ts`
-- `apps/mobile/app/order.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/payment-received.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/context/RequestContext.tsx`
-- `apps/mobile/app/payment.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/store/useRequestStore.ts`
-- `apps/mobile/app/payment/[id].tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/payment/success.tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/provider/[id].tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Avatar.tsx`, `apps/mobile/components/Badge.tsx`, `apps/mobile/components/RatingStars.tsx`, `apps/mobile/components/SectionHeader.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/register-worker.tsx` → `apps/mobile/components/AppAutocomplete.tsx`, `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppInput.tsx`, `apps/mobile/components/AppSelect.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/components/Chip.tsx`, `apps/mobile/components/ImageUploadCard.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/workerRegistration.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/workerApplication.ts`
-- `apps/mobile/app/review/[id].tsx` → `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/TextInput.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/crypto.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/api.ts`
-- `apps/mobile/app/settings/addresses.tsx` → `apps/mobile/components/LocationPicker.tsx`, `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/inputs/TextInput.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/addresses.ts`
-- `apps/mobile/app/settings/language.tsx` → `apps/mobile/components/AppButton.tsx`, `apps/mobile/components/AppText.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/profile.ts`
-- `apps/mobile/app/tracking/[id].tsx` → `apps/mobile/components/booking/BookingMap.tsx`, `apps/mobile/components/booking/RouteSummaryCard.tsx`, `apps/mobile/components/buttons/Button.tsx`, `apps/mobile/components/layout/Screen.tsx`, `apps/mobile/constants/theme.ts`, `apps/mobile/lib/supabase.ts`, `apps/mobile/services/api.ts`, `apps/mobile/services/liveDispatch.ts`, `apps/mobile/services/requestControl.ts`
+- `apps/mobile/app/new-request/asap.tsx` → `apps/mobile/features/requests/screens/NewRequestAsapScreen.tsx`
+- `apps/mobile/app/new-request/create.tsx` → `apps/mobile/features/requests/screens/NewRequestCreateScreen.tsx`
+- `apps/mobile/app/new-request/issue-summary.tsx` → `apps/mobile/features/requests/screens/NewRequestIssueSummaryScreen.tsx`
+- `apps/mobile/app/new-request/matching.tsx` → `apps/mobile/features/requests/screens/NewRequestMatchingScreen.tsx`
+- `apps/mobile/app/new-request/radius-config.tsx` → `apps/mobile/features/requests/screens/NewRequestRadiusConfigScreen.tsx`
+- `apps/mobile/app/new-request/success.tsx` → `apps/mobile/features/requests/screens/NewRequestSuccessScreen.tsx`
+- `apps/mobile/app/new-request/this-week.tsx` → `apps/mobile/features/requests/screens/NewRequestThisWeekScreen.tsx`
+- `apps/mobile/app/new-request/urgency.tsx` → `apps/mobile/features/requests/screens/NewRequestUrgencyScreen.tsx`
+- `apps/mobile/app/notifications.tsx` → `apps/mobile/features/messaging/screens/NotificationsScreen.tsx`
+- `apps/mobile/app/onboarding.tsx` → `apps/mobile/features/onboarding/screens/OnboardingScreen.tsx`
+- `apps/mobile/app/order.tsx` → `apps/mobile/features/bookings/screens/OrderScreen.tsx`
+- `apps/mobile/app/payment-received.tsx` → `apps/mobile/features/bookings/screens/PaymentReceivedScreen.tsx`
+- `apps/mobile/app/payment.tsx` → `apps/mobile/features/bookings/screens/PaymentScreen.tsx`
+- `apps/mobile/app/payment/[id].tsx` → `apps/mobile/features/bookings/screens/PaymentIdScreen.tsx`
+- `apps/mobile/app/payment/success.tsx` → `apps/mobile/features/bookings/screens/PaymentSuccessScreen.tsx`
+- `apps/mobile/app/provider/[id].tsx` → `apps/mobile/features/discovery/screens/ProviderIdScreen.tsx`
+- `apps/mobile/app/register-worker.tsx` → `apps/mobile/features/worker/screens/RegisterWorkerScreen.tsx`
+- `apps/mobile/app/review/[id].tsx` → `apps/mobile/features/bookings/screens/ReviewIdScreen.tsx`
+- `apps/mobile/app/settings/addresses.tsx` → `apps/mobile/features/location/screens/SettingsAddressesScreen.tsx`
+- `apps/mobile/app/settings/language.tsx` → `apps/mobile/features/account/screens/SettingsLanguageScreen.tsx`
+- `apps/mobile/app/tracking/[id].tsx` → `apps/mobile/features/location/screens/TrackingIdScreen.tsx`
 
 ## Database relationships
 
-- `apps/admin/src/services/adminData.js` → `account_reports`, `accounts`, `audit_logs`, `booking_disputes`, `bookings`, `customer_verifications`, `notifications`, `payments`, `report-exports`, `report_exports`, `reviews`, `service_categories`, `service_requests`, `service_templates`, `support_tickets`, `system_settings`, `trash_entries`, `verification-documents`, `worker_profiles`, `worker_recommendation_plans`, `worker_recommendation_subscriptions`
+- `apps/admin/src/services/analytics.js` → `accounts`, `bookings`, `payments`, `service_requests`
+- `apps/admin/src/services/auditLogs.js` → `audit_logs`
+- `apps/admin/src/services/bookings.js` → `bookings`
+- `apps/admin/src/services/catalog.js` → `bookings`, `service_categories`, `service_templates`
+- `apps/admin/src/services/dashboard.js` → `audit_logs`, `bookings`, `payments`
+- `apps/admin/src/services/notifications.js` → `notifications`
+- `apps/admin/src/services/payments.js` → `payments`
 - `apps/admin/src/services/profileData.js` → `authentication_events`, `profile-avatars`
-- `apps/mobile/app/review/[id].tsx` → `review-media`
-- `apps/mobile/app/tracking/[id].tsx` → `accounts`
+- `apps/admin/src/services/reports.js` → `report-exports`, `report_exports`
+- `apps/admin/src/services/reviews.js` → `reviews`
+- `apps/admin/src/services/settings.js` → `system_settings`
+- `apps/admin/src/services/subscriptions.js` → `worker_profiles`, `worker_recommendation_plans`, `worker_recommendation_subscriptions`
+- `apps/admin/src/services/support.js` → `account_reports`, `booking_disputes`, `support_tickets`
+- `apps/admin/src/services/trash.js` → `trash_entries`
+- `apps/admin/src/services/users.js` → `accounts`, `customer_verifications`, `verification-documents`
+- `apps/admin/src/services/workers.js` → `worker_profiles`
+- `apps/mobile/repositories/accounts.ts` → `accounts`
 - `apps/mobile/services/addresses.ts` → `addresses`
-- `apps/mobile/services/api.ts` → `accounts`, `bookings`, `cancellation_reasons`, `conversations`, `industries`, `messages`, `notifications`, `payments`, `payout_destinations`, `payout_requests`, `reviews`, `service_categories`, `service_requests`, `subdivisions`, `support_tickets`, `wallet_accounts`, `wallet_transactions`, `worker_industries`, `worker_portfolio_items`, `worker_profiles`, `worker_skills`, `worker_verifications`
+- `apps/mobile/services/apiCore.ts` → `accounts`, `bookings`, `cancellation_reasons`, `conversations`, `industries`, `messages`, `notifications`, `payments`, `payout_destinations`, `payout_requests`, `reviews`, `service_categories`, `service_requests`, `subdivisions`, `support_tickets`, `wallet_accounts`, `wallet_transactions`, `worker_industries`, `worker_portfolio_items`, `worker_profiles`, `worker_skills`, `worker_verifications`
 - `apps/mobile/services/contentPages.ts` → `content_pages`
 - `apps/mobile/services/customerVerification.ts` → `customer_verifications`, `verification-documents`
 - `apps/mobile/services/profile.ts` → `profile-avatars`
 - `apps/mobile/services/subdivisions.ts` → `subdivisions`
-- `apps/mobile/services/uploads.ts` → `booking-proof`, `request-media`
+- `apps/mobile/services/uploads.ts` → `booking-proof`, `request-media`, `review-media`
 - `apps/mobile/services/workerApplication.ts` → `verification-documents`
 - `scripts/refactor/analyze-repository.test.ts` → `bookings`
 - `scripts/smoke-supabase.mjs` → `content_pages`, `profile-avatars`, `service-request-media`, `service_requests`, `worker_profiles`
@@ -105,106 +118,248 @@
 - `apps/admin/src/components/Navbar.jsx` (admin) → `apps/admin/src/context/AuthContext.jsx` (auth)
 - `apps/admin/src/components/ProtectedRoute.jsx` (location) → `apps/admin/src/context/AuthContext.jsx` (auth)
 - `apps/admin/src/components/Sidebar.jsx` (admin) → `apps/admin/src/context/AuthContext.jsx` (auth)
+- `apps/admin/src/features/auth/pages/LoginPage.view.jsx` (auth) → `apps/admin/src/components/ui/Button.jsx` (admin), `apps/admin/src/components/ui/Input.jsx` (admin)
+- `apps/admin/src/features/bookings/hooks/useBookingsPageController.jsx` (bookings) → `apps/admin/src/context/ToastContext.jsx` (admin)
+- `apps/admin/src/features/bookings/logic/BookingsPageLogic.js` (bookings) → `apps/admin/src/services/realtime.js` (admin)
+- `apps/admin/src/features/bookings/pages/BookingsPage.view.jsx` (bookings) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin)
+- `apps/admin/src/features/dashboard/logic/DashboardPageLogic.js` (admin) → `apps/admin/src/services/notifications.js` (messaging), `apps/admin/src/services/workers.js` (worker)
+- `apps/admin/src/features/notifications/hooks/useNotificationsPageController.jsx` (messaging) → `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin)
+- `apps/admin/src/features/notifications/pages/NotificationsPage.view.jsx` (messaging) → `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin)
+- `apps/admin/src/features/payments/hooks/usePaymentsPageController.jsx` (bookings) → `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin)
+- `apps/admin/src/features/payments/pages/PaymentsPage.view.jsx` (bookings) → `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin)
+- `apps/admin/src/features/profile/hooks/useProfilePageController.jsx` (account) → `apps/admin/src/context/AuthContext.jsx` (auth), `apps/admin/src/context/ToastContext.jsx` (admin)
+- `apps/admin/src/features/profile/pages/ProfilePage.view.jsx` (account) → `apps/admin/src/components/ui/Modal.jsx` (admin)
+- `apps/admin/src/features/reviews/hooks/useReviewsPageController.jsx` (bookings) → `apps/admin/src/context/ToastContext.jsx` (admin)
+- `apps/admin/src/features/reviews/logic/ReviewsPageLogic.js` (bookings) → `apps/admin/src/services/realtime.js` (admin)
+- `apps/admin/src/features/reviews/pages/ReviewsPage.view.jsx` (bookings) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin)
+- `apps/admin/src/features/settings/hooks/useSettingsPageController.jsx` (account) → `apps/admin/src/context/ToastContext.jsx` (admin)
+- `apps/admin/src/features/settings/logic/SettingsPageLogic.js` (account) → `apps/admin/src/services/realtime.js` (admin)
+- `apps/admin/src/features/subdivisions/pages/SubdivisionsPage.view.jsx` (admin) → `apps/admin/src/components/SubdivisionMapPicker.jsx` (location)
+- `apps/admin/src/features/support/hooks/useSupportPageController.jsx` (account) → `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useRealtime.js` (admin)
+- `apps/admin/src/features/support/pages/SupportPage.view.jsx` (account) → `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin)
+- `apps/admin/src/features/workers/hooks/useWorkersPageController.jsx` (worker) → `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useRealtime.js` (admin)
+- `apps/admin/src/features/workers/logic/WorkersPageLogic.js` (worker) → `apps/admin/src/services/accounts.js` (admin), `apps/admin/src/services/realtime.js` (admin)
+- `apps/admin/src/features/workers/pages/WorkersPage.view.jsx` (worker) → `apps/admin/src/components/admin/AccountDeleteModal.jsx` (admin), `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin)
+- `apps/admin/src/hooks/useActiveSessionCount.js` (admin) → `apps/admin/src/services/auth.js` (auth)
 - `apps/admin/src/main.jsx` (admin) → `apps/admin/src/context/AuthContext.jsx` (auth)
-- `apps/admin/src/pages/admin/Analytics.jsx` (Analytics) → `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/AuditLogs.jsx` (AuditLogs) → `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/lib/supabase.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Bookings.jsx` (Bookings) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Dashboard.jsx` (Dashboard) → `apps/admin/src/components/ui/Badge.jsx` (admin), `apps/admin/src/components/ui/Card.jsx` (admin), `apps/admin/src/components/ui/Skeleton.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Notifications.jsx` (Notifications) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Payments.jsx` (Payments) → `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Profile.jsx` (Profile) → `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/context/AuthContext.jsx` (auth), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/profileData.js` (account)
-- `apps/admin/src/pages/admin/Reports.jsx` (Reports) → `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Reviews.jsx` (Reviews) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Services.jsx` (Services) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Settings.jsx` (Settings) → `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Subdivisions.jsx` (Subdivisions) → `apps/admin/src/components/SubdivisionMapPicker.jsx` (location), `apps/admin/src/components/ui/Button.jsx` (admin), `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Subscriptions.jsx` (Subscriptions) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Support.jsx` (Support) → `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Trash.jsx` (Trash) → `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useDataFetch.js` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Users.jsx` (Users) → `apps/admin/src/components/admin/AccountDeleteModal.jsx` (admin), `apps/admin/src/components/ui/Badge.jsx` (admin), `apps/admin/src/components/ui/Button.jsx` (admin), `apps/admin/src/components/ui/Card.jsx` (admin), `apps/admin/src/components/ui/ConfirmModal.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Skeleton.jsx` (admin), `apps/admin/src/components/ui/Table.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/admin/Workers.jsx` (Workers) → `apps/admin/src/components/admin/AccountDeleteModal.jsx` (admin), `apps/admin/src/components/ui/Drawer.jsx` (admin), `apps/admin/src/components/ui/Modal.jsx` (admin), `apps/admin/src/components/ui/Pagination.jsx` (admin), `apps/admin/src/context/ToastContext.jsx` (admin), `apps/admin/src/hooks/useRealtime.js` (admin), `apps/admin/src/services/adminData.js` (admin)
-- `apps/admin/src/pages/auth/Login.jsx` (Login) → `apps/admin/src/components/ui/Button.jsx` (admin), `apps/admin/src/components/ui/Input.jsx` (admin), `apps/admin/src/context/AuthContext.jsx` (auth), `apps/admin/src/lib/supabase.js` (admin)
+- `apps/admin/src/pages/admin/Analytics.jsx` (Analytics) → `apps/admin/src/features/analytics/pages/AnalyticsPage.jsx` (admin)
+- `apps/admin/src/pages/admin/AuditLogs.jsx` (AuditLogs) → `apps/admin/src/features/audit-logs/pages/AuditLogsPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Bookings.jsx` (Bookings) → `apps/admin/src/features/bookings/pages/BookingsPage.jsx` (bookings)
+- `apps/admin/src/pages/admin/Dashboard.jsx` (Dashboard) → `apps/admin/src/features/dashboard/pages/DashboardPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Notifications.jsx` (Notifications) → `apps/admin/src/features/notifications/pages/NotificationsPage.jsx` (messaging)
+- `apps/admin/src/pages/admin/Payments.jsx` (Payments) → `apps/admin/src/features/payments/pages/PaymentsPage.jsx` (bookings)
+- `apps/admin/src/pages/admin/Profile.jsx` (Profile) → `apps/admin/src/features/profile/pages/ProfilePage.jsx` (account)
+- `apps/admin/src/pages/admin/Reports.jsx` (Reports) → `apps/admin/src/features/reports/pages/ReportsPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Reviews.jsx` (Reviews) → `apps/admin/src/features/reviews/pages/ReviewsPage.jsx` (bookings)
+- `apps/admin/src/pages/admin/Services.jsx` (Services) → `apps/admin/src/features/services/pages/ServicesPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Settings.jsx` (Settings) → `apps/admin/src/features/settings/pages/SettingsPage.jsx` (account)
+- `apps/admin/src/pages/admin/Subdivisions.jsx` (Subdivisions) → `apps/admin/src/features/subdivisions/pages/SubdivisionsPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Subscriptions.jsx` (Subscriptions) → `apps/admin/src/features/subscriptions/pages/SubscriptionsPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Support.jsx` (Support) → `apps/admin/src/features/support/pages/SupportPage.jsx` (account)
+- `apps/admin/src/pages/admin/Trash.jsx` (Trash) → `apps/admin/src/features/trash/pages/TrashPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Users.jsx` (Users) → `apps/admin/src/features/users/pages/UsersPage.jsx` (admin)
+- `apps/admin/src/pages/admin/Workers.jsx` (Workers) → `apps/admin/src/features/workers/pages/WorkersPage.jsx` (worker)
+- `apps/admin/src/pages/auth/Login.jsx` (Login) → `apps/admin/src/features/auth/pages/LoginPage.jsx` (auth)
+- `apps/admin/src/services/adminData.js` (admin) → `apps/admin/src/services/bookings.js` (bookings), `apps/admin/src/services/notifications.js` (messaging), `apps/admin/src/services/payments.js` (bookings), `apps/admin/src/services/reviews.js` (bookings), `apps/admin/src/services/settings.js` (account), `apps/admin/src/services/support.js` (account), `apps/admin/src/services/workers.js` (worker)
+- `apps/admin/src/services/auth.js` (auth) → `apps/admin/src/lib/supabase.js` (admin)
+- `apps/admin/src/services/bookings.js` (bookings) → `apps/admin/src/services/adminShared.js` (admin)
+- `apps/admin/src/services/notifications.js` (messaging) → `apps/admin/src/services/adminShared.js` (admin)
+- `apps/admin/src/services/payments.js` (bookings) → `apps/admin/src/services/adminShared.js` (admin)
 - `apps/admin/src/services/profileData.js` (account) → `apps/admin/src/lib/supabase.js` (admin)
-- `apps/mobile/app/(auth)/login.tsx` (auth) → `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/(auth)/otp.tsx` (auth) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/(auth)/register.tsx` (auth) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/TextInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/workerRegistration.ts` (worker)
-- `apps/mobile/app/(auth)/verify-identity.tsx` (auth) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/ImageUploadCard.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/customerVerification.ts` (platform), `apps/mobile/services/subdivisions.ts` (platform)
-- `apps/mobile/app/(tabs)/_layout.tsx` (\_layout) → `apps/mobile/constants/theme.ts` (platform), `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/(tabs)/bookings.tsx` (bookings) → `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
+- `apps/admin/src/services/reviews.js` (bookings) → `apps/admin/src/services/adminShared.js` (admin)
+- `apps/admin/src/services/settings.js` (account) → `apps/admin/src/services/adminShared.js` (admin)
+- `apps/admin/src/services/support.js` (account) → `apps/admin/src/services/adminShared.js` (admin)
+- `apps/admin/src/services/workers.js` (worker) → `apps/admin/src/services/adminShared.js` (admin)
+- `apps/mobile/app/(tabs)/_layout.tsx` (\_layout) → `apps/mobile/features/navigation/screens/TabsLayoutScreen.tsx` (platform)
 - `apps/mobile/app/(tabs)/help-center.tsx` (account) → `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/(tabs)/home.tsx` (discovery) → `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/catalogSearch.ts` (platform), `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/app/(tabs)/home.tsx` (discovery) → `apps/mobile/features/discovery/screens/TabsHomeScreen.tsx` (platform)
 - `apps/mobile/app/(tabs)/privacy-policy.tsx` (account) → `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/(tabs)/profile.tsx` (account) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/(worker)/_layout.tsx` (worker) → `apps/mobile/constants/theme.ts` (platform), `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/(worker)/booking-request/[id].tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/ThreeDotMenu.tsx` (platform), `apps/mobile/components/booking/BookingMap.tsx` (bookings), `apps/mobile/components/booking/BookingStepIndicator.tsx` (bookings), `apps/mobile/components/booking/CompletedSummary.tsx` (bookings), `apps/mobile/components/booking/RouteSummaryCard.tsx` (bookings), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/liveDispatch.ts` (requests), `apps/mobile/services/uploads.ts` (platform), `apps/mobile/store/useWorkerBookingStore.ts` (bookings), `apps/mobile/utils/arrivalTransition.ts` (platform), `apps/mobile/utils/bookingPayment.ts` (bookings)
-- `apps/mobile/app/(worker)/bookings.tsx` (bookings) → `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/context/WorkerPresenceContext.tsx` (worker), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/(worker)/cancel-service/[id].tsx` (worker) → `apps/mobile/components/AccordionSection.tsx` (platform), `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/CancellationConfirmation.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/(worker)/index.tsx` (worker) → `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/QuickActionsGrid.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/liveDispatch.ts` (requests), `apps/mobile/store/useWorkerBookingStore.ts` (bookings)
-- `apps/mobile/app/(worker)/industry-skills.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/(worker)/profile.tsx` (worker) → `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/profile.ts` (account), `apps/mobile/services/reviewRatings.ts` (bookings), `apps/mobile/services/subdivisions.ts` (platform)
-- `apps/mobile/app/(worker)/reviews.tsx` (worker) → `apps/mobile/components/ReviewsTab.tsx` (bookings), `apps/mobile/components/SearchBar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/(worker)/service-setup.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/LocationPicker.tsx` (location), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/workerMatching.ts` (requests)
-- `apps/mobile/app/(worker)/settings.tsx` (worker) → `apps/mobile/components/SearchBar.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/(worker)/transactions-history.tsx` (worker) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/(worker)/verification.tsx` (worker) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Pill.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/(worker)/wallet.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/_layout.tsx` (\_layout) → `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/auth.ts` (auth), `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/accept-worker/[id].tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/auth/callback.tsx` (auth) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/supabase.ts` (platform)
-- `apps/mobile/app/booking/[id].tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/store/useRequestStore.ts` (requests)
-- `apps/mobile/app/chat/[id].tsx` (messaging) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/store/useRequestStore.ts` (requests)
-- `apps/mobile/app/index.tsx` (index) → `apps/mobile/constants/theme.ts` (platform), `apps/mobile/store/useAuthStore.ts` (auth)
-- `apps/mobile/app/messages/chat.tsx` (messaging) → `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/new-request/asap.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/JobSummary.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/new-request/create.tsx` (requests) → `apps/mobile/components/LocationPicker.tsx` (location), `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/TextInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/components/media/PhotoCaptureModal.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/crypto.ts` (platform), `apps/mobile/services/addresses.ts` (location), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/catalogSearch.ts` (platform), `apps/mobile/services/uploads.ts` (platform), `apps/mobile/types/ai.ts` (platform)
-- `apps/mobile/app/new-request/issue-summary.tsx` (requests) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/TextInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/crypto.ts` (platform), `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/new-request/matching.tsx` (requests) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/RadiusSlider.d.ts` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/components/maps/MapSurface.d.ts` (location), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/workerSelection.ts` (worker)
-- `apps/mobile/app/new-request/radius-config.tsx` (requests) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/RadiusSlider.d.ts` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/components/maps/MapSurface.d.ts` (location), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/new-request/success.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/new-request/this-week.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/JobSummary.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/new-request/urgency.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/notifications.tsx` (messaging) → `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/onboarding.tsx` (onboarding) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/order.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/store/useRequestStore.ts` (requests)
-- `apps/mobile/app/payment-received.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/context/RequestContext.tsx` (requests)
-- `apps/mobile/app/payment.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/store/useRequestStore.ts` (requests)
-- `apps/mobile/app/payment/[id].tsx` (bookings) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/payment/success.tsx` (bookings) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/provider/[id].tsx` (discovery) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/components/SectionHeader.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/register-worker.tsx` (worker) → `apps/mobile/components/AppAutocomplete.tsx` (platform), `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/components/ImageUploadCard.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/review/[id].tsx` (bookings) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/TextInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/crypto.ts` (platform), `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/settings/addresses.tsx` (location) → `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/inputs/TextInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/app/settings/language.tsx` (account) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/app/tracking/[id].tsx` (location) → `apps/mobile/components/booking/BookingMap.tsx` (bookings), `apps/mobile/components/booking/RouteSummaryCard.tsx` (bookings), `apps/mobile/components/buttons/Button.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/api.ts` (platform), `apps/mobile/services/liveDispatch.ts` (requests), `apps/mobile/services/requestControl.ts` (requests)
-- `apps/mobile/components/ConversationListScreen.tsx` (messaging) → `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/components/JobSummary.tsx` (platform) → `apps/mobile/context/RequestContext.tsx` (requests)
-- `apps/mobile/components/LocationPicker.tsx` (location) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/app/(worker)/booking-request/[id].tsx` (worker) → `apps/mobile/features/worker/screens/WorkerBookingRequestIdScreen.tsx` (bookings)
+- `apps/mobile/app/(worker)/reviews.tsx` (worker) → `apps/mobile/features/worker/screens/WorkerReviewsScreen.tsx` (bookings)
+- `apps/mobile/app/(worker)/wallet.tsx` (worker) → `apps/mobile/features/worker/screens/WorkerWalletScreen.tsx` (bookings)
+- `apps/mobile/app/+not-found.tsx` (+not-found) → `apps/mobile/features/+not-found/screens/NotFoundScreen.tsx` (platform)
+- `apps/mobile/app/_layout.tsx` (\_layout) → `apps/mobile/features/navigation/screens/LayoutScreen.tsx` (platform)
+- `apps/mobile/app/category/[id].tsx` (discovery) → `apps/mobile/features/discovery/screens/CategoryIdScreen.tsx` (platform)
+- `apps/mobile/app/index.tsx` (index) → `apps/mobile/features/index/screens/IndexScreen.tsx` (platform)
+- `apps/mobile/app/onboarding.tsx` (onboarding) → `apps/mobile/features/onboarding/screens/OnboardingScreen.tsx` (platform)
+- `apps/mobile/app/provider/[id].tsx` (discovery) → `apps/mobile/features/discovery/screens/ProviderIdScreen.tsx` (worker)
+- `apps/mobile/components/ConversationListScreen.tsx` (messaging) → `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/messaging.ts` (platform), `apps/mobile/services/realtime.ts` (platform)
+- `apps/mobile/components/JobSummary.tsx` (platform) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/components/LocationPicker.tsx` (location) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
 - `apps/mobile/components/ProviderCard.tsx` (worker) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/components/ReviewsTab.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
-- `apps/mobile/components/StatusTimeline.tsx` (platform) → `apps/mobile/context/RequestContext.tsx` (requests)
-- `apps/mobile/components/booking/BookingMap.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/maps/MapSurface.d.ts` (location), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/components/ReviewsTab.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/components/StatusTimeline.tsx` (platform) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/components/booking/BookingMap.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/maps/MapSurface.d.ts` (location), `apps/mobile/constants/theme.ts` (platform)
 - `apps/mobile/components/booking/BookingStepIndicator.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
 - `apps/mobile/components/booking/CompletedSummary.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
 - `apps/mobile/components/booking/JobTimer.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/components/booking/RouteSummaryCard.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform), `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/components/booking/RouteSummaryCard.tsx` (bookings) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
 - `apps/mobile/components/content/PublishedContentPage.tsx` (account) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
-- `apps/mobile/components/maps/MapSurface.native.tsx` (location) → `apps/mobile/lib/supabase.ts` (platform)
-- `apps/mobile/components/maps/MapSurface.web.tsx` (location) → `apps/mobile/lib/supabase.ts` (platform)
 - `apps/mobile/context/WorkerPresenceContext.tsx` (worker) → `apps/mobile/services/liveDispatch.ts` (requests)
-- `apps/mobile/hooks/useConversationChat.ts` (messaging) → `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/features/account/hooks/useTabsProfileScreenController.ts` (account) → `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/features/account/logic/SettingsLanguageScreenLogic.ts` (account) → `apps/mobile/services/localization.ts` (platform)
+- `apps/mobile/features/account/logic/TabsProfileScreenLogic.ts` (account) → `apps/mobile/services/auth.ts` (auth), `apps/mobile/services/deviceImages.ts` (platform)
+- `apps/mobile/features/account/screens/SettingsLanguageScreen.styles.ts` (account) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/account/screens/SettingsLanguageScreen.view.tsx` (account) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/account/screens/TabsProfileScreen.styles.ts` (account) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/account/screens/TabsProfileScreen.view.tsx` (account) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/hooks/useAuthRegisterScreenController.ts` (auth) → `apps/mobile/lib/workerRegistration.ts` (worker)
+- `apps/mobile/features/auth/logic/AuthVerifyIdentityScreenLogic.ts` (auth) → `apps/mobile/services/customerVerification.ts` (platform), `apps/mobile/services/deviceLocation.ts` (location), `apps/mobile/services/subdivisions.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthCallbackScreen.styles.ts` (auth) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthCallbackScreen.view.tsx` (auth) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthLoginScreen.styles.ts` (auth) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthLoginScreen.view.tsx` (auth) → `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthOtpScreen.styles.ts` (auth) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthOtpScreen.view.tsx` (auth) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthRegisterScreen.styles.ts` (auth) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthRegisterScreen.view.tsx` (auth) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthVerifyIdentityScreen.styles.ts` (auth) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/auth/screens/AuthVerifyIdentityScreen.view.tsx` (auth) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/ImageUploadCard.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/hooks/useBookingIdScreenController.ts` (bookings) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/features/bookings/hooks/useBookingRoute.ts` (bookings) → `apps/mobile/services/routing.ts` (platform)
+- `apps/mobile/features/bookings/hooks/useOrderScreenController.ts` (bookings) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/features/bookings/hooks/usePaymentReceivedScreenController.ts` (bookings) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/features/bookings/hooks/usePaymentScreenController.ts` (bookings) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/features/bookings/hooks/useRouteSummary.ts` (bookings) → `apps/mobile/services/geocoding.ts` (location), `apps/mobile/services/routing.ts` (platform)
+- `apps/mobile/features/bookings/hooks/useWorkerBookingsScreenController.ts` (bookings) → `apps/mobile/context/WorkerPresenceContext.tsx` (worker)
+- `apps/mobile/features/bookings/logic/BookingIdScreenLogic.ts` (bookings) → `apps/mobile/services/catalog.ts` (platform), `apps/mobile/services/requests.ts` (requests)
+- `apps/mobile/features/bookings/logic/ReviewIdScreenLogic.ts` (bookings) → `apps/mobile/services/deviceImages.ts` (platform), `apps/mobile/services/uploads.ts` (platform)
+- `apps/mobile/features/bookings/logic/TabsBookingsScreenLogic.ts` (bookings) → `apps/mobile/services/realtime.ts` (platform)
+- `apps/mobile/features/bookings/logic/WorkerBookingsScreenLogic.ts` (bookings) → `apps/mobile/services/realtime.ts` (platform)
+- `apps/mobile/features/bookings/screens/BookingIdScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/BookingIdScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/OrderScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/OrderScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentIdScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentIdScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentReceivedScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentReceivedScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentSuccessScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/PaymentSuccessScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/ReviewIdScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/ReviewIdScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/TabsBookingsScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/TabsBookingsScreen.view.tsx` (bookings) → `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/WorkerBookingsScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/bookings/screens/WorkerBookingsScreen.view.tsx` (bookings) → `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/discovery/hooks/useCategoryIdScreenController.ts` (platform) → `apps/mobile/components/ProviderCard.tsx` (worker)
+- `apps/mobile/features/discovery/hooks/useTabsHomeScreenController.ts` (platform) → `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/features/discovery/logic/ProviderIdScreenLogic.ts` (worker) → `apps/mobile/services/catalog.ts` (platform)
+- `apps/mobile/features/discovery/logic/TabsHomeScreenLogic.ts` (platform) → `apps/mobile/services/bookings.ts` (bookings), `apps/mobile/services/customerProfiles.ts` (account)
+- `apps/mobile/features/discovery/screens/ProviderIdScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/discovery/screens/ProviderIdScreen.view.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/RatingStars.tsx` (platform), `apps/mobile/components/SectionHeader.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/index/hooks/useIndexController.ts` (platform) → `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/features/location/logic/TrackingIdScreenLogic.ts` (location) → `apps/mobile/repositories/accounts.ts` (platform), `apps/mobile/services/bookings.ts` (bookings), `apps/mobile/services/liveDispatch.ts` (requests), `apps/mobile/services/realtime.ts` (platform), `apps/mobile/services/requestControl.ts` (requests), `apps/mobile/services/support.ts` (account)
+- `apps/mobile/features/location/screens/SettingsAddressesScreen.styles.ts` (location) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/location/screens/SettingsAddressesScreen.view.tsx` (location) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/location/screens/TrackingIdScreen.styles.ts` (location) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/location/screens/TrackingIdScreen.view.tsx` (location) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/booking/BookingMap.tsx` (bookings), `apps/mobile/components/booking/RouteSummaryCard.tsx` (bookings), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/messaging/hooks/useChatIdScreenController.ts` (messaging) → `apps/mobile/store/useRequestStore.ts` (requests)
+- `apps/mobile/features/messaging/logic/ChatIdScreenLogic.ts` (messaging) → `apps/mobile/services/catalog.ts` (platform), `apps/mobile/services/messaging.ts` (platform)
+- `apps/mobile/features/messaging/logic/MessagesChatScreenLogic.ts` (messaging) → `apps/mobile/services/messaging.ts` (platform)
+- `apps/mobile/features/messaging/logic/NotificationsScreenLogic.ts` (messaging) → `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/features/messaging/screens/ChatIdScreen.styles.ts` (messaging) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/messaging/screens/ChatIdScreen.view.tsx` (messaging) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/messaging/screens/MessagesChatScreen.styles.ts` (messaging) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/messaging/screens/MessagesChatScreen.view.tsx` (messaging) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/messaging/screens/NotificationsScreen.styles.ts` (messaging) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/messaging/screens/NotificationsScreen.view.tsx` (messaging) → `apps/mobile/components/layout/EmptyState.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/navigation/components/WorkerTabsNavigator.tsx` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/navigation/hooks/useLayoutScreenController.ts` (platform) → `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/features/navigation/hooks/useTabAccess.ts` (platform) → `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/features/navigation/logic/LayoutScreenLogic.ts` (platform) → `apps/mobile/services/auth.ts` (auth)
+- `apps/mobile/features/navigation/screens/LayoutScreen.view.tsx` (platform) → `apps/mobile/store/useAuthStore.ts` (auth)
+- `apps/mobile/features/navigation/screens/WorkerLayoutScreen.tsx` (worker) → `apps/mobile/features/navigation/hooks/useTabAccess.ts` (platform)
+- `apps/mobile/features/requests/hooks/useNewRequestCreateScreenController.ts` (requests) → `apps/mobile/components/LocationPicker.tsx` (location), `apps/mobile/lib/crypto.ts` (platform), `apps/mobile/types/ai.ts` (platform)
+- `apps/mobile/features/requests/hooks/useNewRequestIssueSummaryScreenController.ts` (requests) → `apps/mobile/lib/crypto.ts` (platform)
+- `apps/mobile/features/requests/logic/AcceptWorkerIdScreenLogic.ts` (requests) → `apps/mobile/services/catalog.ts` (platform)
+- `apps/mobile/features/requests/logic/NewRequestAsapScreenLogic.ts` (requests) → `apps/mobile/services/deviceLocation.ts` (location), `apps/mobile/services/geocoding.ts` (location)
+- `apps/mobile/features/requests/logic/NewRequestCreateScreenLogic.ts` (requests) → `apps/mobile/services/addresses.ts` (location), `apps/mobile/services/ai.ts` (platform), `apps/mobile/services/catalog.ts` (platform), `apps/mobile/services/catalogSearch.ts` (platform), `apps/mobile/services/customerProfiles.ts` (account), `apps/mobile/services/deviceImages.ts` (platform), `apps/mobile/services/functionErrors.ts` (platform), `apps/mobile/services/geocoding.ts` (location), `apps/mobile/services/uploads.ts` (platform)
+- `apps/mobile/features/requests/logic/NewRequestIssueSummaryScreenLogic.ts` (requests) → `apps/mobile/services/ai.ts` (platform), `apps/mobile/services/aiAnalysisSubscription.ts` (platform), `apps/mobile/services/workerOperations.ts` (worker)
+- `apps/mobile/features/requests/logic/NewRequestMatchingScreenLogic.ts` (requests) → `apps/mobile/services/workerSelection.ts` (worker)
+- `apps/mobile/features/requests/screens/AcceptWorkerIdScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/AcceptWorkerIdScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestAsapScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestAsapScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/JobSummary.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestCreateScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestCreateScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/LocationPicker.tsx` (location), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/components/media/PhotoCaptureModal.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestIssueSummaryScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestIssueSummaryScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestMatchingScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestMatchingScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/inputs/RadiusSlider.d.ts` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/components/maps/MapSurface.d.ts` (location), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestRadiusConfigScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestRadiusConfigScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/inputs/RadiusSlider.d.ts` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/components/maps/MapSurface.d.ts` (location), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestSuccessScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestSuccessScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestThisWeekScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestThisWeekScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/JobSummary.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestUrgencyScreen.styles.ts` (requests) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/requests/screens/NewRequestUrgencyScreen.view.tsx` (requests) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/hooks/useRegisterWorkerScreenController.ts` (worker) → `apps/mobile/components/AppSelect.tsx` (platform)
+- `apps/mobile/features/worker/hooks/useWorkerBookingRequestIdScreenController.ts` (bookings) → `apps/mobile/utils/arrivalTransition.ts` (platform)
+- `apps/mobile/features/worker/hooks/useWorkerIndexScreenController.ts` (worker) → `apps/mobile/store/useWorkerBookingStore.ts` (bookings)
+- `apps/mobile/features/worker/hooks/useWorkerServiceSetupScreenController.ts` (worker) → `apps/mobile/components/LocationPicker.tsx` (location)
+- `apps/mobile/features/worker/hooks/useWorkerWalletScreenController.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/logic/WorkerBookingRequestIdScreenLogic.ts` (bookings) → `apps/mobile/services/deviceImages.ts` (platform), `apps/mobile/services/deviceLocation.ts` (location), `apps/mobile/services/liveDispatch.ts` (requests), `apps/mobile/services/realtime.ts` (platform), `apps/mobile/services/support.ts` (account), `apps/mobile/services/uploads.ts` (platform), `apps/mobile/services/workerOperations.ts` (worker)
+- `apps/mobile/features/worker/logic/WorkerCancelServiceIdScreenLogic.ts` (worker) → `apps/mobile/services/bookings.ts` (bookings)
+- `apps/mobile/features/worker/logic/WorkerIndexScreenLogic.ts` (worker) → `apps/mobile/services/bookings.ts` (bookings), `apps/mobile/services/liveDispatch.ts` (requests), `apps/mobile/services/realtime.ts` (platform), `apps/mobile/services/wallet.ts` (bookings)
+- `apps/mobile/features/worker/logic/WorkerProfileScreenLogic.ts` (worker) → `apps/mobile/services/auth.ts` (auth), `apps/mobile/services/deviceImages.ts` (platform), `apps/mobile/services/profile.ts` (account), `apps/mobile/services/reviewRatings.ts` (bookings), `apps/mobile/services/subdivisions.ts` (platform)
+- `apps/mobile/features/worker/logic/WorkerServiceSetupScreenLogic.ts` (worker) → `apps/mobile/services/workerMatching.ts` (requests)
+- `apps/mobile/features/worker/logic/WorkerTransactionsHistoryScreenLogic.ts` (worker) → `apps/mobile/services/wallet.ts` (bookings)
+- `apps/mobile/features/worker/logic/WorkerWalletScreenLogic.ts` (bookings) → `apps/mobile/services/realtime.ts` (platform)
+- `apps/mobile/features/worker/screens/RegisterWorkerScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/RegisterWorkerScreen.view.tsx` (worker) → `apps/mobile/components/AppAutocomplete.tsx` (platform), `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/components/ImageUploadCard.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerBookingRequestIdScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerBookingRequestIdScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/ThreeDotMenu.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerCancelServiceIdScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerCancelServiceIdScreen.view.tsx` (worker) → `apps/mobile/components/AccordionSection.tsx` (platform), `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/CancellationConfirmation.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerIndexScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerIndexScreen.view.tsx` (worker) → `apps/mobile/components/Avatar.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/QuickActionsGrid.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerIndustrySkillsScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerIndustrySkillsScreen.view.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerProfileScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerProfileScreen.view.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerReviewsScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerReviewsScreen.view.tsx` (bookings) → `apps/mobile/components/SearchBar.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerServiceSetupScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerServiceSetupScreen.view.tsx` (worker) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppInput.tsx` (platform), `apps/mobile/components/AppSelect.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/LocationPicker.tsx` (location), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerSettingsScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerSettingsScreen.view.tsx` (worker) → `apps/mobile/components/SearchBar.tsx` (platform), `apps/mobile/components/layout/Screen.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerTransactionsHistoryScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerTransactionsHistoryScreen.view.tsx` (worker) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerVerificationScreen.styles.ts` (worker) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerVerificationScreen.view.tsx` (worker) → `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Pill.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerWalletScreen.styles.ts` (bookings) → `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/features/worker/screens/WorkerWalletScreen.view.tsx` (bookings) → `apps/mobile/components/AppButton.tsx` (platform), `apps/mobile/components/AppText.tsx` (platform), `apps/mobile/components/Badge.tsx` (platform), `apps/mobile/components/Chip.tsx` (platform), `apps/mobile/constants/theme.ts` (platform)
+- `apps/mobile/hooks/useConversationChat.ts` (messaging) → `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/services/messaging.ts` (platform), `apps/mobile/services/realtime.ts` (platform)
+- `apps/mobile/lib/supabase.ts` (platform) → `apps/mobile/config/maps.ts` (location)
 - `apps/mobile/services/addresses.ts` (location) → `apps/mobile/lib/supabase.ts` (platform)
-- `apps/mobile/services/api.ts` (platform) → `apps/mobile/components/ProviderCard.tsx` (worker), `apps/mobile/services/authenticatedFunctions.ts` (auth), `apps/mobile/services/profile.ts` (account), `apps/mobile/services/reviewRatings.ts` (bookings)
+- `apps/mobile/services/api.ts` (platform) → `apps/mobile/services/bookings.ts` (bookings), `apps/mobile/services/customerProfiles.ts` (account), `apps/mobile/services/geocoding.ts` (location), `apps/mobile/services/notifications.ts` (messaging), `apps/mobile/services/payments.ts` (bookings), `apps/mobile/services/requests.ts` (requests), `apps/mobile/services/reviews.ts` (bookings), `apps/mobile/services/support.ts` (account), `apps/mobile/services/wallet.ts` (bookings), `apps/mobile/services/workerOperations.ts` (worker)
 - `apps/mobile/services/api.workerBookings.test.ts` (bookings) → `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/services/apiCore.ts` (platform) → `apps/mobile/components/ProviderCard.tsx` (worker), `apps/mobile/services/authenticatedFunctions.ts` (auth), `apps/mobile/services/geocoding.ts` (location), `apps/mobile/services/profile.ts` (account), `apps/mobile/services/reviewRatings.ts` (bookings), `apps/mobile/types/location.ts` (location)
 - `apps/mobile/services/auth.ts` (auth) → `apps/mobile/lib/supabase.ts` (platform), `apps/mobile/lib/workerRegistration.ts` (worker)
 - `apps/mobile/services/authenticatedFunctions.ts` (auth) → `apps/mobile/lib/supabase.ts` (platform)
+- `apps/mobile/services/bookings.ts` (bookings) → `apps/mobile/services/apiCore.ts` (platform)
 - `apps/mobile/services/contentPages.ts` (account) → `apps/mobile/lib/supabase.ts` (platform)
+- `apps/mobile/services/customerProfiles.ts` (account) → `apps/mobile/services/apiCore.ts` (platform)
+- `apps/mobile/services/functionErrors.ts` (platform) → `apps/mobile/services/authenticatedFunctions.ts` (auth)
+- `apps/mobile/services/geocoding.ts` (location) → `apps/mobile/services/authenticatedFunctions.ts` (auth), `apps/mobile/services/functionErrors.ts` (platform)
 - `apps/mobile/services/liveDispatch.ts` (requests) → `apps/mobile/lib/supabase.ts` (platform)
+- `apps/mobile/services/notifications.ts` (messaging) → `apps/mobile/services/apiCore.ts` (platform)
+- `apps/mobile/services/payments.ts` (bookings) → `apps/mobile/services/apiCore.ts` (platform)
 - `apps/mobile/services/profile.ts` (account) → `apps/mobile/lib/crypto.ts` (platform), `apps/mobile/lib/supabase.ts` (platform)
 - `apps/mobile/services/radiusGeometry.test.ts` (platform) → `apps/mobile/components/maps/radiusGeometry.ts` (location)
+- `apps/mobile/services/requests.ts` (requests) → `apps/mobile/services/apiCore.ts` (platform)
+- `apps/mobile/services/reviews.ts` (bookings) → `apps/mobile/services/apiCore.ts` (platform)
+- `apps/mobile/services/routing.ts` (platform) → `apps/mobile/services/authenticatedFunctions.ts` (auth)
+- `apps/mobile/services/support.ts` (account) → `apps/mobile/services/apiCore.ts` (platform)
+- `apps/mobile/services/wallet.ts` (bookings) → `apps/mobile/services/apiCore.ts` (platform)
 - `apps/mobile/services/workerApplication.ts` (worker) → `apps/mobile/lib/crypto.ts` (platform), `apps/mobile/lib/supabase.ts` (platform)
 - `apps/mobile/services/workerMatching.ts` (requests) → `apps/mobile/lib/supabase.ts` (platform)
-- `apps/mobile/store/useRequestStore.ts` (requests) → `apps/mobile/types/ai.ts` (platform)
-- `apps/mobile/store/useWorkerBookingStore.ts` (bookings) → `apps/mobile/services/api.ts` (platform)
+- `apps/mobile/services/workerOperations.ts` (worker) → `apps/mobile/services/apiCore.ts` (platform)
+- `apps/mobile/store/useRequestStore.ts` (requests) → `apps/mobile/types/ai.ts` (platform), `apps/mobile/types/location.ts` (location)
 - `supabase/functions/_frontend_shared/geocoding.test.ts` (location) → `supabase/functions/_frontend_shared/http.ts` (backend)
 - `supabase/functions/_frontend_shared/geocoding.ts` (location) → `supabase/functions/_frontend_shared/http.ts` (backend)
 - `supabase/functions/_shared/geocoding.ts` (location) → `supabase/functions/_shared/http.ts` (backend)
@@ -224,7 +379,7 @@
 
 - Mobile authentication: `services/auth.ts` → `store/useAuthStore.ts` → root and role layouts.
 - Admin authentication: `services/profileData.js` + canonical Admin Supabase client → `AuthContext.jsx` → `ProtectedRoute.jsx`.
-- Request workflow: competing `RequestContext.tsx` and `useRequestStore.ts`; Zustand is the migration target.
+- Request workflow: canonical typed `useRequestStore.ts`; the duplicate RequestContext has been removed.
 - Worker presence: `services/liveDispatch.ts` → `WorkerPresenceContext.tsx` → Worker routes.
 
 ## External-service boundaries

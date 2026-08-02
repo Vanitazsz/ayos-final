@@ -1,64 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { deleteAccount, previewAccountPurge } from '../../services/adminData';
-
-const errorMessage = (error) =>
-  error instanceof Error
-    ? error.message
-    : [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(' | ') ||
-      'Unable to permanently delete account.';
+import { useAccountDeletion } from '../../hooks/useAccountDeletion';
 
 const AccountDeleteModal = ({ account, onClose, onDeleted }) => {
-  const [preview, setPreview] = useState(null);
-  const [confirmation, setConfirmation] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const matches = useMemo(
-    () => confirmation.trim().toLowerCase() === account?.email?.trim().toLowerCase(),
-    [account?.email, confirmation],
-  );
-
-  useEffect(() => {
-    if (!account) return;
-    let cancelled = false;
-    setPreview(null);
-    setConfirmation('');
-    setError('');
-    setIsLoading(true);
-    void previewAccountPurge(account.id)
-      .then((value) => {
-        if (!cancelled) setPreview(value);
-      })
-      .catch((loadError) => {
-        if (!cancelled) setError(errorMessage(loadError));
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [account]);
-
-  const confirmDelete = async () => {
-    if (!account || !matches || !preview) return;
-    setIsDeleting(true);
-    setError('');
-    try {
-      await deleteAccount(account.id, confirmation);
-      await onDeleted(account);
-      onClose();
-    } catch (deleteError) {
-      setError(errorMessage(deleteError));
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  const {
+    confirmation,
+    confirmDelete,
+    error,
+    isDeleting,
+    isLoading,
+    matches,
+    preview,
+    setConfirmation,
+  } = useAccountDeletion({ account, onClose, onDeleted });
 
   return (
-    <Modal isOpen={Boolean(account)} onClose={isDeleting ? () => {} : onClose} title="Permanently delete account">
+    <Modal
+      isOpen={Boolean(account)}
+      onClose={isDeleting ? () => {} : onClose}
+      title="Permanently delete account"
+    >
       <div className="space-y-4">
         <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
           <AlertCircle className="mt-0.5 shrink-0 text-red-600" size={22} />

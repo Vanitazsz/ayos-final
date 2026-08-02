@@ -51,5 +51,8 @@
     "apps/*",
     "packages/*",
     "tests/*"
-  ]
+  ],
+  "dependencies": {
+    "whatwg-url-without-unicode": "8.0.0-3"
+  }
 }

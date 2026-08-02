@@ -18,7 +18,7 @@ import {
 import { Image } from 'expo-image';
 import { Camera, X } from 'lucide-react-native';
 
-import { Button } from '@/components/buttons/Button';
+import { LegacyButton as Button } from '@/components/AppButton';
 import { theme } from '@/constants/theme';
 
 type Props = {
@@ -27,11 +27,7 @@ type Props = {
   onUsePhoto: (photo: CameraCapturedPicture) => void;
 };
 
-export function PhotoCaptureModal({
-  visible,
-  onClose,
-  onUsePhoto,
-}: Props) {
+export function PhotoCaptureModal({ visible, onClose, onUsePhoto }: Props) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [preview, setPreview] = useState<CameraCapturedPicture | null>(null);
@@ -116,7 +112,10 @@ export function PhotoCaptureModal({
               Allow camera access to take a photo of the problem.
             </Text>
             {permission.canAskAgain ? (
-              <Button title="Allow Camera" onPress={() => requestPermission()} />
+              <Button
+                title="Allow Camera"
+                onPress={() => requestPermission()}
+              />
             ) : (
               <Button
                 title="Open Settings"

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WorkerBooking } from '@/services/api';
+import type { WorkerBooking } from '@/services/bookings';
 
 interface WorkerBookingState {
   currentBookingId: string | null;
@@ -35,7 +35,12 @@ export const useWorkerBookingStore = create<WorkerBookingState>((set, get) => ({
       set({ timerStart: Date.now(), elapsedSeconds: 0 });
     }
     if (status === 'completed' || status === 'cancelled') {
-      set({ timerStart: null, elapsedSeconds: 0, completionTimestamp: null, isCurrentlyWorking: false });
+      set({
+        timerStart: null,
+        elapsedSeconds: 0,
+        completionTimestamp: null,
+        isCurrentlyWorking: false,
+      });
     }
   },
 

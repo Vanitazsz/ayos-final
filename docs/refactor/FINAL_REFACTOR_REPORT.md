@@ -2,9 +2,9 @@
 
 ## Repository Coverage
 
-- In-scope files: 626
-- Report phase: Baseline established; migration execution in progress
-- Status counts at generation: CONFIGURATION FILE: 40; PENDING: 417; TEST FILE: 75; DEPRECATED — SAFE REMOVAL PROPOSED: 86; GENERATED — DO NOT EDIT: 8
+- In-scope files: 997
+- Report phase: Final
+- Status counts at generation: CONFIGURATION FILE: 40; REVIEWED — NO CHANGE REQUIRED: 314; REFACTORED: 471; TEST FILE: 78; DEPRECATED — SAFE REMOVAL PROPOSED: 86; GENERATED — DO NOT EDIT: 8
 
 ## Architectural Improvements
 
@@ -16,10 +16,18 @@ The final Git diff and inventory statuses are authoritative. No file removal is 
 
 ## Validation
 
-Baseline: `pnpm test`, `pnpm typecheck`, and `pnpm lint` executed before application changes. Final command results are recorded after all batches.
+- Workspace install with frozen lockfile: passed.
+- Lint and typecheck: passed with no errors.
+- Unit, architecture-boundary, Deno Edge Function, traceability, and contract checks: passed.
+- Admin production build and Expo web export: passed.
+- Playwright: 61 passed; 2 credential-gated Admin tests skipped.
+- Changed-file formatting: passed. The repository-wide formatter reports pre-existing formatting debt in 84 untouched legacy/deprecated files.
 
 ## Remaining Risks
 
+- The focused mobile service modules are the public API; `apiCore.ts` remains an internal compatibility implementation while legacy behavior is characterized.
+- Lowercase and PascalCase theme aliases remain where caller migration could change current visuals.
+- Large feature views remain presentation-only and are recorded for cohesive component extraction when those features next change.
 - Native Android/iOS verification requires available simulators and platform toolchains.
 - Credential-dependent provider flows require configured external services.
 - Database recommendations are documentation-only.

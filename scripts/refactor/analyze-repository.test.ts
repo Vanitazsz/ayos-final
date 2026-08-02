@@ -5,6 +5,14 @@ import {
   chunkFiles,
   findCycles,
 } from './analyze-repository.js';
+import { routeScreenTarget } from './extract-route-screens.js';
+import { extractStyleModule } from './extract-screen-styles.js';
+import { adminPageTarget, rewriteRelativeModuleSpecifiers } from './extract-admin-pages.js';
+import { extractLogicGateway } from './extract-screen-logic.js';
+import { migrateApiImports } from './migrate-mobile-api-imports.js';
+import { adminDomainForExport } from './split-admin-data.js';
+import { extractMobileScreenController } from './extract-mobile-screen-controllers.js';
+import { extractAdminPageController } from './extract-admin-page-controllers.js';
 
 describe('analyzeContent', () => {
   it('detects responsibility violations without counting harmless text', () => {
@@ -82,5 +90,148 @@ describe('chunkFiles', () => {
 
     expect(chunks.map((chunk) => chunk.length)).toEqual([15, 15, 1]);
     expect(chunks.flat()).toEqual(files);
+  });
+});
+
+describe('routeScreenTarget', () => {
+  it('creates collision-free feature screen names from complete route paths', () => {
+    expect(routeScreenTarget('apps/mobile/app/(tabs)/profile.tsx', 'account')).toEqual({
+      importPath: '@/features/account/screens/TabsProfileScreen',
+      targetFile: 'apps/mobile/features/account/screens/TabsProfileScreen.tsx',
+    });
+    expect(routeScreenTarget('apps/mobile/app/(worker)/profile.tsx', 'worker')).toEqual({
+      importPath: '@/features/worker/screens/WorkerProfileScreen',
+      targetFile: 'apps/mobile/features/worker/screens/WorkerProfileScreen.tsx',
+    });
+  });
+});
+
+describe('extractStyleModule', () => {
+  it('moves StyleSheet.create into an adjacent module with only required dependencies', () => {
+    const transformed = extractStyleModule(
+      'apps/mobile/features/auth/screens/LoginScreen.tsx',
+      `import React, { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
+const GAP = theme.spacing.md;
+export default function LoginScreen() {
+  const [value] = useState('');
+  return <View style={styles.root}><Text>{value}</Text></View>;
+}
+const styles = StyleSheet.create({ root: { gap: GAP } });
+`,
+    );
+
+    expect(transformed?.screen).not.toContain('StyleSheet.create');
+    expect(transformed?.screen).toContain("import { styles } from './LoginScreen.styles';");
+    expect(transformed?.styleModule).toContain("import { StyleSheet } from 'react-native';");
+    expect(transformed?.styleModule).toContain("import { theme } from '@/constants/theme';");
+    expect(transformed?.styleModule).not.toContain('useState');
+    expect(transformed?.styleModule).toContain('const GAP = theme.spacing.md;');
+    expect(transformed?.styleModule).toContain('export const styles = StyleSheet.create');
+  });
+});
+
+describe('Admin page extraction', () => {
+  it('creates a feature page target and preserves relative dependency targets', () => {
+    const target = adminPageTarget('apps/admin/src/pages/admin/Users.jsx');
+    expect(target).toEqual({
+      feature: 'users',
+      importPath: '../../features/users/pages/UsersPage',
+      targetFile: 'apps/admin/src/features/users/pages/UsersPage.jsx',
+    });
+    expect(
+      rewriteRelativeModuleSpecifiers(
+        "import Button from '../../components/ui/Button';",
+        'apps/admin/src/pages/admin/Users.jsx',
+        target.targetFile,
+      ),
+    ).toBe("import Button from '../../../components/ui/Button';");
+  });
+});
+
+describe('extractLogicGateway', () => {
+  it('moves service and provider dependencies behind a feature logic module', () => {
+    const transformed = extractLogicGateway(
+      'apps/mobile/features/location/screens/TrackingScreen.tsx',
+      `import React from 'react';
+import * as Location from 'expo-location';
+import { fetchBookingTracking, type WorkerBooking } from '@/services/api';
+import { View } from 'react-native';
+export default function TrackingScreen() {
+  void Location.getCurrentPositionAsync();
+  void fetchBookingTracking('id');
+  return <View />;
+}
+`,
+    );
+
+    expect(transformed?.screen).not.toContain("from '@/services/api'");
+    expect(transformed?.screen).not.toContain("from 'expo-location'");
+    expect(transformed?.screen).toContain("from '../logic/TrackingScreenLogic'");
+    expect(transformed?.logicModule).toContain("export * as Location from 'expo-location';");
+    expect(transformed?.logicModule).toContain(
+      "export { fetchBookingTracking, type WorkerBooking } from '@/services/api';",
+    );
+  });
+});
+
+describe('migrateApiImports', () => {
+  it('splits compatibility API imports by focused service', () => {
+    expect(
+      migrateApiImports(
+        "import { fetchBookingDetail, type WorkerBooking, reverseGeocode } from '@/services/api';",
+      ),
+    ).toBe(
+      "import { fetchBookingDetail, type WorkerBooking } from '@/services/bookings';\n" +
+        "import { reverseGeocode } from '@/services/geocoding';",
+    );
+  });
+});
+
+describe('adminDomainForExport', () => {
+  it('assigns Admin operations to focused data services', () => {
+    expect(adminDomainForExport('loadBookings')).toBe('bookings');
+    expect(adminDomainForExport('saveSubscriptionPlan')).toBe('subscriptions');
+    expect(() => adminDomainForExport('unknownOperation')).toThrow('No Admin domain mapping');
+  });
+});
+
+describe('extractMobileScreenController', () => {
+  it('separates stateful coordination from a presentation view', () => {
+    const result = extractMobileScreenController(
+      'apps/mobile/features/demo/screens/DemoScreen.tsx',
+      `import { useState } from 'react';
+import { View, Text } from 'react-native';
+import { loadValue } from '../logic/DemoScreenLogic';
+export default function DemoScreen() {
+  const [value, setValue] = useState('');
+  const save = () => void loadValue(value);
+  return <View><Text onPress={save}>{value}</Text></View>;
+}`,
+    );
+    expect(result?.controller).toContain('export function useDemoScreenController');
+    expect(result?.controller).toContain('loadValue');
+    expect(result?.view).not.toContain('../logic/DemoScreenLogic');
+    expect(result?.screen).toContain('<DemoView model={model} />');
+  });
+});
+
+describe('extractAdminPageController', () => {
+  it('keeps data coordination out of the Admin page view', () => {
+    const result = extractAdminPageController(
+      'apps/admin/src/features/demo/pages/DemoPage.jsx',
+      `import React, { useState } from 'react';
+import { loadDemo } from '../logic/DemoPageLogic';
+const Demo = () => {
+  const [value, setValue] = useState('');
+  const save = () => loadDemo(value);
+  return <button onClick={save}>{value}</button>;
+};
+export default Demo;`,
+    );
+    expect(result?.controller).toContain('useDemoPageController');
+    expect(result?.view).not.toContain('DemoPageLogic');
+    expect(result?.page).toContain('<DemoView model={useDemoPageController()} />');
   });
 });

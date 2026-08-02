@@ -76,7 +76,10 @@ export async function signInWithPassword(email: string, password: string) {
     try {
       await invokeAuthenticatedFunction('record-auth-session', { body: {} });
     } catch (sessionLogErr) {
-      console.warn('[auth] record-auth-session failed (non-fatal):', sessionLogErr);
+      console.warn(
+        '[auth] record-auth-session failed (non-fatal):',
+        sessionLogErr,
+      );
     }
     return user;
   } catch (profileError) {
@@ -192,9 +195,7 @@ export async function loadCurrentUser() {
       'Your account profile is incomplete. Please complete your profile to continue.',
     );
   if (account.id !== userData.user.id)
-    throw new Error(
-      'Account profile mismatch. Please sign in again.',
-    );
+    throw new Error('Account profile mismatch. Please sign in again.');
   if (account.status !== 'ACTIVE') {
     await supabase.auth.signOut();
     if (account.status === 'SUSPENDED')
@@ -220,4 +221,46 @@ export async function loadCurrentUser() {
     emailVerified: Boolean(data.email_verified),
     profileComplete: Boolean(data.profile_complete),
   };
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+export async function loadOAuthCallbackUser(code?: string) {
+  let { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session && code) {
+    const exchange = await supabase.auth.exchangeCodeForSession(code);
+    if (exchange.error) throw exchange.error;
+    sessionData = { session: exchange.data.session };
+  }
+  if (!sessionData.session)
+    throw new Error('No Google session was returned. Please try again.');
+
+  try {
+    const user = await loadCurrentUser();
+    if (!user)
+      throw new Error('Your Google session has expired. Please sign in again.');
+    return user;
+  } catch (profileError) {
+    if (
+      !(profileError instanceof Error) ||
+      !profileError.message.toLowerCase().includes('profile')
+    )
+      throw profileError;
+    const { data, error } = await supabase.rpc('get_my_profile');
+    const account = data?.account;
+    if (error || !account || !['USER', 'WORKER'].includes(account.role))
+      throw profileError;
+    return {
+      id: account.id,
+      email: account.email,
+      phone: account.mobile ?? '',
+      name: '',
+      role: account.role,
+      emailVerified: Boolean(data.email_verified),
+      profileComplete: false,
+    };
+  }
 }
