@@ -23,8 +23,8 @@ import {
   archiveConversations,
   fetchConversations,
   subscribeToConversationBroadcast,
-  subscribeToTable,
-} from '@/services/api';
+} from '@/services/messaging';
+import { subscribeToTable } from '@/services/realtime';
 
 interface ConversationListScreenProps {
   emptyDescription: string;
@@ -165,9 +165,7 @@ export function ConversationListScreen({
                   style={styles.headerAction}
                   disabled={deleting}
                   onPress={() =>
-                    selectionMode
-                      ? exitSelectionMode()
-                      : setSelectionMode(true)
+                    selectionMode ? exitSelectionMode() : setSelectionMode(true)
                   }
                 >
                   {!selectionMode && (

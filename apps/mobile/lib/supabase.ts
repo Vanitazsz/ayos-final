@@ -6,7 +6,10 @@ import { createClient } from '@supabase/supabase-js';
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-if (!url || !key) throw new Error('EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY are required');
+if (!url || !key)
+  throw new Error(
+    'EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY are required',
+  );
 
 export const supabase = createClient(url, key, {
   auth: {
@@ -25,4 +28,4 @@ if (Platform.OS !== 'web') {
   });
 }
 
-export const mapStyleUrl = process.env.EXPO_PUBLIC_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/liberty';
+export { mapStyleUrl } from '@/config/maps';

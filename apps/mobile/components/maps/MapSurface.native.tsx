@@ -2,11 +2,16 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as MapLibreGL from '@maplibre/maplibre-react-native';
 
-import { mapStyleUrl } from '@/lib/supabase';
+import { mapStyleUrl } from '@/config/maps';
 
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
 
-export type MapPoint = { id: string; latitude: number; longitude: number; color?: string };
+export type MapPoint = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  color?: string;
+};
 
 type MapSurfaceProps = {
   center: { latitude: number; longitude: number };
@@ -39,7 +44,8 @@ export function MapSurface({
 
   useEffect(() => {
     if (!isMapLoaded) return;
-    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
+    if (animationFrameRef.current !== null)
+      cancelAnimationFrame(animationFrameRef.current);
     if (!radiusMeters) {
       displayedRadiusRef.current = undefined;
       setDisplayedRadius(undefined);
@@ -61,23 +67,33 @@ export function MapSurface({
 
     const startedAt = Date.now();
     const renderFrame = () => {
-      const progress = Math.min((Date.now() - startedAt) / RADIUS_ANIMATION_MS, 1);
-      const nextRadius = startRadius + (radiusMeters - startRadius) * easeOutCubic(progress);
+      const progress = Math.min(
+        (Date.now() - startedAt) / RADIUS_ANIMATION_MS,
+        1,
+      );
+      const nextRadius =
+        startRadius + (radiusMeters - startRadius) * easeOutCubic(progress);
       displayedRadiusRef.current = nextRadius;
       setDisplayedRadius(nextRadius);
-      if (progress < 1) animationFrameRef.current = requestAnimationFrame(renderFrame);
+      if (progress < 1)
+        animationFrameRef.current = requestAnimationFrame(renderFrame);
       else animationFrameRef.current = null;
     };
     animationFrameRef.current = requestAnimationFrame(renderFrame);
 
     return () => {
-      if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameRef.current !== null)
+        cancelAnimationFrame(animationFrameRef.current);
     };
   }, [animateRadius, isMapLoaded, mapCenter, radiusMeters]);
 
-  useEffect(() => () => {
-    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (animationFrameRef.current !== null)
+        cancelAnimationFrame(animationFrameRef.current);
+    },
+    [],
+  );
 
   return (
     <MapLibreGL.Map
@@ -89,21 +105,55 @@ export function MapSurface({
       touchRotate={interactive}
       onDidFinishLoadingMap={() => setIsMapLoaded(true)}
     >
-      <MapLibreGL.Camera ref={cameraRef} initialViewState={{ center: [mapCenter.longitude, mapCenter.latitude], zoom: 13 }} />
+      <MapLibreGL.Camera
+        ref={cameraRef}
+        initialViewState={{
+          center: [mapCenter.longitude, mapCenter.latitude],
+          zoom: 13,
+        }}
+      />
       {displayedRadius ? (
-        <MapLibreGL.GeoJSONSource id="radius" data={radiusGeoJson(mapCenter, displayedRadius)}>
-          <MapLibreGL.Layer id="radius-fill" type="fill" paint={{ 'fill-color': '#2563eb', 'fill-opacity': 0.18 }} />
-          <MapLibreGL.Layer id="radius-line" type="line" paint={{ 'line-color': '#1d4ed8', 'line-width': 2.5, 'line-opacity': 0.9 }} />
+        <MapLibreGL.GeoJSONSource
+          id="radius"
+          data={radiusGeoJson(mapCenter, displayedRadius)}
+        >
+          <MapLibreGL.Layer
+            id="radius-fill"
+            type="fill"
+            paint={{ 'fill-color': '#2563eb', 'fill-opacity': 0.18 }}
+          />
+          <MapLibreGL.Layer
+            id="radius-line"
+            type="line"
+            paint={{
+              'line-color': '#1d4ed8',
+              'line-width': 2.5,
+              'line-opacity': 0.9,
+            }}
+          />
         </MapLibreGL.GeoJSONSource>
       ) : null}
       {route ? (
         <MapLibreGL.GeoJSONSource id="route" data={route}>
-          <MapLibreGL.Layer id="route-line" type="line" paint={{ 'line-color': '#1e3a8a', 'line-width': 4 }} />
+          <MapLibreGL.Layer
+            id="route-line"
+            type="line"
+            paint={{ 'line-color': '#1e3a8a', 'line-width': 4 }}
+          />
         </MapLibreGL.GeoJSONSource>
       ) : null}
       {points.map((point) => (
-        <MapLibreGL.Marker key={point.id} id={point.id} lngLat={[point.longitude, point.latitude]}>
-          <View style={[styles.marker, { backgroundColor: point.color ?? '#1e3a8a' }]} />
+        <MapLibreGL.Marker
+          key={point.id}
+          id={point.id}
+          lngLat={[point.longitude, point.latitude]}
+        >
+          <View
+            style={[
+              styles.marker,
+              { backgroundColor: point.color ?? '#1e3a8a' },
+            ]}
+          />
         </MapLibreGL.Marker>
       ))}
     </MapLibreGL.Map>
@@ -112,5 +162,11 @@ export function MapSurface({
 
 const styles = StyleSheet.create({
   map: { flex: 1 },
-  marker: { width: 20, height: 20, borderRadius: 10, borderWidth: 3, borderColor: '#fff' },
+  marker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
 });

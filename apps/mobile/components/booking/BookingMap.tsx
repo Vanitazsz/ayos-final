@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { MapSurface } from '@/components/maps/MapSurface';
-import { calculateRoute } from '@/services/api';
+import { useBookingRoute } from '@/features/bookings/hooks/useBookingRoute';
 interface Props {
   destinationLat: number;
   destinationLng: number;
@@ -25,34 +25,15 @@ export const BookingMap = React.memo(function BookingMap({
   startLng,
   bookingId,
 }: Props) {
-  const [route, setRoute] = useState<any>(null);
-  const [eta, setEta] = useState<number | null>(null);
-  const routeLat = workerLat ?? startLat;
-  const routeLng = workerLng ?? startLng;
-  useEffect(() => {
-    if (routeLat == null || routeLng == null) return;
-    let active = true;
-    calculateRoute(
-      [routeLng, routeLat],
-      [destinationLng, destinationLat],
-      bookingId,
-    )
-      .then((value) => {
-        if (active) {
-          setRoute(value.geojson);
-          setEta(value.durationSeconds);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setRoute(null);
-          setEta(null);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [bookingId, destinationLat, destinationLng, routeLat, routeLng]);
+  const { etaSeconds, route, routeLat, routeLng } = useBookingRoute({
+    bookingId,
+    destinationLat,
+    destinationLng,
+    startLat,
+    startLng,
+    workerLat,
+    workerLng,
+  });
   const current = {
     latitude: routeLat ?? destinationLat,
     longitude: routeLng ?? destinationLng,
@@ -62,7 +43,10 @@ export const BookingMap = React.memo(function BookingMap({
   const centerLat = safeLat((current.latitude + destinationLat) / 2);
   const centerLng = safeLng((current.longitude + destinationLng) / 2);
   const points = [
-    ...(startLat != null && startLng != null && Number.isFinite(startLat) && Number.isFinite(startLng)
+    ...(startLat != null &&
+    startLng != null &&
+    Number.isFinite(startLat) &&
+    Number.isFinite(startLng)
       ? [
           {
             id: 'start',
@@ -72,7 +56,10 @@ export const BookingMap = React.memo(function BookingMap({
           },
         ]
       : []),
-    ...(workerLat != null && workerLng != null && Number.isFinite(workerLat) && Number.isFinite(workerLng)
+    ...(workerLat != null &&
+    workerLng != null &&
+    Number.isFinite(workerLat) &&
+    Number.isFinite(workerLng)
       ? [
           {
             id: 'worker',
@@ -89,10 +76,7 @@ export const BookingMap = React.memo(function BookingMap({
       color: Colors.error,
     },
   ];
-  if (
-    !Number.isFinite(destinationLat) ||
-    !Number.isFinite(destinationLng)
-  )
+  if (!Number.isFinite(destinationLat) || !Number.isFinite(destinationLng))
     return null;
   return (
     <View style={styles.container}>
@@ -102,7 +86,7 @@ export const BookingMap = React.memo(function BookingMap({
           longitude: centerLng,
         }}
         points={points}
-        route={route ?? undefined}
+        route={route}
       />
       <View style={styles.startBadge}>
         <View style={styles.startDot} />
@@ -110,7 +94,9 @@ export const BookingMap = React.memo(function BookingMap({
       </View>
       <View style={styles.etaBadge}>
         <AppText variant="h4" color={Colors.cta}>
-          {eta == null ? '—' : `${Math.max(1, Math.ceil(eta / 60))} Min`}
+          {etaSeconds == null
+            ? '—'
+            : `${Math.max(1, Math.ceil(etaSeconds / 60))} Min`}
         </AppText>
         <AppText variant="caption" color={Colors.textSecondary}>
           ETA

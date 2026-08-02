@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import {
-  fetchConversation,
-  sendMessage,
-  subscribeToTable,
-} from '@/services/api';
+import { fetchConversation, sendMessage } from '@/services/messaging';
+import { subscribeToTable } from '@/services/realtime';
 import {
   createOptimisticMessage,
   mergeConversationMessages,
@@ -42,42 +39,45 @@ export function useConversationChat(conversationId: string | null) {
   const [error, setError] = useState('');
   const mounted = useRef(true);
 
-  const refresh = useCallback(async (showLoading = false) => {
-    if (showLoading && mounted.current) setLoading(true);
-    if (!conversationId) {
-      if (mounted.current) {
-        setMessages([]);
-        setAccess(EMPTY_ACCESS);
-        setLoading(false);
+  const refresh = useCallback(
+    async (showLoading = false) => {
+      if (showLoading && mounted.current) setLoading(true);
+      if (!conversationId) {
+        if (mounted.current) {
+          setMessages([]);
+          setAccess(EMPTY_ACCESS);
+          setLoading(false);
+        }
+        return;
       }
-      return;
-    }
-    const result = await fetchConversation(conversationId);
-    if (!mounted.current) return;
-    if (result.error || !result.data) {
-      setError(result.error ?? 'Conversation is unavailable');
+      const result = await fetchConversation(conversationId);
+      if (!mounted.current) return;
+      if (result.error || !result.data) {
+        setError(result.error ?? 'Conversation is unavailable');
+        setLoading(false);
+        return;
+      }
+      setError('');
+      setAccess({
+        bookingId: result.data.bookingId ?? null,
+        serviceRequestId: result.data.serviceRequestId ?? null,
+        workerAccountId: result.data.workerAccountId ?? null,
+        status: result.data.status ?? '',
+        canSend: Boolean(result.data.canSend),
+        canArchive: Boolean(result.data.canArchive),
+        canHireAgain: Boolean(result.data.canHireAgain),
+        participant: result.data.participant ?? EMPTY_ACCESS.participant,
+      });
+      setMessages((current) =>
+        mergeConversationMessages([
+          ...(result.data.messages as ConversationMessage[]),
+          ...current.filter((message) => message.optimistic),
+        ]),
+      );
       setLoading(false);
-      return;
-    }
-    setError('');
-    setAccess({
-      bookingId: result.data.bookingId ?? null,
-      serviceRequestId: result.data.serviceRequestId ?? null,
-      workerAccountId: result.data.workerAccountId ?? null,
-      status: result.data.status ?? '',
-      canSend: Boolean(result.data.canSend),
-      canArchive: Boolean(result.data.canArchive),
-      canHireAgain: Boolean(result.data.canHireAgain),
-      participant: result.data.participant ?? EMPTY_ACCESS.participant,
-    });
-    setMessages((current) =>
-      mergeConversationMessages([
-        ...(result.data.messages as ConversationMessage[]),
-        ...current.filter((message) => message.optimistic),
-      ]),
-    );
-    setLoading(false);
-  }, [conversationId]);
+    },
+    [conversationId],
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -117,8 +117,8 @@ export function useConversationChat(conversationId: string | null) {
     ];
     const broadcastChannel = supabase
       .channel(`conversation:${conversationId}:messages`, {
-      config: { private: true },
-    })
+        config: { private: true },
+      })
       .on('broadcast', { event: '*' }, () => void refresh())
       .subscribe(syncFallback);
     stops.push(() => {
