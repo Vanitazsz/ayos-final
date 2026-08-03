@@ -18,6 +18,18 @@ jobs:
         with: { deno-version: v2.x }
       - run: pnpm install --frozen-lockfile
       - run: pnpm supabase:start
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 60); do
+            if pg_isready -h 127.0.0.1 -p 5432 -q; then
+              echo "Postgres ready"
+              exit 0
+            fi
+            echo "Waiting for Postgres ($i/60)..."
+            sleep 1
+          done
+          echo "Postgres not ready after 60s" >&2
+          exit 1
       - run: pnpm db:reset
       - run: pnpm db:lint
       - run: pnpm test:db

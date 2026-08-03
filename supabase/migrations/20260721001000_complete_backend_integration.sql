@@ -171,7 +171,13 @@ begin
 end $$;
 
 -- Manual Worker wallet funding. Approval is the only path that credits funds.
-alter table public.wallet_topups drop constraint if exists wallet_topups_provider_check;
+do $$
+begin
+  if to_regclass('public.wallet_topups') is not null then
+    alter table public.wallet_topups drop constraint if exists wallet_topups_provider_check;
+  end if;
+end
+$$;
 alter table public.wallet_topups drop constraint if exists wallet_topups_status_check;
 alter table public.wallet_topups alter column provider set default 'MANUAL';
 alter table public.wallet_topups
