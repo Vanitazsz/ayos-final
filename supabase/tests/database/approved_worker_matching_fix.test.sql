@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(24);
 
 select has_function(
   'public',
@@ -247,10 +247,91 @@ select set_config(
 set local role authenticated;
 select is(
   public.get_match_diagnostics('98000000-0000-0000-0000-000000000004')->>'reasonCode',
-  'OUTSIDE_WORKING_HOURS',
-  'diagnostics identify workers outside their schedule'
+  'NO_MATCHES',
+  'diagnostics no longer gate on the worker schedule'
+);
+select is(
+  (select count(*) from public.generate_matches('98000000-0000-0000-0000-000000000004')),
+  1::bigint,
+  'matching no longer gates on the worker schedule'
 );
 
+reset role;
+update public.worker_profiles
+set service_origin = private.make_location(14.60,121.20)
+where account_id = '98000000-0000-0000-0000-000000000002';
+insert into public.worker_presence(worker_id, location, accuracy_meters, online, last_seen_at)
+values (
+  '98000000-0000-0000-0000-000000000002',
+  extensions.st_setsrid(extensions.st_makepoint(120.88,14.28),4326)::extensions.geography,
+  5,
+  true,
+  now()
+)
+on conflict (worker_id) do update
+set location = excluded.location,
+    accuracy_meters = excluded.accuracy_meters,
+    online = excluded.online,
+    last_seen_at = excluded.last_seen_at;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"98000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+select is(
+  public.get_match_diagnostics('98000000-0000-0000-0000-000000000004')->>'reasonCode',
+  'NO_MATCHES',
+  'live presence anchors the radius so a nearby online worker is eligible'
+);
+select is(
+  (select count(*) from public.generate_matches('98000000-0000-0000-0000-000000000004')),
+  1::bigint,
+  'dispatch reaches workers near the job through live presence'
+);
+
+reset role;
+update public.worker_presence
+set last_seen_at = now() - interval '5 minutes'
+where worker_id = '98000000-0000-0000-0000-000000000002';
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"98000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+select is(
+  public.get_match_diagnostics('98000000-0000-0000-0000-000000000004')->>'reasonCode',
+  'OUTSIDE_SERVICE_RADIUS',
+  'stale presence falls back to the registered service origin'
+);
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"98000000-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+select lives_ok(
+  $$select public.save_my_worker_matching_setup(
+    14.28,120.88,20000,'Trece Martires City','[]'::jsonb,false
+  )$$,
+  'worker can save a matching setup with an empty schedule'
+);
+select is(
+  (select count(*) from public.worker_availability where worker_id = auth.uid()),
+  0::bigint,
+  'empty schedule clears availability rows'
+);
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"98000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
 select throws_ok(
   $$select public.get_match_diagnostics('00000000-0000-0000-0000-000000000000')$$,
   '42501',

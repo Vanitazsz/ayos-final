@@ -1,19 +1,11 @@
 import { supabase } from '@/lib/supabase';
 
-export type WorkerScheduleDay = {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  timezone?: string;
-};
-
 export type WorkerMatchingReadiness = {
   accountEligible: boolean;
   verificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_DOCUMENTS';
   skillsReady: boolean;
   rateReady: boolean;
   serviceAreaReady: boolean;
-  scheduleReady: boolean;
   online: boolean;
   setupComplete: boolean;
   matchable: boolean;
@@ -21,7 +13,6 @@ export type WorkerMatchingReadiness = {
   longitude: number | null;
   serviceArea: string | null;
   radiusMeters: number | null;
-  schedule: WorkerScheduleDay[];
 };
 
 export type MatchDiagnosticReason =
@@ -30,7 +21,6 @@ export type MatchDiagnosticReason =
   | 'NO_APPROVED_WORKERS'
   | 'WORKERS_MISSING_SERVICE_AREA'
   | 'OUTSIDE_SERVICE_RADIUS'
-  | 'OUTSIDE_WORKING_HOURS'
   | 'WORKERS_OFFLINE'
   | 'NO_MATCHES';
 
@@ -44,7 +34,6 @@ export type MatchDiagnostics = {
     approved: number;
     configured: number;
     nearby: number;
-    scheduled: number;
     online: number;
   };
 };
@@ -56,13 +45,9 @@ function matchingErrorMessage(error: unknown) {
       : '';
   switch (message) {
     case 'WORKER_NOT_READY':
-      return 'Complete verification, skills, a service rate, service area, and schedule before going online.';
+      return 'Complete verification, skills, a service rate, and a service area before going online.';
     case 'INVALID_WORKER_MATCHING_SETUP':
-      return 'Confirm your location, service area, radius, and working schedule.';
-    case 'INVALID_WORKER_SCHEDULE':
-      return 'Use valid start and end times for every selected working day.';
-    case 'DUPLICATE_WORKER_SCHEDULE_DAY':
-      return 'Each working day can only appear once.';
+      return 'Confirm your location, service area, and radius.';
     case 'WORKER_ROLE_REQUIRED':
       return 'Sign in with a worker account to manage matching availability.';
     default:
@@ -83,7 +68,6 @@ export async function saveWorkerMatchingSetup(input: {
   longitude: number;
   radiusMeters: number;
   serviceArea: string;
-  schedule: WorkerScheduleDay[];
   online: boolean;
 }) {
   const { data, error } = await supabase.rpc('save_my_worker_matching_setup', {
@@ -91,7 +75,6 @@ export async function saveWorkerMatchingSetup(input: {
     p_longitude: input.longitude,
     p_radius_meters: input.radiusMeters,
     p_service_area: input.serviceArea.trim(),
-    p_schedule: input.schedule,
     p_online: input.online,
   });
   if (error) throw new Error(matchingErrorMessage(error));
@@ -119,8 +102,6 @@ export function matchDiagnosticMessage(diagnostic: MatchDiagnostics | null) {
       return `${category} workers have not finished setting their service area.`;
     case 'OUTSIDE_SERVICE_RADIUS':
       return 'Verified workers are currently outside the service radius for this address.';
-    case 'OUTSIDE_WORKING_HOURS':
-      return 'Nearby workers are unavailable at the selected date and time.';
     case 'WORKERS_OFFLINE':
       return 'Eligible nearby workers are currently offline. Try again shortly or schedule for later.';
     default:

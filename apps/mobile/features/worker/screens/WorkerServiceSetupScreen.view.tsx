@@ -89,7 +89,6 @@ export function WorkerServiceSetupView({
                     label: 'Service origin and radius',
                     ready: readiness.serviceAreaReady,
                   },
-                  { label: 'Working schedule', ready: readiness.scheduleReady },
                   { label: 'Available online', ready: readiness.online },
                 ].map((item) => (
                   <View key={item.label} style={styles.readinessRow}>

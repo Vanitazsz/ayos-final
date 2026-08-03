@@ -6327,7 +6327,7 @@ export type Database = {
           p_longitude: number
           p_online?: boolean
           p_radius_meters: number
-          p_schedule: Json
+          p_schedule?: Json
           p_service_area: string
         }
         Returns: Json

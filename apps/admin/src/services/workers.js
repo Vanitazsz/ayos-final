@@ -4,7 +4,7 @@ export async function loadWorkers() {
   const { data, error } = await supabase
     .from('worker_profiles')
     .select(
-      'account_id,display_name,bio,experience,service_area,service_origin,service_radius_meters,approval_status,is_available,created_at,accounts!worker_profiles_account_id_fkey!inner(email,mobile,status,role,deleted_at),worker_skills!worker_skills_worker_id_fkey(years,service_categories!worker_skills_category_id_fkey(name)),worker_availability!worker_availability_worker_id_fkey(count),worker_verifications!worker_verifications_worker_id_fkey(id,status),bookings!bookings_worker_account_id_fkey(count),reviews!reviews_worker_account_id_fkey(stars)',
+      'account_id,display_name,bio,experience,service_area,service_origin,service_radius_meters,approval_status,is_available,created_at,accounts!worker_profiles_account_id_fkey!inner(email,mobile,status,role,deleted_at),worker_skills!worker_skills_worker_id_fkey(years,service_categories!worker_skills_category_id_fkey(name)),worker_verifications!worker_verifications_worker_id_fkey(id,status),bookings!bookings_worker_account_id_fkey(count),reviews!reviews_worker_account_id_fkey(stars)',
     )
     .eq('accounts.role', 'WORKER')
     .is('accounts.deleted_at', null)
@@ -29,19 +29,16 @@ export async function loadWorkers() {
       : row.worker_verifications;
     const skillsReady = (row.worker_skills?.length ?? 0) > 0;
     const serviceAreaReady = Boolean(row.service_origin && row.service_radius_meters);
-    const scheduleReady = Number(row.worker_availability?.[0]?.count ?? 0) > 0;
     const matchingReady = Boolean(
       row.approval_status === 'APPROVED' &&
         skillsReady &&
         serviceAreaReady &&
-        scheduleReady &&
         row.is_available,
     );
     const matchingMissing = [
       row.approval_status !== 'APPROVED' ? 'approval' : null,
       !skillsReady ? 'skills' : null,
       !serviceAreaReady ? 'service area' : null,
-      !scheduleReady ? 'schedule' : null,
       !row.is_available ? 'online status' : null,
     ].filter(Boolean);
     return {
@@ -87,7 +84,7 @@ export async function setWorkerAvailability(id, available) {
   if (error) {
     if (error.message === 'WORKER_NOT_READY') {
       throw new Error(
-        'This worker needs approval, skills, a service area, and a schedule before going online.',
+        'This worker needs approval, skills, and a service area before going online.',
       );
     }
     throw error;

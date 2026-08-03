@@ -36,8 +36,6 @@ function diagnosticMessage(
     case 'OUTSIDE_SEARCH_RADIUS':
     case 'OUTSIDE_SERVICE_RADIUS':
       return 'No eligible workers were found within your selected radius.';
-    case 'OUTSIDE_WORKING_HOURS':
-      return 'Eligible workers are outside their working schedule.';
     default:
       return '';
   }
