@@ -43,41 +43,6 @@ begin
   return changed = 1;
 end $$;
 
-create or replace function public.admin_decide_payout(
-  p_payout_id uuid,
-  p_decision text,
-  p_provider_reference text default null,
-  p_reason text default null
-)
-returns public.payout_requests language plpgsql security definer set search_path = '' as $$
-declare payout public.payout_requests; result public.payout_requests;
-begin
-  if not public.is_admin(true) or p_decision not in ('PROCESSING','COMPLETED','FAILED') then
-    raise exception using errcode = '42501', message = 'AAL2 administrator required';
-  end if;
-  select * into payout from public.payout_requests where id = p_payout_id for update;
-  if payout.id is null or payout.status not in ('PENDING','PROCESSING') then
-    raise exception using errcode = '55000', message = 'Payout cannot be updated';
-  end if;
-  if p_decision = 'FAILED' and length(trim(coalesce(p_reason,''))) < 3 then
-    raise exception using errcode = '22023', message = 'Failure reason required';
-  end if;
-  update public.payout_requests set status = p_decision, provider = case when p_decision = 'COMPLETED' then 'MANUAL_ADMIN' else provider end,
-    provider_reference = coalesce(nullif(trim(p_provider_reference), ''), provider_reference),
-    failure_reason = case when p_decision = 'FAILED' then trim(p_reason) else null end,
-    processed_at = case when p_decision in ('COMPLETED','FAILED') then now() else processed_at end
-  where id = payout.id returning * into result;
-  if p_decision = 'COMPLETED' then
-    update public.wallet_transactions set status = 'COMPLETED' where source_type = 'PAYOUT_REQUEST' and source_id = payout.id and status = 'HELD';
-  elsif p_decision = 'FAILED' then
-    update public.wallet_transactions set status = 'REVERSED' where source_type = 'PAYOUT_REQUEST' and source_id = payout.id and status = 'HELD';
-  end if;
-  insert into public.audit_logs(actor_id, action, entity_type, entity_id, metadata)
-  values(auth.uid(), 'PAYOUT_' || p_decision, 'payout_request', payout.id::text,
-    jsonb_build_object('provider_reference', p_provider_reference, 'reason', p_reason));
-  return result;
-end $$;
-
 create or replace function public.review_verification_document(
   p_document_id uuid,
   p_decision text,
@@ -107,9 +72,7 @@ end $$;
 
 revoke all on function public.record_admin_session(text) from public, anon;
 revoke all on function public.close_admin_session() from public, anon;
-revoke all on function public.admin_decide_payout(uuid,text,text,text) from public, anon;
 revoke all on function public.review_verification_document(uuid,text,text) from public, anon;
 grant execute on function public.record_admin_session(text) to authenticated;
 grant execute on function public.close_admin_session() to authenticated;
-grant execute on function public.admin_decide_payout(uuid,text,text,text) to authenticated;
 grant execute on function public.review_verification_document(uuid,text,text) to authenticated;
