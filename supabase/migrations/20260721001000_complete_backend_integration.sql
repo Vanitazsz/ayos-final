@@ -255,7 +255,7 @@ create or replace function public.submit_manual_wallet_topup(
 ) returns public.wallet_topups
 language plpgsql security definer set search_path = '' as $$
 declare
-  wallet public.wallet_accounts;
+  wallet record;
   existing_topup public.wallet_topups;
   result public.wallet_topups;
 begin
