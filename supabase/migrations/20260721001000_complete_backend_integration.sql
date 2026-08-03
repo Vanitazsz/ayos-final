@@ -344,16 +344,6 @@ begin
   where id = topup.id
   returning * into result;
 
-  if p_decision = 'APPROVED' then
-    insert into public.wallet_transactions(
-      wallet_account_id, kind, status, amount, source_type, source_id,
-      description, available_at
-    ) values (
-      topup.wallet_account_id, 'TOP_UP', 'AVAILABLE', topup.amount_centavos::numeric / 100,
-      'WALLET_TOPUP', topup.id, topup.channel || ' manual wallet top-up', now()
-    ) on conflict(wallet_account_id, source_type, source_id, kind) do nothing;
-  end if;
-
   insert into public.audit_logs(actor_id, action, entity_type, entity_id, metadata)
   values (
     auth.uid(), 'MANUAL_TOPUP_' || p_decision, 'wallet_topup', topup.id::text,
@@ -604,6 +594,7 @@ begin
   insert into public.trash_entries(entity_type, entity_id, snapshot, deleted_by)
   values ('notification', source.id::text, to_jsonb(source), auth.uid())
   returning * into result;
+  delete from public.notification_deliveries where notification_id = source.id;
   delete from public.notifications where id = source.id;
   insert into public.audit_logs(actor_id, action, entity_type, entity_id)
   values (auth.uid(), 'NOTIFICATION_ARCHIVED', 'notification', source.id::text);

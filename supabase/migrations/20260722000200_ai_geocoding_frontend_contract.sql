@@ -8,25 +8,35 @@ alter table public.addresses
   add column if not exists geocoding_confidence numeric(5,4),
   add column if not exists geocoding_payload jsonb;
 
-create or replace view public.services with (security_invoker = true) as
-select template.id,
-  template.category_id,
-  template.name,
-  template.description,
-  round(template.base_price * 100)::bigint as minimum_price_minor,
-  round(template.base_price * 100)::bigint as maximum_price_minor,
-  template.estimated_duration_minutes,
-  category.is_safety_critical,
-  template.is_active,
-  template.created_at,
-  template.updated_at
-from public.service_templates template
-join public.service_categories category on category.id = template.category_id
-where template.archived_at is null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = 'services'
+  ) then
+    create or replace view public.services with (security_invoker = true) as
+    select template.id,
+      template.category_id,
+      template.name,
+      template.description,
+      round(template.base_price * 100)::bigint as minimum_price_minor,
+      round(template.base_price * 100)::bigint as maximum_price_minor,
+      template.estimated_duration_minutes,
+      category.is_safety_critical,
+      template.is_active,
+      template.created_at,
+      template.updated_at
+    from public.service_templates template
+    join public.service_categories category on category.id = template.category_id
+    where template.archived_at is null;
+  end if;
+end
+$$;
 
 grant select on public.services to anon, authenticated, service_role;
 
-create table public.ai_processing_consents (
+create table if not exists public.ai_processing_consents (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete restrict,
   consent_version text not null,
@@ -38,7 +48,7 @@ create table public.ai_processing_consents (
   unique(account_id, request_correlation_id)
 );
 
-create table public.ai_analysis_jobs (
+create table if not exists public.ai_analysis_jobs (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete restrict,
   consent_id uuid not null references public.ai_processing_consents(id) on delete restrict,
@@ -61,7 +71,7 @@ create table public.ai_analysis_jobs (
   unique(account_id, idempotency_key)
 );
 
-create index ai_analysis_jobs_status_created_idx on public.ai_analysis_jobs(status, created_at);
+create index if not exists ai_analysis_jobs_status_created_idx on public.ai_analysis_jobs(status, created_at);
 
 alter table public.ai_analysis_attempts
   add column if not exists job_id uuid references public.ai_analysis_jobs(id) on delete set null,
@@ -69,7 +79,7 @@ alter table public.ai_analysis_attempts
   add column if not exists usage_metadata jsonb not null default '{}',
   add column if not exists http_status integer;
 
-create table public.geocoding_cache (
+create table if not exists public.geocoding_cache (
   cache_key text primary key,
   operation text not null check (operation in ('SEARCH','REVERSE','ROUTE')),
   normalized_request jsonb not null,
@@ -79,9 +89,9 @@ create table public.geocoding_cache (
   created_at timestamptz not null default now()
 );
 
-create index geocoding_cache_expiry_idx on public.geocoding_cache(expires_at);
+create index if not exists geocoding_cache_expiry_idx on public.geocoding_cache(expires_at);
 
-create table public.route_snapshots (
+create table if not exists public.route_snapshots (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid not null references public.bookings(id) on delete cascade,
   requested_by uuid not null references public.accounts(id) on delete restrict,
@@ -93,21 +103,33 @@ create table public.route_snapshots (
   created_at timestamptz not null default now()
 );
 
-create index route_snapshots_booking_created_idx on public.route_snapshots(booking_id, created_at desc);
+create index if not exists route_snapshots_booking_created_idx on public.route_snapshots(booking_id, created_at desc);
 
 alter table public.ai_processing_consents enable row level security;
 alter table public.ai_analysis_jobs enable row level security;
 alter table public.geocoding_cache enable row level security;
 alter table public.route_snapshots enable row level security;
 
-create policy ai_consents_owner_read on public.ai_processing_consents for select to authenticated
-using (account_id = auth.uid() or public.is_admin(false));
-create policy ai_consents_owner_insert on public.ai_processing_consents for insert to authenticated
-with check (account_id = auth.uid());
-create policy ai_jobs_owner_read on public.ai_analysis_jobs for select to authenticated
-using (account_id = auth.uid() or public.is_admin(false));
-create policy route_snapshots_booking_parties on public.route_snapshots for select to authenticated
-using (public.is_booking_party(booking_id) or public.is_admin(false));
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='ai_processing_consents' and policyname='ai_consents_owner_read') then
+    create policy ai_consents_owner_read on public.ai_processing_consents for select to authenticated
+    using (account_id = auth.uid() or public.is_admin(false));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='ai_processing_consents' and policyname='ai_consents_owner_insert') then
+    create policy ai_consents_owner_insert on public.ai_processing_consents for insert to authenticated
+    with check (account_id = auth.uid());
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='ai_analysis_jobs' and policyname='ai_jobs_owner_read') then
+    create policy ai_jobs_owner_read on public.ai_analysis_jobs for select to authenticated
+    using (account_id = auth.uid() or public.is_admin(false));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='route_snapshots' and policyname='route_snapshots_booking_parties') then
+    create policy route_snapshots_booking_parties on public.route_snapshots for select to authenticated
+    using (public.is_booking_party(booking_id) or public.is_admin(false));
+  end if;
+end
+$$;
 
 grant select, insert on public.ai_processing_consents to authenticated;
 grant select on public.ai_analysis_jobs, public.route_snapshots to authenticated;
@@ -160,6 +182,15 @@ insert into public.system_settings(key, value) values
   ('geocoding.enabled', 'true')
 on conflict(key) do nothing;
 
-alter publication supabase_realtime add table public.ai_analysis_jobs;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'ai_analysis_jobs'
+  ) then
+    alter publication supabase_realtime add table public.ai_analysis_jobs;
+  end if;
+end
+$$;
 
 commit;

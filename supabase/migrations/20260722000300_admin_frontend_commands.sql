@@ -20,6 +20,20 @@ begin
   return result;
 end $$;
 
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'admin_publish_campaign'
+      and p.prorettype::regtype <> 'public.notifications'::regtype
+  ) then
+    drop function public.admin_publish_campaign(uuid);
+  end if;
+end
+$$;
+
 create or replace function public.admin_publish_campaign(p_campaign_id uuid)
 returns public.notifications language sql security definer set search_path = '' as $$
   select public.admin_send_notification_now(p_campaign_id)

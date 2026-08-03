@@ -23,6 +23,23 @@ jobs:
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
+      - name: Clean local Supabase state
+        run: |
+          rm -rf .supabase || true
+          docker compose down -v || true
+      - name: Pre-pull Supabase images (mitigate Docker pull rate limits)
+        run: |
+          set -euo pipefail
+          images=(
+            "public.ecr.aws/supabase/kong:2.8.1"
+            "public.ecr.aws/supabase/postgres-meta:v0.96.6"
+            "public.ecr.aws/supabase/postgrest:v14.14"
+          )
+          for img in "${images[@]}"; do
+            for i in 1 2 3; do
+              docker pull "$img" && break || { echo "docker pull $img failed, retry $i/3"; sleep $((i * 4)); }
+            done
+          done
       - name: Start Supabase (with retry for Docker pull flakiness)
         run: |
           for attempt in 1 2 3; do

@@ -65,8 +65,23 @@ create table if not exists public.worker_portfolio_media (
   constraint worker_portfolio_media_caption_check check (caption is null or length(caption) <= 300),
   constraint worker_portfolio_media_owned_path_check check (split_part(storage_path, '/', 1) = worker_id::text)
 );
-create index if not exists worker_portfolio_media_worker_sort_idx
-  on public.worker_portfolio_media(worker_id, sort_order, created_at);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'worker_portfolio_media'
+      and column_name = 'worker_id'
+  ) then
+    create index if not exists worker_portfolio_media_worker_sort_idx
+      on public.worker_portfolio_media(worker_id, sort_order, created_at);
+    create policy worker_portfolio_authenticated_read on public.worker_portfolio_media for select to authenticated
+      using(exists(select 1 from public.worker_profiles worker where worker.account_id=worker_id and (worker.approval_status='APPROVED' or worker.account_id=auth.uid() or public.is_admin(false))));
+    create policy worker_portfolio_owner_write on public.worker_portfolio_media for all to authenticated
+      using(worker_id=auth.uid() or public.is_admin(false)) with check(worker_id=auth.uid() or public.is_admin(false));
+  end if;
+end
+$$;
 
 update public.accounts account
 set profile_completed_at = coalesce(account.profile_completed_at, now())
@@ -261,6 +276,20 @@ begin
   return changed_at;
 end $$;
 
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'mark_conversation_read'
+      and p.prorettype::regtype <> 'timestamptz'::regtype
+  ) then
+    drop function public.mark_conversation_read(uuid);
+  end if;
+end
+$$;
+
 create or replace function public.mark_conversation_read(p_conversation_id uuid) returns timestamptz
 language plpgsql security definer set search_path = '' as $$
 declare read_at timestamptz := now();
@@ -298,10 +327,6 @@ create policy authentication_events_owner_admin_read on public.authentication_ev
 using(account_id=auth.uid() or public.is_admin(false));
 create policy conversation_reads_participant_read on public.conversation_reads for select to authenticated
 using(account_id=auth.uid() and public.is_conversation_participant(conversation_id));
-create policy worker_portfolio_authenticated_read on public.worker_portfolio_media for select to authenticated
-using(exists(select 1 from public.worker_profiles worker where worker.account_id=worker_id and (worker.approval_status='APPROVED' or worker.account_id=auth.uid() or public.is_admin(false))));
-create policy worker_portfolio_owner_write on public.worker_portfolio_media for all to authenticated
-using(worker_id=auth.uid() or public.is_admin(false)) with check(worker_id=auth.uid() or public.is_admin(false));
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values
   ('profile-avatars','profile-avatars',false,5242880,array['image/jpeg','image/png','image/webp','image/heic']),

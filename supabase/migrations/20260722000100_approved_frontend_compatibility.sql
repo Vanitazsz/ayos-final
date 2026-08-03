@@ -254,6 +254,20 @@ returns public.service_categories language sql security definer set search_path 
   select public.admin_upsert_service_category(p_id, p_name, null, p_is_active)
 $$;
 
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'admin_upsert_service'
+      and p.prorettype::regtype <> 'public.service_templates'::regtype
+  ) then
+    drop function public.admin_upsert_service(uuid,text,uuid,bigint,bigint,integer,boolean);
+  end if;
+end
+$$;
+
 create or replace function public.admin_upsert_service(
   p_id uuid, p_name text, p_category_id uuid, p_minimum_price_minor bigint,
   p_maximum_price_minor bigint, p_duration_minutes integer, p_is_active boolean
@@ -274,6 +288,20 @@ begin
   if result.account_id is null then raise exception using errcode='P0002', message='WORKER_NOT_FOUND'; end if;
   return result;
 end $$;
+
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'submit_request_bid'
+      and p.prorettype::regtype <> 'public.service_request_offers'::regtype
+  ) then
+    drop function public.submit_request_bid(uuid,bigint,text,integer);
+  end if;
+end
+$$;
 
 create or replace function public.submit_request_bid(
   p_service_request_id uuid, p_amount_minor bigint, p_message text, p_duration_minutes integer

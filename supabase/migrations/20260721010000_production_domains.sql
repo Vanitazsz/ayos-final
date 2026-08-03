@@ -206,18 +206,28 @@ create table public.notification_campaigns (
   updated_at timestamptz not null default now()
 );
 
-create table public.notification_deliveries (
-  id uuid primary key default gen_random_uuid(),
-  campaign_id uuid not null references public.notification_campaigns(id) on delete cascade,
-  recipient_id uuid not null references public.accounts(id) on delete cascade,
-  notification_id uuid references public.notifications(id) on delete set null,
-  channel text not null default 'IN_APP' check (channel = 'IN_APP'),
-  status text not null default 'PENDING' check (status in ('PENDING','DELIVERED','READ','FAILED')),
-  delivered_at timestamptz,
-  read_at timestamptz,
-  error_code text,
-  unique(campaign_id, recipient_id, channel)
-);
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public'
+      and table_name = 'notification_deliveries'
+  ) then
+    create table public.notification_deliveries (
+      id uuid primary key default gen_random_uuid(),
+      campaign_id uuid not null references public.notification_campaigns(id) on delete cascade,
+      recipient_id uuid not null references public.accounts(id) on delete cascade,
+      notification_id uuid references public.notifications(id) on delete set null,
+      channel text not null default 'IN_APP' check (channel = 'IN_APP'),
+      status text not null default 'PENDING' check (status in ('PENDING','DELIVERED','READ','FAILED')),
+      delivered_at timestamptz,
+      read_at timestamptz,
+      error_code text,
+      unique(campaign_id, recipient_id, channel)
+    );
+  end if;
+end
+$$;
 
 create table public.cancellation_reasons (
   code text primary key check (code ~ '^[A-Z0-9_]+$'),
@@ -373,6 +383,20 @@ begin
   if result.id is null then raise exception using errcode='42501',message='BID_NOT_WITHDRAWABLE'; end if; return result;
 end $$;
 
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'mark_notification_read'
+      and p.prorettype::regtype <> 'public.notifications'::regtype
+  ) then
+    drop function public.mark_notification_read(uuid);
+  end if;
+end
+$$;
+
 create or replace function public.mark_notification_read(p_notification_id uuid) returns public.notifications
 language plpgsql security definer set search_path='' as $$
 declare result public.notifications;
@@ -508,7 +532,19 @@ create policy review_replies_read on public.review_replies for select to authent
 create policy review_replies_owner_all on public.review_replies for all to authenticated using(author_id=auth.uid()) with check(author_id=auth.uid());
 create policy review_insights_admin_read on public.review_ai_insights for select to authenticated using(public.is_admin(false));
 create policy campaigns_admin_all on public.notification_campaigns for all to authenticated using(public.is_admin(false)) with check(public.is_admin(false));
-create policy deliveries_owner_admin_read on public.notification_deliveries for select to authenticated using(recipient_id=auth.uid() or public.is_admin(false));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'notification_deliveries'
+      and policyname = 'deliveries_owner_admin_read'
+  ) then
+    create policy deliveries_owner_admin_read on public.notification_deliveries
+      for select to authenticated using(recipient_id=auth.uid() or public.is_admin(false));
+  end if;
+end
+$$;
 create policy cancellation_reasons_read on public.cancellation_reasons for select to anon,authenticated using(is_active or public.is_admin(false));
 create policy ai_consents_owner_read on public.ai_processing_consents for select to authenticated using(account_id=auth.uid() or public.is_admin(false));
 create policy ai_consents_owner_insert on public.ai_processing_consents for insert to authenticated with check(account_id=auth.uid());
