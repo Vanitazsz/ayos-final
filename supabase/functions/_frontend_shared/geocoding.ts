@@ -1,6 +1,28 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { HttpError } from './http.ts';
 
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+export function coalesceGeocodingRequest<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const existing = inFlightRequests.get(key);
+  if (existing) return existing as Promise<T>;
+  const pending = load().finally(() => {
+    if (inFlightRequests.get(key) === pending) inFlightRequests.delete(key);
+  });
+  inFlightRequests.set(key, pending);
+  return pending;
+}
+
+export function classifyGeocodingProviderError(status: number) {
+  if (status === 401 || status === 403)
+    return new HttpError(503, 'geocoding_unauthorized', 'Geocoding provider credentials rejected');
+  if (status === 429)
+    return new HttpError(429, 'geocoding_rate_limited', 'Geocoding provider rate limit reached');
+  if (status >= 500)
+    return new HttpError(503, 'geocoding_unavailable', 'Geocoding provider unavailable');
+  return new HttpError(422, 'invalid_geocoding_request', 'Geocoding request was rejected');
+}
+
 export async function enforceGeoRateLimit(admin: SupabaseClient, userId: string) {
   const since = new Date(Date.now() - 60000).toISOString();
   const { count } = await admin
@@ -35,15 +57,17 @@ export async function cached<T>(
     .gt('expires_at', new Date().toISOString())
     .maybeSingle();
   if (data) return { value: data.normalized_response as T, cached: true };
-  const value = await load();
-  await admin.from('geocoding_cache').upsert({
-    cache_key: key,
-    operation,
-    normalized_request: request,
-    normalized_response: value,
-    expires_at: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
+  return await coalesceGeocodingRequest(key, async () => {
+    const value = await load();
+    await admin.from('geocoding_cache').upsert({
+      cache_key: key,
+      operation,
+      normalized_request: request,
+      normalized_response: value,
+      expires_at: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
+    });
+    return { value, cached: false };
   });
-  return { value, cached: false };
 }
 export async function ors(path: string, init?: RequestInit) {
   const key = Deno.env.get('OPENROUTESERVICE_API_KEY');
@@ -63,13 +87,7 @@ export async function ors(path: string, init?: RequestInit) {
       endpoint: path.split('?')[0],
       providerMessage: providerMessage.slice(0, 500),
     });
-    if (response.status === 401 || response.status === 403)
-      throw new HttpError(503, 'geocoding_unauthorized', 'Geocoding provider credentials rejected');
-    if (response.status === 429)
-      throw new HttpError(429, 'geocoding_rate_limited', 'Geocoding provider rate limit reached');
-    if (response.status >= 500)
-      throw new HttpError(503, 'geocoding_unavailable', 'Geocoding provider unavailable');
-    throw new HttpError(422, 'invalid_geocoding_request', 'Geocoding request was rejected');
+    throw classifyGeocodingProviderError(response.status);
   }
   return await response.json();
 }

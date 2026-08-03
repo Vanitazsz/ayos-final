@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ayos.app"
+      "bundleIdentifier": "com.ayos.app.dev"
     },
     "android": {
       "package": "com.ayos.app"
@@ -24,11 +24,26 @@
       "expo-router",
       "expo-font",
       "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow A-YOS to use your camera to photograph the service problem."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow A-YOS to select a photo of the service problem.",
+          "cameraPermission": "Allow A-YOS to photograph the service problem.",
+          "microphonePermission": "Allow A-YOS to record a voice description of the service problem."
+        }
+      ],
       "@maplibre/maplibre-react-native",
       "@react-native-community/datetimepicker"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "autolinkingModuleResolution": true
     }
   }
 }

@@ -16,6 +16,7 @@ const queues = [
   'scheduled_notifications',
   'provider_work',
   'push_notifications',
+  'account_storage_purges',
 ] as const;
 
 async function sendPushNotification(
@@ -91,6 +92,25 @@ async function sendPushNotification(
   }
 }
 
+async function purgeAccountStorage(
+  admin: ReturnType<typeof adminClient>,
+  bucketId: unknown,
+  rawPaths: unknown,
+): Promise<void> {
+  if (
+    typeof bucketId !== 'string' ||
+    !bucketId ||
+    !Array.isArray(rawPaths) ||
+    rawPaths.some((path) => typeof path !== 'string' || !path)
+  )
+    throw new Error('INVALID_ACCOUNT_STORAGE_PURGE_JOB');
+  const paths = [...new Set(rawPaths as string[])];
+  for (let offset = 0; offset < paths.length; offset += 100) {
+    const { error } = await admin.storage.from(bucketId).remove(paths.slice(offset, offset + 100));
+    assertSuccess(error, 'account storage purge');
+  }
+}
+
 Deno.serve(async (request) => {
   const preflight = options(request);
   if (preflight) return preflight;
@@ -138,6 +158,8 @@ Deno.serve(async (request) => {
           assertSuccess(result.error, 'scheduled notification');
         } else if (queue === 'push_notifications') {
           await sendPushNotification(admin, raw.message.notification_id, raw.message.recipient_id);
+        } else if (queue === 'account_storage_purges') {
+          await purgeAccountStorage(admin, raw.message.bucket_id, raw.message.paths);
         } else if (queue === 'provider_work') throw new Error('PROVIDER_UNAVAILABLE');
         const archived = await admin.rpc('archive_job', {
           queue_name: queue,

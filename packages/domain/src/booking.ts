@@ -7,7 +7,8 @@ const transitions: Record<BookingStatus, readonly BookingStatus[]> = {
   WORKER_EN_ROUTE: ['WORKER_ARRIVED', 'CANCELLED'],
   WORKER_ARRIVED: ['SERVICE_STARTED', 'CANCELLED'],
   SERVICE_STARTED: ['IN_PROGRESS', 'CANCELLED'],
-  IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
+  IN_PROGRESS: ['PENDING_CONFIRMATION', 'CANCELLED'],
+  PENDING_CONFIRMATION: ['COMPLETED', 'CANCELLED'],
   COMPLETED: [],
   CANCELLED: [],
 };
@@ -19,7 +20,7 @@ const workerOnly: readonly BookingStatus[] = [
   'WORKER_ARRIVED',
   'SERVICE_STARTED',
   'IN_PROGRESS',
-  'COMPLETED',
+  'PENDING_CONFIRMATION',
 ];
 
 export function assertBookingTransition(
@@ -39,6 +40,10 @@ export function assertBookingTransition(
 
   if (workerOnly.includes(to) && actorRole !== 'WORKER' && actorRole !== 'ADMIN') {
     throw new DomainError('FORBIDDEN', 'Only the assigned worker can advance this booking.', 403);
+  }
+
+  if (to === 'COMPLETED' && actorRole !== 'USER' && actorRole !== 'ADMIN') {
+    throw new DomainError('FORBIDDEN', 'Only the booking customer can confirm completion.', 403);
   }
 
   if (to === 'CANCELLED' && (!reason || reason.trim().length < 3)) {

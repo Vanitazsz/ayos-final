@@ -11,6 +11,7 @@ export type WorkerMatchingReadiness = {
   accountEligible: boolean;
   verificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_DOCUMENTS';
   skillsReady: boolean;
+  rateReady: boolean;
   serviceAreaReady: boolean;
   scheduleReady: boolean;
   online: boolean;
@@ -55,7 +56,7 @@ function matchingErrorMessage(error: unknown) {
       : '';
   switch (message) {
     case 'WORKER_NOT_READY':
-      return 'Complete verification, skills, service area, and schedule before going online.';
+      return 'Complete verification, skills, a service rate, service area, and schedule before going online.';
     case 'INVALID_WORKER_MATCHING_SETUP':
       return 'Confirm your location, service area, radius, and working schedule.';
     case 'INVALID_WORKER_SCHEDULE':

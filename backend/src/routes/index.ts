@@ -1,0 +1,31 @@
+import { Router } from "express";
+import { authRouter } from "./auth.routes.js";
+import { catalogRouter } from "./catalog.routes.js";
+import { userCompatibilityRouter, userRouter } from "./user.routes.js";
+import { providerRouter, workerRouter } from "./worker.routes.js";
+import { bidRouter, bookingRouter, requestRouter } from "./request-booking.routes.js";
+import { conversationRouter, messageRouter, notificationRouter, paymentRouter, reviewRouter, supportRouter, transactionRouter } from "./domain.routes.js";
+import { uploadRouter } from "./upload.routes.js";
+import { adminRouter } from "./admin.routes.js";
+
+const router = Router();
+router.use("/auth", authRouter);
+router.use("/", catalogRouter);
+router.use("/users", userRouter);
+router.use("/user", userCompatibilityRouter);
+router.use("/providers", providerRouter);
+router.use("/workers", workerRouter);
+router.use("/requests", requestRouter);
+router.use("/bookings", bookingRouter);
+router.use("/bids",bidRouter);
+router.use("/conversations", conversationRouter);
+router.use("/messages", messageRouter);
+router.use("/reviews", reviewRouter);
+router.use("/notifications", notificationRouter);
+router.use("/support", supportRouter);
+router.use("/payments", paymentRouter);
+router.use("/transactions", transactionRouter);
+router.use("/uploads", uploadRouter);
+router.use("/admin", adminRouter);
+
+export { router as apiRouter };

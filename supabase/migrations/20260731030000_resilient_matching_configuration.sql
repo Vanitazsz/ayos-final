@@ -1,9 +1,9 @@
 -- Migration: Resilient Worker Matching Configuration & Automatic Availability Sync
 -- Fixes matching failures by:
--- 1. Updating update_worker_presence to set worker_profiles.is_available = true
--- 2. Making refresh_live_dispatch fallback-safe for skills, presence, schedule, and distance (keeping 2-minute window)
+-- 1. Keeping presence updates fail-closed for approved, active workers
+-- 2. Keeping live dispatch resilient without bypassing approval, rate, schedule, or presence checks
 -- 3. Updating start_live_dispatch to ALWAYS refresh session timestamps on search/retry
--- 4. Updating get_my_worker_matching_readiness to return matchable = true for all active worker profiles
+-- 4. Reporting readiness from persisted worker configuration
 
 BEGIN;
 
@@ -35,8 +35,10 @@ BEGIN
     FROM public.worker_profiles wp
     JOIN public.accounts a ON a.id = wp.account_id
     WHERE wp.account_id = AUTH.UID()
+      AND a.role = 'WORKER'
       AND a.status = 'ACTIVE'
       AND a.deleted_at IS NULL
+      AND wp.approval_status = 'APPROVED'
   ) THEN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'WORKER_NOT_READY';
   END IF;
@@ -70,14 +72,6 @@ BEGIN
       last_seen_at = NOW(),
       updated_at = NOW();
 
-  -- Automatically update worker_profiles.is_available and service_origin so worker is immediately matchable
-  UPDATE public.worker_profiles
-  SET is_available = p_online,
-      service_origin = COALESCE(service_origin, v_loc),
-      approval_status = CASE WHEN approval_status = 'PENDING' THEN 'APPROVED' ELSE approval_status END,
-      updated_at = NOW()
-  WHERE account_id = AUTH.UID();
-
   RETURN jsonb_build_object(
     'online', p_online,
     'lastSeenAt', NOW(),
@@ -86,7 +80,7 @@ BEGIN
 END;
 $$;
 
--- 2. Resilient Worker Readiness Function (Ensures worker is ALWAYS matchable when active)
+-- 2. Worker readiness remains explicit and fail-closed.
 CREATE OR REPLACE FUNCTION public.get_my_worker_matching_readiness()
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -97,6 +91,8 @@ AS $$
 DECLARE
   worker public.worker_profiles;
   account public.accounts;
+  skill_count INTEGER;
+  rate_ready BOOLEAN;
   schedule_count INTEGER;
   schedule JSONB;
 BEGIN
@@ -109,6 +105,15 @@ BEGIN
   IF worker.account_id IS NULL THEN
     RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'WORKER_PROFILE_NOT_FOUND';
   END IF;
+
+  SELECT COUNT(*)
+  INTO skill_count
+  FROM public.worker_skills skill
+  JOIN public.service_categories category ON category.id = skill.category_id
+  WHERE skill.worker_id = worker.account_id
+    AND category.is_active;
+
+  rate_ready := private.worker_has_service_rate(worker.account_id);
 
   SELECT COUNT(*), COALESCE(JSONB_AGG(JSONB_BUILD_OBJECT(
     'dayOfWeek', availability.day_of_week,
@@ -123,16 +128,33 @@ BEGIN
   RETURN JSONB_BUILD_OBJECT(
     'accountEligible', account.status = 'ACTIVE',
     'verificationStatus', worker.approval_status,
-    'skillsReady', TRUE,
-    'serviceAreaReady', TRUE,
-    'scheduleReady', TRUE,
-    'online', COALESCE(worker.is_available, TRUE),
-    'setupComplete', TRUE,
-    'matchable', account.status = 'ACTIVE',
-    'latitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_Y(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE 14.2988 END,
-    'longitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_X(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE 120.8621 END,
-    'serviceArea', COALESCE(worker.service_area, 'Trece Martires City Cavite'),
-    'radiusMeters', COALESCE(worker.service_radius_meters, 50000),
+    'skillsReady', skill_count > 0,
+    'rateReady', rate_ready,
+    'serviceAreaReady', worker.service_origin IS NOT NULL AND worker.service_radius_meters IS NOT NULL,
+    'scheduleReady', schedule_count > 0,
+    'online', worker.is_available,
+    'setupComplete',
+      account.status = 'ACTIVE'
+      AND worker.approval_status = 'APPROVED'
+      AND skill_count > 0
+      AND rate_ready
+      AND worker.service_origin IS NOT NULL
+      AND worker.service_radius_meters IS NOT NULL
+      AND schedule_count > 0,
+    'matchable',
+      account.status = 'ACTIVE'
+      AND worker.approval_status = 'APPROVED'
+      AND skill_count > 0
+      AND rate_ready
+      AND worker.service_origin IS NOT NULL
+      AND worker.service_radius_meters IS NOT NULL
+      AND schedule_count > 0
+      AND worker.is_available,
+    'latitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_Y(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE NULL END,
+    'longitude', CASE WHEN worker.service_origin IS NOT NULL THEN EXTENSIONS.ST_X(worker.service_origin::EXTENSIONS.GEOMETRY) ELSE NULL END,
+    'serviceArea', worker.service_area,
+    'radiusMeters', worker.service_radius_meters,
+    'serviceRadiusMeters', worker.service_radius_meters,
     'schedule', schedule
   );
 END;
@@ -173,34 +195,35 @@ AS $$
         EXISTS (
           SELECT 1
           FROM public.worker_skills skill
+          JOIN public.service_categories category ON category.id = skill.category_id
           WHERE skill.worker_id = worker.account_id
             AND skill.category_id = request.category_id
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM public.service_categories cat
-          WHERE cat.id = request.category_id
-            AND cat.industry_id = worker.primary_industry_id
-        )
-        OR NOT EXISTS (
-          SELECT 1 FROM public.worker_skills ws WHERE ws.worker_id = worker.account_id
+            AND category.is_active
         )
       ) AS skill_match,
-      (worker.approval_status = 'APPROVED' OR worker.approval_status = 'PENDING') AS approved,
-      TRUE AS service_area_ready,
+      EXISTS (
+        SELECT 1
+        FROM public.worker_skills skill
+        WHERE skill.worker_id = worker.account_id
+          AND skill.category_id = request.category_id
+          AND skill.rate_minor IS NOT NULL
+          AND skill.rate_minor <= ROUND(request.budget * 100)
+      ) AS rate_eligible,
+      worker.approval_status = 'APPROVED' AS approved,
+      (
+        worker.service_origin IS NOT NULL
+        AND worker.service_radius_meters IS NOT NULL
+      ) AS service_area_ready,
       CASE
-        WHEN presence.location IS NULL AND worker.service_origin IS NULL THEN TRUE
+        WHEN worker.service_origin IS NULL OR worker.service_radius_meters IS NULL THEN FALSE
         ELSE extensions.st_dwithin(
-          COALESCE(presence.location, worker.service_origin, request.service_location),
+          worker.service_origin,
           request.service_location,
-          GREATEST(COALESCE(worker.service_radius_meters, 50000), 10000)
+          worker.service_radius_meters
         )
       END AS within_radius,
       (
-        NOT EXISTS (
-          SELECT 1 FROM public.worker_availability av WHERE av.worker_id = worker.account_id
-        )
-        OR EXISTS (
+        EXISTS (
           SELECT 1
           FROM public.worker_availability availability
           WHERE availability.worker_id = worker.account_id
@@ -211,16 +234,18 @@ AS $$
               BETWEEN availability.start_time AND availability.end_time
         )
       ) AS schedule_match,
-      (worker.is_available OR COALESCE(presence.online, TRUE)) AS online,
+      worker.is_available AS online,
+      NOT private.accounts_block_each_other(
+        request.user_account_id,
+        worker.account_id
+      ) AS not_blocked,
       CASE
-        WHEN presence.location IS NOT NULL THEN extensions.st_distance(presence.location, request.service_location)
         WHEN worker.service_origin IS NOT NULL THEN extensions.st_distance(worker.service_origin, request.service_location)
-        ELSE 0
+        ELSE NULL
       END AS distance_meters
     FROM request
     CROSS JOIN public.worker_profiles worker
     LEFT JOIN public.accounts account ON account.id = worker.account_id
-    LEFT JOIN public.worker_presence presence ON presence.worker_id = worker.account_id
   )
   SELECT
     checks.worker_id,
@@ -234,10 +259,13 @@ AS $$
     (
       checks.account_eligible
       AND checks.skill_match
+      AND checks.rate_eligible
       AND checks.approved
+      AND checks.service_area_ready
       AND checks.within_radius
       AND checks.schedule_match
       AND checks.online
+      AND checks.not_blocked
     ) AS eligible,
     checks.distance_meters
   FROM checks;
@@ -301,44 +329,56 @@ BEGIN
     started + INTERVAL '2 minutes'
   FROM public.worker_profiles wp
   JOIN public.accounts a ON a.id = wp.account_id
-  LEFT JOIN public.worker_presence p ON p.worker_id = wp.account_id
-  LEFT JOIN public.service_categories sc ON sc.id = req.category_id
+  JOIN public.worker_presence p ON p.worker_id = wp.account_id
   WHERE a.role = 'WORKER'
     AND a.status = 'ACTIVE'
     AND a.deleted_at IS NULL
-    AND (wp.approval_status = 'APPROVED' OR wp.approval_status = 'PENDING')
-    AND (wp.is_available OR COALESCE(p.online, TRUE))
-    AND (
-      EXISTS (
-        SELECT 1
-        FROM public.worker_skills skill
-        WHERE skill.worker_id = wp.account_id
-          AND skill.category_id = req.category_id
-      )
-      OR wp.primary_industry_id = sc.industry_id
-      OR NOT EXISTS (
-        SELECT 1 FROM public.worker_skills ws WHERE ws.worker_id = wp.account_id
-      )
+    AND wp.approval_status = 'APPROVED'
+    AND wp.is_available
+    AND wp.service_origin IS NOT NULL
+    AND wp.service_radius_meters IS NOT NULL
+    AND p.online
+    AND p.last_seen_at > NOW() - INTERVAL '75 seconds'
+    AND EXISTS (
+      SELECT 1
+      FROM public.worker_skills skill
+      WHERE skill.worker_id = wp.account_id
+        AND skill.category_id = req.category_id
+        AND skill.rate_minor IS NOT NULL
+        AND skill.rate_minor <= ROUND(req.budget * 100)
     )
-    AND (
-      NOT EXISTS (SELECT 1 FROM public.worker_availability av WHERE av.worker_id = wp.account_id)
-      OR EXISTS (
+    AND EXISTS (
         SELECT 1
         FROM public.worker_availability availability
         WHERE availability.worker_id = wp.account_id
           AND availability.day_of_week = EXTRACT(DOW FROM req.scheduled_at AT TIME ZONE 'Asia/Manila')::INTEGER
           AND (req.scheduled_at AT TIME ZONE 'Asia/Manila')::TIME BETWEEN availability.start_time AND availability.end_time
-      )
     )
-    AND (req.subdivision_id IS NULL OR wp.subdivision_id IS NULL OR wp.subdivision_id = req.subdivision_id)
-    AND (
-      p.location IS NULL
-      OR extensions.st_dwithin(
-        p.location,
-        req.service_location,
-        GREATEST(search_radius, COALESCE(wp.service_radius_meters, search_radius), 50000)
-      )
+    AND (req.subdivision_id IS NULL OR wp.subdivision_id = req.subdivision_id)
+    AND extensions.st_dwithin(
+      wp.service_origin,
+      req.service_location,
+      wp.service_radius_meters
     )
+    AND extensions.st_dwithin(
+      p.location,
+      req.service_location,
+      LEAST(search_radius, wp.service_radius_meters)
+    )
+    AND NOT private.accounts_block_each_other(
+      req.user_account_id,
+      wp.account_id
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.service_request_dispatches prior
+      WHERE prior.service_request_id = req.id
+        AND prior.worker_id = wp.account_id
+    )
+  ORDER BY
+    extensions.st_distance(p.location, req.service_location),
+    wp.account_id
+  LIMIT 1
   ON CONFLICT(service_request_id, worker_id) DO UPDATE
   SET wave = 1,
       status = CASE WHEN service_request_dispatches.status = 'EXPIRED' THEN 'OFFERED' ELSE service_request_dispatches.status END,
@@ -388,7 +428,6 @@ BEGIN
   SET status = 'OFFERED', expires_at = NOW() + INTERVAL '2 minutes', updated_at = NOW()
   WHERE service_request_id = p_service_request_id AND status = 'EXPIRED';
 
-  PERFORM private.refresh_live_dispatch(p_service_request_id);
   RETURN public.get_live_dispatch_snapshot(p_service_request_id);
 END;
 $$;

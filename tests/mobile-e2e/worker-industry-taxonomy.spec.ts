@@ -13,6 +13,39 @@ const industries = [
   'Roofing & Waterproofing',
 ] as const;
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/rest/v1/industries*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        industries.map((name, index) => {
+          const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const skills =
+            name === 'Cleaning'
+              ? ['Deep Cleaning', 'Regular Cleaning']
+              : name === 'Roofing & Waterproofing'
+                ? ['Roof Inspection & Repair', 'Waterproofing']
+                : [`${name} Service`];
+
+          return {
+            id: `97000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+            slug,
+            name,
+            sort_order: index + 1,
+            service_categories: skills.map((skillName, skillIndex) => ({
+              id: `97100000-0000-4000-${String(index + 1).padStart(4, '0')}-${String(skillIndex + 1).padStart(12, '0')}`,
+              slug: skillName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              name: skillName,
+              is_active: true,
+            })),
+          };
+        }),
+      ),
+    }),
+  );
+});
+
 async function openIndustryStep(page: Page) {
   await page.goto('/register-worker');
   await page.getByPlaceholder('Enter first name').fill('Taxonomy');

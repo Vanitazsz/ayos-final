@@ -3,6 +3,11 @@ import { AppState } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { getWorkerMatchingReadiness } from '@/services/workerMatching';
 
+export const WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS = 15_000;
+export const LIVE_DISPATCH_REFRESH_INTERVAL_MS = 30_000;
+export const EN_ROUTE_LOCATION_INTERVAL_MS = 5_000;
+export const MIN_LOCATION_MOVEMENT_METERS = 20;
+
 export type DispatchStatus =
   | 'OFFERED'
   | 'VIEWED'
@@ -28,8 +33,10 @@ export type DispatchDiagnostics = {
     | 'NO_ACTIVE_WORKERS'
     | 'NO_CATEGORY_WORKERS'
     | 'NO_APPROVED_WORKERS'
+    | 'WORKERS_MISSING_SERVICE_AREA'
     | 'WORKERS_OFFLINE'
     | 'NO_FRESH_PRESENCE'
+    | 'OUTSIDE_SERVICE_RADIUS'
     | 'OUTSIDE_SEARCH_RADIUS'
     | 'OUTSIDE_WORKING_HOURS'
     | 'WAITING_FOR_RESPONSE';
@@ -61,7 +68,7 @@ export type DispatchOffer = {
   expiresAt: string;
   category: string;
   description: string;
-  budget: number;
+  rateMinor: number | null;
   area: string;
 };
 export type PresenceState =
@@ -165,6 +172,45 @@ export function sanitizeAccuracy(
   return Math.round(accuracy * 100) / 100;
 }
 
+export function distanceBetweenLocationsMeters(
+  previous: Location.LocationObject,
+  next: Location.LocationObject,
+) {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusMeters = 6_371_000;
+  const latitudeDelta = toRadians(
+    next.coords.latitude - previous.coords.latitude,
+  );
+  const longitudeDelta = toRadians(
+    next.coords.longitude - previous.coords.longitude,
+  );
+  const previousLatitude = toRadians(previous.coords.latitude);
+  const nextLatitude = toRadians(next.coords.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(previousLatitude) *
+      Math.cos(nextLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return (
+    2 *
+    earthRadiusMeters *
+    Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  );
+}
+
+export function shouldPublishLocation(
+  previous: Location.LocationObject | null,
+  next: Location.LocationObject,
+  forceHeartbeat = false,
+) {
+  return (
+    forceHeartbeat ||
+    previous === null ||
+    distanceBetweenLocationsMeters(previous, next) >=
+      MIN_LOCATION_MOVEMENT_METERS
+  );
+}
+
 async function publishWorkerPosition(
   position: Location.LocationObject,
   online = true,
@@ -219,13 +265,28 @@ export async function startForegroundWorkerPresence(
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   let backgroundGraceTimer: ReturnType<typeof setTimeout> | null = null;
   let latestPosition: Location.LocationObject | null = null;
+  let lastPublishedPosition: Location.LocationObject | null = null;
 
-  const publish = async (position: Location.LocationObject, online = true) => {
+  const publish = async (
+    position: Location.LocationObject,
+    online = true,
+    forceHeartbeat = false,
+  ) => {
     if (publishing) return;
+    latestPosition = position;
+    if (
+      online &&
+      !shouldPublishLocation(
+        lastPublishedPosition,
+        position,
+        forceHeartbeat,
+      )
+    )
+      return;
     publishing = true;
     try {
-      latestPosition = position;
       await publishWorkerPosition(position, online);
+      if (online) lastPublishedPosition = position;
       if (!stopped) onState(online ? 'online' : 'offline');
     } catch (error) {
       if (!stopped) onState('error', normalizeSupabaseError(error).message);
@@ -240,7 +301,7 @@ export async function startForegroundWorkerPresence(
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      if (!stopped && active) await publish(position, true);
+      if (!stopped && active) await publish(position, true, true);
     } catch (error) {
       if (!stopped && active)
         onState(
@@ -279,7 +340,7 @@ export async function startForegroundWorkerPresence(
       subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 10000,
+          timeInterval: WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS,
           distanceInterval: 20,
         },
         (position) => {
@@ -291,7 +352,10 @@ export async function startForegroundWorkerPresence(
             onState('error', message || 'Browser location updates stopped.');
         },
       );
-      heartbeatTimer = setInterval(() => void heartbeat(), 10000);
+      heartbeatTimer = setInterval(
+        () => void heartbeat(),
+        WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS,
+      );
     } catch (error) {
       stopActivePresence();
       if (!stopped)
@@ -386,8 +450,8 @@ export async function startEnRouteLocationPublisher(
   activeEnRouteSubscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,
-      timeInterval: 5000,
-      distanceInterval: 5,
+      timeInterval: EN_ROUTE_LOCATION_INTERVAL_MS,
+      distanceInterval: MIN_LOCATION_MOVEMENT_METERS,
     },
     (position) => {
       const payload: LiveEnRouteLocation = {
@@ -441,4 +505,3 @@ export function subscribeToEnRouteLocation(
     void supabase.removeChannel(channel);
   };
 }
-

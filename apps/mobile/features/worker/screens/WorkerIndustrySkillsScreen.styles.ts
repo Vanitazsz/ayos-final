@@ -1,0 +1,183 @@
+import { theme } from '@/constants/theme';
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  content: { flex: 1 },
+  contentInner: {
+    padding: theme.layout.screenPadding,
+    paddingBottom: theme.spacing.xxxl,
+    gap: theme.spacing.lg,
+  },
+  errorCard: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fca5a5',
+    borderWidth: 1,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+  },
+  sectionCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    ...theme.shadows.sm,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
+  industryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  industryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  industryChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  industryChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  industryChipTextActive: {
+    color: theme.colors.surface,
+  },
+  skillsList: {
+    gap: theme.spacing.sm,
+  },
+  skillBlock: {
+    gap: theme.spacing.sm,
+  },
+  skillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.background,
+    gap: theme.spacing.md,
+  },
+  skillRowChecked: {
+    borderColor: theme.colors.primary,
+    backgroundColor: `${theme.colors.primary}0D`,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  yearsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  yearBadge: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  yearBadgeActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  yearBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  yearBadgeTextActive: {
+    color: theme.colors.surface,
+  },
+  footer: {
+    padding: theme.spacing.md,
+    paddingHorizontal: theme.layout.screenPadding,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+  },
+  confirmationOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.layout.screenPadding,
+    backgroundColor: theme.colors.overlay,
+  },
+  confirmationDialog: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.lg,
+  },
+  confirmationIcon: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.success,
+  },
+  confirmationTitle: {
+    textAlign: 'center',
+    color: theme.colors.textPrimary,
+  },
+  confirmationDescription: {
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+    color: theme.colors.textSecondary,
+  },
+  currencyPrefix: {
+    ...theme.typography.body1,
+    color: theme.colors.textPrimary,
+  },
+});

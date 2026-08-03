@@ -5,18 +5,16 @@ import { Navigation } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
 import { MapSurface } from './maps/MapSurface';
-import { reverseGeocode } from '@/services/api';
+import { reverseGeocode } from '@/services/geocoding';
+import type { AddressDetailsRecord } from '@/types/location';
 
-export interface AddressDetails {
+export interface AddressDetails extends AddressDetailsRecord {
   streetNumber: string;
   street: string;
   district: string;
   city: string;
   region: string;
   postalCode: string;
-  providerId?: string;
-  confidence?: number | null;
-  providerPayload?: Record<string, unknown>;
 }
 
 export interface LocationCoordinates {
@@ -42,111 +40,129 @@ interface Props {
   error?: string;
 }
 
-export const LocationPicker = forwardRef<LocationPickerHandle, Props>(function LocationPicker(
-  {
-    coords,
-    onCoordinatesDetected,
-    onLocationDetected,
-    onWarning,
-    onLoadingChange,
-    showAction = true,
-    error,
-  },
-  ref,
-) {
-  const [loading, setLoading] = useState(false);
+export const LocationPicker = forwardRef<LocationPickerHandle, Props>(
+  function LocationPicker(
+    {
+      coords,
+      onCoordinatesDetected,
+      onLocationDetected,
+      onWarning,
+      onLoadingChange,
+      showAction = true,
+      error,
+    },
+    ref,
+  ) {
+    const [loading, setLoading] = useState(false);
 
-  const setBusy = (next: boolean) => {
-    setLoading(next);
-    onLoadingChange?.(next);
-  };
+    const setBusy = (next: boolean) => {
+      setLoading(next);
+      onLoadingChange?.(next);
+    };
 
-  const detectCurrentLocation = async () => {
-    setBusy(true);
-    onWarning?.(null);
-    try {
-      if (Platform.OS !== 'web') {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== 'granted') throw new Error('Location permission is required.');
-      }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const current = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      onCoordinatesDetected(current);
-
+    const detectCurrentLocation = async () => {
+      setBusy(true);
+      onWarning?.(null);
       try {
-        const result = await reverseGeocode(current.latitude, current.longitude);
-        onLocationDetected(
-          {
-            streetNumber: '',
-            street: result?.line ?? '',
-            district: result?.barangay ?? '',
-            city: result?.city ?? '',
-            region: result?.province ?? '',
-            postalCode: result?.postalCode ?? '',
-            providerId: result?.providerId,
-            confidence: result?.confidence,
-            providerPayload: result?.raw,
-          },
-          current,
-          result?.displayLabel ?? '',
+        if (Platform.OS !== 'web') {
+          const permission = await Location.requestForegroundPermissionsAsync();
+          if (permission.status !== 'granted')
+            throw new Error('Location permission is required.');
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const current = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        onCoordinatesDetected(current);
+
+        try {
+          const result = await reverseGeocode(
+            current.latitude,
+            current.longitude,
+          );
+          onLocationDetected(
+            {
+              streetNumber: '',
+              street: result?.line ?? '',
+              district: result?.barangay ?? '',
+              city: result?.city ?? '',
+              region: result?.province ?? '',
+              postalCode: result?.postalCode ?? '',
+              providerId: result?.providerId,
+              confidence: result?.confidence,
+              providerPayload: result?.raw,
+            },
+            current,
+            result?.displayLabel ?? '',
+          );
+        } catch {
+          onWarning?.(
+            'Your map point is confirmed, but the address provider is unavailable. Enter the address manually.',
+          );
+        }
+      } catch (reason) {
+        Alert.alert(
+          'Location unavailable',
+          reason instanceof Error
+            ? reason.message
+            : 'Unable to detect your current location.',
         );
-      } catch {
-        onWarning?.(
-          'Your map point is confirmed, but the address provider is unavailable. Enter the address manually.',
-        );
+      } finally {
+        setBusy(false);
       }
-    } catch (reason) {
-      Alert.alert(
-        'Location unavailable',
-        reason instanceof Error ? reason.message : 'Unable to detect your current location.',
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
+    };
 
-  useImperativeHandle(ref, () => ({ useCurrentLocation: detectCurrentLocation }));
+    useImperativeHandle(ref, () => ({
+      useCurrentLocation: detectCurrentLocation,
+    }));
 
-  return (
-    <View style={styles.container}>
-      {showAction && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Use current location"
-          style={[styles.button, error ? styles.errorBorder : null]}
-          onPress={() => void detectCurrentLocation()}
-          disabled={loading}
-        >
-          <Navigation size={20} color={Colors.white} />
-          <AppText variant="body" weight="semiBold" color={Colors.white}>
-            {loading ? 'Detecting Location...' : 'Use Current Location'}
-          </AppText>
-        </Pressable>
-      )}
-      {error && !coords && (
-        <AppText variant="caption" color={Colors.error} style={styles.errorText}>
-          {error}
-        </AppText>
-      )}
-      {coords && (
-        <View style={styles.mapContainer}>
-          <MapSurface center={coords} points={[{ id: 'selected', ...coords }]} interactive={false} />
-          <View style={styles.successBadge}>
-            <AppText variant="caption" weight="bold" color={Colors.verified}>
-              ✓ Location Verified
+    return (
+      <View style={styles.container}>
+        {showAction && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Use current location"
+            style={[styles.button, error ? styles.errorBorder : null]}
+            onPress={() => void detectCurrentLocation()}
+            disabled={loading}
+          >
+            <Navigation size={20} color={Colors.white} />
+            <AppText variant="body" weight="semiBold" color={Colors.white}>
+              {loading ? 'Detecting Location...' : 'Use Current Location'}
             </AppText>
+          </Pressable>
+        )}
+        {error && !coords && (
+          <AppText
+            variant="caption"
+            color={Colors.error}
+            style={styles.errorText}
+          >
+            {error}
+          </AppText>
+        )}
+        {coords && (
+          <View style={styles.mapContainer}>
+            <MapSurface
+              center={coords}
+              points={[{ id: 'selected', ...coords }]}
+              interactive={false}
+            />
+            <View style={styles.successBadge}>
+              <AppText variant="caption" weight="bold" color={Colors.verified}>
+                ✓ Location Verified
+              </AppText>
+            </View>
           </View>
-        </View>
-      )}
-    </View>
-  );
-});
+        )}
+      </View>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   container: { marginBottom: Spacing['4'] },

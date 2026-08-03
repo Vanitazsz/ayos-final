@@ -98,7 +98,7 @@ describe('invokeAuthenticatedFunction', () => {
     await expect(invokeAuthenticatedFunction('example')).rejects.toBeInstanceOf(
       SessionExpiredError,
     );
-    expect(mocks.expireSession).toHaveBeenCalledTimes(1);
+    expect(mocks.expireSession).toHaveBeenCalledTimes(2);
     expect(mocks.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(mocks.invoke).not.toHaveBeenCalled();
   });
@@ -134,4 +134,3 @@ describe('invokeAuthenticatedFunction', () => {
     expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
   });
 });
-

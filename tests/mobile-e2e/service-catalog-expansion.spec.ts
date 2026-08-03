@@ -227,6 +227,7 @@ test('request requires a confirmed point and continues after selecting a geocode
   await expect(page.getByText('✓ Location Verified', { exact: true })).toBeVisible();
   await page.getByText('Continue without AI', { exact: true }).click();
   await expect(page).toHaveURL(/\/new-request\/matching/);
+  await expect(page.getByText(/Each matched worker's saved service rate/)).toBeVisible();
 });
 
 test('header current-location control confirms GPS and reverse-geocoded address', async ({
@@ -483,7 +484,7 @@ test('photo analysis waits for consent then merges an editable explanation', asy
   await page.goto('/new-request/create');
 
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.getByText('Take Photo', { exact: true }).click();
+  await page.getByText('Upload Photo', { exact: true }).click();
   const chooser = await chooserPromise;
   await chooser.setFiles(join(process.cwd(), 'apps/mobile/assets/images/icon.png'));
 
@@ -493,6 +494,84 @@ test('photo analysis waits for consent then merges an editable explanation', asy
   await expect(page.getByPlaceholder('e.g. The sink is leaking under the cabinet...')).toHaveValue(
     /leaking pipe connection/i,
   );
+});
+
+test('take photo opens a dedicated camera and keeps upload as a separate action', async ({
+  page,
+}) => {
+  await useCustomerFixture(page);
+  await page.goto('/new-request/create');
+
+  await expect(page.getByRole('button', { name: 'Take Photo' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Upload Photo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Take Photo' }).click();
+  await expect(page.getByRole('button', { name: 'Close camera' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close camera' }).click();
+  await expect(page.getByRole('button', { name: 'Upload Photo' })).toBeVisible();
+});
+
+test('AI summary shows eligible worker rates and saves the edited request', async ({ page }) => {
+  test.setTimeout(60_000);
+  await useCustomerFixture(page);
+  await page.route('**/functions/v1/ai-analyze-request', (route) =>
+    route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { id: '44444444-4444-4444-8444-444444444444' },
+      }),
+    }),
+  );
+  await page.route('**/functions/v1/ai-process-job', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          status: 'SUCCEEDED',
+          result: {
+            analysisId: '55555555-5555-4555-8555-555555555555',
+            detectedIssue: 'Leaking pipe connection',
+            estimatedDurationMinutes: 45,
+            requestDraft: 'Inspect and repair the leaking pipe connection.',
+            safetyCritical: false,
+            safetyAdvice: [],
+          },
+        },
+      }),
+    }),
+  );
+  await page.route('**/rest/v1/rpc/get_worker_rate_estimate', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        minimumRateMinor: 50000,
+        maximumRateMinor: 70000,
+        workerCount: 2,
+      }),
+    }),
+  );
+
+  await page.goto('/new-request/create');
+  await page.getByTestId('request-service-option').first().click();
+  await page
+    .getByPlaceholder('e.g. The sink is leaking under the cabinet...')
+    .fill('The pipe under the kitchen sink is leaking.');
+  await page.getByPlaceholder('Enter complete address').fill('Makati City Hall');
+  await page.getByRole('button', { name: `Use address ${geocodedAddress.displayLabel}` }).click();
+  await page.getByRole('checkbox').click();
+  await page.getByText('Continue', { exact: true }).click();
+
+  await expect(page.getByText('Analysis Complete', { exact: true })).toBeVisible();
+  await expect(page.getByText('₱500.00 – ₱700.00 worker-rate range')).toBeVisible();
+  const editable = page.getByLabel('Editable request draft');
+  await editable.fill('Inspect the kitchen pipe and repair the active leak.');
+  await page.getByText('Continue to AI Matching', { exact: true }).click();
+  await expect(page).toHaveURL(/\/new-request\/matching/);
+  await expect(page.getByText(/Each matched worker's saved service rate/)).toBeVisible();
 });
 
 for (const viewport of [

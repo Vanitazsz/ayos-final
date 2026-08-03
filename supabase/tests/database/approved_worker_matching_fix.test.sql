@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(18);
 
 select has_function(
   'public',
@@ -45,11 +45,12 @@ select lives_ok(
   'legacy mismatched profile data can remain dormant during reconciliation'
 );
 
-insert into public.worker_skills(worker_id,category_id,years)
+insert into public.worker_skills(worker_id,category_id,years,rate_minor)
 select
   '98000000-0000-0000-0000-000000000002',
   category.id,
-  3
+  3,
+  null
 from public.service_categories category
 where category.name = 'Plumbing';
 
@@ -102,6 +103,34 @@ reset role;
 update public.worker_profiles
 set approval_status = 'APPROVED'
 where account_id = '98000000-0000-0000-0000-000000000002';
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"98000000-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.save_my_worker_matching_setup(
+    14.28,120.88,20000,'Trece Martires City',
+    '[{"dayOfWeek":4,"startTime":"00:00","endTime":"01:00"}]'::jsonb,
+    true
+  )$$,
+  '55000',
+  'WORKER_NOT_READY',
+  'approved workers without a service rate cannot go online'
+);
+select is(
+  public.get_my_worker_matching_readiness()->>'rateReady',
+  'false',
+  'worker readiness reports a missing service rate'
+);
+
+reset role;
+update public.worker_skills
+set rate_minor = 50000
+where worker_id = '98000000-0000-0000-0000-000000000002';
 
 select set_config(
   'request.jwt.claims',

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { subscribe } from '../services/adminData';
+import { subscribe } from '../services/realtime';
 
 export function useRealtime(tables, onEvent) {
   useEffect(() => {

@@ -47,6 +47,18 @@ const query = (result: unknown) => {
   return builder;
 };
 
+const singleQuery = (result: unknown) => {
+  const builder = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    single: vi.fn(),
+  };
+  builder.select.mockReturnValue(builder);
+  builder.eq.mockReturnValue(builder);
+  builder.single.mockResolvedValue(result);
+  return builder;
+};
+
 describe('fetchWorkerBookings', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -147,5 +159,76 @@ describe('selectWorker', () => {
         message: 'WORKER_UNAVAILABLE',
       }),
     );
+  });
+});
+
+describe('booking completion', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mocks.from.mockImplementation(() =>
+      singleQuery({ data: { version: 7 }, error: null }),
+    );
+    mocks.rpc.mockResolvedValue({
+      data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 8 },
+      error: null,
+    });
+  });
+
+  it('submits worker completion for customer confirmation', async () => {
+    const { completeJob } = await import('./api');
+
+    await completeJob('booking-id');
+
+    expect(mocks.rpc).toHaveBeenCalledWith('transition_booking', {
+      p_booking_id: 'booking-id',
+      p_target_status: 'PENDING_CONFIRMATION',
+      p_expected_version: 7,
+      p_reason: null,
+    });
+  });
+
+  it('lets the customer confirm a pending completion', async () => {
+    const api = await import('./api');
+
+    await api.confirmJobCompletion('booking-id');
+
+    expect(mocks.rpc).toHaveBeenCalledWith('transition_booking', {
+      p_booking_id: 'booking-id',
+      p_target_status: 'COMPLETED',
+      p_expected_version: 7,
+      p_reason: null,
+    });
+  });
+
+  it('refreshes the version and retries once after a concurrent booking update', async () => {
+    const bookingVersions = [
+      { data: { version: 7 }, error: null },
+      { data: { version: 8 }, error: null },
+    ];
+    mocks.from.mockImplementation(() =>
+      singleQuery(bookingVersions.shift() ?? { data: { version: 8 }, error: null }),
+    );
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: '40001', message: 'BOOKING_VERSION_CONFLICT' },
+      })
+      .mockResolvedValueOnce({
+        data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 9 },
+        error: null,
+      });
+
+    const { completeJob } = await import('./api');
+
+    await expect(completeJob('booking-id')).resolves.toEqual({
+      data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 9 },
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('transition_booking', {
+      p_booking_id: 'booking-id',
+      p_target_status: 'PENDING_CONFIRMATION',
+      p_expected_version: 8,
+      p_reason: null,
+    });
   });
 });

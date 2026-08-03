@@ -11,3 +11,5 @@ ayos-try/**
 **/database.generated.ts
 apps/admin/**
 apps/mobile/**
+dbsql.md
+dbtables.md

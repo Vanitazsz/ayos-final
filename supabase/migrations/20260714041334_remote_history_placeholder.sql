@@ -1,0 +1,3 @@
+-- Remote migration history marker.
+-- The executable platform schema is defined by the forward migrations beginning
+-- with 20260720000100_platform.sql; this placeholder must not replay a snapshot.

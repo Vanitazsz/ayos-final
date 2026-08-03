@@ -17,6 +17,7 @@ const initialReadiness = {
   accountEligible: true,
   verificationStatus: 'APPROVED',
   skillsReady: true,
+  rateReady: true,
   serviceAreaReady: true,
   scheduleReady: true,
   online: false,
@@ -36,7 +37,7 @@ const initialReadiness = {
   ],
 };
 
-async function useWorkerFixture(page: Page) {
+async function useWorkerFixture(page: Page, readiness = initialReadiness) {
   const token = accessToken();
   const user = {
     id: workerId,
@@ -93,7 +94,7 @@ async function useWorkerFixture(page: Page) {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(initialReadiness),
+      body: JSON.stringify(readiness),
     }),
   );
 }
@@ -118,6 +119,10 @@ test('approved worker can complete setup and go online', async ({ page }) => {
   await page.goto('/service-setup');
   await expect(page.getByText('Service Availability', { exact: true })).toBeVisible();
   await expect(page.getByText('Admin verification approved')).toBeVisible();
+  await expect(page.getByText('Service rate set in Industry & Skills')).toHaveCSS(
+    'color',
+    'rgb(16, 185, 129)',
+  );
   await expect(page.getByText('Service origin and radius')).toBeVisible();
 
   await page.getByLabel('Available for matching').click();
@@ -130,6 +135,22 @@ test('approved worker can complete setup and go online', async ({ page }) => {
     p_radius_meters: 20_000,
     p_online: true,
   });
+});
+
+test('worker without a service rate cannot enable matching', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await useWorkerFixture(page, {
+    ...initialReadiness,
+    rateReady: false,
+    setupComplete: false,
+  });
+
+  await page.goto('/service-setup');
+  await expect(page.getByText('Service rate set in Industry & Skills')).toBeVisible();
+  await expect(page.getByLabel('Available for matching')).toBeDisabled();
+  await expect(
+    page.getByText('Admin approval, at least one skill, and a service rate are required.'),
+  ).toBeVisible();
 });
 
 for (const viewport of [

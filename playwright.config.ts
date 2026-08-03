@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const localSupabaseUrl = process.env.SUPABASE_URL ?? 'https://qsurouiyvisykjkgjqmz.supabase.co';
+const localSupabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? 'local-playwright-key';
+
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
@@ -28,12 +31,20 @@ export default defineConfig({
     {
       command: 'pnpm --dir apps/admin dev -- --host 127.0.0.1 --port 5173',
       url: 'http://localhost:5173/login',
+      env: {
+        VITE_SUPABASE_URL: localSupabaseUrl,
+        VITE_SUPABASE_PUBLISHABLE_KEY: localSupabaseKey,
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: 'pnpm --dir apps/mobile exec expo start --web --port 8081',
       url: 'http://localhost:8081/landing',
+      env: {
+        EXPO_PUBLIC_SUPABASE_URL: localSupabaseUrl,
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: localSupabaseKey,
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

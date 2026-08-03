@@ -9,6 +9,8 @@ let bookingStatus = 'COMPLETED';
 let requestStatus = 'CLOSED';
 let messageRows: Record<string, unknown>[] = [];
 let conversationFetchFails = false;
+let conversationArchived = false;
+let archiveRequests = 0;
 
 test.beforeEach(async ({ page }, testInfo) => {
   const workerSession = testInfo.title.toLowerCase().includes('worker');
@@ -17,6 +19,8 @@ test.beforeEach(async ({ page }, testInfo) => {
   bookingStatus = 'COMPLETED';
   requestStatus = 'CLOSED';
   conversationFetchFails = false;
+  conversationArchived = false;
+  archiveRequests = 0;
   messageRows = [
     {
       id: 'b6000000-0000-0000-0000-000000000001',
@@ -46,13 +50,10 @@ test.beforeEach(async ({ page }, testInfo) => {
     },
   };
 
-  await page.addInitScript(
-    ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
-    {
-      key: 'sb-qsurouiyvisykjkgjqmz-auth-token',
-      value: session,
-    },
-  );
+  await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
+    key: 'sb-qsurouiyvisykjkgjqmz-auth-token',
+    value: session,
+  });
   await page.route('**/auth/v1/user', (route) =>
     route.fulfill({
       status: 200,
@@ -90,25 +91,22 @@ test.beforeEach(async ({ page }, testInfo) => {
       body: JSON.stringify(null),
     }),
   );
-  await page.route(
-    '**/rest/v1/rpc/get_my_worker_matching_readiness',
-    (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          matchable: false,
-          setupComplete: false,
-          online: false,
-        }),
+  await page.route('**/rest/v1/rpc/get_my_worker_matching_readiness', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        matchable: false,
+        setupComplete: false,
+        online: false,
       }),
+    }),
   );
   await page.route('**/rest/v1/conversations?*', (route) => {
     const url = new URL(route.request().url());
     const detail = url.searchParams.has('id');
-    expect(url.searchParams.get('select')).toContain(
-      'accounts:account_id(user_profiles',
-    );
+    expect(url.searchParams.get('select')).toContain('worker_profiles:worker_account_id');
+    expect(url.searchParams.get('select')).toContain('user_profiles:user_account_id');
     if (conversationFetchFails) {
       return route.fulfill({
         status: 400,
@@ -126,38 +124,46 @@ test.beforeEach(async ({ page }, testInfo) => {
       worker_account_id: workerId,
       archived_at: null,
       updated_at: '2026-07-28T08:00:00.000Z',
+      worker_profiles: {
+        display_name: 'Matched Worker',
+        avatar_path: '',
+      },
       bookings: {
         status: bookingStatus,
         user_account_id: customerId,
         worker_account_id: workerId,
+        user_profiles: {
+          display_name: 'Matched Customer',
+          avatar_path: '',
+        },
+        worker_profiles: {
+          display_name: 'Matched Worker',
+          avatar_path: '',
+        },
       },
       service_requests: {
         status: requestStatus,
         user_account_id: customerId,
         selected_worker_id: workerId,
+        user_profiles: {
+          display_name: 'Matched Customer',
+          avatar_path: '',
+        },
+        worker_profiles: {
+          display_name: 'Matched Worker',
+          avatar_path: '',
+        },
       },
       conversation_participants: [
         {
           account_id: customerId,
           last_read_at: '2026-07-28T08:00:00.000Z',
-          accounts: {
-            user_profiles: {
-              display_name: 'Matched Customer',
-              avatar_path: '',
-            },
-            worker_profiles: null,
-          },
+          accounts: null,
         },
         {
           account_id: workerId,
           last_read_at: null,
-          accounts: {
-            user_profiles: null,
-            worker_profiles: {
-              display_name: 'Matched Worker',
-              avatar_path: '',
-            },
-          },
+          accounts: null,
         },
       ],
       messages: [
@@ -169,11 +175,12 @@ test.beforeEach(async ({ page }, testInfo) => {
         },
       ],
     };
+    const responseBody = detail ? row : conversationArchived ? [] : [row];
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      headers: detail ? {} : { 'content-range': '0-0/1' },
-      body: JSON.stringify(detail ? row : [row]),
+      headers: detail ? {} : { 'content-range': conversationArchived ? '*/0' : '0-0/1' },
+      body: JSON.stringify(responseBody),
     });
   });
   await page.route('**/rest/v1/messages?*', (route) =>
@@ -201,15 +208,29 @@ test.beforeEach(async ({ page }, testInfo) => {
       body: JSON.stringify(sent),
     });
   });
+  await page.route('**/rest/v1/rpc/archive_closed_conversation', async (route) => {
+    const request = route.request().postDataJSON();
+    expect(request.p_conversation_id).toBe(conversationId);
+    archiveRequests += 1;
+    conversationArchived = true;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: conversationId,
+        archived_at: new Date().toISOString(),
+      }),
+    });
+  });
 });
 
-test('only matched conversations are listed and closed chat is read-only', async ({
-  page,
-}) => {
+test('only matched conversations are listed and closed chat is read-only', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(page.getByText('Matched Conversations')).toBeVisible();
   await expect(page.getByText('Matched Worker')).toBeVisible();
+  await expect(page.getByText('Chat Participant')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Delete Conversation' })).toBeVisible();
   await expect(page.getByText('Read only')).toBeVisible();
   await expect(page.getByText('PoC Demo', { exact: false })).toHaveCount(0);
   await expect(page.getByText('Tap to Chat', { exact: false })).toHaveCount(0);
@@ -221,15 +242,51 @@ test('only matched conversations are listed and closed chat is read-only', async
     page.getByText('This conversation is read-only because the job is closed.'),
   ).toBeVisible();
   await expect(page.getByText('Hire Again')).toBeVisible();
-  await expect(page.getByText('Delete Conversation')).toBeVisible();
-  await expect(
-    page.getByPlaceholder('Conversation is read-only'),
-  ).toHaveAttribute('readonly', '');
+  await expect(page.getByText('Delete Conversation')).toHaveCount(0);
+  await expect(page.getByPlaceholder('Conversation is read-only')).toHaveAttribute('readonly', '');
 });
 
-test('active matched conversation accepts and displays a sent message', async ({
-  page,
-}) => {
+test('conversation list supports individual and select-all deletion', async ({ page }) => {
+  await page.goto('/messages');
+
+  const sectionTitle = page.getByText('Matched Conversations');
+  const deleteConversationButton = page.getByRole('button', {
+    name: 'Delete Conversation',
+  });
+  const [titleBox, deleteButtonBox] = await Promise.all([
+    sectionTitle.boundingBox(),
+    deleteConversationButton.boundingBox(),
+  ]);
+  expect(titleBox).not.toBeNull();
+  expect(deleteButtonBox).not.toBeNull();
+  expect(
+    Math.abs(
+      titleBox!.y + titleBox!.height / 2 - (deleteButtonBox!.y + deleteButtonBox!.height / 2),
+    ),
+  ).toBeLessThan(8);
+
+  await deleteConversationButton.click();
+  await expect(page.getByRole('checkbox', { name: 'Select all conversations' })).toBeVisible();
+
+  const conversationCheckbox = page.getByRole('checkbox', {
+    name: 'Select conversation with Matched Worker',
+  });
+  await conversationCheckbox.click();
+  await expect(page.getByRole('button', { name: 'Delete Selected (1)' })).toBeEnabled();
+
+  await conversationCheckbox.click();
+  await expect(page.getByRole('button', { name: 'Delete Selected (0)' })).toBeDisabled();
+
+  await page.getByRole('checkbox', { name: 'Select all conversations' }).click();
+  await expect(page.getByText('Clear All')).toBeVisible();
+  await page.getByRole('button', { name: 'Delete Selected (1)' }).click();
+  await page.getByRole('button', { name: 'Confirm Delete' }).click();
+
+  await expect(page.getByText('No Matched Conversations')).toBeVisible();
+  expect(archiveRequests).toBe(1);
+});
+
+test('active matched conversation accepts and displays a sent message', async ({ page }) => {
   bookingStatus = 'ACCEPTED';
   requestStatus = 'MATCHED';
 
@@ -244,9 +301,7 @@ test('active matched conversation accepts and displays a sent message', async ({
   await expect(page.getByText('Request failed')).toHaveCount(0);
 });
 
-test('active matched worker conversation loads the customer and sends', async ({
-  page,
-}) => {
+test('active matched worker conversation loads the customer and sends', async ({ page }) => {
   bookingStatus = 'ACCEPTED';
   requestStatus = 'MATCHED';
 
@@ -260,9 +315,7 @@ test('active matched worker conversation loads the customer and sends', async ({
   await expect(page.getByText('Hello customer')).toBeVisible();
 });
 
-test('fetch failure shows retry instead of read-only history', async ({
-  page,
-}) => {
+test('fetch failure shows retry instead of read-only history', async ({ page }) => {
   bookingStatus = 'ACCEPTED';
   requestStatus = 'MATCHED';
   conversationFetchFails = true;
@@ -272,9 +325,7 @@ test('fetch failure shows retry instead of read-only history', async ({
   await expect(page.getByText('Unable to load conversation')).toBeVisible();
   await expect(page.getByText('Conversation profile query failed')).toBeVisible();
   await expect(page.getByText('Read-only history')).toHaveCount(0);
-  await expect(
-    page.getByPlaceholder('Conversation unavailable'),
-  ).toHaveAttribute('readonly', '');
+  await expect(page.getByPlaceholder('Conversation unavailable')).toHaveAttribute('readonly', '');
 
   conversationFetchFails = false;
   await page.getByRole('button', { name: 'Retry' }).click();
@@ -295,6 +346,7 @@ test('worker conversation list fetch failure shows retry', async ({ page }) => {
   conversationFetchFails = false;
   await page.getByRole('button', { name: 'Retry' }).click();
   await expect(page.getByText('Matched Customer')).toBeVisible();
+  await expect(page.getByText('Chat Participant')).toHaveCount(0);
 });
 
 test('customer conversation list fetch failure shows retry', async ({ page }) => {
@@ -309,4 +361,5 @@ test('customer conversation list fetch failure shows retry', async ({ page }) =>
   conversationFetchFails = false;
   await page.getByRole('button', { name: 'Retry' }).click();
   await expect(page.getByText('Matched Worker')).toBeVisible();
+  await expect(page.getByText('Chat Participant')).toHaveCount(0);
 });
