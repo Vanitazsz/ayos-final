@@ -2,25 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { resolveWorkerEarningsAmount } from './bookingPayment';
 
 describe('resolveWorkerEarningsAmount', () => {
-  it('uses the successful payment amount for completed worker earnings', () => {
+  it('uses agreed service amount as the canonical source of truth when available', () => {
     expect(
-      resolveWorkerEarningsAmount(5_000, {
+      resolveWorkerEarningsAmount(1_000, {
         status: 'SUCCESSFUL',
-        service_amount: 500,
+        service_amount: 9_999_999_999.99,
       }),
-    ).toBe(500);
+    ).toBe(1_000);
   });
 
-  it('uses the payment amount while cash confirmation is pending', () => {
+  it('filters out dummy placeholder values >= 999,999,999', () => {
     expect(
-      resolveWorkerEarningsAmount(5_000, {
+      resolveWorkerEarningsAmount(1_000, {
+        status: 'SUCCESSFUL',
+        service_amount: 999_999_999_999,
+      }),
+    ).toBe(1_000);
+  });
+
+  it('falls back to payment service_amount when agreed amount is unavailable', () => {
+    expect(
+      resolveWorkerEarningsAmount(null, {
         status: 'AWAITING_CONFIRMATIONS',
         service_amount: 500,
       }),
     ).toBe(500);
   });
 
-  it('falls back to the agreed amount when confirmed payment data is invalid', () => {
+  it('returns the agreed amount when payment service_amount is null', () => {
     expect(
       resolveWorkerEarningsAmount(5_000, {
         status: 'SUCCESSFUL',

@@ -4,16 +4,20 @@ type PaymentAmount = {
 };
 
 function validAmount(value: unknown) {
-  if (value == null) return null;
+  if (value == null || value === '') return null;
   const amount = Number(value);
-  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+  if (!Number.isFinite(amount) || amount < 0 || amount >= 999_999_999) {
+    return null;
+  }
+  return amount;
 }
 
 export function resolveWorkerEarningsAmount(
   agreedServiceAmount: unknown,
   payment?: PaymentAmount | null,
 ) {
-  const paymentAmount = validAmount(payment?.service_amount);
+  const agreedAmount = validAmount(agreedServiceAmount);
+  if (agreedAmount != null) return agreedAmount;
 
-  return paymentAmount ?? validAmount(agreedServiceAmount);
+  return validAmount(payment?.service_amount);
 }
