@@ -8,6 +8,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { MessageSquare, Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
+import {
+  SUPPORT_STATUS_BADGE,
+  badgeFor,
+} from '../../../services/statusMeta';
 
 export function useSupportPageController() {
   const toast = useToast();
@@ -75,12 +79,7 @@ export function useSupportPageController() {
     if (priority === 'Medium') return 'bg-yellow-100 text-yellow-800';
     return 'bg-blue-100 text-blue-800';
   };
-  const getStatusColor = (status) => {
-    if (status === 'Open') return 'bg-blue-100 text-blue-800';
-    if (status === 'Pending') return 'bg-yellow-100 text-yellow-800';
-    if (status === 'Resolved') return 'bg-green-100 text-green-800';
-    return 'bg-gray-100 text-gray-800';
-  };
+  const getStatusColor = (status) => badgeFor(SUPPORT_STATUS_BADGE, status);
   const openTicket = (ticket) => {
     setSelectedTicket(ticket);
     setIsDrawerOpen(true);

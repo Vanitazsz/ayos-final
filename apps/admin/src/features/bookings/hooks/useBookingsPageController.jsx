@@ -7,6 +7,10 @@ import {
 import { useEffect, useState } from 'react';
 import { Calendar, Clock, CheckCircle, PlayCircle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
+import {
+  BOOKING_STATUS_BADGE,
+  badgeFor,
+} from '../../../services/statusMeta';
 
 export function useBookingsPageController() {
   const toast = useToast();
@@ -75,24 +79,7 @@ export function useBookingsPageController() {
       bg: 'bg-green-50',
     },
   ];
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Completed':
-        return 'bg-green-100 text-green-800';
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Ongoing':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'En Route':
-        return 'bg-blue-100 text-blue-800';
-      case 'Cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'Refunded':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const getStatusColor = (status) => badgeFor(BOOKING_STATUS_BADGE, status);
   const toggleActionMenu = (id) => {
     if (actionMenuOpenId === id) setActionMenuOpenId(null);
     else setActionMenuOpenId(id);

@@ -9,6 +9,10 @@ import { Send, Mail, MessageSquare, Smartphone, XCircle, Clock } from 'lucide-re
 import { useDataFetch } from '../../../hooks/useDataFetch';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
+import {
+  NOTIFICATION_STATUS_BADGE,
+  badgeFor,
+} from '../../../services/statusMeta';
 
 export function useNotificationsPageController() {
   const toast = useToast();
@@ -62,20 +66,7 @@ export function useNotificationsPageController() {
     if (type === 'SMS') return <MessageSquare size={16} className="text-gray-500" />;
     return <Smartphone size={16} className="text-gray-500" />;
   };
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Sent':
-        return 'bg-green-100 text-green-800';
-      case 'Scheduled':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'Failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const getStatusColor = (status) => badgeFor(NOTIFICATION_STATUS_BADGE, status);
   const handleDelete = async (id) => {
     setConfirm({
       isOpen: true,

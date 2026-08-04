@@ -3,6 +3,10 @@ import { useState } from 'react';
 import { DollarSign, TrendingUp, CreditCard, ArrowDownRight } from 'lucide-react';
 import { useDataFetch } from '../../../hooks/useDataFetch';
 import { useRealtime } from '../../../hooks/useRealtime';
+import {
+  PAYMENT_STATUS_BADGE,
+  badgeFor,
+} from '../../../services/statusMeta';
 
 export function usePaymentsPageController() {
   const { data: transactions, isLoading, error, refresh } = useDataFetch(loadPayments, []);
@@ -76,20 +80,7 @@ export function usePaymentsPageController() {
       positive: false,
     },
   ];
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Completed':
-        return 'bg-green-100 text-green-800';
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Failed':
-        return 'bg-red-100 text-red-800';
-      case 'Refunded':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const getStatusColor = (status) => badgeFor(PAYMENT_STATUS_BADGE, status);
   const handleViewDetails = (txn) => {
     setSelectedTxn(txn);
     setIsDrawerOpen(true);

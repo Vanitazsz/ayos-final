@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Drawer from '../../../components/ui/Drawer';
 import Pagination from '../../../components/ui/Pagination';
+import { money } from '../../../services/adminShared';
 
 export function PaymentsView({ model }) {
   const {
@@ -223,10 +224,10 @@ export function PaymentsView({ model }) {
                         <div
                           className={`text-sm font-bold ${txn.type === 'Refund' ? 'text-red-600' : 'text-gray-900'}`}
                         >
-                          ${txn.amount.toFixed(2)}
+                          {money(txn.amount)}
                         </div>
                         {txn.type === 'Payment' && (
-                          <div className="text-xs text-gray-500">Fee: ${txn.fee.toFixed(2)}</div>
+                          <div className="text-xs text-gray-500">Fee: {money(txn.fee)}</div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -371,7 +372,7 @@ export function PaymentsView({ model }) {
                 {selectedTxn.type}
               </p>
               <h2 className="text-4xl font-bold text-gray-900 mb-2">
-                ${selectedTxn.amount.toFixed(2)}
+                {money(selectedTxn.amount)}
               </h2>
               <span
                 className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedTxn.status)}`}
@@ -425,15 +426,15 @@ export function PaymentsView({ model }) {
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-900">${selectedTxn.amount.toFixed(2)}</span>
+                    <span className="text-gray-900">{money(selectedTxn.amount)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Platform Commission (15%)</span>
-                    <span className="text-red-600">-${selectedTxn.fee.toFixed(2)}</span>
+                    <span className="text-red-600">-{money(selectedTxn.fee)}</span>
                   </div>
                   <div className="flex justify-between font-bold pt-3 border-t border-gray-200">
                     <span className="text-gray-900">Net to Worker</span>
-                    <span className="text-green-600">${selectedTxn.net.toFixed(2)}</span>
+                    <span className="text-green-600">{money(selectedTxn.net)}</span>
                   </div>
                 </div>
               </div>

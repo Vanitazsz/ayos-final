@@ -13,6 +13,7 @@ import Drawer from '../../../components/ui/Drawer';
 import Modal from '../../../components/ui/Modal';
 import Pagination from '../../../components/ui/Pagination';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
+import { money } from '../../../services/adminShared';
 
 export function BookingsView({ model }) {
   const {
@@ -178,7 +179,7 @@ export function BookingsView({ model }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      ${booking.price.toFixed(2)}
+                      {money(booking.price)}
                     </div>
                     <div className="text-xs text-gray-500">{booking.payment}</div>
                   </td>
@@ -287,7 +288,7 @@ export function BookingsView({ model }) {
                 </div>
                 <div>
                   <p className="text-gray-500">Total Price</p>
-                  <p className="font-medium text-gray-900">${selectedBooking.price.toFixed(2)}</p>
+                  <p className="font-medium text-gray-900">{money(selectedBooking.price)}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-gray-500">Service Address</p>
