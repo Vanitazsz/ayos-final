@@ -1,6 +1,7 @@
 import { fetchPaymentForBooking } from '../logic/PaymentSuccessScreenLogic';
 import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 
 export function usePaymentSuccessScreenController() {
   const router = useRouter();
@@ -25,7 +26,14 @@ export function usePaymentSuccessScreenController() {
   const receipt = Array.isArray(payment?.receipts)
     ? payment.receipts[0]
     : payment?.receipts;
-  const displayAmount = Number(payment?.service_amount);
+  const bookingObj = Array.isArray(payment?.bookings)
+    ? payment.bookings[0]
+    : payment?.bookings;
+  const displayAmount =
+    resolveWorkerEarningsAmount(
+      bookingObj?.agreed_service_amount ?? (payment as any)?.agreed_service_amount,
+      payment,
+    ) ?? 0;
   const displayRef = receipt?.receipt_number ?? '';
   const displayDate = payment?.successful_at
     ? new Date(payment.successful_at).toLocaleString()

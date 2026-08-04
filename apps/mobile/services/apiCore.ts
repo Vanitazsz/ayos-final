@@ -1026,7 +1026,7 @@ export async function fetchPaymentForBooking(bookingId: string) {
   return wrap(async () => {
     const { data, error } = await supabase
       .from('payments')
-      .select('*,receipts(receipt_number,issued_at)')
+      .select('*,receipts(receipt_number,issued_at),bookings(agreed_service_amount)')
       .eq('booking_id', bookingId)
       .single();
     if (error) throw error;
