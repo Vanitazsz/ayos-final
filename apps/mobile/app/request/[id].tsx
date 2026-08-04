@@ -10,7 +10,7 @@ import { Badge } from '@/components/Badge';
 import { JobSummary } from '@/components/JobSummary';
 import { ProviderCard } from '@/components/ProviderCard';
 import { useRequest } from '@/context/RequestContext';
-import { fetchProviderProfile, fetchRequest, fetchRequestBids, fetchBookingByRequestId, subscribeToTable } from '@/services/api';
+import { fetchProviderProfile, fetchRequest, fetchBookingByRequestId } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
 
 export default function RequestDetailsScreen() {
@@ -23,13 +23,12 @@ export default function RequestDetailsScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if(!id)return;const load=async()=>{setIsLoading(true);const[requestResult,bidsResult]=await Promise.all([fetchRequest(id),fetchRequestBids(id)]);if(requestResult.error){setIsLoading(false);return;}const row=requestResult.data;updateRequest({description:row.description,category:row.service_categories?.name??'',location:{latitude:Number(row.addresses?.latitude),longitude:Number(row.addresses?.longitude),address:[row.addresses?.line1,row.addresses?.barangay,row.addresses?.city].filter(Boolean).join(', ')},status:row.status==='CLOSED'?'Completed':row.status==='BOOKED'?'Accepted':'Posted'});setDraft({requestId:id});fetchBookingByRequestId(id).then(r=>{if(r.data?.id)setBookingId(r.data.id);});const candidateIds=new Set<string>();const mapped=[];for(const bid of bidsResult.data){candidateIds.add(bid.worker_id);const profile=await fetchProviderProfile(bid.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:`₱${(Number(bid.amount_minor)/100).toLocaleString()}`,eta:`${bid.estimated_duration_minutes} minutes`,message:bid.message});}for(const candidate of row.match_candidates??[]){if(candidateIds.has(candidate.worker_id))continue;const profile=await fetchProviderProfile(candidate.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:'',eta:candidate.factors?.distance_meters?`${(Number(candidate.factors.distance_meters)/1000).toFixed(1)} km`:'',message:''});}setApplicants(mapped);setIsLoading(false);};void load();return subscribeToTable('request_bids',()=>void load(),`service_request_id=eq.${id}`);
+    if(!id)return;const load=async()=>{setIsLoading(true);const requestResult=await fetchRequest(id);if(requestResult.error){setIsLoading(false);return;}const row=requestResult.data;updateRequest({description:row.description,category:row.service_categories?.name??'',location:{latitude:Number(row.addresses?.latitude),longitude:Number(row.addresses?.longitude),address:[row.addresses?.line1,row.addresses?.barangay,row.addresses?.city].filter(Boolean).join(', ')},status:row.status==='CLOSED'?'Completed':row.status==='BOOKED'?'Accepted':'Posted'});setDraft({requestId:id});fetchBookingByRequestId(id).then(r=>{if(r.data?.id)setBookingId(r.data.id);});const mapped=[];for(const candidate of row.match_candidates??[]){const profile=await fetchProviderProfile(candidate.worker_id);if(!profile.error)mapped.push({...profile.data,estimatedPrice:'',eta:candidate.factors?.distance_meters?`${(Number(candidate.factors.distance_meters)/1000).toFixed(1)} km`:''});}setApplicants(mapped);setIsLoading(false);};void load();
   }, [id]);
 
   const handleBack = () => router.back();
 
   const assignedWorker = applicants.find(row=>row.id===request.selectedWorkerId)??null;
-  const isBidding = applicants.some(row=>row.message!=='Eligible verified match');
 
   return (
     <View style={styles.container}>
@@ -55,23 +54,23 @@ export default function RequestDetailsScreen() {
           <View style={styles.section}>
             <View style={styles.statusAlert}>
               <AppText variant="h4" weight="bold" color={Colors.white}>
-                {isBidding ? 'Waiting for Bids' : 'Waiting for Workers'}
+                Waiting for Workers
               </AppText>
               <AppText variant="caption" color={Colors.white} style={{ opacity: 0.9, marginTop: 4 }}>
-                {isBidding ? 'Workers are reviewing your request and will submit offers shortly.' : 'Your request is posted. Workers are reviewing it.'}
+                Your request is posted. Workers are reviewing it.
               </AppText>
             </View>
 
             <AppText variant="h3" weight="bold" style={styles.sectionTitle}>
-              {isBidding ? `Incoming Offers (${applicants.length})` : `Applicants (${applicants.length})`}
+              Applicants ({applicants.length})
             </AppText>
             
             {isLoading ? (
               <View style={styles.emptyState}>
                 <Clock3 size={40} color={Colors.textTertiary} strokeWidth={1.5} />
-                <AppText variant="body" weight="semiBold" style={{ marginTop: Spacing['3'] }}>Waiting for {isBidding ? 'bids' : 'applicants'}...</AppText>
+                <AppText variant="body" weight="semiBold" style={{ marginTop: Spacing['3'] }}>Waiting for applicants...</AppText>
                 <AppText variant="caption" color={Colors.textSecondary} align="center" style={{ marginTop: Spacing['1'] }}>
-                  Nearby verified workers will appear here once they {isBidding ? 'submit an offer' : 'apply'}.
+                  Nearby verified workers will appear here once they apply.
                 </AppText>
               </View>
             ) : (
@@ -91,18 +90,8 @@ export default function RequestDetailsScreen() {
                     </View>
                     <View style={styles.priceContainer}>
                       <AppText variant="h3" weight="bold" color={Colors.cta}>{applicant.estimatedPrice}</AppText>
-                      {isBidding ? (
-                        <AppText variant="caption" color={Colors.textSecondary} style={{ marginTop: 2 }}>{applicant.eta}</AppText>
-                      ) : (
-                        <AppText variant="caption" color={Colors.textSecondary}>{applicant.eta}</AppText>
-                      )}
+                      <AppText variant="caption" color={Colors.textSecondary}>{applicant.eta}</AppText>
                     </View>
-                  </View>
-
-                  <View style={styles.messageBubble}>
-                    <AppText variant="bodySm" color={Colors.textSecondary} numberOfLines={2}>
-                      &ldquo;{applicant.message}&rdquo;
-                    </AppText>
                   </View>
 
                   <View style={styles.actionRow}>
@@ -246,12 +235,6 @@ const styles = StyleSheet.create({
   priceContainer: {
     alignItems: 'flex-end',
     justifyContent: 'center',
-  },
-  messageBubble: {
-    backgroundColor: Colors.primarySurface,
-    padding: Spacing['3'],
-    borderRadius: Radius.md,
-    marginBottom: Spacing['4'],
   },
   actionRow: {
     flexDirection: 'row',
