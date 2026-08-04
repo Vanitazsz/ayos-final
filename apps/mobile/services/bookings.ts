@@ -9,6 +9,7 @@ export {
   departForJob,
   fetchBookingByRequestId,
   fetchBookingDetail,
+  fetchBookingSummary,
   fetchBookingTracking,
   fetchBookings,
   fetchCancellationReasons,
