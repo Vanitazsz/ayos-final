@@ -212,6 +212,7 @@ export default function WorkerTabLayout() {
         <Tabs.Screen name="industry-skills" options={{ href: null }} />
         <Tabs.Screen name="booking-request/[id]" options={{ href: null }} />
         <Tabs.Screen name="cancel-service/[id]" options={{ href: null }} />
+        <Tabs.Screen name="leave-feedback/[id]" options={{ href: null }} />
       </Tabs>
 
       {config && Icon && !startingHidden ? (

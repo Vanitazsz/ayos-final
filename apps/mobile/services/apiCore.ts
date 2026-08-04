@@ -541,7 +541,7 @@ export async function fetchWorkerProfile(): Promise<
         .eq('worker_account_id', user.id),
       supabase
         .from('bookings')
-        .select('id')
+        .select('id,agreed_service_amount')
         .eq('worker_account_id', user.id)
         .eq('status', 'COMPLETED'),
       supabase
@@ -569,9 +569,18 @@ export async function fetchWorkerProfile(): Promise<
     const prices = (skills ?? [])
       .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
-    const earnings = (wallet?.wallet_transactions ?? [])
-      .filter((item: any) => ['AVAILABLE', 'COMPLETED'].includes(item.status))
+    const completedBookingsEarnings = (bookings ?? []).reduce(
+      (sum: number, item: any) => sum + Number(item.agreed_service_amount ?? 0),
+      0,
+    );
+    const walletEarnings = (wallet?.wallet_transactions ?? [])
+      .filter(
+        (item: any) =>
+          ['AVAILABLE', 'COMPLETED'].includes(item.status) &&
+          Number(item.amount) > 0,
+      )
       .reduce((sum: number, item: any) => sum + Number(item.amount), 0);
+    const earnings = Math.max(completedBookingsEarnings, walletEarnings);
     const portfolioPaths = (portfolio ?? [])
       .flatMap((item: any) => item.worker_portfolio_media ?? [])
       .map((item: any) => item.storage_path);

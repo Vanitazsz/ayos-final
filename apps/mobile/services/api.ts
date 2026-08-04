@@ -16,6 +16,7 @@ export * from './reviews';
 export * from './routing';
 export * from './support';
 export * from './wallet';
+export * from './workerFeedback';
 export * from './workerOperations';
 export {
   apiErrorMessage,

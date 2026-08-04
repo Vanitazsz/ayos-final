@@ -44,13 +44,25 @@ export function useWorkerIndexScreenController() {
         .then(([profile, bookings, transactions]) => {
           if (!profile.error) setWorkerProfile(profile.data);
           setWorkerBookings(bookings.data);
+          const completedBookingSum = (bookings.data ?? [])
+            .filter((row) => row.status === 'completed')
+            .reduce(
+              (sum, row) =>
+                sum + Number(row.price.replace(/[^0-9.]/g, '') || 0),
+              0,
+            );
+          const walletTxSum = (transactions.data ?? [])
+            .filter((row) => row.credit && row.status === 'completed')
+            .reduce(
+              (sum, row) =>
+                sum + Number(row.amount.replace(/[^0-9.]/g, '') || 0),
+              0,
+            );
+          const profileEarnings = profile.data?.earnings
+            ? Number(profile.data.earnings.replace(/[^0-9.]/g, '') || 0)
+            : 0;
           setEarnings(
-            transactions.data
-              .filter((row) => row.credit)
-              .reduce(
-                (sum, row) => sum + Number(row.amount.replace(/[^0-9.]/g, '')),
-                0,
-              ),
+            Math.max(completedBookingSum, walletTxSum, profileEarnings),
           );
         })
         .catch((e) => console.warn('[worker-dashboard] load failed:', e));

@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   Pressable,
 } from 'react-native';
-import { CalendarDays, Clock, MapPin, CheckCircle2, XCircle, Receipt, Flag, Star } from 'lucide-react-native';
+import { CalendarDays, Clock, MapPin, CheckCircle2, XCircle, Receipt, Flag, Star, MessageSquare } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { Screen } from '@/components/layout/Screen';
@@ -21,6 +21,8 @@ import {
   cancelBooking,
   fetchWorkerBookings,
   subscribeToBookingFeed,
+  getWorkerFeedback,
+  type WorkerFeedback,
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
@@ -59,6 +61,7 @@ export default function WorkerBookingsScreen() {
     filter === 'Cancelled' ? 'Cancelled' : filter === 'Reported' ? 'Reported' : 'Upcoming',
   );
   const [bookings, setBookings] = useState<WorkerBooking[]>([]);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, WorkerFeedback>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
@@ -68,6 +71,21 @@ export default function WorkerBookingsScreen() {
     const result = await fetchWorkerBookings();
     setBookings(result.data);
     setLoadError(result.error ?? '');
+
+    const completedItems = (result.data ?? []).filter(
+      (b) => b.status === 'completed',
+    );
+    const feedbackPairs = await Promise.all(
+      completedItems.map(async (b) => {
+        const fb = await getWorkerFeedback(b.id);
+        return [b.id, fb] as const;
+      }),
+    );
+    const map: Record<string, WorkerFeedback> = {};
+    for (const [id, fb] of feedbackPairs) {
+      if (fb) map[id] = fb;
+    }
+    setFeedbackMap(map);
     setLoading(false);
   };
 
@@ -285,10 +303,36 @@ export default function WorkerBookingsScreen() {
 
                       <View style={styles.cardFooter}>
                         <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>Paid</Text>
-                        <TouchableOpacity style={styles.primaryBtn} onPress={comingSoon}>
-                          <Receipt size={12} color={theme.colors.surface} />
-                          <Text style={[theme.typography.caption, { color: theme.colors.surface, fontWeight: '600' }]}>Receipt</Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity
+                            style={[
+                              styles.primaryBtn,
+                              feedbackMap[booking.id]
+                                ? { backgroundColor: theme.colors.success }
+                                : { backgroundColor: theme.colors.primary },
+                            ]}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              router.push(`/(worker)/leave-feedback/${booking.id}`);
+                            }}
+                          >
+                            <MessageSquare size={12} color={theme.colors.surface} />
+                            <Text
+                              style={[
+                                theme.typography.caption,
+                                { color: theme.colors.surface, fontWeight: '600' },
+                              ]}
+                            >
+                              {feedbackMap[booking.id]
+                                ? `Feedback (${feedbackMap[booking.id].rating}★)`
+                                : 'Leave Feedback'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.primaryBtn} onPress={comingSoon}>
+                            <Receipt size={12} color={theme.colors.surface} />
+                            <Text style={[theme.typography.caption, { color: theme.colors.surface, fontWeight: '600' }]}>Receipt</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
                   </Pressable>

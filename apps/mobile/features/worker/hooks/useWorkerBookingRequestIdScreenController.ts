@@ -288,10 +288,9 @@ export function useWorkerBookingRequestIdScreenController() {
     }
   };
   const handleLeaveFeedback = () => {
-    Alert.alert(
-      'Worker feedback',
-      'Detailed worker-to-customer feedback is not enabled. Use Report User for a safety or conduct concern.',
-    );
+    if (booking?.id) {
+      router.push(`/(worker)/leave-feedback/${booking.id}`);
+    }
   };
   const handleConfirmCash = async () => {
     try {
