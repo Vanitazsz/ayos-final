@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
 import { ChevronLeft, ChevronDown, ChevronUp, Check } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Colors, Radius, Spacing, Elevation, Layout } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -15,6 +16,7 @@ type JobStage = 'before_traveling' | 'after_arriving' | 'after_inspecting';
 
 export default function CancelServiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const goBack = useGoBack('/(worker)/bookings');
   const [selectedStage, setSelectedStage] = useState<JobStage>('before_traveling');
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [selectedReason, setSelectedReason] = useState<CancellationReason | null>(null);
@@ -109,7 +111,7 @@ export default function CancelServiceScreen() {
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
         >
           <ChevronLeft size={24} color={Colors.textPrimary} />

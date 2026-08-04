@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Calendar, Clock, ChevronLeft } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -19,7 +20,7 @@ export default function ScheduleScreen() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
-  const handleBack = () => router.back();
+  const handleBack = useGoBack('/(tabs)/home');
 
   const handleEditRequest = () => {
     router.push('/new-request/create' as any);

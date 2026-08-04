@@ -291,7 +291,10 @@ export default function MatchingScreen() {
           title="No Worker Accepted Yet"
           message={diagnosticMessage(snapshot?.diagnostics)}
           action="Change Date or Location"
-          onAction={() => router.back()}
+          onAction={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
+          }}
         />
       ) : null}
 

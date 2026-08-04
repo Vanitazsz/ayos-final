@@ -10,6 +10,7 @@ import {
   Calendar,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import {
   Colors,
   Radius,
@@ -44,7 +45,7 @@ export default function PaymentScreen() {
       });
   }, [draft.bookingId]);
 
-  const handleBack = useCallback(() => router.back(), []);
+  const handleBack = useGoBack('/(tabs)/bookings');
   const handlePay = useCallback(() => {
     if (!draft.bookingId) return;
     router.dismissAll();

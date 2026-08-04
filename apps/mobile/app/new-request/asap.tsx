@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { MapPin, Edit3, Image as ImageIcon, Map as MapIcon, Check, Wallet, Banknote, CreditCard, ChevronLeft, Info } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -32,7 +33,7 @@ export default function ReviewRequestScreen() {
     }
   }, []);
 
-  const handleBack = () => router.back();
+  const handleBack = useGoBack('/(tabs)/home');
 
   const handlePostRequest = () => {
     updateRequest({ status: 'Posted' });

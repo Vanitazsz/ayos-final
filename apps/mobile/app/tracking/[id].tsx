@@ -9,6 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
@@ -129,6 +130,7 @@ export default function TrackingScreen() {
     null,
   );
   const bookingId = Array.isArray(id) ? id[0] : id;
+  const goBack = useGoBack('/(tabs)/bookings');
 
   useEffect(() => {
     if (!bookingId) return;
@@ -242,7 +244,7 @@ export default function TrackingScreen() {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.backButton}
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
@@ -500,7 +502,7 @@ export default function TrackingScreen() {
           <Button
             title="Back to Bookings"
             variant="outlined"
-            onPress={() => router.back()}
+            onPress={goBack}
             fullWidth
           />
         ) : (

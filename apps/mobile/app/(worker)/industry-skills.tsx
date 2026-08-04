@@ -24,6 +24,7 @@ import { AppInput } from '@/components/AppInput';
 import { AppText } from '@/components/AppText';
 import { Spacing, theme } from '@/constants/theme';
 import { getBackRoute } from '@/constants/backRoutes';
+import { useGoBack } from '@/hooks/useGoBack';
 import {
   fetchMyWorkerSkillsAndIndustry,
   updateMyWorkerSkillsAndIndustry,
@@ -35,10 +36,11 @@ const YEARS_OPTIONS = [1, 2, 3, 5, 8, 10];
 export default function WorkerIndustrySkillsScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
+  const goBack = useGoBack('/(worker)/profile');
   const handleBack = () => {
     const route = getBackRoute(from);
     if (route) router.push(route);
-    else router.back();
+    else goBack();
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

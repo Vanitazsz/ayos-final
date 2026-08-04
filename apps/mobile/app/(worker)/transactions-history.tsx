@@ -16,6 +16,7 @@ import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { fetchWalletTransactions, type WalletTransaction, type TransactionStatus } from '@/services/api';
 import { getBackRoute } from '@/constants/backRoutes';
+import { useGoBack } from '@/hooks/useGoBack';
 
 type TxFilter = 'all' | 'credit' | 'debit';
 
@@ -33,10 +34,11 @@ const statusColor = (s: TransactionStatus) => {
 
 export default function TransactionsHistoryScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
+  const goBack = useGoBack('/(worker)/profile');
   const handleBack = () => {
     const route = getBackRoute(from);
     if (route) router.push(route);
-    else router.back();
+    else goBack();
   };
   const [searchQuery, setSearchQuery] = useState('');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');

@@ -1,6 +1,8 @@
 import React,{useEffect,useState}from'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
 import { ArrowLeft, Bell } from 'lucide-react-native';
@@ -10,13 +12,15 @@ import{fetchNotifications,markNotificationRead,subscribeToTable}from'@/services/
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const goBack = useGoBack(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home');
   const insets = useSafeAreaInsets();
   const[notifications,setNotifications]=useState<any[]>([]);useEffect(()=>{const load=()=>void fetchNotifications().then(result=>setNotifications(result.data));load();return subscribeToTable('notifications',load);},[]);
 
   return (
     <Screen safeArea>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={goBack} style={styles.backButton}>
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>Notifications</Text>

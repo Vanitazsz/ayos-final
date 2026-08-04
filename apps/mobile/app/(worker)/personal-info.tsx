@@ -20,14 +20,16 @@ import {
   type WorkerProfileView,
 } from '@/services/profile';
 import { getBackRoute } from '@/constants/backRoutes';
+import { useGoBack } from '@/hooks/useGoBack';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
+  const goBack = useGoBack('/(worker)/profile');
   const handleBack = () => {
     const route = getBackRoute(from);
     if (route) router.push(route);
-    else router.back();
+    else goBack();
   };
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');

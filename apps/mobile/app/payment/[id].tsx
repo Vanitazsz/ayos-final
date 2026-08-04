@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
@@ -56,6 +57,7 @@ export default function PaymentScreen() {
   const [homeownerCharge, setHomeownerCharge] = useState(0);
   const [error, setError] = useState('');
   const bookingId = Array.isArray(id) ? id[0] : id;
+  const goBack = useGoBack('/(tabs)/bookings');
   useEffect(() => {
     if (bookingId)
       void Promise.all([
@@ -110,7 +112,7 @@ export default function PaymentScreen() {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.backButton}
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />

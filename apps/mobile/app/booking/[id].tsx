@@ -8,6 +8,7 @@ import {
   Calendar,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -58,7 +59,7 @@ export default function BookingScreen() {
   const [address, setAddress] = useState(draft.address);
   const [notes, setNotes] = useState('');
 
-  const handleBack = useCallback(() => router.back(), []);
+  const handleBack = useGoBack('/(tabs)/home');
   const handleContinue = useCallback(() => {
     if (!draft.requestId) {
       Alert.alert(

@@ -7,6 +7,7 @@ import {
   TextInput as RNTextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
@@ -27,6 +28,7 @@ export default function OTPScreen() {
     returnTo?: string;
   }>();
   const setSessionUser = useAuthStore((state) => state.setSessionUser);
+  const goBack = useGoBack('/(auth)/landing');
 
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -116,7 +118,7 @@ export default function OTPScreen() {
     <Screen safeArea scrollable>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.backButton}
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />

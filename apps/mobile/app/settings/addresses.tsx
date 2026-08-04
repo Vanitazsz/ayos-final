@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { ArrowLeft, Check, Edit3, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -50,7 +51,7 @@ const emptyForm: AddressForm = {
 };
 
 export default function SavedAddressesScreen() {
-  const router = useRouter();
+  const goBack = useGoBack('/(tabs)/home');
   const locationPickerRef = useRef<LocationPickerHandle>(null);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,7 +181,7 @@ export default function SavedAddressesScreen() {
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Back"
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.backButton}
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />

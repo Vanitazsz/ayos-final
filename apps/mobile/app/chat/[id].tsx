@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { ChevronLeft, Send, Image as ImageIcon } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -33,7 +34,7 @@ export default function ChatScreen() {
     setMessage('');
   };
 
-  const handleBack = () => router.back();
+  const handleBack = useGoBack('/(tabs)/messages');
 
   return (
     <View style={styles.container}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Check, ChevronLeft, Languages } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -14,6 +15,10 @@ const OPTIONS = [
 ];
 
 export default function LanguageSettingsScreen() {
+  const { user } = useAuthStore();
+  const goBack = useGoBack(
+    user?.role === 'WORKER' ? '/(worker)/settings' : '/(tabs)/profile',
+  );
   const [locale, setLocale] = useState<'en' | 'fil'>('en');
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -29,7 +34,7 @@ export default function LanguageSettingsScreen() {
         'Language updated',
         'New messages will be translated to your selected language.',
       );
-      router.back();
+      goBack();
     } catch (error) {
       Alert.alert(
         'Unable to save',
@@ -42,7 +47,7 @@ export default function LanguageSettingsScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={goBack}>
           <ChevronLeft size={24} color={Colors.textPrimary} />
         </Pressable>
         <AppText variant="h4" weight="bold">

@@ -19,5 +19,7 @@ supabase/.env.local
 .DS_Store
 apps/mobile/android/app/debug.keystore
 
-# nested clone of this repo (superseded worktree)
-ayos-try/
+
+# ignore admin source code to avoid pushing it
+apps/admin/
+

@@ -20,6 +20,7 @@ import {
   type WorkerScheduleDay,
 } from '@/services/workerMatching';
 import { getBackRoute } from '@/constants/backRoutes';
+import { useGoBack } from '@/hooks/useGoBack';
 
 const DAYS = [
   { dayOfWeek: 1, label: 'Monday' },
@@ -75,10 +76,11 @@ function scheduleFromRows(rows: WorkerScheduleDay[]): ScheduleState {
 export default function WorkerServiceSetupScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
+  const goBack = useGoBack('/(worker)/profile');
   const handleBack = () => {
     const route = getBackRoute(from);
     if (route) router.push(route);
-    else router.back();
+    else goBack();
   };
   const locationPickerRef = useRef<LocationPickerHandle>(null);
   const [readiness, setReadiness] = useState<WorkerMatchingReadiness | null>(

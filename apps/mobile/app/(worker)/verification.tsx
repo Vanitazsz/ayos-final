@@ -11,6 +11,7 @@ import { AppText } from '@/components/AppText';
 import { Pill } from '@/components/Pill';
 import { fetchWorkerVerification } from '@/services/api';
 import { getBackRoute } from '@/constants/backRoutes';
+import { useGoBack } from '@/hooks/useGoBack';
 
 type StepStatus = 'done' | 'active' | 'pending' | 'rejected';
 
@@ -249,10 +250,11 @@ function FaqItem({ q, a, isOpen, onPress }: { q: string; a: string; isOpen: bool
 
 export default function VerificationScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
+  const goBack = useGoBack('/(worker)/profile');
   const handleBack = () => {
     const route = getBackRoute(from);
     if (route) router.push(route);
-    else router.back();
+    else goBack();
   };
   const [tab, setTab] = useState<'status' | 'documents' | 'faq'>('status');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);

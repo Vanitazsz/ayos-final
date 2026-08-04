@@ -23,6 +23,7 @@ import {
   Star,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -62,7 +63,7 @@ export default function ProviderProfileScreen() {
       });
   }, [id]);
 
-  const handleBack = useCallback(() => router.back(), []);
+  const handleBack = useGoBack('/(tabs)/home');
   const handleBook = useCallback(
     () => router.push(`/booking/${provider.id}`),
     [provider.id],

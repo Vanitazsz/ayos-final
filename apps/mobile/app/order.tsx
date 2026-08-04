@@ -1,6 +1,7 @@
 import React,{useEffect,useState}from'react';
 import { View, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { ChevronLeft, Calendar, MapPin, Navigation, Tag, Wrench } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -13,10 +14,7 @@ export default function OrderDetailsScreen() {
   const router = useRouter();
   const draft=useRequestStore();const[booking,setBooking]=useState<any>(null);useEffect(()=>{if(draft.bookingId)void fetchBookingDetail(draft.bookingId).then(result=>{if(!result.error)setBooking(result.data)});},[draft.bookingId]);const request=booking?.service_requests??{};const provider={avatarUri:booking?.worker_profiles?.avatar_path??'',name:booking?.worker_profiles?.display_name??'',category:request.service_categories?.name??''};
 
-  const handleBack = () => {
-    // Return to the bookings tab
-    router.replace('/(tabs)/bookings');
-  };
+  const handleBack = useGoBack('/(tabs)/bookings');
 
   const handleTrack = () => {
     // Go to Live Tracking

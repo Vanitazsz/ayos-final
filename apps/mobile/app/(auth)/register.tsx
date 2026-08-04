@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useForm, Controller } from 'react-hook-form';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -24,6 +25,7 @@ type RoleChoice = 'USER' | 'WORKER' | null;
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const goBack = useGoBack('/(auth)/landing');
   const { role } = useLocalSearchParams<{ role?: string }>();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -84,7 +86,7 @@ export default function RegisterScreen() {
             if (selectedRole) {
               setSelectedRole(null);
             } else {
-              router.back();
+              goBack();
             }
           }}
           style={styles.backButton}

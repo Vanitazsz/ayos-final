@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import {
   ArrowLeft,
   Languages,
@@ -28,6 +29,7 @@ import { useConversationChat } from '@/hooks/useConversationChat';
 
 export default function ChatScreen() {
   const router = useRouter();
+  const goBack = useGoBack('/(tabs)/messages');
   const searchParams = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
@@ -81,10 +83,10 @@ export default function ChatScreen() {
       Alert.alert(
         'Conversation deleted',
         'This conversation is no longer available.',
-        [{ text: 'OK', onPress: () => router.back() }],
+        [{ text: 'OK', onPress: goBack }],
       );
     }
-  }, [conversationId, error, router]);
+  }, [conversationId, error, goBack]);
 
   const handleSend = async () => {
     const normalized = message.trim();
@@ -111,7 +113,7 @@ export default function ChatScreen() {
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.backButton}
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />

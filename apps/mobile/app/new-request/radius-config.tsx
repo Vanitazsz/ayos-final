@@ -24,7 +24,8 @@ export default function RadiusConfigScreen() {
 
   const handleSave = () => {
     draft.setDraft({ searchRadiusKm: radius });
-    router.back();
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/home');
   };
 
   return (

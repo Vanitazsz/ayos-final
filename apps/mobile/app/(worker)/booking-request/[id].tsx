@@ -20,6 +20,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import {
   Colors,
   Radius,
@@ -88,6 +89,7 @@ const viewStatus = (status: string) =>
 
 export default function BookingRequestScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const goBack = useGoBack('/(worker)/bookings');
   const [job, setJob] = useState<any>({
     id,
     service: '',
@@ -419,7 +421,7 @@ export default function BookingRequestScreen() {
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
         >
           <ChevronLeft size={24} color={Colors.textPrimary} />

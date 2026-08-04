@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import {
   ChevronLeft,
   ChevronRight,
@@ -61,6 +62,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 export default function RegisterWorkerScreen() {
+  const goBack = useGoBack('/(auth)/register');
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -275,7 +277,7 @@ export default function RegisterWorkerScreen() {
       setStep(step - 1);
       setErrors({});
     } else {
-      router.back();
+      goBack();
     }
   };
 

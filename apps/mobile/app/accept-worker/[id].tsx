@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { CheckCircle2, X } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -48,9 +49,7 @@ export default function AcceptWorkerModal() {
     }
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
+  const handleCancel = useGoBack('/(tabs)/home');
 
   return (
     <View style={styles.overlay}>
