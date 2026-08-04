@@ -76,7 +76,11 @@ function RadiusConfiguration({
           onPress={() => onChange(radiusKm - 1)}
         >
           <Minus
-            color={radiusKm > SEARCH_RADIUS_MIN_KM ? theme.colors.primary : theme.colors.border}
+            color={
+              radiusKm > SEARCH_RADIUS_MIN_KM
+                ? theme.colors.primary
+                : theme.colors.border
+            }
             size={24}
           />
         </TouchableOpacity>
@@ -93,7 +97,11 @@ function RadiusConfiguration({
           onPress={() => onChange(radiusKm + 1)}
         >
           <Plus
-            color={radiusKm < SEARCH_RADIUS_MAX_KM ? theme.colors.primary : theme.colors.border}
+            color={
+              radiusKm < SEARCH_RADIUS_MAX_KM
+                ? theme.colors.primary
+                : theme.colors.border
+            }
             size={24}
           />
         </TouchableOpacity>
@@ -266,9 +274,7 @@ export function MatchingView({
           </View>
           <View style={styles.timer}>
             <Clock size={16} color={theme.colors.primary} />
-            <Text style={styles.timerText}>
-              {formatCountdown(secondsLeft)}
-            </Text>
+            <Text style={styles.timerText}>{formatCountdown(secondsLeft)}</Text>
           </View>
         </View>
       ) : null}

@@ -14,13 +14,7 @@ export const TIMELINE_STEPS: TimelineStep[] = [
   {
     id: 'assigned',
     label: 'Worker Assigned',
-    statuses: [
-      'Accepted',
-      'Scheduled',
-      'En_Route',
-      'Arrived',
-      'In_Progress',
-    ],
+    statuses: ['Accepted', 'Scheduled', 'En_Route', 'Arrived', 'In_Progress'],
   },
   {
     id: 'completed',

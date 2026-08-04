@@ -4,15 +4,15 @@ import { ShieldAlert, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useDataFetch } from '../../../hooks/useDataFetch';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useActiveSessionCount } from '../../../hooks/useActiveSessionCount';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useAuditLogsPageController() {
   const { data: logs, isLoading, error, refresh } = useDataFetch(loadAuditLogs, []);
   useRealtime('audit_logs', refresh);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const activeSessions = useActiveSessionCount();
-  const logsPerPage = 12;
+
   const safeLogs = logs ?? [];
   const filteredLogs = safeLogs.filter((l) => {
     const matchesSearch =
@@ -22,11 +22,12 @@ export function useAuditLogsPageController() {
     const matchesModule = filterModule === 'All' || l.module === filterModule;
     return matchesSearch && matchesModule;
   });
-  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * logsPerPage,
-    currentPage * logsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedLogs,
+  } = usePagination(filteredLogs, 12);
   const stats = [
     {
       label: 'Recent Activities',

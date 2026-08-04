@@ -3,16 +3,16 @@ import { useState } from 'react';
 import { useDataFetch } from '../../../hooks/useDataFetch';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useReportsPageController() {
   const toast = useToast();
   const { data: reports, isLoading, error, refresh } = useDataFetch(loadReports, []);
   useRealtime('report_exports', refresh);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [dateRange, setDateRange] = useState('Last 30 Days');
   const [reportType, setReportType] = useState('All');
-  const reportsPerPage = 10;
+
   const safeReports = reports ?? [];
   const filteredReports = safeReports.filter((r) => {
     const matchesSearch =
@@ -21,11 +21,12 @@ export function useReportsPageController() {
     const matchesType = reportType === 'All' || r.type === reportType;
     return matchesSearch && matchesType;
   });
-  const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
-  const paginatedReports = filteredReports.slice(
-    (currentPage - 1) * reportsPerPage,
-    currentPage * reportsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedReports,
+  } = usePagination(filteredReports, 10);
   const handleDownload = async (id) => {
     const report = safeReports.find((item) => item.id === id);
     if (!report?.storagePath) {

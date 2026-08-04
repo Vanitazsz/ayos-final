@@ -58,14 +58,15 @@ export const validateWorkerStep2 = (fields: {
     !fields.industries.some((option) => option.value === fields.industryValue)
   )
     e.industry = 'Please select a primary industry';
-  if (!fields.employmentType) e.employmentType = 'Please select employment type';
-  if (fields.selectedSkills.length === 0) e.skills = 'Select at least one skill';
+  if (!fields.employmentType)
+    e.employmentType = 'Please select employment type';
+  if (fields.selectedSkills.length === 0)
+    e.skills = 'Select at least one skill';
   else if (fields.selectedSkills.length > MAX_SELECTED_SKILLS)
     e.skills = 'Select up to 10 skills';
   else if (
     fields.selectedSkills.some(
-      (value) =>
-        !fields.availableSkills.some((skill) => skill.value === value),
+      (value) => !fields.availableSkills.some((skill) => skill.value === value),
     )
   )
     e.skills = 'Select skills from the chosen industry';

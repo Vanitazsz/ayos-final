@@ -9,12 +9,12 @@ import {
 import { useEffect, useState } from 'react';
 import Badge from '../../../components/ui/Badge';
 import { useToast } from '../../../context/ToastContext';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useUsersPageController() {
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
   const [activeTab, setActiveTab] = useState('customers');
   const [verifications, setVerifications] = useState([]);
@@ -37,7 +37,7 @@ export function useUsersPageController() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const toast = useToast();
-  const itemsPerPage = 10;
+
   const refresh = async () => {
     setLoadError('');
     try {
@@ -159,11 +159,12 @@ export function useUsersPageController() {
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const currentUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: currentUsers,
+  } = usePagination(filteredUsers, 10);
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Active':
@@ -206,7 +207,7 @@ export function useUsersPageController() {
     deleteTarget,
     setDeleteTarget,
     toast,
-    itemsPerPage,
+    itemsPerPage: 10,
     refresh,
     decide,
     toggleActionMenu,

@@ -1,9 +1,15 @@
-import { loadTrash, permanentlyDeleteTrash, restoreTrash } from '../logic/TrashPageLogic';
+import {
+  TRASH_TABS,
+  loadTrash,
+  permanentlyDeleteTrash,
+  restoreTrash,
+} from '../logic/TrashPageLogic';
 import { useState } from 'react';
 import { useDataFetch } from '../../../hooks/useDataFetch';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
-const tabs = ['Users', 'Workers', 'Bookings', 'Services', 'Reviews'];
+import { usePagination } from '../../../hooks/usePagination';
+const tabs = TRASH_TABS;
 export function useTrashPageController() {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('Users');
@@ -11,25 +17,25 @@ export function useTrashPageController() {
   useRealtime('trash_entries', refresh);
   const items = raw ?? Object.fromEntries(tabs.map((tab) => [tab, []]));
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [confirm, setConfirm] = useState({
     isOpen: false,
     title: '',
     message: '',
     onConfirm: () => {},
   });
-  const itemsPerPage = 10;
+
   const currentItems = items[activeTab];
   const filteredItems = currentItems.filter(
     (item) =>
       item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.id.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  const paginatedItems = filteredItems.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedItems,
+  } = usePagination(filteredItems, 10);
   const handleRestore = async (id) => {
     setConfirm({
       isOpen: true,

@@ -99,9 +99,7 @@ export function PaymentView({
               { color: theme.colors.primary, marginBottom: theme.spacing.md },
             ]}
           >
-            {amount == null
-              ? 'Price pending'
-              : formatPesoWithSpace(total)}
+            {amount == null ? 'Price pending' : formatPesoWithSpace(total)}
           </Text>
 
           <View style={styles.summaryRow}>
@@ -114,9 +112,7 @@ export function PaymentView({
               Service
             </Text>
             <Text style={theme.typography.body2}>
-              {amount == null
-                ? 'Price pending'
-                : formatPesoWithSpace(amount)}
+              {amount == null ? 'Price pending' : formatPesoWithSpace(amount)}
             </Text>
           </View>
           <View style={styles.summaryRow}>

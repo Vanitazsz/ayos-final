@@ -27,4 +27,5 @@ export const addressRequiresCompletion = (details: {
   district?: string | null;
   city?: string | null;
   region?: string | null;
-}) => !details.district?.trim() || !details.city?.trim() || !details.region?.trim();
+}) =>
+  !details.district?.trim() || !details.city?.trim() || !details.region?.trim();

@@ -28,7 +28,11 @@ import {
   formatDate,
   formatPesoMajor,
 } from '@/utils/format';
-export { formatAddressParts, formatDate, formatPesoMajor } from '@/utils/format';
+export {
+  formatAddressParts,
+  formatDate,
+  formatPesoMajor,
+} from '@/utils/format';
 
 export const viewBookingStatus = (status: string): string =>
   status === 'PENDING'
@@ -73,5 +77,4 @@ export const formatBookingPrice = (
 
 export const isUrgentScheduled = (
   scheduledAt: string | null | undefined,
-): boolean =>
-  new Date(scheduledAt as string).getTime() - Date.now() < 86400000;
+): boolean => new Date(scheduledAt as string).getTime() - Date.now() < 86400000;

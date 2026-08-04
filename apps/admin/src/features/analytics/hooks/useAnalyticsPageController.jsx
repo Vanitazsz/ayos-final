@@ -1,5 +1,6 @@
 import { loadAnalytics, loadWorkerEarnings, subscribe } from '../logic/AnalyticsPageLogic';
 import { useEffect, useState } from 'react';
+import { money } from '../../../services/adminShared';
 
 export function useAnalyticsPageController() {
   const [kpis, setKpis] = useState([]);
@@ -49,13 +50,20 @@ export function useAnalyticsPageController() {
         },
         {
           label: 'Customer LTV',
-          value: `₱${value.accounts.length ? Math.round(revenue / value.accounts.length).toLocaleString() : 0}`,
+          value: money(value.accounts.length ? Math.round(revenue / value.accounts.length) : 0),
           trend: 'Live',
           positive: true,
         },
         {
           label: 'Avg Booking Value',
-          value: `₱${completed.length ? Math.round(completed.reduce((sum, row) => sum + Number(row.agreed_service_amount ?? 0), 0) / completed.length).toLocaleString() : 0}`,
+          value: money(
+            completed.length
+              ? Math.round(
+                  completed.reduce((sum, row) => sum + Number(row.agreed_service_amount ?? 0), 0) /
+                    completed.length,
+                )
+              : 0,
+          ),
           trend: 'Live',
           positive: true,
         },

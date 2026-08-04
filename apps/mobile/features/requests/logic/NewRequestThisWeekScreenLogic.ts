@@ -1,6 +1,9 @@
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export const resolveWeekday = (selectedDay: string, selectedTime: string | null): Date => {
+export const resolveWeekday = (
+  selectedDay: string,
+  selectedTime: string | null,
+): Date => {
   const scheduledDate = new Date();
   const targetDay = (DAYS.indexOf(selectedDay) + 1) % 7;
   const daysAhead = (targetDay - scheduledDate.getDay() + 7) % 7 || 7;

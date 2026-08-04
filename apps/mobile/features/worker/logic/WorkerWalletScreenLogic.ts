@@ -55,9 +55,8 @@ export const periodCutoff = (period: WalletPeriod): number =>
       ? Date.now() - 30 * 86400000
       : 0;
 
-export const transactionAmount = (row: {
-  amount: string;
-}): number => Number(row.amount.replace(/[^0-9.]/g, ''));
+export const transactionAmount = (row: { amount: string }): number =>
+  Number(row.amount.replace(/[^0-9.]/g, ''));
 
 export const transactionsInPeriod = (
   transactions: WalletTransaction[],
@@ -80,9 +79,8 @@ export const walletPeriodStats = (transactions: WalletTransaction[]) => {
     gross: formatPesoMajor(gross),
     net: formatPesoMajor(Math.max(0, gross - deductions)),
     jobs: String(
-      transactions.filter((row) =>
-        row.label.toLowerCase().includes('earning'),
-      ).length,
+      transactions.filter((row) => row.label.toLowerCase().includes('earning'))
+        .length,
     ),
     commission: formatPesoMajor(deductions),
   };
@@ -94,9 +92,7 @@ export const walletBarData = (transactions: WalletTransaction[]) =>
   WEEKDAY_LABELS.map((day, index) => ({
     day,
     val: transactions
-      .filter(
-        (row) => row.credit && new Date(row.createdAt).getDay() === index,
-      )
+      .filter((row) => row.credit && new Date(row.createdAt).getDay() === index)
       .reduce((sum, row) => sum + transactionAmount(row), 0),
   }));
 
@@ -116,4 +112,5 @@ export const filterWalletTransactions = (
 export const payoutMethodAccountLabel = (method: {
   last_four?: string | null;
   method_type: string;
-}): string => (method.last_four ? `•••• ${method.last_four}` : method.method_type);
+}): string =>
+  method.last_four ? `•••• ${method.last_four}` : method.method_type;

@@ -2,13 +2,13 @@ import { loadReviews, moderateReview, subscribe } from '../logic/ReviewsPageLogi
 import { useEffect, useState } from 'react';
 import { Star, ThumbsUp, ThumbsDown, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useReviewsPageController() {
   const toast = useToast();
   const [reviews, setReviews] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
   const [confirm, setConfirm] = useState({
     isOpen: false,
@@ -17,7 +17,7 @@ export function useReviewsPageController() {
     onConfirm: () => {},
   });
   const closeConfirm = () => setConfirm((s) => ({ ...s, isOpen: false }));
-  const reviewsPerPage = 10;
+
   const refresh = async () => setReviews(await loadReviews());
   useEffect(() => {
     void refresh();
@@ -31,11 +31,12 @@ export function useReviewsPageController() {
     const matchesRating = filterRating === 'All' || r.rating.toString() === filterRating;
     return matchesSearch && matchesRating;
   });
-  const totalPages = Math.ceil(filteredReviews.length / reviewsPerPage);
-  const paginatedReviews = filteredReviews.slice(
-    (currentPage - 1) * reviewsPerPage,
-    currentPage * reviewsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedReviews,
+  } = usePagination(filteredReviews, 10);
   const avgRating = reviews.length
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : '0.0';

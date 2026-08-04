@@ -39,10 +39,8 @@ export const filterWalletTransactions = (
 ): WalletTransaction[] => {
   let result = [...transactions];
 
-  if (criteria.txFilter === 'credit')
-    result = result.filter((t) => t.credit);
-  if (criteria.txFilter === 'debit')
-    result = result.filter((t) => !t.credit);
+  if (criteria.txFilter === 'credit') result = result.filter((t) => t.credit);
+  if (criteria.txFilter === 'debit') result = result.filter((t) => !t.credit);
 
   if (criteria.searchQuery.trim()) {
     const q = criteria.searchQuery.toLowerCase();

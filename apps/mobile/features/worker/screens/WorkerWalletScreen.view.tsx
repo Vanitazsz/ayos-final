@@ -27,7 +27,10 @@ import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
 import type { TransactionStatus } from '../logic/WorkerWalletScreenLogic';
 import { transactionStatusKind } from '../logic/WorkerWalletScreenLogic';
-import { QUICK_AMOUNTS, quickAmountValue } from '../logic/WorkerWalletScreenLogic';
+import {
+  QUICK_AMOUNTS,
+  quickAmountValue,
+} from '../logic/WorkerWalletScreenLogic';
 import type { useWorkerWalletScreenController } from '../hooks/useWorkerWalletScreenController';
 import { capitalizeFirst, formatWholeNumber } from '@/utils/format';
 type Period = 'week' | 'month' | 'all';
@@ -430,7 +433,7 @@ export function WalletView({
                 onPress={() => setShowPayout(false)}
                 style={{ flex: 1 }}
               />
-<AppButton
+              <AppButton
                 label="Confirm Payout"
                 variant="primary"
                 leftIcon={<ArrowDownToLine size={14} color={Colors.white} />}

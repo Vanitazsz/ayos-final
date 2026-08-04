@@ -168,7 +168,9 @@ export function WorkerBookingsView({
                       </View>
                       <Badge
                         label={workerBookingStatusMeta(booking.status).label}
-                        variant={workerBookingStatusMeta(booking.status).variant}
+                        variant={
+                          workerBookingStatusMeta(booking.status).variant
+                        }
                         size="sm"
                       />
                     </View>

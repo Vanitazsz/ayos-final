@@ -1,8 +1,5 @@
 import { Save, CheckCircle } from 'lucide-react';
-import {
-  titleCase,
-  matchingWeightsTotalPercent,
-} from '../logic/SettingsPageLogic';
+import { titleCase, matchingWeightsTotalPercent } from '../logic/SettingsPageLogic';
 
 export function SettingsView({ model }) {
   const {
@@ -330,9 +327,7 @@ export function SettingsView({ model }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(matchingWeights).map(([key, value]) => (
                       <label key={key} className="text-sm text-gray-700">
-                        <span className="mb-1 block">
-                          {titleCase(key)} (%)
-                        </span>
+                        <span className="mb-1 block">{titleCase(key)} (%)</span>
                         <input
                           type="number"
                           min="0"

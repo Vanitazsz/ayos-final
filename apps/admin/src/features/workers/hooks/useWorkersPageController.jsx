@@ -8,13 +8,13 @@ import { useEffect, useState } from 'react';
 import { UserCheck, UserX, AlertCircle, Briefcase } from 'lucide-react';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useWorkersPageController() {
   const toast = useToast();
   const [workers, setWorkers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [workerToDelete, setWorkerToDelete] = useState(null);
@@ -25,7 +25,7 @@ export function useWorkersPageController() {
   const [workerToReview, setWorkerToReview] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const workersPerPage = 10;
+
   const refresh = async () => {
     try {
       setLoadError('');
@@ -51,11 +51,12 @@ export function useWorkersPageController() {
     const matchesTab = activeTab === 'all' || (activeTab === 'review' && needsReview(w));
     return matchesSearch && matchesStatus && matchesTab;
   });
-  const totalPages = Math.ceil(filteredWorkers.length / workersPerPage);
-  const paginatedWorkers = filteredWorkers.slice(
-    (currentPage - 1) * workersPerPage,
-    currentPage * workersPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedWorkers,
+  } = usePagination(filteredWorkers, 10);
   const stats = [
     {
       label: 'Total Workers',

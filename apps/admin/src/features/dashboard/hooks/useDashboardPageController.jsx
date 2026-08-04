@@ -77,10 +77,7 @@ export function useDashboardPageController() {
       );
       await refresh();
     } catch (error) {
-      toast.error(
-        decision === 'APPROVED' ? 'Approval failed' : 'Rejection failed',
-        error.message,
-      );
+      toast.error(decision === 'APPROVED' ? 'Approval failed' : 'Rejection failed', error.message);
     }
   };
   return {

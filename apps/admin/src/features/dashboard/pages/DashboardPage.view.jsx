@@ -20,6 +20,7 @@ import {
 import Badge from '../../../components/ui/Badge';
 import Skeleton from '../../../components/ui/Skeleton';
 import StatCard from '../../../components/ui/StatCard';
+import { money } from '../../../services/adminShared';
 import {
   Area,
   AreaChart,
@@ -67,7 +68,7 @@ export function DashboardView({ model }) {
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard
           title="Total Revenue"
-          value={`₱${Number(metrics.successful_payment_total ?? 0).toLocaleString()}`}
+          value={money(metrics.successful_payment_total ?? 0)}
           icon={DollarSign}
           trend="up"
           trendValue="Live"
@@ -152,7 +153,7 @@ export function DashboardView({ model }) {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: '#6B7280' }}
-                    tickFormatter={(value) => `₱${value}`}
+                    tickFormatter={(value) => money(value)}
                   />
                   <Tooltip
                     contentStyle={{

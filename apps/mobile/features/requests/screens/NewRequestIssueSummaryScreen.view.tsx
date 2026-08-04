@@ -209,9 +209,7 @@ export function IssueSummaryView({
               : 'Continue to AI Matching'
           }
           onPress={continueToMatching}
-          disabled={
-            status !== 'success' || !descriptionIsValid(editableDraft)
-          }
+          disabled={status !== 'success' || !descriptionIsValid(editableDraft)}
           fullWidth
         />
       </View>

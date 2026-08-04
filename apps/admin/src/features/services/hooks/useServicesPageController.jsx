@@ -8,12 +8,12 @@ import {
 import { useEffect, useState } from 'react';
 import { Layers, ArrowUpRight, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useServicesPageController() {
   const [services, setServices] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentService, setCurrentService] = useState(null);
@@ -30,7 +30,7 @@ export function useServicesPageController() {
   });
   const closeConfirm = () => setConfirm((s) => ({ ...s, isOpen: false }));
   const [mostBooked, setMostBooked] = useState(null);
-  const servicesPerPage = 8;
+
   const refresh = async () => {
     const [value, booked] = await Promise.all([loadCatalog(), loadMostBookedService()]);
     setServices(value.services);
@@ -54,11 +54,12 @@ export function useServicesPageController() {
     const matchesCategory = filterCategory === 'All' || s.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
-  const totalPages = Math.ceil(filteredServices.length / servicesPerPage);
-  const paginatedServices = filteredServices.slice(
-    (currentPage - 1) * servicesPerPage,
-    currentPage * servicesPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedServices,
+  } = usePagination(filteredServices, 8);
   const stats = [
     {
       label: 'Total Services',

@@ -7,17 +7,14 @@ import {
 import { useEffect, useState } from 'react';
 import { Calendar, Clock, CheckCircle, PlayCircle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
-import {
-  BOOKING_STATUS_BADGE,
-  badgeFor,
-} from '../../../services/statusMeta';
+import { BOOKING_STATUS_BADGE, badgeFor } from '../../../services/statusMeta';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useBookingsPageController() {
   const toast = useToast();
   const [bookings, setBookings] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
@@ -32,7 +29,7 @@ export function useBookingsPageController() {
     onConfirm: () => {},
   });
   const closeConfirm = () => setConfirm((s) => ({ ...s, isOpen: false }));
-  const bookingsPerPage = 10;
+
   useEffect(() => {
     const refresh = async () => setBookings(await loadBookings());
     void refresh();
@@ -46,11 +43,12 @@ export function useBookingsPageController() {
     const matchesStatus = filterStatus === 'All' || b.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
-  const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
-  const paginatedBookings = filteredBookings.slice(
-    (currentPage - 1) * bookingsPerPage,
-    currentPage * bookingsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedBookings,
+  } = usePagination(filteredBookings, 10);
   const stats = [
     {
       label: "Today's Bookings",

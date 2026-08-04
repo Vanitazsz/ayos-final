@@ -9,10 +9,8 @@ import { Send, Mail, MessageSquare, Smartphone, XCircle, Clock } from 'lucide-re
 import { useDataFetch } from '../../../hooks/useDataFetch';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
-import {
-  NOTIFICATION_STATUS_BADGE,
-  badgeFor,
-} from '../../../services/statusMeta';
+import { NOTIFICATION_STATUS_BADGE, badgeFor } from '../../../services/statusMeta';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useNotificationsPageController() {
   const toast = useToast();
@@ -20,21 +18,21 @@ export function useNotificationsPageController() {
   useRealtime('notification_campaigns', refresh);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [campaign, setCampaign] = useState({ title: '', audience: 'EVERYONE', message: '' });
-  const notifsPerPage = 10;
+
   const safeNotifs = notifications ?? [];
   const filteredNotifs = safeNotifs.filter((n) => {
     const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'All' || n.type === filterType;
     return matchesSearch && matchesType;
   });
-  const totalPages = Math.ceil(filteredNotifs.length / notifsPerPage);
-  const paginatedNotifs = filteredNotifs.slice(
-    (currentPage - 1) * notifsPerPage,
-    currentPage * notifsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedNotifs,
+  } = usePagination(filteredNotifs, 10);
   const stats = [
     {
       label: 'Sent',

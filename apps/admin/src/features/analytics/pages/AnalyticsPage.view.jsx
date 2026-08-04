@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
+import { money } from '../../../services/adminShared';
 
 export function AnalyticsView({ model }) {
   const { kpis, monthlyRevenue, topServices, totalRevenue, mau, avgWorkerEarnings } = model;
@@ -62,7 +63,7 @@ export function AnalyticsView({ model }) {
               </h3>
               <p className="text-sm text-gray-500">Gross revenue over the selected period</p>
             </div>
-            <h2 className="text-2xl font-bold text-blue-600">₱{totalRevenue.toLocaleString()}</h2>
+            <h2 className="text-2xl font-bold text-blue-600">{money(totalRevenue)}</h2>
           </div>
 
           {/* CSS-rendered bar chart */}
@@ -71,7 +72,7 @@ export function AnalyticsView({ model }) {
               <div key={index} className="flex flex-col items-center flex-1 group">
                 {/* Tooltip (visible on hover) */}
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-2 text-xs font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                  ₱{data.value.toFixed(1)}k
+                  {money(data.value)}k
                 </div>
                 {/* Bar */}
                 <div
@@ -140,7 +141,7 @@ export function AnalyticsView({ model }) {
             <h4 className="text-gray-500 font-medium">Avg. Worker Earnings / Mo</h4>
             <div className="flex items-baseline gap-3 mt-1">
               <span className="text-3xl font-bold text-gray-900">
-                {avgWorkerEarnings != null ? `₱${avgWorkerEarnings.toLocaleString()}` : '—'}
+                {avgWorkerEarnings != null ? money(avgWorkerEarnings) : '—'}
               </span>
               <span className="text-sm font-medium text-green-600">Annual avg</span>
             </div>

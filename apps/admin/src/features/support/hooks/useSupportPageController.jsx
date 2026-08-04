@@ -8,22 +8,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { MessageSquare, Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { useRealtime } from '../../../hooks/useRealtime';
 import { useToast } from '../../../context/ToastContext';
-import {
-  SUPPORT_STATUS_BADGE,
-  badgeFor,
-} from '../../../services/statusMeta';
+import { SUPPORT_STATUS_BADGE, badgeFor } from '../../../services/statusMeta';
+import { usePagination } from '../../../hooks/usePagination';
 
 export function useSupportPageController() {
   const toast = useToast();
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [safetyCases, setSafetyCases] = useState([]);
-  const ticketsPerPage = 10;
+
   const refresh = useCallback(async () => {
     const [rows, cases] = await Promise.all([loadSupport(), loadSafetyCases()]);
     setTickets(rows);
@@ -43,11 +40,12 @@ export function useSupportPageController() {
     const matchesStatus = filterStatus === 'All' || t.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
-  const totalPages = Math.ceil(filteredTickets.length / ticketsPerPage);
-  const paginatedTickets = filteredTickets.slice(
-    (currentPage - 1) * ticketsPerPage,
-    currentPage * ticketsPerPage,
-  );
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageData: paginatedTickets,
+  } = usePagination(filteredTickets, 10);
   const stats = [
     {
       label: 'Open Tickets',

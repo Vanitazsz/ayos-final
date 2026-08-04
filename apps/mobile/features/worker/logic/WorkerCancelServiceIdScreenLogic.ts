@@ -31,8 +31,7 @@ export const filterRecommendations = (
   const lower = customReason.toLowerCase();
   return reasons
     .filter(
-      (r) =>
-        r.label.toLowerCase().includes(lower) && r.id !== selectedReasonId,
+      (r) => r.label.toLowerCase().includes(lower) && r.id !== selectedReasonId,
     )
     .slice(0, 5);
 };

@@ -15,20 +15,15 @@ export function filterReviews(
   activeFilter: ReviewFilter,
 ): ReviewData[] {
   if (activeFilter === 'All') return reviews;
-  if (activeFilter === '5 Stars')
-    return reviews.filter((r) => r.rating === 5);
-  if (activeFilter === '4 Stars')
-    return reviews.filter((r) => r.rating === 4);
-  if (activeFilter === '3 Stars')
-    return reviews.filter((r) => r.rating === 3);
+  if (activeFilter === '5 Stars') return reviews.filter((r) => r.rating === 5);
+  if (activeFilter === '4 Stars') return reviews.filter((r) => r.rating === 4);
+  if (activeFilter === '3 Stars') return reviews.filter((r) => r.rating === 3);
   if (activeFilter === 'Recent')
     return [...reviews].sort((a, b) => a.date.localeCompare(b.date));
   return reviews;
 }
 
-export function ratedReviewCount(
-  reviews: ReviewData[],
-): number {
+export function ratedReviewCount(reviews: ReviewData[]): number {
   return Object.values(
     reviews.reduce(
       (acc, r) => {

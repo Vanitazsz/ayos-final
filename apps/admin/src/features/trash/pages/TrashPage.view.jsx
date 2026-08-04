@@ -1,7 +1,8 @@
 import { Trash2, Search, RotateCcw, ShieldAlert, AlertCircle } from 'lucide-react';
 import Pagination from '../../../components/ui/Pagination';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-const tabs = ['Users', 'Workers', 'Bookings', 'Services', 'Reviews'];
+import { TRASH_TABS } from '../logic/TrashPageLogic';
+const tabs = TRASH_TABS;
 export function TrashView({ model }) {
   const {
     activeTab,
