@@ -45,8 +45,6 @@ export function TrackingView({
     isCancelled,
     isActive,
     reportWorker,
-    blockWorker,
-    disputeBooking,
   } = model;
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
@@ -201,18 +199,6 @@ export function TrackingView({
             title="Report Provider"
             variant="outlined"
             onPress={reportWorker}
-            fullWidth
-          />
-          <Button
-            title="Block Provider"
-            variant="outlined"
-            onPress={blockWorker}
-            fullWidth
-          />
-          <Button
-            title="Open Dispute"
-            variant="outlined"
-            onPress={disputeBooking}
             fullWidth
           />
         </View>

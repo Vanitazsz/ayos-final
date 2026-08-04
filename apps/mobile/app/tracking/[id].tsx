@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -21,13 +22,11 @@ import {
   Wrench,
 } from 'lucide-react-native';
 import {
-  blockAccount,
   confirmJobCompletion,
   fetchBookingTracking,
-  openBookingDispute,
-  reportBookingParticipant,
   subscribeToTable,
 } from '@/services/api';
+import { buildProviderReportEmail } from '@/services/support';
 import {
   subscribeToEnRouteLocation,
   type LiveEnRouteLocation,
@@ -222,81 +221,17 @@ export default function TrackingScreen() {
     | string
     | undefined;
 
-  const reportWorker = () =>
-    Alert.alert(
-      'Report provider',
-      'Submit a conduct report for administrator review?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit report',
-          style: 'destructive',
-          onPress: () =>
-            void reportBookingParticipant(
-              bookingId,
-              `Customer submitted a conduct concern for booking ${bookingId}. Administrator review is required.`,
-            )
-              .then(() =>
-                Alert.alert(
-                  'Report submitted',
-                  'An administrator can now review this booking.',
-                ),
-              )
-              .catch((error) => Alert.alert('Report failed', error.message)),
-        },
-      ],
-    );
-
-  const blockWorker = () => {
-    if (!workerAccountId) return;
-    Alert.alert(
-      'Block provider',
-      'This provider will be excluded from your future matches.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Block',
-          style: 'destructive',
-          onPress: () =>
-            void blockAccount(
-              workerAccountId,
-              `Blocked from booking ${bookingId}`,
-            )
-              .then(() =>
-                Alert.alert(
-                  'Provider blocked',
-                  'This provider will not appear in future matches.',
-                ),
-              )
-              .catch((error) => Alert.alert('Block failed', error.message)),
-        },
-      ],
+  const reportWorker = () => {
+    const { to, subject, body } = buildProviderReportEmail({
+      bookingId: bookingId ?? '',
+      providerName: tracking?.booking?.worker_profiles?.display_name,
+      providerAccountId: workerAccountId,
+      bookingStatus: workerStatus,
+    });
+    void Linking.openURL(
+      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
     );
   };
-
-  const disputeBooking = () =>
-    Alert.alert(
-      'Open dispute',
-      'Open a dispute for administrator review of this booking?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open dispute',
-          onPress: () =>
-            void openBookingDispute(
-              bookingId,
-              `Customer requested administrator review for booking ${bookingId}.`,
-            )
-              .then(() =>
-                Alert.alert(
-                  'Dispute opened',
-                  'An administrator can now review the booking record.',
-                ),
-              )
-              .catch((error) => Alert.alert('Dispute failed', error.message)),
-        },
-      ],
-    );
 
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
@@ -455,18 +390,6 @@ export default function TrackingScreen() {
             title="Report Provider"
             variant="outlined"
             onPress={reportWorker}
-            fullWidth
-          />
-          <Button
-            title="Block Provider"
-            variant="outlined"
-            onPress={blockWorker}
-            fullWidth
-          />
-          <Button
-            title="Open Dispute"
-            variant="outlined"
-            onPress={disputeBooking}
             fullWidth
           />
         </View>

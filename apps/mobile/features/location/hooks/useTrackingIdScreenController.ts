@@ -1,19 +1,17 @@
 import {
-  blockAccount,
   confirmJobCompletion,
   fetchBookingTracking,
-  openBookingDispute,
-  reportBookingParticipant,
   subscribeToTable,
   subscribeToEnRouteLocation,
   type LiveEnRouteLocation,
   createRealtimeRefreshController,
+  buildProviderReportEmail,
   STATUS_STEP_MAP,
   STATUS_INFO,
   Clock,
 } from '../logic/TrackingIdScreenLogic';
 import { useState, useMemo, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 export function useTrackingIdScreenController() {
   const router = useRouter();
@@ -114,79 +112,17 @@ export function useTrackingIdScreenController() {
   const workerAccountId = tracking?.booking?.worker_account_id as
     | string
     | undefined;
-  const reportWorker = () =>
-    Alert.alert(
-      'Report provider',
-      'Submit a conduct report for administrator review?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit report',
-          style: 'destructive',
-          onPress: () =>
-            void reportBookingParticipant(
-              bookingId,
-              `Customer submitted a conduct concern for booking ${bookingId}. Administrator review is required.`,
-            )
-              .then(() =>
-                Alert.alert(
-                  'Report submitted',
-                  'An administrator can now review this booking.',
-                ),
-              )
-              .catch((error) => Alert.alert('Report failed', error.message)),
-        },
-      ],
-    );
-  const blockWorker = () => {
-    if (!workerAccountId) return;
-    Alert.alert(
-      'Block provider',
-      'This provider will be excluded from your future matches.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Block',
-          style: 'destructive',
-          onPress: () =>
-            void blockAccount(
-              workerAccountId,
-              `Blocked from booking ${bookingId}`,
-            )
-              .then(() =>
-                Alert.alert(
-                  'Provider blocked',
-                  'This provider will not appear in future matches.',
-                ),
-              )
-              .catch((error) => Alert.alert('Block failed', error.message)),
-        },
-      ],
+  const reportWorker = () => {
+    const { to, subject, body } = buildProviderReportEmail({
+      bookingId: bookingId ?? '',
+      providerName: tracking?.booking?.worker_profiles?.display_name,
+      providerAccountId: workerAccountId,
+      bookingStatus: workerStatus,
+    });
+    void Linking.openURL(
+      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
     );
   };
-  const disputeBooking = () =>
-    Alert.alert(
-      'Open dispute',
-      'Open a dispute for administrator review of this booking?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open dispute',
-          onPress: () =>
-            void openBookingDispute(
-              bookingId,
-              `Customer requested administrator review for booking ${bookingId}.`,
-            )
-              .then(() =>
-                Alert.alert(
-                  'Dispute opened',
-                  'An administrator can now review the booking record.',
-                ),
-              )
-              .catch((error) => Alert.alert('Dispute failed', error.message)),
-        },
-      ],
-    );
   return {
     router,
     id,
@@ -208,7 +144,5 @@ export function useTrackingIdScreenController() {
     isActive,
     workerAccountId,
     reportWorker,
-    blockWorker,
-    disputeBooking,
   };
 }

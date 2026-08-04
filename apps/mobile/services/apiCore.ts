@@ -1145,24 +1145,6 @@ export async function reportBookingParticipant(
   return data;
 }
 
-export async function blockAccount(accountId: string, reason: string) {
-  const { data, error } = await supabase.rpc('block_account', {
-    p_account_id: accountId,
-    p_reason: reason,
-  });
-  if (error) throw error;
-  return data;
-}
-
-export async function openBookingDispute(bookingId: string, reason: string) {
-  const { data, error } = await supabase.rpc('open_booking_dispute', {
-    p_booking_id: bookingId,
-    p_reason: reason,
-  });
-  if (error) throw error;
-  return data;
-}
-
 export async function attachBookingProof(
   bookingId: string,
   media: { path: string; contentType: string; byteSize: number },

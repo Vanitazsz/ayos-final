@@ -1,8 +1,4 @@
-export {
-  blockAccount,
-  openBookingDispute,
-  reportBookingParticipant,
-} from '@/services/support';
+export { buildProviderReportEmail } from '@/services/support';
 export {
   confirmJobCompletion,
   fetchBookingTracking,
