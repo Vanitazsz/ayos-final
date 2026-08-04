@@ -4,6 +4,7 @@ type PaymentAmount = {
 };
 
 function validAmount(value: unknown) {
+  if (value == null) return null;
   const amount = Number(value);
   return Number.isFinite(amount) && amount >= 0 ? amount : null;
 }

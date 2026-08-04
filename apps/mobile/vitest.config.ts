@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['services/**/*.test.ts'],
+    include: ['services/**/*.test.ts', 'utils/**/*.test.ts'],
   },
 });
 
