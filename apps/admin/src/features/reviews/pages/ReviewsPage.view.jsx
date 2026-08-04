@@ -10,6 +10,10 @@ import {
 } from 'lucide-react';
 import Pagination from '../../../components/ui/Pagination';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
+import {
+  REVIEW_STATUS_BADGE,
+  badgeFor,
+} from '../../../services/statusMeta';
 
 export function ReviewsView({ model }) {
   const {
@@ -145,21 +149,24 @@ export function ReviewsView({ model }) {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {review.status === 'Published' && (
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <CheckCircle size={12} className="mr-1" /> Published
-                      </span>
-                    )}
-                    {review.status === 'Hidden' && (
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        <EyeOff size={12} className="mr-1" /> Hidden
-                      </span>
-                    )}
-                    {review.status === 'Flagged' && (
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        <AlertTriangle size={12} className="mr-1" /> Flagged ({review.reportCount})
-                      </span>
-                    )}
+                    <span
+                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeFor(REVIEW_STATUS_BADGE, review.status)}`}
+                    >
+                      {review.status === 'Published' && (
+                        <CheckCircle size={12} className="mr-1" />
+                      )}
+                      {review.status === 'Hidden' && (
+                        <EyeOff size={12} className="mr-1" />
+                      )}
+                      {review.status === 'Flagged' && (
+                        <AlertTriangle size={12} className="mr-1" />
+                      )}
+                      {review.status === 'Published'
+                        ? 'Published'
+                        : review.status === 'Hidden'
+                          ? 'Hidden'
+                          : `Flagged (${review.reportCount})`}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                     <button

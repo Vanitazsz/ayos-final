@@ -18,6 +18,7 @@ import {
 import Drawer from '../../../components/ui/Drawer';
 import Modal from '../../../components/ui/Modal';
 import Pagination from '../../../components/ui/Pagination';
+import { money } from '../../../services/adminShared';
 import AccountDeleteModal from '../../../components/admin/AccountDeleteModal';
 
 export function WorkersView({ model }) {
@@ -460,7 +461,7 @@ export function WorkersView({ model }) {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-xs text-gray-500 mb-1">Earnings</p>
                   <p className="font-semibold text-gray-900">
-                    ${selectedWorker.earnings.toLocaleString()}
+                    {money(selectedWorker.earnings)}
                   </p>
                 </div>
               </div>

@@ -27,6 +27,12 @@ export const SUPPORT_STATUS_BADGE = {
   Resolved: 'bg-green-100 text-green-800',
 };
 
+export const REVIEW_STATUS_BADGE = {
+  Published: 'bg-green-100 text-green-800',
+  Hidden: 'bg-gray-100 text-gray-800',
+  Flagged: 'bg-red-100 text-red-800',
+};
+
 export const DEFAULT_BADGE = 'bg-gray-100 text-gray-800';
 
 export const badgeFor = (map, status) => map[status] ?? DEFAULT_BADGE;

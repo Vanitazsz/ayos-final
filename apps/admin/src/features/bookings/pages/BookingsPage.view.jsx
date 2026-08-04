@@ -13,7 +13,7 @@ import Drawer from '../../../components/ui/Drawer';
 import Modal from '../../../components/ui/Modal';
 import Pagination from '../../../components/ui/Pagination';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
-import { money } from '../../../services/adminShared';
+import { money, formatDateTime } from '../../../services/adminShared';
 
 export function BookingsView({ model }) {
   const {
@@ -342,7 +342,7 @@ export function BookingsView({ model }) {
                       {event.to_status.replaceAll('_', ' ')}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(event.created_at).toLocaleString()}
+                      {formatDateTime(event.created_at)}
                       {event.reason ? ` • ${event.reason}` : ''}
                     </p>
                   </div>
@@ -355,14 +355,8 @@ export function BookingsView({ model }) {
                 <h4 className="font-semibold text-red-800">Cancellation</h4>
                 <p className="mt-1 text-red-700">{selectedBooking.cancellation.reason}</p>
                 <p className="mt-2 text-red-700">
-                  Refund: ₱
-                  {Number(selectedBooking.cancellation.refund_amount ?? 0).toLocaleString('en-PH', {
-                    minimumFractionDigits: 2,
-                  })}{' '}
-                  · Fee: ₱
-                  {Number(selectedBooking.cancellation.fee_amount ?? 0).toLocaleString('en-PH', {
-                    minimumFractionDigits: 2,
-                  })}
+                  Refund: {money(Number(selectedBooking.cancellation.refund_amount ?? 0))}{' '}
+                  · Fee: {money(Number(selectedBooking.cancellation.fee_amount ?? 0))}
                 </p>
                 {selectedBooking.refund && (
                   <p className="mt-1 text-red-700">

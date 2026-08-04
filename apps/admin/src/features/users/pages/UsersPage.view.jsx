@@ -10,6 +10,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '../../../components/ui/Card';
+import { formatDateTime } from '../../../services/adminShared';
 import {
   Table,
   TableHeader,
@@ -384,7 +385,7 @@ export function UsersView({ model }) {
                       <div className="text-xs text-gray-500">{verification.email}</div>
                     </TableCell>
                     <TableCell>{verification.id_type.replaceAll('_', ' ')}</TableCell>
-                    <TableCell>{new Date(verification.created_at).toLocaleString()}</TableCell>
+                    <TableCell>{formatDateTime(verification.created_at)}</TableCell>
                     <TableCell>
                       <Button
                         size="sm"

@@ -1,6 +1,7 @@
 import { Crown, Plus } from 'lucide-react';
 import Modal from '../../../components/ui/Modal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
+import { moneyFromMinor, formatDate } from '../../../services/adminShared';
 const blankPlan = { id: '', name: '', price: 0, duration_days: 30, is_active: true };
 export function SubscriptionsView({ model }) {
   const {
@@ -80,8 +81,7 @@ export function SubscriptionsView({ model }) {
               <Crown className="mb-2 text-amber-500" />
               <p className="font-semibold">{item.name}</p>
               <p className="text-sm text-gray-500">
-                ₱{(Number(item.amount) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}{' '}
-                · {item.duration_days} days
+                {moneyFromMinor(item.amount)} · {item.duration_days} days
               </p>
               <p className="mt-2 text-xs">{item.is_active ? 'Active' : 'Inactive'}</p>
             </button>
@@ -113,8 +113,8 @@ export function SubscriptionsView({ model }) {
                   {row.worker_profiles?.display_name ?? row.worker_id}
                 </td>
                 <td className="px-4 py-3">{row.plan_name}</td>
-                <td className="px-4 py-3">{new Date(row.starts_at).toLocaleDateString()}</td>
-                <td className="px-4 py-3">{new Date(row.expires_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3">{formatDate(row.starts_at)}</td>
+                <td className="px-4 py-3">{formatDate(row.expires_at)}</td>
                 <td className="px-4 py-3 capitalize">{row.status}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-3">

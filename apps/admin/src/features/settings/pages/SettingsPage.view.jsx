@@ -1,4 +1,8 @@
 import { Save, CheckCircle } from 'lucide-react';
+import {
+  titleCase,
+  matchingWeightsTotalPercent,
+} from '../logic/SettingsPageLogic';
 
 export function SettingsView({ model }) {
   const {
@@ -327,10 +331,7 @@ export function SettingsView({ model }) {
                     {Object.entries(matchingWeights).map(([key, value]) => (
                       <label key={key} className="text-sm text-gray-700">
                         <span className="mb-1 block">
-                          {key
-                            .replace(/([A-Z])/g, ' $1')
-                            .replace(/^./, (letter) => letter.toUpperCase())}{' '}
-                          (%)
+                          {titleCase(key)} (%)
                         </span>
                         <input
                           type="number"
@@ -350,14 +351,7 @@ export function SettingsView({ model }) {
                     ))}
                   </div>
                   <p className="mt-2 text-xs text-gray-500">
-                    Total:{' '}
-                    {Math.round(
-                      Object.values(matchingWeights).reduce(
-                        (sum, value) => sum + Number(value),
-                        0,
-                      ) * 100,
-                    )}
-                    %
+                    Total: {matchingWeightsTotalPercent(matchingWeights)}%
                   </p>
                 </div>
 

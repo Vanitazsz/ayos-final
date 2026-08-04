@@ -1,5 +1,6 @@
 import { Mail, Phone, MapPin, Shield, Camera, CheckCircle, Clock, Monitor } from 'lucide-react';
 import Modal from '../../../components/ui/Modal';
+import { formatDate, formatDateTime } from '../../../services/adminShared';
 
 export function ProfileView({ model }) {
   const {
@@ -79,7 +80,7 @@ export function ProfileView({ model }) {
               </div>
               <div className="flex items-center text-gray-600">
                 <Clock size={16} className="mr-3 text-gray-400" /> Joined{' '}
-                {new Date(profile.joined).toLocaleDateString()}
+                {formatDate(profile.joined)}
               </div>
             </div>
           </div>
@@ -93,7 +94,7 @@ export function ProfileView({ model }) {
                 <p className="text-sm font-medium text-gray-900">Password</p>
                 <p className="text-xs text-gray-500 mb-2">
                   {profile.passwordChangedAt
-                    ? `Last changed ${new Date(profile.passwordChangedAt).toLocaleDateString()}`
+                    ? `Last changed ${formatDate(profile.passwordChangedAt)}`
                     : 'Change history not recorded'}
                 </p>
                 <button
@@ -275,7 +276,7 @@ export function ProfileView({ model }) {
                     <p className="text-xs text-gray-500">
                       {currentEvent?.ip_address || 'IP not recorded'}
                       {profile.session?.created_at
-                        ? ` • Started ${new Date(profile.session.created_at).toLocaleString()}`
+                        ? ` • Started ${formatDateTime(profile.session.created_at)}`
                         : ''}
                     </p>
                   </div>
@@ -332,7 +333,7 @@ export function ProfileView({ model }) {
                   return (
                     <tr key={event.id}>
                       <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">
-                        {new Date(event.created_at).toLocaleString()}
+                        {formatDateTime(event.created_at)}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-gray-500">
                         {event.ip_address || ''}

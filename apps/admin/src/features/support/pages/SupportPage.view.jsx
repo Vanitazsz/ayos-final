@@ -1,6 +1,7 @@
 import { HeadphonesIcon, Search, Filter, CheckCircle, Send, User } from 'lucide-react';
 import Drawer from '../../../components/ui/Drawer';
 import Pagination from '../../../components/ui/Pagination';
+import { formatDateTime } from '../../../services/adminShared';
 
 export function SupportView({ model }) {
   const {
@@ -101,7 +102,7 @@ export function SupportView({ model }) {
                   <td className="px-4 py-3 text-sm text-gray-700 max-w-lg">{item.reason}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{item.status}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(item.createdAt).toLocaleString()}
+                    {formatDateTime(item.createdAt)}
                   </td>
                 </tr>
               ))
@@ -331,7 +332,7 @@ export function SupportView({ model }) {
                       <p
                         className={`text-xs text-gray-400 mt-1 ${fromRequester ? '' : 'text-right'}`}
                       >
-                        {new Date(message.createdAt).toLocaleString()}
+                        {formatDateTime(message.createdAt)}
                       </p>
                     </div>
                   </div>
