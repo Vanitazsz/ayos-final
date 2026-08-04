@@ -107,6 +107,8 @@ export function useProfilePageController() {
     );
   const currentEvent = profile.authenticationEvents[0] ?? null;
   const currentAgent = describeUserAgent(currentEvent?.user_agent ?? window.navigator.userAgent);
+  const deviceLabel = (agent) =>
+    [agent.device, agent.browser].filter(Boolean).join(' - ');
   return {
     isEditing,
     setIsEditing,
@@ -122,5 +124,7 @@ export function useProfilePageController() {
     handlePassword,
     currentEvent,
     currentAgent,
+    describeUserAgent,
+    deviceLabel,
   };
 }

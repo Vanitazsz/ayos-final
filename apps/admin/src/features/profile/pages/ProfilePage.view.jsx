@@ -17,6 +17,8 @@ export function ProfileView({ model }) {
     handlePassword,
     currentEvent,
     currentAgent,
+    describeUserAgent,
+    deviceLabel,
   } = model;
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -268,8 +270,7 @@ export function ProfileView({ model }) {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900">
-                      {[currentAgent.device, currentAgent.browser].filter(Boolean).join(' - ') ||
-                        'Current authenticated session'}
+                      {deviceLabel(currentAgent) || 'Current authenticated session'}
                     </p>
                     <p className="text-xs text-gray-500">
                       {currentEvent?.ip_address || 'IP not recorded'}
@@ -328,7 +329,6 @@ export function ProfileView({ model }) {
               </thead>
               <tbody className="bg-white divide-y divide-gray-100 text-sm">
                 {profile.authenticationEvents.map((event) => {
-                  const agent = describeUserAgent(event.user_agent);
                   return (
                     <tr key={event.id}>
                       <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">
@@ -338,7 +338,7 @@ export function ProfileView({ model }) {
                         {event.ip_address || ''}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-gray-500">
-                        {[agent.device, agent.browser].filter(Boolean).join(' - ')}
+                        {deviceLabel(describeUserAgent(event.user_agent))}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-right">
                         <span className="text-green-600 font-medium text-xs bg-green-50 px-2 py-0.5 rounded">

@@ -77,7 +77,6 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, subtitle, isLoa
 );
 export function DashboardView({ model }) {
   const {
-    toast,
     isLoading,
     activities,
     metrics,
@@ -86,6 +85,7 @@ export function DashboardView({ model }) {
     pendingWorkers,
     recentUsers,
     systemNotifications,
+    handleReviewWorker,
   } = model;
   return (
     <div className="space-y-6">
@@ -350,32 +350,14 @@ export function DashboardView({ model }) {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end space-x-2">
                           <button
-                            onClick={async () => {
-                              try {
-                                await reviewWorker(worker.verificationId, 'APPROVED', null);
-                                window.location.reload();
-                              } catch (error) {
-                                toast.error('Approval failed', error.message);
-                              }
-                            }}
+                            onClick={() => handleReviewWorker(worker, 'APPROVED')}
                             className="text-success hover:bg-success/10 p-1.5 rounded-md transition-colors"
                             title="Approve"
                           >
                             <CheckCircle className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={async () => {
-                              try {
-                                await reviewWorker(
-                                  worker.verificationId,
-                                  'REJECTED',
-                                  'Rejected by administrator',
-                                );
-                                window.location.reload();
-                              } catch (error) {
-                                toast.error('Rejection failed', error.message);
-                              }
-                            }}
+                            onClick={() => handleReviewWorker(worker, 'REJECTED')}
                             className="text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors"
                             title="Reject"
                           >
