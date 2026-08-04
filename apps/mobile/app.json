@@ -39,7 +39,17 @@
         }
       ],
       "@maplibre/maplibre-react-native",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow A-YOS to access your location to find nearby workers, set your service area, and share live booking progress.",
+          "locationAlwaysAndWhenInUsePermission": "Allow A-YOS to access your location in the background so your live booking progress stays visible while you travel.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

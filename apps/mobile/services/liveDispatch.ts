@@ -2,6 +2,10 @@ import * as Location from 'expo-location';
 import { AppState } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { getWorkerMatchingReadiness } from '@/services/workerMatching';
+import {
+  startEnRouteBackgroundPublisherOnce,
+  stopEnRouteBackgroundPublisher,
+} from '@/services/enRouteLocationBackground';
 
 export const WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS = 15_000;
 export const LIVE_DISPATCH_REFRESH_INTERVAL_MS = 30_000;
@@ -468,6 +472,8 @@ export async function startEnRouteLocationPublisher(
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') return stopEnRouteLocationPublisher;
 
+  void startEnRouteBackgroundPublisherOnce(bookingId);
+
   activeEnRouteSubscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,
@@ -499,6 +505,7 @@ export async function startEnRouteLocationPublisher(
 }
 
 export function stopEnRouteLocationPublisher() {
+  void stopEnRouteBackgroundPublisher();
   if (activeEnRouteSubscription) {
     activeEnRouteSubscription.remove();
     activeEnRouteSubscription = null;

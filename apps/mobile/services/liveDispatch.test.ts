@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   appStateListeners: [] as Array<(state: string) => void>,
   rpc: vi.fn(),
   readiness: vi.fn(),
+  startEnRouteBackgroundPublisher: vi.fn(),
+  stopEnRouteBackgroundPublisher: vi.fn(),
 }));
 
 vi.mock('expo-location', () => ({
@@ -41,6 +43,11 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/services/workerMatching', () => ({
   getWorkerMatchingReadiness: mocks.readiness,
+}));
+
+vi.mock('./enRouteLocationBackground', () => ({
+  startEnRouteBackgroundPublisherOnce: mocks.startEnRouteBackgroundPublisher,
+  stopEnRouteBackgroundPublisher: mocks.stopEnRouteBackgroundPublisher,
 }));
 
 import {
@@ -208,8 +215,12 @@ describe('startForegroundWorkerPresence', () => {
       }),
       expect.any(Function),
     );
+    expect(mocks.startEnRouteBackgroundPublisher).toHaveBeenCalledWith(
+      'test-booking-123',
+    );
 
     stop();
     expect(mocks.removeWatch).toHaveBeenCalled();
+    expect(mocks.stopEnRouteBackgroundPublisher).toHaveBeenCalled();
   });
 });

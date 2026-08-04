@@ -161,7 +161,7 @@
   },
   {
     "id": "FR-41",
-    "text": "The system shall provide map tracking and an ETA when location permission is granted during a worker-en-route booking."
+    "text": "The system shall provide map tracking and an ETA when location permission is granted during a worker-en-route booking, and shall continue live tracking when the worker app runs in the background when background location permission is granted."
   },
   {
     "id": "FR-42",
