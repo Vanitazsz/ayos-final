@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Linking,
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -14,7 +13,6 @@ import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
 import {
   ArrowLeft,
-  Phone,
   MessageSquare,
   CheckCircle2,
   Circle,
@@ -34,7 +32,6 @@ import {
   subscribeToEnRouteLocation,
   type LiveEnRouteLocation,
 } from '@/services/liveDispatch';
-import { supabase } from '@/lib/supabase';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 
@@ -221,7 +218,6 @@ export default function TrackingScreen() {
   const isPendingConfirmation = workerStatus === 'PENDING_CONFIRMATION';
   const isCancelled = workerStatus === 'CANCELLED';
   const isActive = !isCompleted && !isCancelled;
-  const contactAvailable = workerStatus !== 'PENDING';
   const workerAccountId = tracking?.booking?.worker_account_id as
     | string
     | undefined;
@@ -443,25 +439,6 @@ export default function TrackingScreen() {
             </View>
           </View>
           <View style={styles.actions}>
-            {contactAvailable ? (
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => {
-                  if (workerAccountId) {
-                    supabase
-                      .from('accounts')
-                      .select('mobile')
-                      .eq('id', workerAccountId)
-                      .single()
-                      .then(({ data }) => {
-                        if (data?.mobile) Linking.openURL(`tel:${data.mobile}`);
-                      });
-                  }
-                }}
-              >
-                <Phone color={theme.colors.primary} size={20} />
-              </TouchableOpacity>
-            ) : null}
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => router.push(`/messages/chat?id=${id}`)}

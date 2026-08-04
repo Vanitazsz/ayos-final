@@ -13,7 +13,6 @@ export {
   type LiveEnRouteLocation,
 } from '@/services/liveDispatch';
 export { createRealtimeRefreshController } from '@/services/requestControl';
-export { fetchAccountMobile } from '@/repositories/accounts';
 
 import { CheckCircle2, Clock, MapPin, Wrench } from 'lucide-react-native';
 export { Clock, CheckCircle2, MapPin, Wrench };

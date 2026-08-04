@@ -8,7 +8,6 @@ import {
   subscribeToEnRouteLocation,
   type LiveEnRouteLocation,
   createRealtimeRefreshController,
-  fetchAccountMobile,
   STATUS_STEP_MAP,
   STATUS_INFO,
   Clock,
@@ -112,7 +111,6 @@ export function useTrackingIdScreenController() {
   const isPendingConfirmation = workerStatus === 'PENDING_CONFIRMATION';
   const isCancelled = workerStatus === 'CANCELLED';
   const isActive = !isCompleted && !isCancelled;
-  const contactAvailable = workerStatus !== 'PENDING';
   const workerAccountId = tracking?.booking?.worker_account_id as
     | string
     | undefined;
@@ -208,11 +206,9 @@ export function useTrackingIdScreenController() {
     isPendingConfirmation,
     isCancelled,
     isActive,
-    contactAvailable,
     workerAccountId,
     reportWorker,
     blockWorker,
     disputeBooking,
-    fetchAccountMobile,
   };
 }

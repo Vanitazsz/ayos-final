@@ -12,7 +12,6 @@ import {
 interface ConversationAccess {
   bookingId: string | null;
   serviceRequestId: string | null;
-  workerAccountId: string | null;
   status: string;
   canSend: boolean;
   canArchive: boolean;
@@ -23,7 +22,6 @@ interface ConversationAccess {
 const EMPTY_ACCESS: ConversationAccess = {
   bookingId: null,
   serviceRequestId: null,
-  workerAccountId: null,
   status: '',
   canSend: false,
   canArchive: false,
@@ -61,7 +59,6 @@ export function useConversationChat(conversationId: string | null) {
       setAccess({
         bookingId: result.data.bookingId ?? null,
         serviceRequestId: result.data.serviceRequestId ?? null,
-        workerAccountId: result.data.workerAccountId ?? null,
         status: result.data.status ?? '',
         canSend: Boolean(result.data.canSend),
         canArchive: Boolean(result.data.canArchive),

@@ -6,7 +6,6 @@ import {
   Clock,
   DollarSign,
   Calendar,
-  Phone,
   MessageSquare,
   CheckCircle2,
   Loader2,
@@ -47,7 +46,6 @@ export function BookingRequestView({
     handleLeaveFeedback,
     handleConfirmCash,
     handleReport,
-    handleCall,
     handleCancelService,
     isCompleted,
     isCancelled,
@@ -288,16 +286,6 @@ export function BookingRequestView({
           {booking.status === 'en_route' && (
             <View style={{ gap: 12 }}>
               <View style={styles.contactRow}>
-                <Pressable style={styles.contactBtn} onPress={handleCall}>
-                  <Phone size={18} color={Colors.cta} />
-                  <AppText
-                    variant="bodySm"
-                    weight="semiBold"
-                    color={Colors.cta}
-                  >
-                    Call
-                  </AppText>
-                </Pressable>
                 <Pressable
                   style={styles.contactBtn}
                   onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
@@ -327,16 +315,6 @@ export function BookingRequestView({
           {booking.status === 'in_progress' && (
             <View style={{ gap: 12 }}>
               <View style={styles.contactRow}>
-                <Pressable style={styles.contactBtn} onPress={handleCall}>
-                  <Phone size={18} color={Colors.cta} />
-                  <AppText
-                    variant="bodySm"
-                    weight="semiBold"
-                    color={Colors.cta}
-                  >
-                    Call
-                  </AppText>
-                </Pressable>
                 <Pressable
                   style={styles.contactBtn}
                   onPress={() => router.push(`/messages/chat?id=${booking.id}`)}
@@ -387,16 +365,6 @@ export function BookingRequestView({
                 </View>
               )}
               <View style={styles.contactRow}>
-                <Pressable style={styles.contactBtn} onPress={handleCall}>
-                  <Phone size={18} color={Colors.cta} />
-                  <AppText
-                    variant="bodySm"
-                    weight="semiBold"
-                    color={Colors.cta}
-                  >
-                    Call
-                  </AppText>
-                </Pressable>
                 <Pressable
                   style={styles.contactBtn}
                   onPress={() => router.push(`/messages/chat?id=${booking.id}`)}

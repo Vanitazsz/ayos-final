@@ -1320,8 +1320,6 @@ export async function fetchConversation(conversationId: string) {
       id: conversation.id,
       bookingId: conversation.booking_id,
       serviceRequestId: conversation.service_request_id,
-      workerAccountId:
-        conversation.worker_account_id ?? booking?.worker_account_id ?? null,
       status: rawStatus,
       canSend: !closed && !(conversation as any).archived_at,
       canArchive: closed && !(conversation as any).archived_at,

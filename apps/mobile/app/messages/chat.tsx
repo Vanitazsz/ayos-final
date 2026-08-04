@@ -17,7 +17,6 @@ import {
   Languages,
   MapPin,
   Paperclip,
-  Phone,
   RotateCcw,
   Send,
 } from 'lucide-react-native';
@@ -139,17 +138,6 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.callButton}
-          disabled={!access.canSend}
-        >
-          <Phone
-            color={
-              access.canSend ? theme.colors.primary : theme.colors.textTertiary
-            }
-            size={20}
-          />
-        </TouchableOpacity>
       </View>
 
       {access.canSend && rawBookingId ? (
@@ -435,12 +423,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginRight: theme.spacing.sm,
     backgroundColor: theme.colors.borderLight,
-  },
-  callButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
   },
   hireBanner: {
     backgroundColor: theme.colors.infoBackground,

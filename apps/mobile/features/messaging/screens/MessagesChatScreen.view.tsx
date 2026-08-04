@@ -14,7 +14,6 @@ import {
   Languages,
   MapPin,
   Paperclip,
-  Phone,
   RotateCcw,
   Send,
 } from 'lucide-react-native';
@@ -84,14 +83,6 @@ export function ChatView({
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.callButton} disabled={!access.canSend}>
-          <Phone
-            color={
-              access.canSend ? theme.colors.primary : theme.colors.textTertiary
-            }
-            size={20}
-          />
-        </TouchableOpacity>
       </View>
 
       {access.canSend && rawBookingId ? (

@@ -4,14 +4,12 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Linking,
 } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { LegacyButton as Button } from '@/components/AppButton';
 import { theme } from '@/constants/theme';
 import {
   ArrowLeft,
-  Phone,
   MessageSquare,
   CheckCircle2,
   Circle,
@@ -46,12 +44,9 @@ export function TrackingView({
     isPendingConfirmation,
     isCancelled,
     isActive,
-    contactAvailable,
-    workerAccountId,
     reportWorker,
     blockWorker,
     disputeBooking,
-    fetchAccountMobile,
   } = model;
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
@@ -190,20 +185,6 @@ export function TrackingView({
             </View>
           </View>
           <View style={styles.actions}>
-            {contactAvailable ? (
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => {
-                  if (workerAccountId) {
-                    void fetchAccountMobile(workerAccountId).then((mobile) => {
-                      if (mobile) void Linking.openURL(`tel:${mobile}`);
-                    });
-                  }
-                }}
-              >
-                <Phone color={theme.colors.primary} size={20} />
-              </TouchableOpacity>
-            ) : null}
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => router.push(`/messages/chat?id=${id}`)}

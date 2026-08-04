@@ -333,11 +333,6 @@ export function useWorkerBookingRequestIdScreenController() {
       },
     ]);
   };
-  const handleCall = () =>
-    Alert.alert(
-      'Phone unavailable',
-      'The customer has not shared a callable phone number. Use secure booking messages.',
-    );
   const handleCancelService = () => {
     router.push(`/(worker)/cancel-service/${booking.id}`);
   };
@@ -365,7 +360,6 @@ export function useWorkerBookingRequestIdScreenController() {
     handleLeaveFeedback,
     handleConfirmCash,
     handleReport,
-    handleCall,
     handleCancelService,
     isCompleted,
     isCancelled,

@@ -29,12 +29,6 @@ export const styles = StyleSheet.create({
     marginRight: theme.spacing.sm,
     backgroundColor: theme.colors.borderLight,
   },
-  callButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
   hireBanner: {
     backgroundColor: theme.colors.infoBackground,
     flexDirection: 'row',
