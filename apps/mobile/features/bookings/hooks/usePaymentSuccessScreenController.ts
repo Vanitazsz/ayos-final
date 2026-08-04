@@ -9,13 +9,18 @@ export function usePaymentSuccessScreenController() {
   const [payment, setPayment] = useState<any>(null);
   const [error, setError] = useState('');
   useEffect(() => {
+    let active = true;
     if (bookingId)
       void fetchPaymentForBooking(bookingId).then((result) => {
+        if (!active) return;
         if (result.error) setError(result.error);
         else if (result.data?.status !== 'SUCCESSFUL')
           setError('Cash payment is still waiting for both confirmations.');
         else setPayment(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [bookingId]);
   const receipt = Array.isArray(payment?.receipts)
     ? payment.receipts[0]

@@ -46,7 +46,11 @@ export function useMessagesChatScreenController() {
     });
   }, [rawBookingId, rawConversationId]);
   useEffect(() => {
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    const timer = setTimeout(
+      () => scrollRef.current?.scrollToEnd({ animated: true }),
+      80,
+    );
+    return () => clearTimeout(timer);
   }, [messages.length]);
   useEffect(() => {
     if (

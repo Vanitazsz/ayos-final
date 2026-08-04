@@ -11,6 +11,7 @@ import { normalizeFunctionError } from '@/services/functionErrors';
 import {
   getMyProfile,
   requireIdentity,
+  batchResolveAvatars,
   resolveProfileAvatar,
   resolveStorageImage,
 } from '@/services/profile';
@@ -117,21 +118,30 @@ export interface IndustryWithSkills {
 }
 const money = (value: number | string | null | undefined) =>
   `₱${Number(value ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const relative = (date: string) =>
-  new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
+  rtf.format(
     -Math.max(
       1,
       Math.round((Date.now() - new Date(date).getTime()) / 86400000),
     ),
     'day',
   );
+let cachedUser: { id: string; expiresAt: number } | null = null;
 const requireUser = async () => {
+  if (cachedUser && Date.now() < cachedUser.expiresAt) {
+    return { id: cachedUser.id } as any;
+  }
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
   if (error || !user) throw error ?? new Error('Authentication required');
+  cachedUser = { id: user.id, expiresAt: Date.now() + 14 * 60 * 1000 };
   return user;
+};
+export const invalidateUserCache = () => {
+  cachedUser = null;
 };
 export const apiErrorMessage = (
   error: unknown,
@@ -254,38 +264,40 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
       .eq('approval_status', 'APPROVED')
       .eq('is_available', true);
     if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => {
-        const reviews = (row.reviews ?? []).filter(
-          (review: any) => review.moderation_status === 'PUBLISHED',
-        );
-        return {
-          id: row.account_id,
-          name: requireIdentity(row.display_name, 'Worker'),
-          category: requireIdentity(
-            row.worker_skills?.[0]?.service_categories?.name,
-            'Worker service',
-          ),
-          avatarUri: await resolveProfileAvatar(row.avatar_path),
-          rating: averageRating(reviews),
-          reviewCount: reviews.length,
-          distance: '',
-          eta: '',
-          verified: row.approval_status === 'APPROVED',
-          price:
-            row.worker_skills?.find((skill: any) => skill.rate_minor != null)
-              ?.rate_minor != null
-              ? money(
-                  Math.min(
-                    ...row.worker_skills
-                      .map((skill: any) => Number(skill.rate_minor))
-                      .filter(Number.isFinite),
-                  ) / 100,
-                )
-              : 'Pending price',
-        };
-      }),
+    const rows = data ?? [];
+    const avatarMap = await batchResolveAvatars(
+      rows.map((row: any) => row.avatar_path),
     );
+    return rows.map((row: any) => {
+      const reviews = (row.reviews ?? []).filter(
+        (review: any) => review.moderation_status === 'PUBLISHED',
+      );
+      return {
+        id: row.account_id,
+        name: requireIdentity(row.display_name, 'Worker'),
+        category: requireIdentity(
+          row.worker_skills?.[0]?.service_categories?.name,
+          'Worker service',
+        ),
+        avatarUri: avatarMap.get(row.avatar_path) ?? '',
+        rating: averageRating(reviews),
+        reviewCount: reviews.length,
+        distance: '',
+        eta: '',
+        verified: row.approval_status === 'APPROVED',
+        price:
+          row.worker_skills?.find((skill: any) => skill.rate_minor != null)
+            ?.rate_minor != null
+            ? money(
+                Math.min(
+                  ...row.worker_skills
+                    .map((skill: any) => Number(skill.rate_minor))
+                    .filter(Number.isFinite),
+                ) / 100,
+              )
+            : 'Pending price',
+      };
+    });
   });
 }
 export async function fetchProviderById(
@@ -331,10 +343,14 @@ export async function fetchProviderProfile(id: string) {
       .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
     const rating = averageRating(rows);
+    const avatarMap = await batchResolveAvatars([
+      profile.avatar_path,
+      ...rows.map((row: any) => row.user_profiles?.avatar_path),
+    ]);
     return {
       id: profile.account_id,
       name: requireIdentity(profile.display_name, 'Worker'),
-      avatarUri: await resolveProfileAvatar(profile.avatar_path),
+      avatarUri: avatarMap.get(profile.avatar_path) ?? '',
       category: requireIdentity(
         profile.worker_skills?.[0]?.service_categories?.name,
         'Worker service',
@@ -355,19 +371,17 @@ export async function fetchProviderProfile(id: string) {
       services: (skills ?? [])
         .map((skill: any) => skill.service_categories?.name)
         .filter(Boolean),
-      reviews: await Promise.all(
-        rows.map(async (row: any) => ({
-          id: row.id,
-          author: requireIdentity(
-            row.user_profiles?.display_name,
-            'Review author',
-          ),
-          avatarUri: await resolveProfileAvatar(row.user_profiles?.avatar_path),
-          rating: row.stars,
-          date: relative(row.created_at),
-          comment: row.body,
-        })),
-      ),
+      reviews: rows.map((row: any) => ({
+        id: row.id,
+        author: requireIdentity(
+          row.user_profiles?.display_name,
+          'Review author',
+        ),
+        avatarUri: avatarMap.get(row.user_profiles?.avatar_path) ?? '',
+        rating: row.stars,
+        date: relative(row.created_at),
+        comment: row.body,
+      })),
     };
   });
 }
@@ -381,23 +395,26 @@ export async function fetchReviews(): Promise<ApiResponse<ReviewData[]>> {
       .eq('moderation_status', 'PUBLISHED')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => ({
-        id: row.id,
-        author: requireIdentity(
-          row.user_profiles?.display_name,
-          'Review author',
-        ),
-        avatarUri: await resolveProfileAvatar(row.user_profiles?.avatar_path),
-        rating: row.stars,
-        date: relative(row.created_at),
-        comment: row.body,
-        serviceType: requireIdentity(
-          row.service?.service_requests?.service_categories?.name,
-          'Reviewed service',
-        ),
-      })),
+    const rows = data ?? [];
+    const avatarMap = await batchResolveAvatars(
+      rows.map((row: any) => row.user_profiles?.avatar_path),
     );
+    return rows.map((row: any) => ({
+      id: row.id,
+      author: requireIdentity(
+        row.user_profiles?.display_name,
+        'Review author',
+      ),
+      avatarUri:
+        avatarMap.get(row.user_profiles?.avatar_path) ?? '',
+      rating: row.stars,
+      date: relative(row.created_at),
+      comment: row.body,
+      serviceType: requireIdentity(
+        row.service?.service_requests?.service_categories?.name,
+        'Reviewed service',
+      ),
+    }));
   });
 }
 export async function fetchBookings(): Promise<ApiResponse<any[]>> {
@@ -412,60 +429,61 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
       .order('created_at', { ascending: false });
     if (bookingResult.error) throw new Error(bookingResult.error.message);
 
-    const bookings = await Promise.all(
-      (bookingResult.data ?? []).map(async (row: any) => {
-        const reviews = (row.worker_profiles?.reviews ?? []).filter(
-          (review: any) => review.moderation_status === 'PUBLISHED',
-        );
-        return {
-          id: row.id,
-          requestId: row.service_request_id,
-          recordType: 'booking',
-          providerId: row.worker_account_id,
-          providerName: requireIdentity(
-            row.worker_profiles?.display_name,
-            'Booked worker',
-          ),
-          category: requireIdentity(
-            row.service_requests?.service_categories?.name,
-            'Booked service',
-          ),
-          avatarUri: await resolveProfileAvatar(
-            row.worker_profiles?.avatar_path,
-          ),
-          date: new Date(
-            row.service_requests?.scheduled_at ?? row.created_at,
-          ).toLocaleDateString(),
-          time: new Date(
-            row.service_requests?.scheduled_at ?? row.created_at,
-          ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status:
-            row.status === 'COMPLETED'
-              ? 'completed'
-              : row.status === 'CANCELLED'
-                ? 'cancelled'
-                : ['PENDING', 'ACCEPTED', 'WORKER_PREPARING'].includes(
-                      row.status,
-                    )
-                  ? 'upcoming'
-                  : 'ongoing',
-          rawStatus: row.status,
-          address: [
-            row.service_requests?.addresses?.line1,
-            row.service_requests?.addresses?.barangay,
-            row.service_requests?.addresses?.city,
-          ]
-            .filter(Boolean)
-            .join(', '),
-          price:
-            row.agreed_service_amount == null
-              ? 'Pending price'
-              : money(row.agreed_service_amount),
-          rating: averageRating(reviews),
-        };
-      }),
+    const rows = bookingResult.data ?? [];
+    const avatarMap = await batchResolveAvatars(
+      rows.map((row: any) => row.worker_profiles?.avatar_path),
     );
-    return bookings;
+
+    return rows.map((row: any) => {
+      const reviews = (row.worker_profiles?.reviews ?? []).filter(
+        (review: any) => review.moderation_status === 'PUBLISHED',
+      );
+      return {
+        id: row.id,
+        requestId: row.service_request_id,
+        recordType: 'booking',
+        providerId: row.worker_account_id,
+        providerName: requireIdentity(
+          row.worker_profiles?.display_name,
+          'Booked worker',
+        ),
+        category: requireIdentity(
+          row.service_requests?.service_categories?.name,
+          'Booked service',
+        ),
+        avatarUri:
+          avatarMap.get(row.worker_profiles?.avatar_path) ?? '',
+        date: new Date(
+          row.service_requests?.scheduled_at ?? row.created_at,
+        ).toLocaleDateString(),
+        time: new Date(
+          row.service_requests?.scheduled_at ?? row.created_at,
+        ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status:
+          row.status === 'COMPLETED'
+            ? 'completed'
+            : row.status === 'CANCELLED'
+              ? 'cancelled'
+              : ['PENDING', 'ACCEPTED', 'WORKER_PREPARING'].includes(
+                    row.status,
+                  )
+                ? 'upcoming'
+                : 'ongoing',
+        rawStatus: row.status,
+        address: [
+          row.service_requests?.addresses?.line1,
+          row.service_requests?.addresses?.barangay,
+          row.service_requests?.addresses?.city,
+        ]
+          .filter(Boolean)
+          .join(', '),
+        price:
+          row.agreed_service_amount == null
+            ? 'Pending price'
+            : money(row.agreed_service_amount),
+        rating: averageRating(reviews),
+      };
+    });
   });
 }
 export async function fetchServiceCategories() {
@@ -628,15 +646,20 @@ export async function fetchWorkerReviews() {
       .eq('worker_account_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
+    const rows = data ?? [];
+    const avatarMap = await batchResolveAvatars(
+      rows.map((row: any) => row.user_profiles?.avatar_path),
+    );
     const result: ReviewData[] = [];
-    for (const row of (data ?? []) as any[]) {
+    for (const row of rows as any[]) {
       result.push({
         id: row.id,
         author: requireIdentity(
           row.user_profiles?.display_name,
           'Review author',
         ),
-        avatarUri: await resolveProfileAvatar(row.user_profiles?.avatar_path),
+        avatarUri:
+          avatarMap.get(row.user_profiles?.avatar_path) ?? '',
         rating: Number(row.stars),
         date: relative(row.created_at),
         comment: row.body,
@@ -664,41 +687,42 @@ export async function fetchWorkerBookings(): Promise<
       .order('created_at', { ascending: false });
     if (bookingResult.error) throw new Error(bookingResult.error.message);
 
-    const bookings = await Promise.all(
-      (bookingResult.data ?? []).map(async (row: any) => ({
-        id: row.id,
-        requestId: row.service_request_id,
-        recordType: 'booking' as const,
-        customerName: requireIdentity(
-          row.user_profiles?.display_name,
-          'Booking customer',
-        ),
-        customerAvatar: await resolveProfileAvatar(
-          row.user_profiles?.avatar_path,
-        ),
-        service: requireIdentity(
-          row.service_requests?.service_categories?.name,
-          'Booked service',
-        ),
-        date: new Date(
-          row.service_requests?.scheduled_at ?? row.created_at,
-        ).toLocaleDateString(),
-        time: new Date(
-          row.service_requests?.scheduled_at ?? row.created_at,
-        ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        address: [
-          row.service_requests?.addresses?.line1,
-          row.service_requests?.addresses?.barangay,
-          row.service_requests?.addresses?.city,
-        ]
-          .filter(Boolean)
-          .join(', '),
-        price: money(row.agreed_service_amount),
-        status: row.status.toLowerCase(),
-        distance: '',
-      })),
+    const rows = bookingResult.data ?? [];
+    const avatarMap = await batchResolveAvatars(
+      rows.map((row: any) => row.user_profiles?.avatar_path),
     );
-    return bookings;
+
+    return rows.map((row: any) => ({
+      id: row.id,
+      requestId: row.service_request_id,
+      recordType: 'booking' as const,
+      customerName: requireIdentity(
+        row.user_profiles?.display_name,
+        'Booking customer',
+      ),
+      customerAvatar:
+        avatarMap.get(row.user_profiles?.avatar_path) ?? '',
+      service: requireIdentity(
+        row.service_requests?.service_categories?.name,
+        'Booked service',
+      ),
+      date: new Date(
+        row.service_requests?.scheduled_at ?? row.created_at,
+      ).toLocaleDateString(),
+      time: new Date(
+        row.service_requests?.scheduled_at ?? row.created_at,
+      ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      address: [
+        row.service_requests?.addresses?.line1,
+        row.service_requests?.addresses?.barangay,
+        row.service_requests?.addresses?.city,
+      ]
+        .filter(Boolean)
+        .join(', '),
+      price: money(row.agreed_service_amount),
+      status: row.status.toLowerCase(),
+      distance: '',
+    }));
   });
 }
 function isBookingVersionConflict(error: unknown) {
@@ -1396,8 +1420,8 @@ export async function fetchConversations() {
       .is('archived_at', null)
       .order('updated_at', { ascending: false });
     if (error) throw error;
-    return Promise.all(
-      (data ?? []).map(async (row: any) => {
+    const prepared = (data ?? [])
+      .map((row: any) => {
         const booking = Array.isArray(row.bookings)
           ? row.bookings[0]
           : row.bookings;
@@ -1431,35 +1455,42 @@ export async function fetchConversations() {
               firstRelation(request?.user_profiles));
         const resolvedParticipantProfile = matchedProfile ?? participantProfile;
         if (!(resolvedParticipantProfile as any)?.display_name) return null;
-        const participantName = (resolvedParticipantProfile as any)
-          .display_name;
-        const avatarPath =
-          (resolvedParticipantProfile as any).avatar_path ?? '';
-
         return {
-          id: row.id,
-          bookingId: row.booking_id,
-          name: participantName,
-          avatar: await resolveProfileAvatar(avatarPath),
-          lastMessage: latest?.body ?? '',
-          time: latest ? relative(latest.created_at) : '',
-          unread: messages.filter(
-            (message: any) =>
-              message.sender_id !== user.id &&
-              (!readAt || new Date(message.created_at) > new Date(readAt)),
-          ).length,
-          status: rawStatus,
-          canSend: !closed,
-          canArchive: closed,
-          canHireAgain: profile.role === 'USER' && closed,
+          row,
+          participantName: (resolvedParticipantProfile as any).display_name,
+          avatarPath:
+            (resolvedParticipantProfile as any).avatar_path ?? '',
+          latest,
+          readAt,
+          messages,
+          rawStatus,
+          closed,
         };
-      }),
-    ).then((conversations) =>
-      conversations.filter(
-        (conversation): conversation is NonNullable<typeof conversation> =>
-          conversation !== null,
-      ),
+      })
+      .filter(
+        (item): item is NonNullable<typeof item> => item !== null,
+      );
+    const avatarMap = await batchResolveAvatars(
+      prepared.map((item) => item.avatarPath),
     );
+    return prepared.map((item) => ({
+      id: item.row.id,
+      bookingId: item.row.booking_id,
+      name: item.participantName,
+      avatar: avatarMap.get(item.avatarPath) ?? '',
+      lastMessage: item.latest?.body ?? '',
+      time: item.latest ? relative(item.latest.created_at) : '',
+      unread: item.messages.filter(
+        (message: any) =>
+          message.sender_id !== user.id &&
+          (!item.readAt ||
+            new Date(message.created_at) > new Date(item.readAt)),
+      ).length,
+      status: item.rawStatus,
+      canSend: !item.closed,
+      canArchive: item.closed,
+      canHireAgain: profile.role === 'USER' && item.closed,
+    }));
   });
 }
 export async function archiveConversation(conversationId: string) {

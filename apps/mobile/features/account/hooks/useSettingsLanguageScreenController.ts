@@ -10,9 +10,13 @@ export function useSettingsLanguageScreenController() {
   const [locale, setLocale] = useState<'en' | 'fil'>('en');
   const [saving, setSaving] = useState(false);
   useEffect(() => {
+    let active = true;
     void getMyProfile().then((profile) => {
-      if (profile.role !== 'ADMIN') setLocale(profile.preferredLocale);
+      if (active && profile.role !== 'ADMIN') setLocale(profile.preferredLocale);
     });
+    return () => {
+      active = false;
+    };
   }, []);
   const save = async () => {
     setSaving(true);

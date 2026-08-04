@@ -19,20 +19,23 @@ export function useTabsProfileScreenController() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
-  const load = async () => {
-    const result = await fetchCustomerProfile();
-    if (result.error) {
-      setLoadError(result.error);
-      setProfile(null);
-      return;
-    }
-    setProfile(result.data);
-    setName(result.data.name);
-    setMobile(user?.phone ?? '');
-    setLoadError('');
-  };
   useEffect(() => {
-    void load();
+    let active = true;
+    void fetchCustomerProfile().then((result) => {
+      if (!active) return;
+      if (result.error) {
+        setLoadError(result.error);
+        setProfile(null);
+        return;
+      }
+      setProfile(result.data);
+      setName(result.data.name);
+      setMobile(user?.phone ?? '');
+      setLoadError('');
+    });
+    return () => {
+      active = false;
+    };
   }, []);
   const chooseAvatar = async () => {
     try {

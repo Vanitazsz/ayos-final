@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { theme } from '@/constants/theme';
 import { QueryClient } from '@tanstack/react-query';
 import { Redirect, Stack, usePathname, useSegments } from 'expo-router';
@@ -76,7 +77,9 @@ export function RootLayoutView({
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <SessionBoundary />
+        <ErrorBoundary>
+          <SessionBoundary />
+        </ErrorBoundary>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

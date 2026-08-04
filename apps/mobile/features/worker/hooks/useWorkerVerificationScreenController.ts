@@ -24,9 +24,13 @@ export function useWorkerVerificationScreenController() {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [verification, setVerification] = useState<any>(null);
   useEffect(() => {
+    let active = true;
     void fetchWorkerVerification().then((result) => {
-      if (!result.error) setVerification(result.data);
+      if (active && !result.error) setVerification(result.data);
     });
+    return () => {
+      active = false;
+    };
   }, []);
   const status = verification?.status ?? 'PENDING';
   const submitted = verification?.created_at

@@ -24,10 +24,14 @@ export function useProviderIdScreenController() {
   });
   const [isFav, setIsFav] = React.useState(false);
   useEffect(() => {
+    let active = true;
     if (id)
       void fetchProviderProfile(id).then((result) => {
-        if (!result.error) setProvider(result.data);
+        if (active && !result.error) setProvider(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [id]);
   const handleBack = useCallback(() => router.back(), []);
   const handleBook = useCallback(

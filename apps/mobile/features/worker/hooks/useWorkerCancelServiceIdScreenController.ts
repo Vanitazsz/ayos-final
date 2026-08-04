@@ -27,14 +27,16 @@ export function useWorkerCancelServiceIdScreenController() {
     CancellationReason[]
   >([]);
   useEffect(() => {
+    let active = true;
     if (id)
       void fetchBookingDetail(id).then((result) => {
-        if (!result.error)
+        if (active && !result.error)
           setBooking({
             customerName: result.data.user_profiles?.display_name ?? '',
           });
       });
-    void fetchCancellationReasons().then((result) =>
+    void fetchCancellationReasons().then((result) => {
+      if (!active) return;
       setCancellationReasons(
         result.data.map((row: any) => ({
           id: row.code,
@@ -43,8 +45,11 @@ export function useWorkerCancelServiceIdScreenController() {
           jobStages: ['before_traveling', 'after_arriving', 'after_inspecting'],
           requiresInput: false,
         })),
-      ),
-    );
+      );
+    });
+    return () => {
+      active = false;
+    };
   }, [id]);
   const filteredReasons = useMemo(() => {
     return cancellationReasons.filter((r) =>

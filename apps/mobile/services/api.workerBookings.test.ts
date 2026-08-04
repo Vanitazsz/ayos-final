@@ -33,6 +33,11 @@ vi.mock('@/services/profile', () => ({
   },
   resolveProfileAvatar: async (path: string | null) => path ?? '',
   resolveStorageImage: async (path: string | null) => path ?? '',
+  batchResolveAvatars: async (paths: (string | null)[]) => {
+    const map = new Map<string, string>();
+    for (const p of paths) if (p) map.set(p, p);
+    return map;
+  },
 }));
 
 const query = (result: unknown) => {

@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { normalizePhilippinePhone } from '@/lib/workerRegistration';
 import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
+import { invalidateUserCache } from '@/services/apiCore';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -71,6 +72,7 @@ export async function signInWithPassword(email: string, password: string) {
   if (!authResult.data.session)
     throw new Error('Supabase did not return an authenticated session');
 
+  invalidateUserCache();
   try {
     const user = await loadCurrentUser();
     try {
@@ -224,6 +226,7 @@ export async function loadCurrentUser() {
 }
 
 export async function signOut() {
+  invalidateUserCache();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types.js";
+import type { Database } from "@ayos/supabase";
 import type { SupabaseEnvironment } from "./env.js";
 
 export type ApiSuccess<T> = { success: true; message: string; data: T };

@@ -19,10 +19,14 @@ export function useAcceptWorkerIdScreenController() {
   });
   const draft = useRequestStore();
   useEffect(() => {
+    let active = true;
     if (id)
       void fetchProviderProfile(id).then((result) => {
-        if (!result.error) setProvider(result.data);
+        if (active && !result.error) setProvider(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [id]);
   const handleHire = async () => {
     if (!draft.requestId) {

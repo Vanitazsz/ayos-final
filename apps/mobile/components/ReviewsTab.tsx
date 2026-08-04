@@ -27,7 +27,10 @@ interface ReviewsTabProps {
   headerComponent?: React.ReactNode;
 }
 
-export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
+export const ReviewsTab = React.memo(function ReviewsTab({
+  reviews,
+  headerComponent,
+}: ReviewsTabProps) {
   const [activeFilter, setActiveFilter] = useState<ReviewFilter>('All');
   const [likedReviews, setLikedReviews] = useState<Set<string>>(new Set());
 
@@ -208,7 +211,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
       }
     />
   );
-}
+});
 
 const styles = StyleSheet.create({
   listContent: { paddingHorizontal: Spacing['8'], paddingBottom: 100 },

@@ -88,6 +88,15 @@ export async function resolveStorageImage(
 export const resolveProfileAvatar = (path: unknown) =>
   resolveStorageImage(path, 'profile-avatars');
 
+export async function batchResolveAvatars(
+  paths: (unknown)[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(paths.filter((p): p is string => typeof p === 'string' && p !== ''))];
+  if (unique.length === 0) return new Map();
+  const results = await Promise.all(unique.map((p) => resolveStorageImage(p)));
+  return new Map(unique.map((p, i) => [p, results[i]]));
+}
+
 export async function getMyProfile(): Promise<
   CustomerProfile | WorkerProfileView | AdminProfile
 > {

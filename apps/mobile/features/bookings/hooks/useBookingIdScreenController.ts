@@ -21,10 +21,14 @@ export function useBookingIdScreenController() {
     price: '',
   });
   useEffect(() => {
+    let active = true;
     if (id)
       void fetchProviderProfile(id).then((result) => {
-        if (!result.error) setProvider(result.data);
+        if (active && !result.error) setProvider(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [id]);
   const [selectedDay, setSelectedDay] = useState('2');
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);

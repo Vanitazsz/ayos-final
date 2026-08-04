@@ -16,11 +16,13 @@ export function usePaymentIdScreenController() {
   const [error, setError] = useState('');
   const bookingId = Array.isArray(id) ? id[0] : id;
   useEffect(() => {
+    let active = true;
     if (bookingId)
       void Promise.all([
         fetchBookingDetail(bookingId),
         fetchPlatformFeeSettings(),
       ]).then(([result, fees]) => {
+        if (!active) return;
         if (result.error) setError(result.error);
         else {
           const agreedAmount = result.data?.agreed_service_amount;
@@ -33,6 +35,9 @@ export function usePaymentIdScreenController() {
         }
         if (!fees.error) setHomeownerCharge(fees.data.homeownerCharge ?? 0);
       });
+    return () => {
+      active = false;
+    };
   }, [bookingId]);
   const total = (amount ?? 0) + homeownerCharge;
   const handlePayment = async () => {

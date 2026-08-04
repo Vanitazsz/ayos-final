@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types.js";
+import type { Database } from "@ayos/supabase";
 import { readExpoSupabaseEnvironment } from "./env.js";
 
 export function createMobileSupabaseClient(storage: {

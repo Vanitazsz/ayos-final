@@ -37,7 +37,7 @@ interface AppAutocompleteProps {
   onSelect?: (option: SelectOption) => void;
 }
 
-export const AppAutocomplete: React.FC<AppAutocompleteProps> = ({
+export const AppAutocomplete = React.memo(function AppAutocomplete({
   label,
   value,
   onChangeText,
@@ -52,7 +52,7 @@ export const AppAutocomplete: React.FC<AppAutocompleteProps> = ({
   allowCustom = true,
   maxSuggestions = 5,
   onSelect,
-}) => {
+}: AppAutocompleteProps) {
   const [focused, setFocused] = useState(false);
   const [blurredOnce, setBlurredOnce] = useState(false);
   const pressingRef = useRef(false);
@@ -75,12 +75,17 @@ export const AppAutocomplete: React.FC<AppAutocompleteProps> = ({
 
   const showSuggestions = focused && (filtered.length > 0 || (allowCustom && value.trim().length > 0 && !exactMatch));
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSelect = useCallback((option: SelectOption) => {
     pressingRef.current = true;
     if (multiSelect && onToggle) {
       onToggle(option.value);
       onChangeText('');
-      setTimeout(() => { pressingRef.current = false; }, 100);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        pressingRef.current = false;
+      }, 100);
     } else {
       onChangeText(option.label);
       onSelect?.(option);
@@ -219,7 +224,7 @@ export const AppAutocomplete: React.FC<AppAutocompleteProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

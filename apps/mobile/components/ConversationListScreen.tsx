@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,6 +22,125 @@ import { useConversationListScreenController } from '@/features/messaging/hooks/
 interface ConversationListScreenProps {
   emptyDescription: string;
 }
+
+interface ChatItemProps {
+  chat: ReturnType<
+    typeof useConversationListScreenController
+  >['chats'][number];
+  selectionMode: boolean;
+  selected: boolean;
+  selectable: boolean;
+  onToggle: (id: string) => void;
+  onOpen: (chat: ChatItemProps['chat']) => void;
+}
+
+const ChatItem = React.memo(function ChatItem({
+  chat,
+  selectionMode,
+  selected,
+  selectable,
+  onToggle,
+  onOpen,
+}: ChatItemProps) {
+  const handlePress = useCallback(() => {
+    if (selectionMode) {
+      if (selectable) onToggle(chat.id);
+      return;
+    }
+    onOpen(chat);
+  }, [selectionMode, selectable, chat, onToggle, onOpen]);
+
+  const unreadStyle = useMemo(
+    () => ({
+      color:
+        chat.unread > 0 ? theme.colors.primary : theme.colors.textSecondary,
+    }),
+    [chat.unread],
+  );
+
+  const messageStyle = useMemo(
+    () => ({
+      color:
+        chat.unread > 0
+          ? theme.colors.textPrimary
+          : theme.colors.textSecondary,
+      flex: 1 as const,
+    }),
+    [chat.unread],
+  );
+
+  return (
+    <TouchableOpacity
+      accessibilityRole={selectionMode ? 'checkbox' : 'button'}
+      accessibilityLabel={
+        selectionMode
+          ? `Select conversation with ${chat.name}`
+          : `Open conversation with ${chat.name}`
+      }
+      accessibilityState={
+        selectionMode
+          ? { checked: selected, disabled: !selectable }
+          : undefined
+      }
+      style={[
+        styles.chatRow,
+        selected && styles.selectedRow,
+        selectionMode && !selectable && styles.disabledRow,
+      ]}
+      onPress={handlePress}
+    >
+      {selectionMode && (
+        <View style={styles.checkbox}>
+          {selected ? (
+            <CheckSquare size={22} color={theme.colors.primary} />
+          ) : (
+            <Square
+              size={22}
+              color={
+                selectable
+                  ? theme.colors.textSecondary
+                  : theme.colors.border
+              }
+            />
+          )}
+        </View>
+      )}
+      <Image
+        source={chat.avatar}
+        style={styles.avatar}
+        contentFit="cover"
+      />
+      <View style={styles.chatDetails}>
+        <View style={styles.chatHeader}>
+          <Text style={theme.typography.h4}>{chat.name}</Text>
+          <Text
+            style={[theme.typography.caption, unreadStyle]}
+          >
+            {chat.time}
+          </Text>
+        </View>
+        <View style={styles.chatFooter}>
+          <Text
+            style={[theme.typography.body2, messageStyle]}
+            numberOfLines={1}
+          >
+            {chat.lastMessage}
+          </Text>
+          {!chat.canSend && (
+            <Text style={styles.closedLabel}>Read only</Text>
+          )}
+          {chat.unread > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadText}>{chat.unread}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const ITEM_HEIGHT = 80;
 
 export function ConversationListScreen({
   emptyDescription,
@@ -46,232 +165,218 @@ export function ConversationListScreen({
     openChat,
   } = useConversationListScreenController();
 
+  const renderItem = useCallback(
+    ({ item }: { item: (typeof chats)[number] }) => (
+      <ChatItem
+        chat={item}
+        selectionMode={selectionMode}
+        selected={selectedIds.has(item.id)}
+        selectable={Boolean(item.canArchive)}
+        onToggle={toggleConversation}
+        onOpen={openChat}
+      />
+    ),
+    [selectionMode, selectedIds, toggleConversation, openChat],
+  );
+
+  const keyExtractor = useCallback(
+    (item: (typeof chats)[number]) => item.id,
+    [],
+  );
+
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: ITEM_HEIGHT,
+      offset: ITEM_HEIGHT * index,
+      index,
+    }),
+    [],
+  );
+
+  const headerContent = useMemo(
+    () => (
+      <>
+        <View style={styles.sectionHeader}>
+          <Text style={[theme.typography.h4, styles.sectionTitle]}>
+            Matched Conversations
+          </Text>
+          {deletableIds.length > 0 && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.headerAction}
+              disabled={deleting}
+              onPress={() =>
+                selectionMode
+                  ? exitSelectionMode()
+                  : setSelectionMode(true)
+              }
+            >
+              {!selectionMode && (
+                <Trash2 size={16} color={theme.colors.error} />
+              )}
+              <Text
+                style={
+                  selectionMode
+                    ? styles.cancelText
+                    : styles.headerActionText
+                }
+              >
+                {selectionMode ? 'Cancel' : 'Delete Conversation'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {selectionMode && (
+          <View style={styles.selectionToolbar}>
+            <TouchableOpacity
+              accessibilityRole="checkbox"
+              accessibilityLabel="Select all conversations"
+              accessibilityState={{ checked: allSelected }}
+              style={styles.selectAllButton}
+              onPress={toggleSelectAll}
+            >
+              {allSelected ? (
+                <CheckSquare size={20} color={theme.colors.primary} />
+              ) : (
+                <Square size={20} color={theme.colors.textSecondary} />
+              )}
+              <Text style={styles.selectAllText}>
+                {allSelected ? 'Clear All' : 'Select All'}
+              </Text>
+            </TouchableOpacity>
+
+            {confirmingDelete ? (
+              <View style={styles.confirmActions}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  disabled={deleting}
+                  onPress={() => setConfirmingDelete(false)}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={styles.confirmDeleteButton}
+                  disabled={deleting}
+                  onPress={() => void deleteSelected()}
+                >
+                  {deleting && (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.surface}
+                    />
+                  )}
+                  <Text style={styles.confirmDeleteText}>
+                    Confirm Delete
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[
+                  styles.deleteSelectedButton,
+                  selectedIds.size === 0 && styles.disabledButton,
+                ]}
+                disabled={selectedIds.size === 0}
+                onPress={() => setConfirmingDelete(true)}
+              >
+                <Text
+                  style={[
+                    styles.deleteSelectedText,
+                    selectedIds.size === 0 && styles.disabledText,
+                  ]}
+                >
+                  Delete Selected ({selectedIds.size})
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </>
+    ),
+    [
+      deletableIds.length,
+      deleting,
+      selectionMode,
+      allSelected,
+      confirmingDelete,
+      selectedIds.size,
+      exitSelectionMode,
+      setSelectionMode,
+      toggleSelectAll,
+      setConfirmingDelete,
+      deleteSelected,
+    ],
+  );
+
+  if (loading) {
+    return (
+      <Screen safeArea>
+        <View style={styles.header}>
+          <Text style={theme.typography.h2}>Messages</Text>
+        </View>
+        <View style={styles.stateContainer}>
+          <ActivityIndicator color={theme.colors.primary} />
+          <Text style={styles.stateText}>Loading conversations…</Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (error) {
+    return (
+      <Screen safeArea>
+        <View style={styles.header}>
+          <Text style={theme.typography.h2}>Messages</Text>
+        </View>
+        <View style={styles.stateContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => load(true)}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (chats.length === 0) {
+    return (
+      <Screen safeArea>
+        <View style={styles.header}>
+          <Text style={theme.typography.h2}>Messages</Text>
+        </View>
+        <EmptyState
+          icon={MessageSquare}
+          title="No Matched Conversations"
+          description={emptyDescription}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen safeArea>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>Messages</Text>
       </View>
-      <ScrollView style={styles.content}>
-        {loading ? (
-          <View style={styles.stateContainer}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.stateText}>Loading conversations…</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.stateContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={() => load(true)}
-            >
-              <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : chats.length > 0 ? (
-          <View style={styles.listContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={[theme.typography.h4, styles.sectionTitle]}>
-                Matched Conversations
-              </Text>
-              {deletableIds.length > 0 && (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  style={styles.headerAction}
-                  disabled={deleting}
-                  onPress={() =>
-                    selectionMode ? exitSelectionMode() : setSelectionMode(true)
-                  }
-                >
-                  {!selectionMode && (
-                    <Trash2 size={16} color={theme.colors.error} />
-                  )}
-                  <Text
-                    style={
-                      selectionMode
-                        ? styles.cancelText
-                        : styles.headerActionText
-                    }
-                  >
-                    {selectionMode ? 'Cancel' : 'Delete Conversation'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {selectionMode && (
-              <View style={styles.selectionToolbar}>
-                <TouchableOpacity
-                  accessibilityRole="checkbox"
-                  accessibilityLabel="Select all conversations"
-                  accessibilityState={{ checked: allSelected }}
-                  style={styles.selectAllButton}
-                  onPress={toggleSelectAll}
-                >
-                  {allSelected ? (
-                    <CheckSquare size={20} color={theme.colors.primary} />
-                  ) : (
-                    <Square size={20} color={theme.colors.textSecondary} />
-                  )}
-                  <Text style={styles.selectAllText}>
-                    {allSelected ? 'Clear All' : 'Select All'}
-                  </Text>
-                </TouchableOpacity>
-
-                {confirmingDelete ? (
-                  <View style={styles.confirmActions}>
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      disabled={deleting}
-                      onPress={() => setConfirmingDelete(false)}
-                    >
-                      <Text style={styles.cancelText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      style={styles.confirmDeleteButton}
-                      disabled={deleting}
-                      onPress={() => void deleteSelected()}
-                    >
-                      {deleting && (
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.colors.surface}
-                        />
-                      )}
-                      <Text style={styles.confirmDeleteText}>
-                        Confirm Delete
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    style={[
-                      styles.deleteSelectedButton,
-                      selectedIds.size === 0 && styles.disabledButton,
-                    ]}
-                    disabled={selectedIds.size === 0}
-                    onPress={() => setConfirmingDelete(true)}
-                  >
-                    <Text
-                      style={[
-                        styles.deleteSelectedText,
-                        selectedIds.size === 0 && styles.disabledText,
-                      ]}
-                    >
-                      Delete Selected ({selectedIds.size})
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {chats.map((chat) => {
-              const selected = selectedIds.has(chat.id);
-              const selectable = Boolean(chat.canArchive);
-              return (
-                <TouchableOpacity
-                  key={chat.id}
-                  accessibilityRole={selectionMode ? 'checkbox' : 'button'}
-                  accessibilityLabel={
-                    selectionMode
-                      ? `Select conversation with ${chat.name}`
-                      : `Open conversation with ${chat.name}`
-                  }
-                  accessibilityState={
-                    selectionMode
-                      ? { checked: selected, disabled: !selectable }
-                      : undefined
-                  }
-                  style={[
-                    styles.chatRow,
-                    selected && styles.selectedRow,
-                    selectionMode && !selectable && styles.disabledRow,
-                  ]}
-                  onPress={() => {
-                    if (selectionMode) {
-                      if (selectable) toggleConversation(chat.id);
-                      return;
-                    }
-                    openChat(chat);
-                  }}
-                >
-                  {selectionMode && (
-                    <View style={styles.checkbox}>
-                      {selected ? (
-                        <CheckSquare size={22} color={theme.colors.primary} />
-                      ) : (
-                        <Square
-                          size={22}
-                          color={
-                            selectable
-                              ? theme.colors.textSecondary
-                              : theme.colors.border
-                          }
-                        />
-                      )}
-                    </View>
-                  )}
-                  <Image
-                    source={chat.avatar}
-                    style={styles.avatar}
-                    contentFit="cover"
-                  />
-                  <View style={styles.chatDetails}>
-                    <View style={styles.chatHeader}>
-                      <Text style={theme.typography.h4}>{chat.name}</Text>
-                      <Text
-                        style={[
-                          theme.typography.caption,
-                          {
-                            color:
-                              chat.unread > 0
-                                ? theme.colors.primary
-                                : theme.colors.textSecondary,
-                          },
-                        ]}
-                      >
-                        {chat.time}
-                      </Text>
-                    </View>
-                    <View style={styles.chatFooter}>
-                      <Text
-                        style={[
-                          theme.typography.body2,
-                          {
-                            color:
-                              chat.unread > 0
-                                ? theme.colors.textPrimary
-                                : theme.colors.textSecondary,
-                            flex: 1,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {chat.lastMessage}
-                      </Text>
-                      {!chat.canSend && (
-                        <Text style={styles.closedLabel}>Read only</Text>
-                      )}
-                      {chat.unread > 0 && (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadText}>{chat.unread}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ) : (
-          <EmptyState
-            icon={MessageSquare}
-            title="No Matched Conversations"
-            description={emptyDescription}
-          />
-        )}
-      </ScrollView>
+      <View style={styles.content}>
+        <FlatList
+          data={chats}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          getItemLayout={getItemLayout}
+          ListHeaderComponent={headerContent}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          contentContainerStyle={styles.listContainer}
+        />
+      </View>
     </Screen>
   );
 }

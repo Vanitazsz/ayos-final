@@ -8,10 +8,14 @@ export function useOrderScreenController() {
   const draft = useRequestStore();
   const [booking, setBooking] = useState<any>(null);
   useEffect(() => {
+    let active = true;
     if (draft.bookingId)
       void fetchBookingDetail(draft.bookingId).then((result) => {
-        if (!result.error) setBooking(result.data);
+        if (active && !result.error) setBooking(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [draft.bookingId]);
   const request = booking?.service_requests ?? {};
   const provider = {

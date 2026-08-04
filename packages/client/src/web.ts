@@ -1,5 +1,5 @@
 import { createBrowserClient, createServerClient, type CookieMethodsServer } from "@supabase/ssr";
-import type { Database } from "./database.types.js";
+import type { Database } from "@ayos/supabase";
 
 export function createWebSupabaseClient(url: string, publishableKey: string) {
   return createBrowserClient<Database>(url, publishableKey);

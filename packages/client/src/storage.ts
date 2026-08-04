@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types.js";
+import type { Database } from "@ayos/supabase";
 
 export type UploadBucket =
   "avatars" | "request-media" | "verification" | "messages" | "reviews" | "reports" | "support";

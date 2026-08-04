@@ -17,10 +17,14 @@ export function usePaymentScreenController() {
         : `₱${Number(booking.agreed_service_amount).toLocaleString()}`,
   };
   useEffect(() => {
+    let active = true;
     if (draft.bookingId)
       void fetchBookingDetail(draft.bookingId).then((result) => {
-        if (!result.error) setBooking(result.data);
+        if (active && !result.error) setBooking(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [draft.bookingId]);
   const handleBack = useCallback(() => router.back(), []);
   const handlePay = useCallback(() => {

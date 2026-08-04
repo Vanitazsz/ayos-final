@@ -22,10 +22,14 @@ export function useReviewIdScreenController() {
   const bookingId = Array.isArray(id) ? id[0] : id;
   const [booking, setBooking] = useState<any>(null);
   useEffect(() => {
+    let active = true;
     if (bookingId)
       void fetchBookingDetail(bookingId).then((result) => {
-        if (!result.error) setBooking(result.data);
+        if (active && !result.error) setBooking(result.data);
       });
+    return () => {
+      active = false;
+    };
   }, [bookingId]);
   const handleSubmit = async () => {
     if (submittingRef.current) return;

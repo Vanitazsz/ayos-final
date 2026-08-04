@@ -8,7 +8,7 @@ import {
   descriptionIsValid,
   rateEstimateLabel,
 } from '../logic/NewRequestIssueSummaryScreenLogic';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useRequestStore } from '@/store/useRequestStore';
 import { randomUUID } from '@/lib/crypto';
@@ -26,6 +26,7 @@ export function useNewRequestIssueSummaryScreenController() {
   );
   const [rateLoading, setRateLoading] = useState(true);
   const [rateError, setRateError] = useState('');
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   const start = useCallback(async () => {
     setStatus('loading');
     setError('');
@@ -55,6 +56,7 @@ export function useNewRequestIssueSummaryScreenController() {
           setStatus('error');
         },
       });
+      unsubscribeRef.current = unsubscribe;
 
       const completed = await processAiJob(activeJobId);
       if (completed.status === 'SUCCEEDED') {
@@ -76,6 +78,10 @@ export function useNewRequestIssueSummaryScreenController() {
   }, [draft]);
   useEffect(() => {
     void start();
+    return () => {
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
+    };
   }, []);
   const result = draft.aiResult;
   useEffect(() => {

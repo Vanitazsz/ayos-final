@@ -56,7 +56,11 @@ export function useAuthVerifyIdentityScreenController() {
     }
   };
   useEffect(() => {
+    let active = true;
     void detect(true);
+    return () => {
+      active = false;
+    };
   }, []);
   const submit = async () => {
     if (submitting) return;

@@ -16,7 +16,7 @@ interface SkeletonProps {
   borderRadius?: number;
 }
 
-export function Skeleton({ style, width, height, borderRadius = 4 }: SkeletonProps) {
+export const Skeleton = React.memo(function Skeleton({ style, width, height, borderRadius = 4 }: SkeletonProps) {
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function Skeleton({ style, width, height, borderRadius = 4 }: SkeletonPro
       -1,
       true
     );
-  }, []);
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -44,7 +44,7 @@ export function Skeleton({ style, width, height, borderRadius = 4 }: SkeletonPro
       ]}
     />
   );
-}
+});
 
 const styles = StyleSheet.create({
   skeleton: {

@@ -14,9 +14,13 @@ export function useWorkerTransactionsHistoryScreenController() {
   const [toDate, setToDate] = useState('');
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   useEffect(() => {
-    void fetchWalletTransactions().then((result) =>
-      setTransactions(result.data),
-    );
+    let active = true;
+    void fetchWalletTransactions().then((result) => {
+      if (active) setTransactions(result.data);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
   const filteredTransactions = useMemo(
     () =>

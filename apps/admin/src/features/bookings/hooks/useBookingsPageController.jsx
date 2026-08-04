@@ -4,7 +4,7 @@ import {
   reassignBookingAsAdmin,
   subscribe,
 } from '../logic/BookingsPageLogic';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, Clock, CheckCircle, PlayCircle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
 import { BOOKING_STATUS_BADGE, badgeFor } from '../../../services/statusMeta';
@@ -28,79 +28,107 @@ export function useBookingsPageController() {
     message: '',
     onConfirm: () => {},
   });
-  const closeConfirm = () => setConfirm((s) => ({ ...s, isOpen: false }));
+  const closeConfirm = useCallback(
+    () => setConfirm((s) => ({ ...s, isOpen: false })),
+    [],
+  );
 
   useEffect(() => {
     const refresh = async () => setBookings(await loadBookings());
     void refresh();
     return subscribe('bookings', refresh);
   }, []);
-  const filteredBookings = bookings.filter((b) => {
-    const matchesSearch =
-      b.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.service.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'All' || b.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+
+  const filteredBookings = useMemo(
+    () =>
+      bookings.filter((b) => {
+        const matchesSearch =
+          b.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          b.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          b.service.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus =
+          filterStatus === 'All' || b.status === filterStatus;
+        return matchesSearch && matchesStatus;
+      }),
+    [bookings, searchTerm, filterStatus],
+  );
+
   const {
     currentPage,
     setCurrentPage,
     totalPages,
     pageData: paginatedBookings,
   } = usePagination(filteredBookings, 10);
-  const stats = [
-    {
-      label: "Today's Bookings",
-      value: bookings.filter((b) => b.date === new Date().toLocaleDateString()).length,
-      icon: <Calendar className="text-blue-500" />,
-      bg: 'bg-blue-50',
-    },
-    {
-      label: 'Pending / Unassigned',
-      value: bookings.filter((b) => b.status === 'Pending').length,
-      icon: <Clock className="text-yellow-500" />,
-      bg: 'bg-yellow-50',
-    },
-    {
-      label: 'Ongoing Services',
-      value: bookings.filter((b) => b.status === 'Ongoing').length,
-      icon: <PlayCircle className="text-indigo-500" />,
-      bg: 'bg-indigo-50',
-    },
-    {
-      label: 'Completed Today',
-      value: bookings.filter(
-        (b) => b.status === 'Completed' && b.date === new Date().toLocaleDateString(),
-      ).length,
-      icon: <CheckCircle className="text-green-500" />,
-      bg: 'bg-green-50',
-    },
-  ];
-  const getStatusColor = (status) => badgeFor(BOOKING_STATUS_BADGE, status);
-  const toggleActionMenu = (id) => {
-    if (actionMenuOpenId === id) setActionMenuOpenId(null);
-    else setActionMenuOpenId(id);
-  };
-  const handleViewDetails = (booking) => {
+
+  const todayStr = useMemo(() => new Date().toLocaleDateString(), []);
+
+  const stats = useMemo(
+    () => [
+      {
+        label: "Today's Bookings",
+        value: bookings.filter((b) => b.date === todayStr).length,
+        icon: <Calendar className="text-blue-500" />,
+        bg: 'bg-blue-50',
+      },
+      {
+        label: 'Pending / Unassigned',
+        value: bookings.filter((b) => b.status === 'Pending').length,
+        icon: <Clock className="text-yellow-500" />,
+        bg: 'bg-yellow-50',
+      },
+      {
+        label: 'Ongoing Services',
+        value: bookings.filter((b) => b.status === 'Ongoing').length,
+        icon: <PlayCircle className="text-indigo-500" />,
+        bg: 'bg-indigo-50',
+      },
+      {
+        label: 'Completed Today',
+        value: bookings.filter(
+          (b) => b.status === 'Completed' && b.date === todayStr,
+        ).length,
+        icon: <CheckCircle className="text-green-500" />,
+        bg: 'bg-green-50',
+      },
+    ],
+    [bookings, todayStr],
+  );
+
+  const getStatusColor = useCallback(
+    (status) => badgeFor(BOOKING_STATUS_BADGE, status),
+    [],
+  );
+
+  const toggleActionMenu = useCallback((id) => {
+    setActionMenuOpenId((current) => (current === id ? null : id));
+  }, []);
+
+  const handleViewDetails = useCallback((booking) => {
     setSelectedBooking(booking);
     setIsDrawerOpen(true);
     setActionMenuOpenId(null);
-  };
-  const openAction = (type, booking) => {
+  }, []);
+
+  const openAction = useCallback((type, booking) => {
     setAction({ type, booking });
     setActionReason('');
     setReplacementWorker(booking.candidates?.[0]?.id ?? '');
     setActionMenuOpenId(null);
-  };
-  const executeAction = async () => {
+  }, []);
+
+  const executeAction = useCallback(async () => {
     if (!action || actionReason.trim().length < 3) return;
     if (action.type === 'reassign' && !replacementWorker) return;
     setSavingAction(true);
     try {
       if (action.type === 'cancel')
         await cancelBookingAsAdmin(action.booking.id, actionReason.trim());
-      else await reassignBookingAsAdmin(action.booking.id, replacementWorker, actionReason.trim());
+      else
+        await reassignBookingAsAdmin(
+          action.booking.id,
+          replacementWorker,
+          actionReason.trim(),
+        );
       setAction(null);
       setBookings(await loadBookings());
       setIsDrawerOpen(false);
@@ -109,46 +137,81 @@ export function useBookingsPageController() {
     } finally {
       setSavingAction(false);
     }
-  };
-  const submitAction = () => {
+  }, [action, actionReason, replacementWorker, toast]);
+
+  const submitAction = useCallback(() => {
     if (!action || actionReason.trim().length < 3) return;
     if (action.type === 'reassign' && !replacementWorker) return;
-    const label = action.type === 'cancel' ? 'cancel this booking' : 'reassign this booking';
+    const label =
+      action.type === 'cancel' ? 'cancel this booking' : 'reassign this booking';
     setConfirm({
       isOpen: true,
       title: 'Confirm Action',
       message: `Confirm that you want to ${label}?`,
       onConfirm: executeAction,
     });
-  };
-  return {
-    searchTerm,
-    setSearchTerm,
-    filterStatus,
-    setFilterStatus,
-    currentPage,
-    setCurrentPage,
-    selectedBooking,
-    isDrawerOpen,
-    setIsDrawerOpen,
-    actionMenuOpenId,
-    action,
-    setAction,
-    actionReason,
-    setActionReason,
-    replacementWorker,
-    setReplacementWorker,
-    savingAction,
-    confirm,
-    closeConfirm,
-    filteredBookings,
-    totalPages,
-    paginatedBookings,
-    stats,
-    getStatusColor,
-    toggleActionMenu,
-    handleViewDetails,
-    openAction,
-    submitAction,
-  };
+  }, [action, actionReason, replacementWorker, executeAction]);
+
+  return useMemo(
+    () => ({
+      searchTerm,
+      setSearchTerm,
+      filterStatus,
+      setFilterStatus,
+      currentPage,
+      setCurrentPage,
+      selectedBooking,
+      isDrawerOpen,
+      setIsDrawerOpen,
+      actionMenuOpenId,
+      action,
+      setAction,
+      actionReason,
+      setActionReason,
+      replacementWorker,
+      setReplacementWorker,
+      savingAction,
+      confirm,
+      closeConfirm,
+      filteredBookings,
+      totalPages,
+      paginatedBookings,
+      stats,
+      getStatusColor,
+      toggleActionMenu,
+      handleViewDetails,
+      openAction,
+      submitAction,
+    }),
+    [
+      searchTerm,
+      filterStatus,
+      currentPage,
+      selectedBooking,
+      isDrawerOpen,
+      actionMenuOpenId,
+      action,
+      actionReason,
+      replacementWorker,
+      savingAction,
+      confirm,
+      filteredBookings,
+      totalPages,
+      paginatedBookings,
+      stats,
+      getStatusColor,
+      toggleActionMenu,
+      handleViewDetails,
+      openAction,
+      submitAction,
+      closeConfirm,
+      setFilterStatus,
+      setCurrentPage,
+      setIsDrawerOpen,
+      setAction,
+      setActionReason,
+      setReplacementWorker,
+      toast,
+    ],
+  );
 }

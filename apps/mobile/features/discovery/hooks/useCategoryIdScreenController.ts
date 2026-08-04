@@ -11,7 +11,13 @@ export function useCategoryIdScreenController() {
     typeof id === 'string' ? decodeURIComponent(id).toLowerCase() : '';
   const [providers, setProviders] = useState<ProviderData[]>([]);
   useEffect(() => {
-    void fetchProviders().then((result) => setProviders(result.data));
+    let active = true;
+    void fetchProviders().then((result) => {
+      if (active) setProviders(result.data);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
   const workers = useMemo(
     () =>
