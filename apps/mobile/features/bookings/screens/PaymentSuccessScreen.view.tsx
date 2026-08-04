@@ -5,6 +5,7 @@ import { LegacyButton as Button } from '@/components/AppButton';
 import { theme } from '@/constants/theme';
 import { CheckCircle2 } from 'lucide-react-native';
 import type { usePaymentSuccessScreenController } from '../hooks/usePaymentSuccessScreenController';
+import { formatPesoWithSpace } from '@/utils/format';
 
 export function PaymentSuccessView({
   model,
@@ -47,9 +48,7 @@ export function PaymentSuccessView({
           Payment Successful!
         </Text>
         <Text style={[theme.typography.body1, styles.subtitle]}>
-          The cash payment of ₱
-          {displayAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}{' '}
-          is confirmed.
+          The cash payment of {formatPesoWithSpace(displayAmount)} is confirmed.
         </Text>
 
         <View style={styles.receiptCard}>
@@ -90,10 +89,7 @@ export function PaymentSuccessView({
             <Text
               style={[theme.typography.h3, { color: theme.colors.primary }]}
             >
-              ₱{' '}
-              {displayAmount.toLocaleString('en-PH', {
-                minimumFractionDigits: 2,
-              })}
+              {formatPesoWithSpace(displayAmount)}
             </Text>
           </View>
         </View>

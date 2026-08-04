@@ -26,21 +26,26 @@ import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
 import type { TransactionStatus } from '../logic/WorkerWalletScreenLogic';
+import { transactionStatusKind } from '../logic/WorkerWalletScreenLogic';
+import { QUICK_AMOUNTS, quickAmountValue } from '../logic/WorkerWalletScreenLogic';
 import type { useWorkerWalletScreenController } from '../hooks/useWorkerWalletScreenController';
+import { capitalizeFirst, formatWholeNumber } from '@/utils/format';
 type Period = 'week' | 'month' | 'all';
 
 type TxFilter = 'all' | 'credit' | 'debit';
 
 const statusIcon = (s: TransactionStatus) => {
-  if (s === 'completed')
+  const kind = transactionStatusKind(s);
+  if (kind === 'success')
     return <CheckCircle size={12} color={Colors.verified} />;
-  if (s === 'pending') return <Clock size={12} color={Colors.warning} />;
+  if (kind === 'warning') return <Clock size={12} color={Colors.warning} />;
   return <AlertCircle size={12} color={Colors.error} />;
 };
 
 const statusColor = (s: TransactionStatus) => {
-  if (s === 'completed') return Colors.verified;
-  if (s === 'pending') return Colors.warning;
+  const kind = transactionStatusKind(s);
+  if (kind === 'success') return Colors.verified;
+  if (kind === 'warning') return Colors.warning;
   return Colors.error;
 };
 export function WalletView({
@@ -75,7 +80,7 @@ export function WalletView({
     walletBarData,
     BAR_MAX,
     filteredTransactions,
-    requestPayout,
+    handleRequestPayout,
     router,
   } = model;
   return (
@@ -137,7 +142,7 @@ export function WalletView({
                 Daily Earnings — This Week
               </AppText>
               <Badge
-                label={`Peak: ₱${BAR_MAX.toLocaleString()}`}
+                label={`Peak: ₱${formatWholeNumber(BAR_MAX)}`}
                 variant="info"
                 size="sm"
               />
@@ -305,8 +310,7 @@ export function WalletView({
                           weight="bold"
                           color={statusColor(tx.status)}
                         >
-                          {tx.status.charAt(0).toUpperCase() +
-                            tx.status.slice(1)}
+                          {capitalizeFirst(tx.status)}
                         </AppText>
                       </View>
                     </View>
@@ -364,11 +368,11 @@ export function WalletView({
             </View>
 
             <View style={styles.quickAmounts}>
-              {['5,000', '10,000', '18,450'].map((a) => (
+              {QUICK_AMOUNTS.map((a) => (
                 <Pressable
                   key={a}
                   style={styles.quickAmt}
-                  onPress={() => setPayoutAmount(a.replace(',', ''))}
+                  onPress={() => setPayoutAmount(quickAmountValue(a))}
                 >
                   <AppText variant="caption" weight="bold" color={Colors.info}>
                     ₱{a}
@@ -427,33 +431,11 @@ export function WalletView({
                 onPress={() => setShowPayout(false)}
                 style={{ flex: 1 }}
               />
-              <AppButton
+<AppButton
                 label="Confirm Payout"
                 variant="primary"
                 leftIcon={<ArrowDownToLine size={14} color={Colors.white} />}
-                onPress={() => {
-                  const amount = Number(payoutAmount);
-                  if (
-                    !selectedMethod ||
-                    !Number.isFinite(amount) ||
-                    amount <= 0
-                  ) {
-                    Alert.alert(
-                      'Invalid payout',
-                      'Select a payout method and enter a valid amount.',
-                    );
-                    return;
-                  }
-                  void requestPayout(selectedMethod, Math.round(amount * 100))
-                    .then(() => {
-                      setShowPayout(false);
-                      setShowPayoutSuccess(true);
-                    })
-                    .catch((error) =>
-                      Alert.alert('Payout not requested', error.message),
-                    );
-                }}
-                style={{ flex: 1 }}
+                onPress={handleRequestPayout}
               />
             </View>
           </Pressable>
@@ -495,11 +477,11 @@ export function WalletView({
             </View>
 
             <View style={styles.quickAmounts}>
-              {['5,000', '10,000', '18,450'].map((a) => (
+              {QUICK_AMOUNTS.map((a) => (
                 <Pressable
                   key={a}
                   style={styles.quickAmt}
-                  onPress={() => setTopUpAmount(a.replace(',', ''))}
+                  onPress={() => setTopUpAmount(quickAmountValue(a))}
                 >
                   <AppText variant="caption" weight="bold" color={Colors.info}>
                     ₱{a}
@@ -588,7 +570,7 @@ export function WalletView({
             <AppText variant="body" color={Colors.textSecondary} align="center">
               Your payout of{' '}
               <AppText weight="bold" color={Colors.textPrimary}>
-                ₱{Number(payoutAmount).toLocaleString()}
+                ₱{formatWholeNumber(payoutAmount)}
               </AppText>{' '}
               to{' '}
               <AppText weight="bold" color={Colors.textPrimary}>

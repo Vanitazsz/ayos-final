@@ -75,5 +75,6 @@ export function useTabsBookingsScreenController() {
     filteredBookings,
     visibleBookings,
     CUSTOMER_BOOKING_TABS,
+    RECENT_BOOKINGS_LIMIT,
   };
 }

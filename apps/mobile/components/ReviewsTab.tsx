@@ -14,7 +14,7 @@ import { Avatar } from '@/components/Avatar';
 import { RatingStars } from '@/components/RatingStars';
 import { Chip } from '@/components/Chip';
 import type { ReviewData } from '@/services/reviews';
-import { averageRating, formatRating } from '@/services/reviewRatings';
+import { averageRating, formatRating, ratingDistribution } from '@/services/reviewRatings';
 
 const filterOptions = ['All', '5 Stars', '4 Stars', '3 Stars', 'Recent'];
 
@@ -50,18 +50,14 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
     );
   }, [reviews]);
 
-  const ratingDistribution = useMemo(() => {
-    const dist: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews
-      .filter((review) => review.moderationStatus !== 'REJECTED')
-      .forEach((r) => {
-        dist[r.rating] = (dist[r.rating] || 0) + 1;
-      });
-    return dist;
-  }, [reviews]);
-  const ratedReviewCount = reviews.filter(
-    (review) => review.moderationStatus !== 'REJECTED',
-  ).length;
+  const ratingDistributionValue = useMemo(
+    () => ratingDistribution(reviews),
+    [reviews],
+  );
+  const ratedReviewCount = Object.values(ratingDistributionValue).reduce(
+    (total, count) => total + count,
+    0,
+  );
 
   const toggleLike = useCallback((id: string) => {
     setLikedReviews((prev) => {
@@ -185,7 +181,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
                       style={[
                         styles.distFill,
                         {
-                          width: `${ratedReviewCount ? (ratingDistribution[star] / ratedReviewCount) * 100 : 0}%`,
+                          width: `${ratedReviewCount ? (ratingDistributionValue[star] / ratedReviewCount) * 100 : 0}%`,
                           backgroundColor: Colors.cta,
                         },
                       ]}
@@ -196,7 +192,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
                     color={Colors.textTertiary}
                     style={{ width: 24 }}
                   >
-                    {ratingDistribution[star]}
+                    {ratingDistributionValue[star]}
                   </AppText>
                 </View>
               ))}

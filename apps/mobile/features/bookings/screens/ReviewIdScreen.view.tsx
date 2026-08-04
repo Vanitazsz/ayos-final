@@ -13,6 +13,7 @@ import { LegacyTextInput as TextInput } from '@/components/AppInput';
 import { theme } from '@/constants/theme';
 import { ArrowLeft, Star, UploadCloud, X } from 'lucide-react-native';
 import type { useReviewIdScreenController } from '../hooks/useReviewIdScreenController';
+import { formatDate } from '@/utils/format';
 
 export function ReviewView({
   model,
@@ -77,9 +78,7 @@ export function ReviewView({
             ]}
           >
             {booking?.service_requests?.service_categories?.name ?? 'Service'} •{' '}
-            {booking?.completed_at
-              ? new Date(booking.completed_at).toLocaleDateString()
-              : ''}
+            {booking?.completed_at ? formatDate(booking.completed_at) : ''}
           </Text>
         </View>
 

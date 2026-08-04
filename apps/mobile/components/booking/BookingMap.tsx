@@ -5,6 +5,7 @@ import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { MapSurface } from '@/components/maps/MapSurface';
 import { useBookingRoute } from '@/features/bookings/hooks/useBookingRoute';
+import { etaMinutes } from '@/utils/format';
 interface Props {
   destinationLat: number;
   destinationLng: number;
@@ -96,7 +97,7 @@ export const BookingMap = React.memo(function BookingMap({
         <AppText variant="h4" color={Colors.cta}>
           {etaSeconds == null
             ? '—'
-            : `${Math.max(1, Math.ceil(etaSeconds / 60))} Min`}
+            : `${etaMinutes(etaSeconds)} Min`}
         </AppText>
         <AppText variant="caption" color={Colors.textSecondary}>
           ETA

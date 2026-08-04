@@ -180,6 +180,18 @@ export function useWorkerBookingRequestIdScreenController() {
       };
     }
   }, [backendStatus, booking.id]);
+  const handleAccept = () =>
+    void acceptJob(booking.id)
+      .then(() => {
+        setBackendStatus('ACCEPTED');
+        setBooking((b) => ({ ...b, status: 'accepted' }));
+      })
+      .catch((error) => Alert.alert('Unable to accept', error.message))
+      .catch((err: any) => {
+        const msg = err?.message ?? err?.code ?? String(err);
+        console.error('acceptJob error:', msg, err);
+        Alert.alert('Accept failed', msg);
+      });
   const handleDecline = async () => {
     try {
       await declineAssignedBooking(
@@ -361,6 +373,7 @@ export function useWorkerBookingRequestIdScreenController() {
     isLoading,
     paymentStatus,
     handleDecline,
+    handleAccept,
     handleConfirmDetails,
     handleArrived,
     handleComplete,
@@ -374,7 +387,6 @@ export function useWorkerBookingRequestIdScreenController() {
     isCancelled,
     isActive,
     remainingTime,
-    acceptJob,
     router,
   };
 }

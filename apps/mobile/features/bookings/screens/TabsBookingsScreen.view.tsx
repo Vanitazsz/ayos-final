@@ -10,37 +10,8 @@ import {
 } from 'lucide-react-native';
 import { EmptyState } from '@/components/layout/EmptyState';
 import type { useTabsBookingsScreenController } from '../hooks/useTabsBookingsScreenController';
-const RECENT_BOOKINGS_LIMIT = 5;
+import { customerBookingStatusMeta } from '@/services/bookingStatus';
 
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
-  {
-    PENDING: {
-      label: 'Awaiting Worker Acceptance',
-      color: '#B78103',
-      bg: '#FFF8E1',
-    },
-    ACCEPTED: { label: 'Confirmed', color: '#0277BD', bg: '#E1F5FE' },
-    WORKER_PREPARING: {
-      label: 'Confirmed · Preparing',
-      color: '#0277BD',
-      bg: '#E1F5FE',
-    },
-    WORKER_EN_ROUTE: { label: 'En Route 🚚', color: '#1565C0', bg: '#E8EAF6' },
-    WORKER_ARRIVED: { label: 'Arrived 📍', color: '#2E7D32', bg: '#E8F5E9' },
-    SERVICE_STARTED: {
-      label: 'In Progress 🛠️',
-      color: '#2E7D32',
-      bg: '#E8F5E9',
-    },
-    IN_PROGRESS: { label: 'In Progress 🛠️', color: '#2E7D32', bg: '#E8F5E9' },
-    PENDING_CONFIRMATION: {
-      label: 'Awaiting Your Confirmation',
-      color: '#B78103',
-      bg: '#FFF8E1',
-    },
-    COMPLETED: { label: 'Completed ✅', color: '#2E7D32', bg: '#E8F5E9' },
-    CANCELLED: { label: 'Cancelled ❌', color: '#C62828', bg: '#FFEBEE' },
-  };
 export function BookingsView({
   model,
 }: {
@@ -55,6 +26,7 @@ export function BookingsView({
     filteredBookings,
     visibleBookings,
     CUSTOMER_BOOKING_TABS,
+    RECENT_BOOKINGS_LIMIT,
   } = model;
   return (
     <Screen safeArea backgroundColor={theme.colors.background}>
@@ -113,11 +85,10 @@ export function BookingsView({
         ) : (
           <>
             {visibleBookings.map((booking) => {
-              const badge = STATUS_MAP[booking.rawStatus] ?? {
-                label: booking.rawStatus || 'Active',
+              const badge = customerBookingStatusMeta(booking.rawStatus, {
                 color: theme.colors.primary,
                 bg: '#E3F2FD',
-              };
+              });
               return (
                 <TouchableOpacity
                   key={booking.id}

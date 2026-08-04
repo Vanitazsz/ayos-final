@@ -13,3 +13,9 @@ export {
   type LiveWorkerCandidate,
 } from '@/services/liveDispatch';
 export { createWorkerSelectionGate } from '@/services/workerSelection';
+export {
+  dispatchDiagnosticMessage,
+  type DispatchDiagnosticReason,
+} from '@/services/liveDispatch';
+export const SEARCH_RADIUS_MIN_KM = 1;
+export const SEARCH_RADIUS_MAX_KM = 50;

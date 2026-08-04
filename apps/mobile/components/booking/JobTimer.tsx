@@ -4,16 +4,10 @@ import { Clock } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
+import { formatElapsedTime } from '@/utils/format';
 
 interface JobTimerProps {
   agreedAmount: number;
-}
-
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export const JobTimer = React.memo(function JobTimer({
@@ -49,7 +43,7 @@ export const JobTimer = React.memo(function JobTimer({
           color={Colors.textPrimary}
           style={styles.timeText}
         >
-          {formatTime(elapsedSeconds)}
+          {formatElapsedTime(elapsedSeconds)}
         </AppText>
       </View>
 

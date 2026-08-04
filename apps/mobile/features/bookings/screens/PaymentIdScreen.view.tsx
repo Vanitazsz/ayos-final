@@ -10,6 +10,7 @@ import {
   Smartphone,
 } from 'lucide-react-native';
 import type { usePaymentIdScreenController } from '../hooks/usePaymentIdScreenController';
+import { formatPesoWithSpace } from '@/utils/format';
 const PAYMENT_METHODS = [
   {
     id: 'cash',
@@ -100,7 +101,7 @@ export function PaymentView({
           >
             {amount == null
               ? 'Price pending'
-              : `₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+              : formatPesoWithSpace(total)}
           </Text>
 
           <View style={styles.summaryRow}>
@@ -115,7 +116,7 @@ export function PaymentView({
             <Text style={theme.typography.body2}>
               {amount == null
                 ? 'Price pending'
-                : `₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+                : formatPesoWithSpace(amount)}
             </Text>
           </View>
           <View style={styles.summaryRow}>
@@ -128,10 +129,7 @@ export function PaymentView({
               Homeowner charge
             </Text>
             <Text style={theme.typography.body2}>
-              ₱{' '}
-              {homeownerCharge.toLocaleString('en-PH', {
-                minimumFractionDigits: 2,
-              })}
+              {formatPesoWithSpace(homeownerCharge)}
             </Text>
           </View>
         </View>
@@ -230,7 +228,7 @@ export function PaymentView({
           </Text>
         ) : null}
         <Button
-          title={`Confirm cash payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+          title={`Confirm cash payment ${formatPesoWithSpace(total)}`}
           onPress={handlePayment}
           disabled={!selectedMethod || amount == null}
           loading={loading}

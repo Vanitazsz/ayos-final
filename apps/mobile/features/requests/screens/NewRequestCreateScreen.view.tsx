@@ -24,6 +24,11 @@ import {
 import { LocationPicker } from '@/components/LocationPicker';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 import type { useNewRequestCreateScreenController } from '../hooks/useNewRequestCreateScreenController';
+import {
+  descriptionIsValid,
+  addressRequiresCompletion,
+  formatAddressParts,
+} from '../logic/NewRequestCreateScreenLogic';
 const iconFor = (name: string) =>
   name.toLowerCase().includes('elect')
     ? Zap
@@ -500,7 +505,7 @@ export function CreateRequestView({
           value={description}
           onChangeText={(value) => {
             setDescription(value);
-            if (value.trim().length >= 10)
+            if (descriptionIsValid(value))
               setErrors((current) => ({ ...current, description: '' }));
           }}
           error={errors.description}
@@ -649,9 +654,12 @@ export function CreateRequestView({
                 <MapPin color={theme.colors.primary} size={18} />
                 <Text style={styles.addressResultText}>
                   {result.displayLabel ||
-                    [result.line, result.barangay, result.city, result.province]
-                      .filter(Boolean)
-                      .join(', ')}
+                    formatAddressParts([
+                      result.line,
+                      result.barangay,
+                      result.city,
+                      result.province,
+                    ])}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -724,16 +732,14 @@ export function CreateRequestView({
           onLocationDetected={(details, nextCoords, displayLabel) => {
             const label =
               displayLabel ||
-              [
+              formatAddressParts([
                 details.streetNumber,
                 details.street,
                 details.district,
                 details.city,
                 details.region,
                 details.postalCode,
-              ]
-                .filter(Boolean)
-                .join(', ');
+              ]);
             setCoords(nextCoords);
             savedAddressSelectionRef.current = null;
             setAddress(label);
@@ -746,11 +752,7 @@ export function CreateRequestView({
               province: details.region,
               postalCode: details.postalCode,
             });
-            setManualAddressMode(
-              !details.district.trim() ||
-                !details.city.trim() ||
-                !details.region.trim(),
-            );
+            setManualAddressMode(addressRequiresCompletion(details));
             setLocationWarning('');
             setErrors((current) => ({ ...current, address: '', location: '' }));
             setDraft({ addressId: null, addressDetails: details });

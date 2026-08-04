@@ -12,6 +12,7 @@ import {
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
+import { formatSchedule } from '@/utils/format';
 import type { RequestDraft } from '@/store/useRequestStore';
 
 interface JobSummaryProps {
@@ -111,11 +112,7 @@ export function JobSummary({
                 color={Colors.textSecondary}
                 style={{ marginLeft: 6, flex: 1 }}
               >
-                {request.scheduledDate.toLocaleDateString()} at{' '}
-                {request.scheduledDate.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {formatSchedule(request.scheduledDate)}
               </AppText>
             </View>
           )}
@@ -195,11 +192,7 @@ export function JobSummary({
                 <Calendar size={16} color={Colors.cta} />
               </View>
               <AppText variant="body">
-                {request.scheduledDate.toLocaleDateString()} at{' '}
-                {request.scheduledDate.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {formatSchedule(request.scheduledDate)}
               </AppText>
             </View>
           )}

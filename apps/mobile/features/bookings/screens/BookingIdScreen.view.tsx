@@ -15,21 +15,10 @@ import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { RatingStars } from '@/components/RatingStars';
 import type { useBookingIdScreenController } from '../hooks/useBookingIdScreenController';
-const weekDays = Array.from({ length: 7 }, (_, index) => {
-  const value = new Date();
-  value.setDate(value.getDate() + index);
-  return {
-    id: String(index),
-    day: value.toLocaleDateString('en-PH', { weekday: 'short' }),
-    date: String(value.getDate()),
-    today: index === 0,
-    iso: value.toISOString(),
-  };
-});
-
-const timeSlots = ['08:00', '10:00', '13:00', '15:00', '17:00'].map(
-  (label, index) => ({ id: String(index), label, available: true }),
-);
+import {
+  bookingWeekDays,
+  bookingTimeSlots,
+} from '../logic/BookingIdScreenLogic';
 export function BookingView({
   model,
 }: {
@@ -102,7 +91,7 @@ export function BookingView({
             </AppText>
           </View>
           <View style={styles.weekRow}>
-            {weekDays.map((d) => (
+            {bookingWeekDays.map((d) => (
               <Pressable
                 key={d.id}
                 onPress={() => setSelectedDay(d.id)}
@@ -160,7 +149,7 @@ export function BookingView({
             </AppText>
           </View>
           <View style={styles.slotsGrid}>
-            {timeSlots.map((slot) => (
+            {bookingTimeSlots.map((slot) => (
               <Pressable
                 key={slot.id}
                 disabled={!slot.available}

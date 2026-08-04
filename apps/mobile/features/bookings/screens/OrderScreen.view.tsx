@@ -12,6 +12,7 @@ import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Avatar } from '@/components/Avatar';
 import type { useOrderScreenController } from '../hooks/useOrderScreenController';
+import { formatDateTime, formatWholeNumber } from '@/utils/format';
 
 export function OrderDetailsView({
   model,
@@ -66,7 +67,7 @@ export function OrderDetailsView({
               <Calendar size={18} color={Colors.primary} />
               <AppText variant="body" weight="semiBold" style={styles.rowText}>
                 {request.scheduled_at
-                  ? new Date(request.scheduled_at).toLocaleString()
+                  ? formatDateTime(request.scheduled_at)
                   : 'Schedule unavailable'}
               </AppText>
             </View>
@@ -138,7 +139,7 @@ export function OrderDetailsView({
               <AppText variant="h3" weight="bold" color={Colors.cta}>
                 {booking?.agreed_service_amount == null
                   ? 'Price pending'
-                  : `₱${Number(booking.agreed_service_amount).toLocaleString()}`}
+                  : `₱${formatWholeNumber(booking.agreed_service_amount)}`}
               </AppText>
             </View>
             <AppText

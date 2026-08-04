@@ -20,22 +20,8 @@ import {
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import type { useTrackingIdScreenController } from '../hooks/useTrackingIdScreenController';
-const TIMELINE_STEPS = [
-  {
-    id: '1',
-    title: 'Booking Confirmed',
-    subtitle: 'Your booking has been placed',
-  },
-  {
-    id: '2',
-    title: 'Provider Accepted',
-    subtitle: 'A provider accepted your job',
-  },
-  { id: '3', title: 'Provider En Route', subtitle: 'Provider is on the way' },
-  { id: '4', title: 'Provider Arrived', subtitle: 'Provider has arrived' },
-  { id: '5', title: 'Service In Progress', subtitle: 'Work has started' },
-  { id: '6', title: 'Completed', subtitle: 'Service finished' },
-];
+import { TRACKING_TIMELINE_STEPS } from '../logic/TrackingIdScreenLogic';
+import { formatAddressParts, formatPesoMajor } from '@/utils/format';
 export function TrackingView({
   model,
 }: {
@@ -99,13 +85,11 @@ export function TrackingView({
                 bookingId={bookingId}
                 destinationLat={Number(address.latitude)}
                 destinationLng={Number(address.longitude)}
-                destinationAddress={[
+                destinationAddress={formatAddressParts([
                   address.line1,
                   address.barangay,
                   address.city,
-                ]
-                  .filter(Boolean)
-                  .join(', ')}
+                ])}
                 startLat={
                   tracking?.booking?.worker_start_lat == null
                     ? undefined
@@ -178,13 +162,11 @@ export function TrackingView({
             startLng={tracking?.booking?.worker_start_lng}
             destinationLat={address?.latitude}
             destinationLng={address?.longitude}
-            destinationAddress={[
+            destinationAddress={formatAddressParts([
               address?.line1,
               address?.barangay,
               address?.city,
-            ]
-              .filter(Boolean)
-              .join(', ')}
+            ])}
           />
         )}
 
@@ -267,10 +249,7 @@ export function TrackingView({
               {tracking.booking.cancellations[0].reason}
             </Text>
             <Text style={theme.typography.body2}>
-              Refund: ₱
-              {Number(
-                tracking.booking.cancellations[0].refund_amount ?? 0,
-              ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              Refund: {formatPesoMajor(tracking.booking.cancellations[0].refund_amount)}
             </Text>
           </View>
         )}
@@ -283,10 +262,10 @@ export function TrackingView({
             Booking Progress
           </Text>
           <View style={styles.timeline}>
-            {TIMELINE_STEPS.map((step, index) => {
+            {TRACKING_TIMELINE_STEPS.map((step, index) => {
               const isCompleted = index <= stepIndex;
               const isCurrent = index === stepIndex;
-              const isLast = index === TIMELINE_STEPS.length - 1;
+              const isLast = index === TRACKING_TIMELINE_STEPS.length - 1;
 
               return (
                 <View key={step.id} style={styles.timelineItem}>

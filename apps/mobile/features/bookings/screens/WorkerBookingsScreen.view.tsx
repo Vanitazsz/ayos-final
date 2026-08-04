@@ -13,22 +13,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import type { useWorkerBookingsScreenController } from '../hooks/useWorkerBookingsScreenController';
-const statusConfig: Record<string, { label: string; variant: string }> = {
-  hired: { label: 'Pending', variant: 'warning' },
-  accepted: { label: 'Accepted', variant: 'info' },
-  worker_preparing: { label: 'Preparing', variant: 'info' },
-  worker_en_route: { label: 'En Route', variant: 'info' },
-  worker_arrived: { label: 'Arrived', variant: 'info' },
-  service_started: { label: 'Started', variant: 'warning' },
-  in_progress: { label: 'In Progress', variant: 'warning' },
-  pending_confirmation: {
-    label: 'Awaiting Confirmation',
-    variant: 'warning',
-  },
-  completed: { label: 'Completed', variant: 'success' },
-  cancelled: { label: 'Cancelled', variant: 'error' },
-  pending: { label: 'Pending', variant: 'warning' },
-};
+import { workerBookingStatusMeta } from '@/services/bookingStatus';
 
 const BOOKING_TABS = ['Upcoming', 'In Progress', 'Completed', 'Cancelled'];
 export function WorkerBookingsView({
@@ -182,17 +167,8 @@ export function WorkerBookingsView({
                         </View>
                       </View>
                       <Badge
-                        label={
-                          (
-                            statusConfig[booking.status] ?? {
-                              label: booking.status,
-                            }
-                          ).label
-                        }
-                        variant={
-                          (statusConfig[booking.status] ?? { variant: 'info' })
-                            .variant as any
-                        }
+                        label={workerBookingStatusMeta(booking.status).label}
+                        variant={workerBookingStatusMeta(booking.status).variant}
                         size="sm"
                       />
                     </View>

@@ -1,5 +1,5 @@
 import { styles } from './WorkerBookingRequestIdScreen.styles';
-import { View, ScrollView, Pressable, Alert, Image } from 'react-native';
+import { View, ScrollView, Pressable, Image } from 'react-native';
 import {
   ChevronLeft,
   MapPin,
@@ -23,14 +23,7 @@ import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { CompletedSummary } from '@/components/booking/CompletedSummary';
 import type { useWorkerBookingRequestIdScreenController } from '../hooks/useWorkerBookingRequestIdScreenController';
-const statusConfig: Record<string, { label: string; variant: any }> = {
-  hired: { label: 'Pending', variant: 'warning' },
-  accepted: { label: 'Accepted', variant: 'info' },
-  en_route: { label: 'En Route', variant: 'info' },
-  in_progress: { label: 'In Progress', variant: 'warning' },
-  completed: { label: 'Completed', variant: 'success' },
-  cancelled: { label: 'Cancelled', variant: 'error' },
-};
+import { workerBookingStatusMeta } from '@/services/bookingStatus';
 export function BookingRequestView({
   model,
 }: {
@@ -40,14 +33,13 @@ export function BookingRequestView({
     id,
     job,
     booking,
-    setBooking,
     isArriving,
-    setBackendStatus,
     duration,
     routeDetails,
     isLoading,
     paymentStatus,
     handleDecline,
+    handleAccept,
     handleConfirmDetails,
     handleArrived,
     handleComplete,
@@ -61,7 +53,6 @@ export function BookingRequestView({
     isCancelled,
     isActive,
     remainingTime,
-    acceptJob,
     router,
   } = model;
   return (
@@ -106,10 +97,8 @@ export function BookingRequestView({
 
             <View style={styles.statusBadgeRow}>
               <Badge
-                label={statusConfig[booking.status]?.label || booking.status}
-                variant={
-                  (statusConfig[booking.status]?.variant as any) || 'info'
-                }
+                label={workerBookingStatusMeta(booking.status).label}
+                variant={workerBookingStatusMeta(booking.status).variant}
                 size="md"
               />
               {booking.status === 'in_progress' && (
@@ -264,21 +253,7 @@ export function BookingRequestView({
                   variant="primary"
                   leftIcon={<Calendar size={18} color={Colors.white} />}
                   fullWidth
-                  onPress={() =>
-                    void acceptJob(booking.id)
-                      .then(() => {
-                        setBackendStatus('ACCEPTED');
-                        setBooking((b) => ({ ...b, status: 'accepted' }));
-                      })
-                      .catch((error) =>
-                        Alert.alert('Unable to accept', error.message),
-                      )
-                      .catch((err: any) => {
-                        const msg = err?.message ?? err?.code ?? String(err);
-                        console.error('acceptJob error:', msg, err);
-                        Alert.alert('Accept failed', msg);
-                      })
-                  }
+                  onPress={handleAccept}
                 />
                 <AppButton
                   label="Decline ❌"

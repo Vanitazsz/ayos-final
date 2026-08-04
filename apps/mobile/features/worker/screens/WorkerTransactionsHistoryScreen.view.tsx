@@ -13,20 +13,24 @@ import {
 import { Colors } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import type { TransactionStatus } from '../logic/WorkerTransactionsHistoryScreenLogic';
+import { transactionStatusKind } from '../logic/WorkerTransactionsHistoryScreenLogic';
 import { Chip } from '@/components/Chip';
 import type { useWorkerTransactionsHistoryScreenController } from '../hooks/useWorkerTransactionsHistoryScreenController';
+import { capitalizeFirst } from '@/utils/format';
 type TxFilter = 'all' | 'credit' | 'debit';
 
 const statusIcon = (s: TransactionStatus) => {
-  if (s === 'completed')
+  const kind = transactionStatusKind(s);
+  if (kind === 'success')
     return <CheckCircle size={12} color={Colors.verified} />;
-  if (s === 'pending') return <Clock size={12} color={Colors.warning} />;
+  if (kind === 'warning') return <Clock size={12} color={Colors.warning} />;
   return <AlertCircle size={12} color={Colors.error} />;
 };
 
 const statusColor = (s: TransactionStatus) => {
-  if (s === 'completed') return Colors.verified;
-  if (s === 'pending') return Colors.warning;
+  const kind = transactionStatusKind(s);
+  if (kind === 'success') return Colors.verified;
+  if (kind === 'warning') return Colors.warning;
   return Colors.error;
 };
 export function TransactionsHistoryView({
@@ -200,8 +204,7 @@ export function TransactionsHistoryView({
                             weight="bold"
                             color={statusColor(tx.status)}
                           >
-                            {tx.status.charAt(0).toUpperCase() +
-                              tx.status.slice(1)}
+                            {capitalizeFirst(tx.status)}
                           </AppText>
                         </View>
                       </View>

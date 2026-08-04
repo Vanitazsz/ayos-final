@@ -7,17 +7,14 @@ import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import type { useWorkerIndexScreenController } from '../hooks/useWorkerIndexScreenController';
-const statusConfig: Record<string, { label: string; variant: any }> = {
-  pending: { label: 'Pending', variant: 'warning' },
-  accepted: { label: 'Accepted', variant: 'info' },
-  worker_preparing: { label: 'Preparing', variant: 'info' },
-  worker_en_route: { label: 'En Route', variant: 'info' },
-  worker_arrived: { label: 'Arrived', variant: 'info' },
-  service_started: { label: 'Started', variant: 'warning' },
-  in_progress: { label: 'In Progress', variant: 'warning' },
-  completed: { label: 'Completed', variant: 'success' },
-  cancelled: { label: 'Cancelled', variant: 'error' },
-};
+import { workerBookingStatusMeta } from '@/services/bookingStatus';
+import {
+  formatCoordinates,
+  formatKm,
+  formatPesoMinor,
+  formatTime,
+  ratingToPercent,
+} from '@/utils/format';
 export function WorkerDashboardView({
   model,
 }: {
@@ -194,19 +191,19 @@ export function WorkerDashboardView({
               <Text style={styles.liveDetail}>
                 Service area: {liveStatus?.serviceArea ?? 'Not configured'}
                 {liveStatus?.radiusMeters
-                  ? ` · ${(liveStatus.radiusMeters / 1000).toFixed(0)} km radius`
+                  ? ` · ${formatKm(liveStatus.radiusMeters, 0)} km radius`
                   : ''}
               </Text>
               <Text style={styles.liveDetail}>
                 Current location:{' '}
                 {liveStatus?.latitude != null && liveStatus.longitude != null
-                  ? `${liveStatus.latitude.toFixed(4)}, ${liveStatus.longitude.toFixed(4)}`
+                  ? formatCoordinates(liveStatus.latitude, liveStatus.longitude)
                   : 'Waiting for coordinates'}
               </Text>
               <Text style={styles.liveDetail}>
                 Last update:{' '}
                 {liveStatus?.lastSeenAt
-                  ? new Date(liveStatus.lastSeenAt).toLocaleTimeString()
+                  ? formatTime(liveStatus.lastSeenAt)
                   : 'No heartbeat received'}
               </Text>
             </View>
@@ -238,13 +235,10 @@ export function WorkerDashboardView({
                   { color: theme.colors.textSecondary },
                 ]}
               >
-                {offer.area} · {(offer.distanceMeters / 1000).toFixed(1)} km ·{' '}
+                {offer.area} · {formatKm(offer.distanceMeters)} km ·{' '}
                 {offer.rateMinor == null
                   ? 'Rate unavailable'
-                  : `₱${(offer.rateMinor / 100).toLocaleString('en-PH', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })} service rate`}
+                  : `${formatPesoMinor(offer.rateMinor)} service rate`}
               </Text>
               <Text style={theme.typography.body2}>{offer.description}</Text>
               {offer.status === 'ACCEPTED' ? (
@@ -322,14 +316,8 @@ export function WorkerDashboardView({
                   </Text>
                 </View>
                 <Badge
-                  label={
-                    (statusConfig[booking.status] ?? { label: booking.status })
-                      .label
-                  }
-                  variant={
-                    (statusConfig[booking.status] ?? { variant: 'info' })
-                      .variant
-                  }
+                  label={workerBookingStatusMeta(booking.status).label}
+                  variant={workerBookingStatusMeta(booking.status).variant}
                 />
               </View>
               <View style={styles.bookingMeta}>
@@ -418,7 +406,7 @@ export function WorkerDashboardView({
                 },
                 {
                   label: 'Average Rating',
-                  val: Math.round(((workerProfile?.rating ?? 0) / 5) * 100),
+                  val: ratingToPercent(workerProfile?.rating),
                   color: theme.colors.info,
                 },
                 {

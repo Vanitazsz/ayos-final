@@ -16,6 +16,11 @@ import {
   Wrench,
 } from 'lucide-react-native';
 import type { useAuthRegisterScreenController } from '../hooks/useAuthRegisterScreenController';
+import {
+  emailRule,
+  passwordRule,
+  confirmPasswordRule,
+} from '../logic/AuthRegisterScreenLogic';
 
 export function RegisterView({
   model,
@@ -200,13 +205,7 @@ export function RegisterView({
 
               <Controller
                 control={control}
-                rules={{
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: 'Invalid email',
-                  },
-                }}
+                rules={emailRule}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     label="Email"
@@ -226,13 +225,7 @@ export function RegisterView({
 
               <Controller
                 control={control}
-                rules={{
-                  required: 'Password is required',
-                  minLength: { value: 8, message: 'Minimum 8 characters' },
-                  validate: (value) =>
-                    /[A-Z]/.test(value) ||
-                    'Password must include an uppercase letter.',
-                }}
+                rules={passwordRule}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     label="Password"
@@ -251,11 +244,7 @@ export function RegisterView({
 
               <Controller
                 control={control}
-                rules={{
-                  required: 'Confirm password is required',
-                  validate: (val) =>
-                    val === password || 'Passwords do not match',
-                }}
+                rules={confirmPasswordRule(password)}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     label="Confirm password"

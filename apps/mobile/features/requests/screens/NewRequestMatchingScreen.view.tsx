@@ -19,27 +19,18 @@ import type {
   DispatchSnapshot,
   LiveWorkerCandidate,
 } from '../logic/NewRequestMatchingScreenLogic';
+import {
+  dispatchDiagnosticMessage,
+  SEARCH_RADIUS_MAX_KM,
+  SEARCH_RADIUS_MIN_KM,
+} from '../logic/NewRequestMatchingScreenLogic';
 import type { useNewRequestMatchingScreenController } from '../hooks/useNewRequestMatchingScreenController';
-function diagnosticMessage(
-  diagnostic: DispatchSnapshot['diagnostics'] | undefined,
-) {
-  switch (diagnostic?.reasonCode) {
-    case 'NO_CATEGORY_WORKERS':
-      return 'No workers in this service category are available nearby.';
-    case 'NO_APPROVED_WORKERS':
-      return 'Matching workers still need approval.';
-    case 'WORKERS_MISSING_SERVICE_AREA':
-      return 'Matching workers have not finished setting their service area.';
-    case 'WORKERS_OFFLINE':
-    case 'NO_FRESH_PRESENCE':
-      return 'Eligible workers are currently offline. Try again later.';
-    case 'OUTSIDE_SEARCH_RADIUS':
-    case 'OUTSIDE_SERVICE_RADIUS':
-      return 'No eligible workers were found within your selected radius.';
-    default:
-      return '';
-  }
-}
+import {
+  formatCountdown,
+  formatKm,
+  formatPesoMinor,
+  formatRating,
+} from '@/utils/format';
 
 function RadiusConfiguration({
   center,
@@ -81,11 +72,11 @@ function RadiusConfiguration({
         <TouchableOpacity
           accessibilityLabel="Decrease search radius"
           style={styles.controlButton}
-          disabled={radiusKm <= 1}
+          disabled={radiusKm <= SEARCH_RADIUS_MIN_KM}
           onPress={() => onChange(radiusKm - 1)}
         >
           <Minus
-            color={radiusKm > 1 ? theme.colors.primary : theme.colors.border}
+            color={radiusKm > SEARCH_RADIUS_MIN_KM ? theme.colors.primary : theme.colors.border}
             size={24}
           />
         </TouchableOpacity>
@@ -98,18 +89,18 @@ function RadiusConfiguration({
         <TouchableOpacity
           accessibilityLabel="Increase search radius"
           style={styles.controlButton}
-          disabled={radiusKm >= 50}
+          disabled={radiusKm >= SEARCH_RADIUS_MAX_KM}
           onPress={() => onChange(radiusKm + 1)}
         >
           <Plus
-            color={radiusKm < 50 ? theme.colors.primary : theme.colors.border}
+            color={radiusKm < SEARCH_RADIUS_MAX_KM ? theme.colors.primary : theme.colors.border}
             size={24}
           />
         </TouchableOpacity>
       </View>
       <RadiusSlider
-        minimumValue={1}
-        maximumValue={50}
+        minimumValue={SEARCH_RADIUS_MIN_KM}
+        maximumValue={SEARCH_RADIUS_MAX_KM}
         step={1}
         value={radiusKm}
         onValueChange={onChange}
@@ -118,8 +109,8 @@ function RadiusConfiguration({
         thumbTintColor={theme.colors.primary}
       />
       <View style={styles.radiusLabels}>
-        <Text style={theme.typography.caption}>1 km</Text>
-        <Text style={theme.typography.caption}>50 km</Text>
+        <Text style={theme.typography.caption}>{SEARCH_RADIUS_MIN_KM} km</Text>
+        <Text style={theme.typography.caption}>{SEARCH_RADIUS_MAX_KM} km</Text>
       </View>
       <Text style={styles.rateNotice}>
         Each matched worker&apos;s saved service rate is shown before you choose
@@ -170,9 +161,7 @@ function WorkerCard({
   const priceLabel =
     worker.rateMinor == null
       ? 'Price pending'
-      : `₱${(worker.rateMinor / 100).toLocaleString('en-PH', {
-          minimumFractionDigits: 2,
-        })} worker rate`;
+      : `${formatPesoMinor(worker.rateMinor)} worker rate`;
   return (
     <View style={[styles.card, accepted && styles.acceptedCard]}>
       <View style={styles.workerHeader}>
@@ -180,7 +169,7 @@ function WorkerCard({
         <View style={{ flex: 1 }}>
           <Text style={theme.typography.h4}>{worker.name}</Text>
           <Text style={styles.secondary}>
-            {(worker.distanceMeters / 1000).toFixed(1)} km away · {priceLabel}
+            {formatKm(worker.distanceMeters)} km away · {priceLabel}
           </Text>
         </View>
         <View style={[styles.statusPill, accepted && styles.acceptedPill]}>
@@ -192,7 +181,7 @@ function WorkerCard({
       <View style={styles.rating}>
         <Star size={16} color={theme.colors.warning} />
         <Text>
-          {Number(worker.rating).toFixed(1)} ({worker.reviewCount})
+          {formatRating(worker.rating)} ({worker.reviewCount})
         </Text>
       </View>
       {accepted ? (
@@ -278,8 +267,7 @@ export function MatchingView({
           <View style={styles.timer}>
             <Clock size={16} color={theme.colors.primary} />
             <Text style={styles.timerText}>
-              {Math.floor(secondsLeft / 60)}:
-              {String(secondsLeft % 60).padStart(2, '0')}
+              {formatCountdown(secondsLeft)}
             </Text>
           </View>
         </View>
@@ -299,7 +287,7 @@ export function MatchingView({
       {state === 'expired' && !accepted.length ? (
         <StateMessage
           title="No Worker Accepted Yet"
-          message={diagnosticMessage(snapshot?.diagnostics)}
+          message={dispatchDiagnosticMessage(snapshot?.diagnostics)}
           action="Change Date or Location"
           onAction={() => router.back()}
         />
@@ -327,7 +315,7 @@ export function MatchingView({
               </View>
               <Text style={theme.typography.h4}>Looking for workers</Text>
               <Text style={styles.emptyMessage}>
-                {diagnosticMessage(snapshot?.diagnostics) ||
+                {dispatchDiagnosticMessage(snapshot?.diagnostics) ||
                   `We are notifying eligible workers within your selected ${snapshot?.searchRadiusMeters ? snapshot.searchRadiusMeters / 1000 : radiusKm} km range.`}
               </Text>
             </View>

@@ -9,6 +9,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert } from 'react-native';
 import { Colors } from '@/constants/theme';
 type Period = 'week' | 'month' | 'all';
 
@@ -139,6 +140,22 @@ export function useWorkerWalletScreenController() {
     if (txFilter === 'debit') filtered = filtered.filter((t) => !t.credit);
     return filtered.slice(0, 3);
   }, [txFilter, walletTransactions]);
+  const handleRequestPayout = () => {
+    const amount = Number(payoutAmount);
+    if (!selectedMethod || !Number.isFinite(amount) || amount <= 0) {
+      Alert.alert(
+        'Invalid payout',
+        'Select a payout method and enter a valid amount.',
+      );
+      return;
+    }
+    void requestPayout(selectedMethod, Math.round(amount * 100))
+      .then(() => {
+        setShowPayout(false);
+        setShowPayoutSuccess(true);
+      })
+      .catch((error) => Alert.alert('Payout not requested', error.message));
+  };
   return {
     insets,
     period,
@@ -166,7 +183,7 @@ export function useWorkerWalletScreenController() {
     walletBarData,
     BAR_MAX,
     filteredTransactions,
-    requestPayout,
+    handleRequestPayout,
     router,
   };
 }

@@ -58,6 +58,29 @@ export type DispatchSnapshot = {
   diagnostics: DispatchDiagnostics;
   candidates: LiveWorkerCandidate[];
 };
+
+export type DispatchDiagnosticReason = DispatchDiagnostics['reasonCode'];
+
+export function dispatchDiagnosticMessage(
+  diagnostic: DispatchDiagnostics | undefined,
+): string {
+  switch (diagnostic?.reasonCode) {
+    case 'NO_CATEGORY_WORKERS':
+      return 'No workers in this service category are available nearby.';
+    case 'NO_APPROVED_WORKERS':
+      return 'Matching workers still need approval.';
+    case 'WORKERS_MISSING_SERVICE_AREA':
+      return 'Matching workers have not finished setting their service area.';
+    case 'WORKERS_OFFLINE':
+    case 'NO_FRESH_PRESENCE':
+      return 'Eligible workers are currently offline. Try again later.';
+    case 'OUTSIDE_SEARCH_RADIUS':
+    case 'OUTSIDE_SERVICE_RADIUS':
+      return 'No eligible workers were found within your selected radius.';
+    default:
+      return '';
+  }
+}
 export type DispatchOffer = {
   dispatchId: string;
   serviceRequestId: string;
