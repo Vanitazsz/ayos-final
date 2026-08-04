@@ -11,7 +11,7 @@ export function RequestSuccessView({
 }: {
   model: ReturnType<typeof useNewRequestSuccessScreenController>;
 }) {
-  const { handleViewRequest, handleBackToHome } = model;
+  const { handleBackToHome } = model;
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -76,13 +76,6 @@ export function RequestSuccessView({
       </ScrollView>
 
       <View style={styles.footer}>
-        <AppButton
-          label="View My Request"
-          onPress={handleViewRequest}
-          fullWidth
-          size="lg"
-          style={styles.primaryBtn}
-        />
         <AppButton
           label="Back to Home"
           onPress={handleBackToHome}

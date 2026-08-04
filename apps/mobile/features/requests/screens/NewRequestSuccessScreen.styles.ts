@@ -60,7 +60,4 @@ export const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     gap: Spacing['3'],
   },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-  },
 });
