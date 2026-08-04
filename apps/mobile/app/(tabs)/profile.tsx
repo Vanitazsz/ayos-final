@@ -17,13 +17,9 @@ import {
   ChevronRight,
   Shield,
   Bell,
-  CreditCard,
-  Settings,
   HelpCircle,
   LogOut,
   MapPin,
-  Heart,
-  BookOpen,
   Fingerprint,
   Languages,
 } from 'lucide-react-native';
@@ -55,29 +51,6 @@ const SETTINGS_SECTIONS = [
         icon: MapPin,
         route: '/settings/addresses',
       },
-      {
-        id: 'favorites',
-        title: 'Favorite Workers',
-        icon: Heart,
-        route: '/(tabs)/profile',
-      },
-    ],
-  },
-  {
-    title: 'Payments',
-    items: [
-      {
-        id: 'payment-methods',
-        title: 'Payment Methods',
-        icon: CreditCard,
-        route: '/(tabs)/profile',
-      },
-      {
-        id: 'history',
-        title: 'Payment History',
-        icon: BookOpen,
-        route: '/(tabs)/profile',
-      },
     ],
   },
   {
@@ -94,12 +67,6 @@ const SETTINGS_SECTIONS = [
         title: 'Message Language',
         icon: Languages,
         route: '/settings/language',
-      },
-      {
-        id: 'appearance',
-        title: 'App Appearance',
-        icon: Settings,
-        route: '/(tabs)/profile',
       },
     ],
   },
