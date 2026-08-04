@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 import { EmptyState } from '@/components/layout/EmptyState';
 import type { useTabsBookingsScreenController } from '../hooks/useTabsBookingsScreenController';
-import { customerBookingStatusMeta } from '@/services/bookingStatus';
+import { customerBookingStatusMeta } from '../logic/TabsBookingsScreenLogic';
 
 export function BookingsView({
   model,

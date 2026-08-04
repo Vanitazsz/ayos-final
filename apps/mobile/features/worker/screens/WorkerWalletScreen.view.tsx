@@ -75,9 +75,8 @@ export function WalletView({
     setShowPayoutSuccess,
     wallet,
     walletPayoutMethods,
-    gross,
     stats,
-    walletBarData,
+    walletBar,
     BAR_MAX,
     filteredTransactions,
     handleRequestPayout,
@@ -148,7 +147,7 @@ export function WalletView({
               />
             </View>
             <View style={styles.barChart}>
-              {walletBarData.map((d, i) => (
+              {walletBar.map((d, i) => (
                 <View key={i} style={styles.barCol}>
                   <View style={styles.barTrack}>
                     <View

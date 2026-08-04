@@ -1,6 +1,7 @@
 import {
   fetchMyWorkerSkillsAndIndustry,
   updateMyWorkerSkillsAndIndustry,
+  filterCompatibleSkills,
   type IndustryWithSkills,
 } from '../logic/WorkerIndustrySkillsScreenLogic';
 import { useCallback, useState } from 'react';
@@ -35,13 +36,10 @@ export function useWorkerIndustrySkillsScreenController() {
 
           setIndustries(res.data.industries);
           const nextIndustryIds = res.data.selectedIndustryIds;
-          const industrySkillIds = new Set(
-            res.data.industries
-              .filter((industry) => nextIndustryIds.includes(industry.id))
-              .flatMap((industry) => industry.skills.map((skill) => skill.id)),
-          );
-          const compatibleSkillIds = res.data.selectedSkillIds.filter(
-            (skillId) => industrySkillIds.has(skillId),
+          const compatibleSkillIds = filterCompatibleSkills(
+            res.data.industries,
+            nextIndustryIds,
+            res.data.selectedSkillIds,
           );
           setSelectedIndustryIds(nextIndustryIds);
           setSelectedSkillIds(compatibleSkillIds);

@@ -2,6 +2,8 @@ import {
   getWorkerMatchingReadiness,
   saveWorkerMatchingSetup,
   type WorkerMatchingReadiness,
+  canGoOnline as computeCanGoOnline,
+  validateServiceArea,
 } from '../logic/WorkerServiceSetupScreenLogic';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -67,8 +69,9 @@ export function useWorkerServiceSetupScreenController() {
       setError('Use your current location to confirm your service origin.');
       return;
     }
-    if (serviceArea.trim().length < 2) {
-      setError('Enter a service-area name or address.');
+    const areaError = validateServiceArea(serviceArea);
+    if (areaError) {
+      setError(areaError.serviceArea);
       return;
     }
 
@@ -94,10 +97,11 @@ export function useWorkerServiceSetupScreenController() {
       setSaving(false);
     }
   };
-  const canGoOnline =
-    readiness?.verificationStatus === 'APPROVED' &&
-    readiness.skillsReady &&
-    readiness.rateReady;
+  const canGoOnline = computeCanGoOnline(
+    readiness?.verificationStatus,
+    readiness?.skillsReady ?? false,
+    readiness?.rateReady ?? false,
+  );
   return {
     router,
     locationPickerRef,

@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import type { useWorkerBookingsScreenController } from '../hooks/useWorkerBookingsScreenController';
-import { workerBookingStatusMeta } from '@/services/bookingStatus';
+import { workerBookingStatusMeta } from '../logic/WorkerBookingsScreenLogic';
 
 const BOOKING_TABS = ['Upcoming', 'In Progress', 'Completed', 'Cancelled'];
 export function WorkerBookingsView({

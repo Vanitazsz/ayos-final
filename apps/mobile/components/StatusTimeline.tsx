@@ -4,45 +4,18 @@ import { Check, Circle, Clock } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import type { RequestStatus } from '@/store/useRequestStore';
+import {
+  TIMELINE_STEPS,
+  getCurrentStepIndex,
+} from './logic/StatusTimelineLogic';
 
 interface StatusTimelineProps {
   status: RequestStatus;
 }
 
 export function StatusTimeline({ status }: StatusTimelineProps) {
-  const getSteps = () => {
-    // Draft -> Posted -> Accepted -> Completed
-    const steps = [
-      { id: 'draft', label: 'Request Created', statuses: ['Draft'] },
-      {
-        id: 'posted',
-        label: 'Looking for Workers',
-        statuses: ['Searching', 'Posted'],
-      },
-      {
-        id: 'assigned',
-        label: 'Worker Assigned',
-        statuses: [
-          'Accepted',
-          'Scheduled',
-          'En_Route',
-          'Arrived',
-          'In_Progress',
-        ],
-      },
-      {
-        id: 'completed',
-        label: 'Completed',
-        statuses: ['Pending_Confirmation', 'Completed'],
-      },
-    ];
-    return steps;
-  };
-
-  const steps = getSteps();
-
-  // Find current step index
-  const currentIndex = steps.findIndex((s) => s.statuses.includes(status));
+  const steps = TIMELINE_STEPS;
+  const currentIndex = getCurrentStepIndex(steps, status);
 
   return (
     <View style={styles.container}>

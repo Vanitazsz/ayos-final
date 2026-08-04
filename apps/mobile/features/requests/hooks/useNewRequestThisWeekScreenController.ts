@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useRequestStore } from '@/store/useRequestStore';
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+import { resolveWeekday } from '../logic/NewRequestThisWeekScreenLogic';
 export function useNewRequestThisWeekScreenController() {
   const router = useRouter();
   const request = useRequestStore();
@@ -14,14 +14,7 @@ export function useNewRequestThisWeekScreenController() {
     router.push('/new-request/create' as any);
   };
   const handleConfirm = () => {
-    // Resolve the selected weekday into the next calendar occurrence.
-    const scheduledDate = new Date();
-    const targetDay = (DAYS.indexOf(selectedDay || 'Mon') + 1) % 7;
-    const daysAhead = (targetDay - scheduledDate.getDay() + 7) % 7 || 7;
-    scheduledDate.setDate(scheduledDate.getDate() + daysAhead);
-    if (selectedTime?.includes('8am')) scheduledDate.setHours(9, 0, 0);
-    else if (selectedTime?.includes('12pm')) scheduledDate.setHours(14, 0, 0);
-    else scheduledDate.setHours(18, 0, 0);
+    const scheduledDate = resolveWeekday(selectedDay || 'Mon', selectedTime);
 
     updateRequest({
       scheduledDate,

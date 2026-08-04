@@ -18,6 +18,13 @@ import {
   startEnRouteLocationPublisher,
   stopEnRouteLocationPublisher,
   uploadBookingProof,
+  viewBookingStatus,
+  bookingDurationLabel,
+  formatScheduleTime,
+  formatBookingPrice,
+  isUrgentScheduled,
+  formatDate,
+  formatAddressParts,
   type WorkerBooking,
 } from '../logic/WorkerBookingRequestIdScreenLogic';
 import { useState, useEffect } from 'react';
@@ -26,18 +33,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import { shouldTransitionToArrivedAfterProximityCheck } from '@/utils/arrivalTransition';
-const viewStatus = (status: string) =>
-  status === 'PENDING'
-    ? 'hired'
-    : status === 'ACCEPTED' || status === 'WORKER_PREPARING'
-      ? 'accepted'
-      : status === 'WORKER_EN_ROUTE' || status === 'WORKER_ARRIVED'
-        ? 'en_route'
-        : status === 'SERVICE_STARTED' || status === 'IN_PROGRESS'
-          ? 'in_progress'
-          : status === 'PENDING_CONFIRMATION'
-            ? 'pending_review'
-            : status.toLowerCase();
 export function useWorkerBookingRequestIdScreenController() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [job, setJob] = useState<any>({
@@ -97,45 +92,33 @@ export function useWorkerBookingRequestIdScreenController() {
             payment,
           );
           const address = request?.addresses;
-          const status = viewStatus(row.status);
-          if (row.accepted_at && row.completed_at) {
-            const minutes = Math.max(
-              0,
-              Math.round(
-                (new Date(row.completed_at).getTime() -
-                  new Date(row.accepted_at).getTime()) /
-                  60000,
-              ),
-            );
-            setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
-          }
+          const status = viewBookingStatus(row.status);
+          setDuration(bookingDurationLabel(row.accepted_at, row.completed_at));
           setBackendStatus(row.status);
           setRouteDetails({
             startLat: row.worker_start_lat,
             startLng: row.worker_start_lng,
             destinationLat: address?.latitude,
             destinationLng: address?.longitude,
-            address: [address?.line1, address?.barangay, address?.city]
-              .filter(Boolean)
-              .join(', '),
+            address: formatAddressParts([
+              address?.line1,
+              address?.barangay,
+              address?.city,
+            ]),
           });
           setBooking({
             id: row.id,
             customerName: row.user_profiles?.display_name ?? '',
             customerAvatar: row.user_profiles?.avatar_path ?? '',
             service: request?.service_categories?.name ?? '',
-            date: new Date(request?.scheduled_at).toLocaleDateString(),
-            time: new Date(request?.scheduled_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-            address: [address?.line1, address?.barangay, address?.city]
-              .filter(Boolean)
-              .join(', '),
-            price:
-              earningsAmount == null
-                ? 'Price pending'
-                : `₱${earningsAmount.toLocaleString()}`,
+            date: formatDate(request?.scheduled_at),
+            time: formatScheduleTime(request?.scheduled_at),
+            address: formatAddressParts([
+              address?.line1,
+              address?.barangay,
+              address?.city,
+            ]),
+            price: formatBookingPrice(earningsAmount),
             status,
             distance: '',
             lat: Number(address?.latitude ?? 0),
@@ -147,14 +130,15 @@ export function useWorkerBookingRequestIdScreenController() {
             service: request?.service_categories?.name ?? '',
             customerName: row.user_profiles?.display_name ?? '',
             customerAvatar: row.user_profiles?.avatar_path ?? '',
-            urgency:
-              new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
-                ? 'urgent'
-                : 'normal',
+            urgency: isUrgentScheduled(request?.scheduled_at)
+              ? 'urgent'
+              : 'normal',
             description: request?.description ?? '',
-            location: [address?.line1, address?.barangay, address?.city]
-              .filter(Boolean)
-              .join(', '),
+            location: formatAddressParts([
+              address?.line1,
+              address?.barangay,
+              address?.city,
+            ]),
             imageUrl: null,
           });
           setStoreStatus(row.id, status as any);

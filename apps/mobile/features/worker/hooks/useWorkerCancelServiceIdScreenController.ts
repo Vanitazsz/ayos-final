@@ -2,22 +2,13 @@ import {
   cancelBooking,
   fetchBookingDetail,
   fetchCancellationReasons,
+  categoryLabels,
+  categoryOrder,
+  filterRecommendations,
+  type CancellationReason,
 } from '../logic/WorkerCancelServiceIdScreenLogic';
 import { useState, useMemo, useEffect } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-type CancellationReason = {
-  id: string;
-  label: string;
-  category: string;
-  jobStages: JobStage[];
-  requiresInput: boolean;
-};
-
-const jobStages = [
-  { value: 'before_traveling' as const, label: 'Before traveling' },
-  { value: 'after_arriving' as const, label: 'After arriving' },
-  { value: 'after_inspecting' as const, label: 'After inspecting' },
-];
 
 type JobStage = 'before_traveling' | 'after_arriving' | 'after_inspecting';
 export function useWorkerCancelServiceIdScreenController() {
@@ -73,24 +64,15 @@ export function useWorkerCancelServiceIdScreenController() {
     });
     return groups;
   }, [filteredReasons]);
-  const categoryLabels: Record<string, string> = {
-    customer: 'Customer-related',
-    worker: 'Worker-related',
-    job: 'Job-related',
-    policy: 'Policy & Safety',
-    other: 'Other',
-  };
-  const categoryOrder = ['customer', 'worker', 'job', 'policy', 'other'];
-  const filteredRecommendations = useMemo(() => {
-    if (!customReason || customReason.length < 2) return [];
-    const lower = customReason.toLowerCase();
-    return cancellationReasons
-      .filter(
-        (r) =>
-          r.label.toLowerCase().includes(lower) && r.id !== selectedReason?.id,
-      )
-      .slice(0, 5);
-  }, [customReason, selectedReason]);
+  const filteredRecommendations = useMemo(
+    () =>
+      filterRecommendations(
+        cancellationReasons,
+        customReason,
+        selectedReason?.id,
+      ),
+    [customReason, selectedReason, cancellationReasons],
+  );
   const handleSelectReason = (reason: CancellationReason) => {
     setSelectedReason(reason);
     if (reason.requiresInput) {

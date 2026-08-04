@@ -8,6 +8,7 @@ import {
   uploadMyAvatar,
   fetchActiveSubdivisions,
   setMySubdivision,
+  normalizePhilippinePhone,
   type Subdivision,
 } from '../logic/WorkerProfileScreenLogic';
 import { useCallback, useState } from 'react';
@@ -111,9 +112,7 @@ export function useWorkerProfileScreenController() {
   };
   const saveProfile = async () => {
     try {
-      const normalizedMobile = mobile.startsWith('0')
-        ? `+63${mobile.slice(1)}`
-        : mobile;
+      const normalizedMobile = normalizePhilippinePhone(mobile);
       await updateMyProfile({
         displayName: name,
         mobile: normalizedMobile || null,

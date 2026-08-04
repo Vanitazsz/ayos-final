@@ -11,6 +11,10 @@ import {
   AlertTriangle,
 } from 'lucide-react-native';
 import type { useNewRequestIssueSummaryScreenController } from '../hooks/useNewRequestIssueSummaryScreenController';
+import {
+  MIN_DESCRIPTION_LENGTH,
+  descriptionIsValid,
+} from '../logic/NewRequestIssueSummaryScreenLogic';
 
 export function IssueSummaryView({
   model,
@@ -185,8 +189,8 @@ export function IssueSummaryView({
                 onChangeText={setEditableDraft}
                 error={
                   editableDraft.trim().length > 0 &&
-                  editableDraft.trim().length < 10
-                    ? 'Enter at least 10 characters.'
+                  !descriptionIsValid(editableDraft)
+                    ? `Enter at least ${MIN_DESCRIPTION_LENGTH} characters.`
                     : undefined
                 }
                 style={styles.requestDraftInput}
@@ -205,7 +209,9 @@ export function IssueSummaryView({
               : 'Continue to AI Matching'
           }
           onPress={continueToMatching}
-          disabled={status !== 'success' || editableDraft.trim().length < 10}
+          disabled={
+            status !== 'success' || !descriptionIsValid(editableDraft)
+          }
           fullWidth
         />
       </View>

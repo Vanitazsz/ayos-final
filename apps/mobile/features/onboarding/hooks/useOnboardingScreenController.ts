@@ -3,7 +3,7 @@ import { FlatList, ViewToken } from 'react-native';
 import { router } from 'expo-router';
 import { Wrench, CalendarDays, Shield } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
-interface OnboardingStep {
+export interface OnboardingStep {
   id: string;
   icon: React.ComponentType<{
     size?: number;
@@ -15,7 +15,7 @@ interface OnboardingStep {
   color: string;
 }
 
-const steps: OnboardingStep[] = [
+export const steps: OnboardingStep[] = [
   {
     id: '1',
     icon: Wrench,
@@ -66,6 +66,7 @@ export function useOnboardingScreenController() {
   };
   return {
     currentIndex,
+    steps,
     flatListRef,
     onViewableItemsChanged,
     handleNext,

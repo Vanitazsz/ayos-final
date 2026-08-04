@@ -1,12 +1,16 @@
 import {
   fetchIndustriesAndSkills,
   submitWorkerApplication,
+  MAX_SELECTED_SKILLS,
+  formatBirthdayInput,
+  validateWorkerStep1,
+  validateWorkerStep2,
+  validateWorkerStep3,
 } from '../logic/RegisterWorkerScreenLogic';
 import { useState, useEffect, useCallback } from 'react';
 import { Keyboard } from 'react-native';
 import { router } from 'expo-router';
 import type { SelectOption } from '@/components/AppSelect';
-import { isValidPhilippinePhone } from '@/lib/workerRegistration';
 const GENDERS: SelectOption[] = [
   { label: 'Male', value: 'male' },
   { label: 'Female', value: 'female' },
@@ -24,10 +28,6 @@ const ID_TYPES: SelectOption[] = [
   { label: 'Senior Citizen ID', value: 'senior' },
   { label: 'Other Government-issued ID', value: 'other' },
 ];
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 export function useRegisterWorkerScreenController() {
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -124,7 +124,7 @@ export function useRegisterWorkerScreenController() {
         setErrors((current) => ({ ...current, skills: '' }));
         return prev.filter((value) => value !== skillValue);
       }
-      if (prev.length >= 10) {
+      if (prev.length >= MAX_SELECTED_SKILLS) {
         setErrors((current) => ({
           ...current,
           skills: 'Select up to 10 skills',
@@ -147,62 +147,43 @@ export function useRegisterWorkerScreenController() {
     }
   };
   const handleBirthdayChange = (text: string) => {
-    const digits = text.replace(/\D/g, '').slice(0, 8);
-    let formatted = digits;
-    if (digits.length > 2) {
-      formatted = digits.slice(0, 2) + '/' + digits.slice(2);
-    }
-    if (digits.length > 4) {
-      formatted =
-        digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
-    }
-    setBirthday(formatted);
+    setBirthday(formatBirthdayInput(text));
   };
   const validateStep1 = () => {
-    const e: Record<string, string> = {};
-    if (!firstName) e.firstName = 'First name is required';
-    if (!lastName) e.lastName = 'Last name is required';
-    if (!emailRegex.test(email)) e.email = 'Valid email is required';
-    if (!isValidPhilippinePhone(phone))
-      e.phone = 'Valid Philippine number required';
-    if (!birthday) e.birthday = 'Birthday is required';
-    if (!passwordRegex.test(password))
-      e.password = 'Use 8+ characters with uppercase, number, and symbol';
-    if (password !== confirmPassword)
-      e.confirmPassword = 'Passwords do not match';
+    const e = validateWorkerStep1({
+      firstName,
+      lastName,
+      email,
+      phone,
+      birthday,
+      password,
+      confirmPassword,
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
   const validateStep2 = () => {
-    const e: Record<string, string> = {};
-    if (
-      !industryValue ||
-      !industries.some((option) => option.value === industryValue)
-    )
-      e.industry = 'Please select a primary industry';
-    if (!employmentType) e.employmentType = 'Please select employment type';
-    if (selectedSkills.length === 0) e.skills = 'Select at least one skill';
-    else if (selectedSkills.length > 10) e.skills = 'Select up to 10 skills';
-    else if (
-      selectedSkills.some(
-        (value) => !availableSkills.some((skill) => skill.value === value),
-      )
-    )
-      e.skills = 'Select skills from the chosen industry';
+    const e = validateWorkerStep2({
+      industryValue,
+      industries,
+      employmentType,
+      selectedSkills,
+      availableSkills,
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
   const validateStep3 = () => {
-    const e: Record<string, string> = {};
-    if (!street) e.street = 'Street is required';
-    if (!city) e.city = 'City is required';
-    if (!region) e.region = 'Province is required';
-    if (!contactPerson) e.contactPerson = 'Contact person is required';
-    if (!contactPhone || !isValidPhilippinePhone(contactPhone))
-      e.contactPhone = 'Valid phone number required';
-    if (!idType) e.idType = 'Please select an ID type';
-    if (!frontId) e.frontId = 'Front of ID is required';
-    if (!backId) e.backId = 'Back of ID is required';
+    const e = validateWorkerStep3({
+      street,
+      city,
+      region,
+      contactPerson,
+      contactPhone,
+      idType,
+      frontId,
+      backId,
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };

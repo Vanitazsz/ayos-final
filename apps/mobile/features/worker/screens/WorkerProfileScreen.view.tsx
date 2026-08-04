@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import { AppSelect } from '@/components/AppSelect';
 import type { useWorkerProfileScreenController } from '../hooks/useWorkerProfileScreenController';
+import { workerProfileStatusMeta } from '../logic/WorkerProfileScreenLogic';
 const MENU_SECTIONS = [
   {
     title: 'Account',
@@ -160,13 +161,8 @@ export function WorkerProfileView({
                     },
                   ]}
                 >
-                  {workerProfile.verificationStatus === 'verified'
-                    ? 'Verified Worker'
-                    : workerProfile.verificationStatus === 'rejected'
-                      ? 'Verification Rejected'
-                      : workerProfile.verificationStatus === 'needs_review'
-                        ? 'Needs Document Review'
-                        : 'Verification Pending'}
+                  {workerProfileStatusMeta[workerProfile.verificationStatus]
+                    ?.label ?? 'Verification Pending'}
                 </Text>
               </View>
             </View>

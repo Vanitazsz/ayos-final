@@ -7,10 +7,6 @@ import { theme } from '@/constants/theme';
 import {
   ArrowLeft,
   X,
-  Wrench,
-  Droplets,
-  Zap,
-  Paintbrush,
   Navigation,
   Camera,
   ImageUp,
@@ -29,14 +25,7 @@ import {
   addressRequiresCompletion,
   formatAddressParts,
 } from '../logic/NewRequestCreateScreenLogic';
-const iconFor = (name: string) =>
-  name.toLowerCase().includes('elect')
-    ? Zap
-    : name.toLowerCase().includes('paint')
-      ? Paintbrush
-      : name.toLowerCase().includes('plumb')
-        ? Droplets
-        : Wrench;
+import { iconFor } from '@/utils/iconFor';
 export function CreateRequestView({
   model,
 }: {

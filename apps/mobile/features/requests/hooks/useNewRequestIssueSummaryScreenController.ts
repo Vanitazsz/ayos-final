@@ -4,6 +4,9 @@ import {
   queueAiAnalysis,
   type WorkerRateEstimate,
   subscribeToAiAnalysisJob,
+  aiConsentVersion,
+  descriptionIsValid,
+  rateEstimateLabel,
 } from '../logic/NewRequestIssueSummaryScreenLogic';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -33,8 +36,7 @@ export function useNewRequestIssueSummaryScreenController() {
           description: draft.description,
           media: draft.media,
           locale: 'en-PH',
-          consentVersion:
-            process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21',
+          consentVersion: aiConsentVersion(),
           idempotencyKey: randomUUID(),
         });
         jobId = job.id;
@@ -112,29 +114,10 @@ export function useNewRequestIssueSummaryScreenController() {
       active = false;
     };
   }, [draft.categoryId, draft.coords, draft.scheduledAt, draft.searchRadiusKm]);
-  const rateLabel = (() => {
-    if (rateLoading) return 'Checking eligible worker rates…';
-    const minimum = rateEstimate?.minimumRateMinor;
-    const maximum = rateEstimate?.maximumRateMinor;
-    if (
-      rateError ||
-      minimum == null ||
-      maximum == null ||
-      !rateEstimate?.workerCount
-    )
-      return 'No live worker-rate estimate is currently available.';
-    const format = (minor: number) =>
-      `₱${(minor / 100).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`;
-    return minimum === maximum
-      ? `${format(minimum)} worker rate`
-      : `${format(minimum)} – ${format(maximum)} worker-rate range`;
-  })();
+  const rateLabel = rateEstimateLabel(rateLoading, rateError, rateEstimate);
   const continueToMatching = () => {
     const nextDescription = editableDraft.trim();
-    if (nextDescription.length < 10) return;
+    if (!descriptionIsValid(nextDescription)) return;
     draft.setDraft({
       description: nextDescription,
       aiResult: { ...(draft.aiResult ?? {}), requestDraft: nextDescription },

@@ -14,3 +14,4 @@ export {
   type DispatchOffer,
   type WorkerLiveStatus,
 } from '@/services/liveDispatch';
+export { workerBookingStatusMeta } from '@/services/bookingStatus';

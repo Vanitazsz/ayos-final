@@ -5,3 +5,4 @@ export {
 } from '@/services/bookings';
 export { subscribeToBookingFeed } from '@/services/realtime';
 export { type WorkerBooking } from '@/services/bookings';
+export { workerBookingStatusMeta } from '@/services/bookingStatus';

@@ -5,3 +5,4 @@ export {
   getCustomerBookingTab,
   getInitialCustomerBookingTab,
 } from '@/services/bookingTabs';
+export { customerBookingStatusMeta } from '@/services/bookingStatus';

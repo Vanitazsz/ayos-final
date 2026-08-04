@@ -15,8 +15,12 @@ import { RatingStars } from '@/components/RatingStars';
 import { Chip } from '@/components/Chip';
 import type { ReviewData } from '@/services/reviews';
 import { averageRating, formatRating, ratingDistribution } from '@/services/reviewRatings';
-
-const filterOptions = ['All', '5 Stars', '4 Stars', '3 Stars', 'Recent'];
+import {
+  REVIEW_FILTER_OPTIONS,
+  type ReviewFilter,
+  filterReviews,
+  ratedReviewCount,
+} from './logic/ReviewsTabLogic';
 
 interface ReviewsTabProps {
   reviews: ReviewData[];
@@ -24,21 +28,13 @@ interface ReviewsTabProps {
 }
 
 export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [activeFilter, setActiveFilter] = useState<ReviewFilter>('All');
   const [likedReviews, setLikedReviews] = useState<Set<string>>(new Set());
 
-  const filteredReviews = useMemo(() => {
-    if (activeFilter === 'All') return reviews;
-    if (activeFilter === '5 Stars')
-      return reviews.filter((r) => r.rating === 5);
-    if (activeFilter === '4 Stars')
-      return reviews.filter((r) => r.rating === 4);
-    if (activeFilter === '3 Stars')
-      return reviews.filter((r) => r.rating === 3);
-    if (activeFilter === 'Recent')
-      return [...reviews].sort((a, b) => a.date.localeCompare(b.date));
-    return reviews;
-  }, [activeFilter, reviews]);
+  const filteredReviews = useMemo(
+    () => filterReviews(reviews, activeFilter),
+    [activeFilter, reviews],
+  );
 
   const avgRating = useMemo(() => {
     return formatRating(
@@ -54,10 +50,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
     () => ratingDistribution(reviews),
     [reviews],
   );
-  const ratedReviewCount = Object.values(ratingDistributionValue).reduce(
-    (total, count) => total + count,
-    0,
-  );
+  const ratedCount = ratedReviewCount(reviews);
 
   const toggleLike = useCallback((id: string) => {
     setLikedReviews((prev) => {
@@ -157,7 +150,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
                 color={Colors.textSecondary}
                 style={{ marginTop: Spacing['1'] }}
               >
-                {ratedReviewCount} reviews
+                {ratedCount} reviews
               </AppText>
             </View>
             <View style={styles.summaryRight}>
@@ -181,7 +174,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
                       style={[
                         styles.distFill,
                         {
-                          width: `${ratedReviewCount ? (ratingDistributionValue[star] / ratedReviewCount) * 100 : 0}%`,
+                          width: `${ratedCount ? (ratingDistributionValue[star] / ratedCount) * 100 : 0}%`,
                           backgroundColor: Colors.cta,
                         },
                       ]}
@@ -201,7 +194,7 @@ export function ReviewsTab({ reviews, headerComponent }: ReviewsTabProps) {
 
           {/* Filter */}
           <View style={styles.filterRow}>
-            {filterOptions.map((f) => (
+            {REVIEW_FILTER_OPTIONS.map((f) => (
               <Chip
                 key={f}
                 label={f}

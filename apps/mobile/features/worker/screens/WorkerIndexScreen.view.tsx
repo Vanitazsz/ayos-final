@@ -7,7 +7,7 @@ import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import type { useWorkerIndexScreenController } from '../hooks/useWorkerIndexScreenController';
-import { workerBookingStatusMeta } from '@/services/bookingStatus';
+import { workerBookingStatusMeta } from '../logic/WorkerIndexScreenLogic';
 import {
   formatCoordinates,
   formatKm,

@@ -23,7 +23,7 @@ import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { CompletedSummary } from '@/components/booking/CompletedSummary';
 import type { useWorkerBookingRequestIdScreenController } from '../hooks/useWorkerBookingRequestIdScreenController';
-import { workerBookingStatusMeta } from '@/services/bookingStatus';
+import { workerBookingStatusMeta } from '../logic/WorkerBookingRequestIdScreenLogic';
 export function BookingRequestView({
   model,
 }: {

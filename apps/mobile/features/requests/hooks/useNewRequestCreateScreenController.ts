@@ -16,6 +16,7 @@ import {
   fetchSavedAddresses,
   formatSavedAddress,
   type SavedAddress,
+  descriptionIsValid,
 } from '../logic/NewRequestCreateScreenLogic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, ScrollView } from 'react-native';
@@ -426,7 +427,7 @@ export function useNewRequestCreateScreenController() {
   const validateRequest = (useAi: boolean, media: MediaInput[]) => {
     const next: Record<string, string> = {};
     if (!selectedCategory) next.service = 'Select a service.';
-    if (description.trim().length < 10 && (!useAi || media.length === 0))
+    if (!descriptionIsValid(description) && (!useAi || media.length === 0))
       next.description = useAi
         ? 'Enter at least 10 characters or add a photo or voice recording.'
         : 'Describe the issue using at least 10 characters.';

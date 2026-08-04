@@ -13,27 +13,14 @@ import {
   Bell,
   MapPin,
   Star,
-  Wrench,
-  Zap,
-  Droplets,
-  Paintbrush,
   ChevronRight,
   ChevronDown,
   Sparkles,
   Wallet,
   X,
 } from 'lucide-react-native';
+import { iconFor } from '@/utils/iconFor';
 import type { useTabsHomeScreenController } from '../hooks/useTabsHomeScreenController';
-const iconFor = (name: string) =>
-  name.toLowerCase().includes('elect')
-    ? Zap
-    : name.toLowerCase().includes('paint')
-      ? Paintbrush
-      : name.toLowerCase().includes('plumb')
-        ? Droplets
-        : name.toLowerCase().includes('clean')
-          ? Sparkles
-          : Wrench;
 export function HomeView({
   model,
 }: {
