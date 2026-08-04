@@ -1014,6 +1014,43 @@ export async function fetchBookingTracking(id: string) {
   if (updates.error) throw updates.error;
   return { booking, updates: updates.data ?? [] };
 }
+export async function fetchBookingSummary(bookingId: string) {
+  const [bookingResult, proofResult] = await Promise.allSettled([
+    supabase
+      .from('bookings')
+      .select(
+        '*,service_requests(*,service_categories(*),addresses(*)),worker_profiles:worker_account_id(*),user_profiles:user_account_id(*),payments(*,receipts(receipt_number,issued_at)),cancellations(*)',
+      )
+      .eq('id', bookingId)
+      .single(),
+    supabase
+      .from('booking_proof_media')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .order('created_at', { ascending: true }),
+  ]);
+
+  const booking =
+    bookingResult.status === 'fulfilled' ? bookingResult.value.data : null;
+  const proofPhotos =
+    proofResult.status === 'fulfilled' ? (proofResult.value.data ?? []) : [];
+
+  // Resolve signed URLs for proof photos
+  const photosWithUrls = await Promise.all(
+    proofPhotos.map(async (photo: any) => {
+      try {
+        const { data } = await supabase.storage
+          .from('booking-proof')
+          .createSignedUrl(photo.storage_path, 60 * 60);
+        return { ...photo, signedUrl: data?.signedUrl ?? null };
+      } catch {
+        return { ...photo, signedUrl: null };
+      }
+    }),
+  );
+
+  return { booking, proofPhotos: photosWithUrls };
+}
 export async function confirmCashPayment(bookingId: string) {
   const { data, error } = await supabase.rpc('confirm_cash_payment', {
     p_booking_id: bookingId,

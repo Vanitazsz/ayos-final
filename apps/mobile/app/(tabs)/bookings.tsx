@@ -133,7 +133,9 @@ export default function BookingsScreen() {
                 testID="customer-booking-card"
                 style={styles.bookingCard}
                 onPress={() =>
-                  router.push(`/tracking/${booking.id}`)
+                  booking.rawStatus === 'COMPLETED'
+                    ? router.push(`/booking-summary/${booking.id}`)
+                    : router.push(`/tracking/${booking.id}`)
                 }
               >
                 <View style={styles.cardHeader}>
