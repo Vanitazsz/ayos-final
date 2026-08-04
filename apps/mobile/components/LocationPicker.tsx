@@ -1,20 +1,22 @@
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
-import { Navigation } from 'lucide-react-native';
+import { Navigation, MapPin } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
 import { MapSurface } from './maps/MapSurface';
-import { reverseGeocode } from '@/services/geocoding';
-import type { AddressDetailsRecord } from '@/types/location';
+import { reverseGeocode } from '@/services/api';
 
-export interface AddressDetails extends AddressDetailsRecord {
+export interface AddressDetails {
   streetNumber: string;
   street: string;
   district: string;
   city: string;
   region: string;
   postalCode: string;
+  providerId?: string;
+  confidence?: number | null;
+  providerPayload?: Record<string, unknown>;
 }
 
 export interface LocationCoordinates {
@@ -37,6 +39,8 @@ interface Props {
   onWarning?: (message: string | null) => void;
   onLoadingChange?: (loading: boolean) => void;
   showAction?: boolean;
+  buttonVariant?: 'solid' | 'outline';
+  placeholderWhenEmpty?: boolean;
   error?: string;
 }
 
@@ -49,6 +53,8 @@ export const LocationPicker = forwardRef<LocationPickerHandle, Props>(
       onWarning,
       onLoadingChange,
       showAction = true,
+      buttonVariant = 'solid',
+      placeholderWhenEmpty = false,
       error,
     },
     ref,
@@ -126,12 +132,27 @@ export const LocationPicker = forwardRef<LocationPickerHandle, Props>(
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Use current location"
-            style={[styles.button, error ? styles.errorBorder : null]}
+            style={[
+              styles.button,
+              buttonVariant === 'outline' ? styles.buttonOutline : null,
+              error ? styles.errorBorder : null,
+            ]}
             onPress={() => void detectCurrentLocation()}
             disabled={loading}
           >
-            <Navigation size={20} color={Colors.white} />
-            <AppText variant="body" weight="semiBold" color={Colors.white}>
+            <Navigation
+              size={buttonVariant === 'outline' ? 16 : 20}
+              color={
+                buttonVariant === 'outline' ? Colors.primary : Colors.white
+              }
+            />
+            <AppText
+              variant="body"
+              weight="semiBold"
+              color={
+                buttonVariant === 'outline' ? Colors.primary : Colors.white
+              }
+            >
               {loading ? 'Detecting Location...' : 'Use Current Location'}
             </AppText>
           </Pressable>
@@ -144,6 +165,20 @@ export const LocationPicker = forwardRef<LocationPickerHandle, Props>(
           >
             {error}
           </AppText>
+        )}
+        {placeholderWhenEmpty && !coords && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Set service location"
+            style={styles.placeholder}
+            onPress={() => void detectCurrentLocation()}
+            disabled={loading}
+          >
+            <MapPin size={32} color={Colors.textTertiary} />
+            <AppText variant="bodySm" color={Colors.textTertiary}>
+              Tap to set your service location
+            </AppText>
+          </Pressable>
         )}
         {coords && (
           <View style={styles.mapContainer}>
@@ -173,6 +208,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingVertical: Spacing['4'],
     borderRadius: Radius.lg,
+    gap: Spacing['2'],
+  },
+  buttonOutline: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  placeholder: {
+    height: 160,
+    marginTop: Spacing['4'],
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderStyle: 'dashed',
+    backgroundColor: Colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing['2'],
   },
   errorBorder: { borderColor: Colors.error, borderWidth: 1 },

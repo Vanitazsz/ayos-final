@@ -9,14 +9,14 @@ interface StatCardProps {
   color?: string;
 }
 
-export const StatCard = React.memo(function StatCard({ value, label, color = Colors.cta }: StatCardProps) {
+export function StatCard({ value, label, color = Colors.cta }: StatCardProps) {
   return (
     <View style={styles.statCard}>
       <AppText variant="h3" weight="bold" color={color}>{value}</AppText>
       <AppText variant="caption" color={Colors.textSecondary}>{label}</AppText>
     </View>
   );
-});
+}
 
 const styles = StyleSheet.create({
   statCard: {

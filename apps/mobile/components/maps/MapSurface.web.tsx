@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { mapStyleUrl } from '@/config/maps';
+import { mapStyleUrl } from '@/lib/supabase';
 
 import type { MapPoint } from './MapSurface.native';
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
@@ -46,10 +46,7 @@ export function MapSurface({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: mapStyleUrl,
-      center: [
-        initialMapOptions.center.longitude,
-        initialMapOptions.center.latitude,
-      ],
+      center: [initialMapOptions.center.longitude, initialMapOptions.center.latitude],
       zoom: 13,
       interactive: initialMapOptions.interactive,
     });
@@ -58,8 +55,7 @@ export function MapSurface({
     mapRef.current = map;
 
     return () => {
-      if (animationFrameRef.current !== null)
-        cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
       markerRefs.current.forEach((marker) => marker.remove());
       map.remove();
       mapRef.current = null;
@@ -78,19 +74,12 @@ export function MapSurface({
         .addTo(map),
     );
 
-    const routeSource = map.getSource('route') as
-      | maplibregl.GeoJSONSource
-      | undefined;
+    const routeSource = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
     if (route) {
       if (routeSource) routeSource.setData(route);
       else {
         map.addSource('route', { type: 'geojson', data: route });
-        map.addLayer({
-          id: 'route-line',
-          type: 'line',
-          source: 'route',
-          paint: { 'line-color': '#1e3a8a', 'line-width': 4 },
-        });
+        map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#1e3a8a', 'line-width': 4 } });
       }
     } else if (routeSource) {
       map.removeLayer('route-line');
@@ -101,12 +90,9 @@ export function MapSurface({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapLoaded) return;
-    if (animationFrameRef.current !== null)
-      cancelAnimationFrame(animationFrameRef.current);
+    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
 
-    const radiusSource = map.getSource('radius') as
-      | maplibregl.GeoJSONSource
-      | undefined;
+    const radiusSource = map.getSource('radius') as maplibregl.GeoJSONSource | undefined;
     if (!radiusMeters) {
       displayedRadiusRef.current = undefined;
       if (radiusSource) {
@@ -118,31 +104,12 @@ export function MapSurface({
     }
 
     const setRadiusData = (meters: number) => {
-      const source = map.getSource('radius') as
-        | maplibregl.GeoJSONSource
-        | undefined;
+      const source = map.getSource('radius') as maplibregl.GeoJSONSource | undefined;
       if (source) source.setData(radiusGeoJson(mapCenter, meters));
       else {
-        map.addSource('radius', {
-          type: 'geojson',
-          data: radiusGeoJson(mapCenter, meters),
-        });
-        map.addLayer({
-          id: 'radius-fill',
-          type: 'fill',
-          source: 'radius',
-          paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.18 },
-        });
-        map.addLayer({
-          id: 'radius-line',
-          type: 'line',
-          source: 'radius',
-          paint: {
-            'line-color': '#1d4ed8',
-            'line-width': 2.5,
-            'line-opacity': 0.9,
-          },
-        });
+        map.addSource('radius', { type: 'geojson', data: radiusGeoJson(mapCenter, meters) });
+        map.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius', paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.18 } });
+        map.addLayer({ id: 'radius-line', type: 'line', source: 'radius', paint: { 'line-color': '#1d4ed8', 'line-width': 2.5, 'line-opacity': 0.9 } });
       }
     };
 
@@ -162,12 +129,10 @@ export function MapSurface({
     const startedAt = performance.now();
     const renderFrame = (now: number) => {
       const progress = Math.min((now - startedAt) / RADIUS_ANIMATION_MS, 1);
-      const displayedRadius =
-        startRadius + (radiusMeters - startRadius) * easeOutCubic(progress);
+      const displayedRadius = startRadius + (radiusMeters - startRadius) * easeOutCubic(progress);
       setRadiusData(displayedRadius);
       displayedRadiusRef.current = displayedRadius;
-      if (progress < 1)
-        animationFrameRef.current = requestAnimationFrame(renderFrame);
+      if (progress < 1) animationFrameRef.current = requestAnimationFrame(renderFrame);
       else {
         displayedRadiusRef.current = radiusMeters;
         animationFrameRef.current = null;

@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
-import { useRouteSummary } from '@/features/bookings/hooks/useRouteSummary';
+import { calculateRoute, reverseGeocode } from '@/services/api';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
 type Props = {
@@ -15,6 +15,23 @@ type Props = {
   workerView?: boolean;
 };
 
+const haversineKm = (
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+) => {
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export function RouteSummaryCard({
   bookingId,
   startLat,
@@ -24,13 +41,50 @@ export function RouteSummaryCard({
   destinationAddress,
   workerView,
 }: Props) {
-  const summary = useRouteSummary({
-    bookingId,
-    destinationLat,
-    destinationLng,
-    startLat,
-    startLng,
+  const [summary, setSummary] = useState({
+    startAddress: 'Worker starting location',
+    distanceKm: null as number | null,
+    minutes: null as number | null,
   });
+
+  useEffect(() => {
+    if (
+      startLat == null ||
+      startLng == null ||
+      destinationLat == null ||
+      destinationLng == null
+    )
+      return;
+    let active = true;
+    const directDistance = haversineKm(
+      startLat,
+      startLng,
+      destinationLat,
+      destinationLng,
+    );
+    void Promise.all([
+      reverseGeocode(startLat, startLng).catch(() => null),
+      calculateRoute(
+        [startLng, startLat],
+        [destinationLng, destinationLat],
+        bookingId,
+      ).catch(() => null),
+    ]).then(([geocode, route]) => {
+      if (!active) return;
+      setSummary({
+        startAddress: geocode?.displayLabel ?? 'Worker starting location',
+        distanceKm:
+          Number(route?.distanceMeters ?? directDistance * 1000) / 1000,
+        minutes:
+          route?.durationSeconds == null
+            ? Math.max(1, Math.round((directDistance / 25) * 60))
+            : Math.max(1, Math.ceil(Number(route.durationSeconds) / 60)),
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [bookingId, destinationLat, destinationLng, startLat, startLng]);
 
   if (
     startLat == null ||

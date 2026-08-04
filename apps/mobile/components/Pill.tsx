@@ -7,13 +7,13 @@ interface PillProps {
   bg: string;
 }
 
-export const Pill = React.memo(function Pill({ label, textColor, bg }: PillProps) {
+export function Pill({ label, textColor, bg }: PillProps) {
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       <Text style={[styles.text, { color: textColor }]}>{label}</Text>
     </View>
   );
-});
+}
 
 const styles = StyleSheet.create({
   pill: {

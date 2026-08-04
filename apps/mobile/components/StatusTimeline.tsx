@@ -3,29 +3,37 @@ import { View, StyleSheet } from 'react-native';
 import { Check, Circle, Clock } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
-import type { RequestStatus } from '@/store/useRequestStore';
-import {
-  TIMELINE_STEPS,
-  getCurrentStepIndex,
-} from './logic/StatusTimelineLogic';
+import { RequestState } from '@/context/RequestContext';
 
 interface StatusTimelineProps {
-  status: RequestStatus;
+  status: RequestState['status'];
 }
 
 export function StatusTimeline({ status }: StatusTimelineProps) {
-  const steps = TIMELINE_STEPS;
-  const currentIndex = getCurrentStepIndex(steps, status);
+  
+  const getSteps = () => {
+    // Draft -> Posted -> Accepted -> Completed
+    const steps = [
+      { id: 'draft', label: 'Request Created', statuses: ['Draft'] },
+      { id: 'posted', label: 'Looking for Workers', statuses: ['Searching', 'Posted'] },
+      { id: 'assigned', label: 'Worker Assigned', statuses: ['Accepted', 'Scheduled', 'En_Route', 'Arrived', 'In_Progress'] },
+      { id: 'completed', label: 'Completed', statuses: ['Pending_Confirmation', 'Completed'] },
+    ];
+    return steps;
+  };
 
+  const steps = getSteps();
+  
+  // Find current step index
+  const currentIndex = steps.findIndex(s => s.statuses.includes(status));
+  
   return (
     <View style={styles.container}>
       {steps.map((step, index) => {
-        const isCompleted =
-          currentIndex > index ||
-          (currentIndex === index && status === 'Completed');
+        const isCompleted = currentIndex > index || (currentIndex === index && status === 'Completed');
         const isActive = currentIndex === index && status !== 'Completed';
         const isPending = currentIndex < index;
-
+        
         return (
           <View key={step.id} style={styles.stepContainer}>
             <View style={styles.iconContainer}>
@@ -39,36 +47,21 @@ export function StatusTimeline({ status }: StatusTimelineProps) {
                 </View>
               ) : (
                 <View style={[styles.circle, styles.pendingCircle]}>
-                  <Circle
-                    size={10}
-                    color={Colors.border}
-                    fill={Colors.border}
-                  />
+                  <Circle size={10} color={Colors.border} fill={Colors.border} />
                 </View>
               )}
-
+              
               {/* Line connector */}
               {index < steps.length - 1 && (
-                <View
-                  style={[
-                    styles.line,
-                    isCompleted ? styles.completedLine : styles.pendingLine,
-                  ]}
-                />
+                <View style={[styles.line, isCompleted ? styles.completedLine : styles.pendingLine]} />
               )}
             </View>
-
+            
             <View style={styles.textContainer}>
-              <AppText
-                variant="bodySm"
+              <AppText 
+                variant="bodySm" 
                 weight={isActive || isCompleted ? 'semiBold' : 'regular'}
-                color={
-                  isActive
-                    ? Colors.cta
-                    : isCompleted
-                      ? Colors.textPrimary
-                      : Colors.textTertiary
-                }
+                color={isActive ? Colors.cta : isCompleted ? Colors.textPrimary : Colors.textTertiary}
               >
                 {step.label}
               </AppText>

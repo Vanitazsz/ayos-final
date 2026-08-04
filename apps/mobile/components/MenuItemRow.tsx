@@ -13,7 +13,7 @@ interface MenuItemRowProps {
   isLast?: boolean;
 }
 
-export const MenuItemRow = React.memo(function MenuItemRow({ icon: Icon, label, color, bg, onPress, isLast }: MenuItemRowProps) {
+export function MenuItemRow({ icon: Icon, label, color, bg, onPress, isLast }: MenuItemRowProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -34,7 +34,7 @@ export const MenuItemRow = React.memo(function MenuItemRow({ icon: Icon, label, 
       <ChevronRight size={20} color={Colors.textTertiary} strokeWidth={2} />
     </Pressable>
   );
-});
+}
 
 const styles = StyleSheet.create({
   menuItem: {

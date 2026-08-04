@@ -11,7 +11,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, Upload, X } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
-import { isImageTooLarge } from './logic/ImageUploadCardLogic';
 
 interface ImageUploadCardProps {
   label: string;
@@ -45,7 +44,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (isImageTooLarge(asset.fileSize)) {
+    if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
       Alert.alert('File too large', 'Select an image up to 10 MB.');
       return;
     }
@@ -68,7 +67,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (isImageTooLarge(asset.fileSize)) {
+    if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
       Alert.alert('File too large', 'Capture an image up to 10 MB.');
       return;
     }
