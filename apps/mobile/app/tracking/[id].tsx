@@ -222,15 +222,15 @@ export default function TrackingScreen() {
     | undefined;
 
   const reportWorker = () => {
-    if (bookingId) {
-      router.push({
-        pathname: '/report-provider/[id]',
-        params: {
-          id: bookingId,
-          providerName: tracking?.booking?.worker_profiles?.display_name ?? '',
-        },
-      });
-    }
+    const { to, subject, body } = buildProviderReportEmail({
+      bookingId: bookingId ?? '',
+      providerName: tracking?.booking?.worker_profiles?.display_name,
+      providerAccountId: workerAccountId,
+      bookingStatus: workerStatus,
+    });
+    void Linking.openURL(
+      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    );
   };
 
   return (
@@ -574,8 +574,10 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
     gap: theme.spacing.xs,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.errorBackground,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
   },
   timeline: { paddingBottom: theme.spacing.xxxl },
   timelineItem: { flexDirection: 'row', minHeight: 60 },
@@ -593,10 +595,16 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
     borderLeftWidth: 4,
-    ...theme.shadows.sm,
+    borderTopWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    borderRightColor: theme.colors.borderLight,
+    borderBottomColor: theme.colors.borderLight,
+    ...theme.shadows.md,
   },
   timelineSection: {
     marginHorizontal: theme.spacing.lg,

@@ -9,7 +9,7 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { Colors, Radius, Spacing, Typography, TouchTarget } from '@/constants/theme';
+import { Colors, Radius, Spacing, Typography, TouchTarget, Elevation } from '@/constants/theme';
 import { AppText } from './AppText';
 import * as Haptics from 'expo-haptics';
 
@@ -128,6 +128,7 @@ export const AppButton = React.memo(function AppButton({
           borderColor: getBorderColor(),
           borderWidth: variant === 'outline' ? 1.5 : 0,
           opacity: pressed && variant === 'ghost' ? 0.6 : 1,
+          ...(variant === 'primary' && !disabled ? Elevation.sm : {}),
         },
         fullWidth && styles.fullWidth,
         style,
@@ -162,7 +163,7 @@ export { AppButton as LegacyButton };
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

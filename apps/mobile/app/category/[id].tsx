@@ -26,9 +26,11 @@ export default function CategoryScreen() {
     [],
   );
   const goBack = useGoBack('/(tabs)/home');
+
   useEffect(() => {
     void fetchProviders().then((result) => setProviders(result.data));
   }, []);
+
   useEffect(() => {
     void fetchServiceCategories().then((result) =>
       setCategories(
@@ -39,6 +41,7 @@ export default function CategoryScreen() {
       ),
     );
   }, []);
+
   const workers = useMemo(
     () =>
       providers.filter((worker) =>
@@ -46,12 +49,15 @@ export default function CategoryScreen() {
       ),
     [categoryName, providers],
   );
+
   const matchedCategory = categories.find(
     (category) => category.label.toLowerCase() === categoryName,
   );
+
   const title = categoryName
     ? categoryName.charAt(0).toUpperCase() + categoryName.slice(1)
     : 'Workers';
+
   const openRequestForCategory = () => {
     if (!matchedCategory) return;
     router.push({
@@ -59,12 +65,9 @@ export default function CategoryScreen() {
       params: { categoryId: matchedCategory.id },
     });
   };
+
   return (
-    <Screen
-      safeArea
-      scrollable
-      backgroundColor={theme.colors.background}
-    >
+    <Screen safeArea scrollable backgroundColor={theme.colors.background}>
       <View
         style={[
           styles.header,
@@ -74,12 +77,22 @@ export default function CategoryScreen() {
         <TouchableOpacity onPress={goBack} style={styles.backButton}>
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
-        <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>
+        <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>
           {title} Experts
         </Text>
         <View style={{ width: 40 }} />
       </View>
+
       <View style={styles.content}>
+        <Text
+          style={[
+            theme.typography.body2,
+            { color: theme.colors.textSecondary, marginBottom: theme.spacing.lg },
+          ]}
+        >
+          Showing {workers.length} available verified workers for {title}.
+        </Text>
+
         {workers.length ? (
           workers.map((worker) => (
             <TouchableOpacity
@@ -160,8 +173,7 @@ export default function CategoryScreen() {
                 },
               ]}
             >
-              Post a request and we will match an available {title} worker to
-              you right away.
+              Post a request and we will match an available {title} worker to you right away.
             </Text>
             <Button
               title="Book this service"
@@ -197,10 +209,10 @@ const styles = StyleSheet.create({
   workerCard: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    ...theme.shadows.md,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
   },
@@ -215,8 +227,8 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.md,
     justifyContent: 'center',
   },
-  workerHeader: { flexDirection: 'row', alignItems: 'center' },
-  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  workerHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',

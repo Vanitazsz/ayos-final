@@ -5,13 +5,16 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {View,
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  ScrollView,} from 'react-native';
+  ScrollView,
+  Modal,
+} from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -33,6 +36,10 @@ import {
   Search,
   MapPin,
   ShieldCheck,
+  Fan,
+  Monitor,
+  Shovel,
+  Sparkles,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -69,6 +76,41 @@ import { randomUUID } from '@/lib/crypto';
 import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 import { showAlert } from '@/components/AppAlert';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+
+const getParentForCategory = (name: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes('clean')) return 'Cleaning';
+  if (lower.includes('plumb') || lower.includes('pipe') || lower.includes('water')) return 'Plumbing';
+  if (lower.includes('elect')) return 'Electrical';
+  if (lower.includes('carpent') || lower.includes('wood')) return 'Carpentry';
+  if (lower.includes('cool') || lower.includes('ac ') || lower.includes('air')) return 'Cooling';
+  if (lower.includes('paint')) return 'Painting';
+  if (lower.includes('appliance') || lower.includes('tv ') || lower.includes('fridge')) return 'Appliance';
+  return 'Handyman';
+};
+
+const PARENT_CATEGORIES = [
+  { id: 'p1', label: 'Cleaning', icon: Sparkles },
+  { id: 'p2', label: 'Plumbing', icon: Droplets },
+  { id: 'p3', label: 'Electrical', icon: Zap },
+  { id: 'p4', label: 'Carpentry', icon: Wrench },
+  { id: 'p5', label: 'Cooling', icon: Fan },
+  { id: 'p6', label: 'Painting', icon: Paintbrush },
+  { id: 'p7', label: 'Appliance', icon: Monitor },
+  { id: 'p8', label: 'Handyman', icon: Shovel },
+];
+
+const CATEGORY_COLORS = [
+  { color: '#0ea5e9', bg: '#e0f2fe' },
+  { color: '#f59e0b', bg: '#fef3c7' },
+  { color: '#10b981', bg: '#d1fae5' },
+  { color: '#06b6d4', bg: '#cffafe' },
+  { color: '#6366f1', bg: '#e0e7ff' },
+  { color: '#3b82f6', bg: '#dbeafe' },
+  { color: '#8b5cf6', bg: '#ede9fe' },
+  { color: '#22c55e', bg: '#dcfce7' },
+];
 
 type MediaKind = 'photo' | 'voice';
 type MediaStatus =
@@ -94,8 +136,7 @@ export default function CreateRequestScreen() {
   const locationPickerRef = useRef<LocationPickerHandle>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
-  const [serviceQuery, setServiceQuery] = useState('');
+  const [selectedParent, setSelectedParent] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [addressDetails, setAddressDetails] = useState<AddressDetails | null>(
@@ -147,6 +188,20 @@ export default function CreateRequestScreen() {
     province: '',
     postalCode: '',
   });
+
+  const groupedCategories = useMemo(() => {
+    const groups: Record<string, any[]> = {
+      Cleaning: [], Plumbing: [], Electrical: [], Carpentry: [], Cooling: [], Painting: [], Appliance: [], Handyman: []
+    };
+    categories.forEach(cat => {
+      const parent = getParentForCategory(cat.name);
+      if (groups[parent]) groups[parent].push(cat);
+    });
+    return groups;
+  }, [categories]);
+
+  const selectedCategoryObj = useMemo(() => categories.find(c => c.id === selectedCategory), [categories, selectedCategory]);
+
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -173,11 +228,7 @@ export default function CreateRequestScreen() {
   const geocodeCooldownUntilRef = useRef(0);
   const setDraft = useRequestStore((state) => state.setDraft);
   const selectedSavedAddressId = useRequestStore((state) => state.addressId);
-  const filteredCategories = useMemo(
-    () => filterServiceCatalog(categories, serviceQuery),
-    [categories, serviceQuery],
-  );
-  const hasMoreServices = visibleServiceCount < filteredCategories.length;
+
   const matchingSavedAddressId = useMemo(() => {
     return (
       savedAddresses.find((item) => formatSavedAddress(item) === address)?.id ??
@@ -319,11 +370,6 @@ export default function CreateRequestScreen() {
       clearTimeout(timeout);
     };
   }, [address, confirmedAddressLabel, coords, locationSource]);
-
-  const updateServiceQuery = (value: string) => {
-    setServiceQuery(value);
-    setVisibleServiceCount(4);
-  };
 
   const setMediaStatus = (kind: MediaKind, status: MediaStatus) => {
     if (kind === 'photo') setPhotoStatus(status);
@@ -469,10 +515,10 @@ export default function CreateRequestScreen() {
     };
   }, [queueCapturedMedia]);
 
-  const removeMedia = (kind: MediaKind) => {
+  const removeMedia = useCallback((kind: MediaKind) => {
     mediaGenerationRef.current[kind] += 1;
     mediaIdempotencyRef.current[kind] = '';
-    const remote = kind === 'photo' ? photoMedia : voiceMedia;
+    const remote = kind === 'photo' ? uploadedMediaRef.current.photo : uploadedMediaRef.current.voice;
     if (remote) void deleteRequestMedia(remote).catch(() => undefined);
     setUploadedMedia(kind, null);
     setMediaStatus(kind, 'idle');
@@ -483,7 +529,7 @@ export default function CreateRequestScreen() {
       queuedVoiceUriRef.current = '';
       setVoiceRecord(null);
     }
-  };
+  }, []);
 
   const retryMediaAssist = (kind: MediaKind) => {
     const media = kind === 'photo' ? photoMedia : voiceMedia;
@@ -967,24 +1013,10 @@ export default function CreateRequestScreen() {
             </Text>
           </View>
         ) : null}
-        {customerProfile?.subdivisionName ? (
-          <View style={styles.subdivisionBanner}>
-            <MapPin color={theme.colors.primary} size={16} />
-            <Text
-              style={[
-                theme.typography.body2,
-                { color: theme.colors.primary, marginLeft: 6 },
-              ]}
-            >
-              {customerProfile.subdivisionName}
-            </Text>
-          </View>
-        ) : null}
         <Text style={[theme.typography.h2, styles.title]}>
           What do you need help with?
         </Text>
 
-        {/* Categories */}
         <View style={styles.serviceSectionHeader}>
           <Text
             style={[
@@ -995,123 +1027,52 @@ export default function CreateRequestScreen() {
           >
             Select Service
           </Text>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={
-              serviceSearchOpen ? 'Close service search' : 'Search services'
-            }
-            style={styles.serviceSearchToggle}
-            onPress={() => {
-              if (serviceSearchOpen) {
-                updateServiceQuery('');
-                setServiceSearchOpen(false);
-              } else setServiceSearchOpen(true);
-            }}
-          >
-            {serviceSearchOpen ? (
-              <X color={theme.colors.primary} size={17} />
-            ) : (
-              <Search color={theme.colors.primary} size={17} />
-            )}
-            <Text style={styles.serviceSearchToggleText}>
-              {serviceSearchOpen ? 'Close' : 'Search'}
-            </Text>
-          </TouchableOpacity>
         </View>
-        {serviceSearchOpen && (
-          <TextInput
-            autoFocus
-            placeholder="Search available services"
-            value={serviceQuery}
-            onChangeText={updateServiceQuery}
-            leftIcon={Search}
-            rightIcon={serviceQuery ? X : undefined}
-            onRightIconPress={() => updateServiceQuery('')}
-            returnKeyType="search"
-            accessibilityLabel="Search available services"
-            style={styles.serviceSearchInput}
-          />
-        )}
-        <View
-          style={[
-            styles.categoriesRow,
-            !hasMoreServices && styles.categoriesRowComplete,
-          ]}
-        >
-          {filteredCategories.slice(0, visibleServiceCount).map((cat) => {
-            const Icon = iconFor(cat.name);
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                testID="request-service-option"
-                accessibilityRole="radio"
-                accessibilityLabel={cat.name}
-                accessibilityState={{ checked: isSelected }}
-                aria-checked={isSelected}
-                style={[
-                  styles.categoryItemRow,
-                  isSelected && styles.categoryItemSelected,
-                ]}
-                onPress={() => {
-                  setSelectedCategory(cat.id);
-                  setErrors((current) => ({ ...current, service: '' }));
-                }}
-              >
-                <Icon
-                  color={
-                    isSelected
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary
-                  }
-                  size={24}
-                />
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    {
-                      color: isSelected
-                        ? theme.colors.primary
-                        : theme.colors.textSecondary,
-                      marginTop: theme.spacing.xs,
-                      fontSize: 10,
-                      textAlign: 'center',
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {serviceQuery.trim() && filteredCategories.length === 0 ? (
-          <View style={styles.noServicesState}>
-            <Search color={theme.colors.textTertiary} size={28} />
-            <Text style={styles.noServicesText}>No services found</Text>
+
+        {selectedCategoryObj ? (
+          <View style={styles.selectedServiceBanner}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.categoryIconContainer, { backgroundColor: '#e0e7ff', width: 40, height: 40, marginRight: 12 }]}>
+                {(() => {
+                  const Icon = iconFor(selectedCategoryObj.name);
+                  return <Icon color={theme.colors.primary} size={20} />;
+                })()}
+              </View>
+              <View>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Selected Service</Text>
+                <Text style={[theme.typography.body1, { fontWeight: '600', color: theme.colors.textPrimary }]}>{selectedCategoryObj.name}</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ padding: 8 }}>
+              <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Change</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.categoriesGrid}>
+            {PARENT_CATEGORIES.map((parentCat, index) => {
+              const Icon = parentCat.icon;
+              const colorTheme = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+              return (
+                <Animated.View key={parentCat.id} entering={FadeInDown.delay(index * 50).duration(400).springify()} style={styles.categoryItemWrap}>
+                  <TouchableOpacity 
+                    style={styles.categoryItem} 
+                    onPress={() => setSelectedParent(parentCat.label)}
+                  >
+                    <View style={[styles.categoryIconContainer, { backgroundColor: colorTheme.bg }]}>
+                      <Icon color={colorTheme.color} size={28} />
+                    </View>
+                    <Text style={[theme.typography.caption, styles.categoryName]}>{parentCat.label}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
+          </View>
+        )}
+
         {errors.service ? (
           <Text style={styles.fieldError}>{errors.service}</Text>
         ) : null}
-        {hasMoreServices && (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="See more services"
-            style={styles.seeMoreServicesButton}
-            onPress={() =>
-              setVisibleServiceCount((count) =>
-                Math.min(count + 4, filteredCategories.length),
-              )
-            }
-          >
-            <Text style={styles.seeMoreServicesText}>See more services</Text>
-            <ChevronDown color={theme.colors.primary} size={18} />
-          </TouchableOpacity>
-        )}
 
-        {/* Camera */}
         <Text style={[theme.typography.label, styles.sectionTitle]}>
           Camera
         </Text>
@@ -1189,7 +1150,6 @@ export default function CreateRequestScreen() {
           </View>
         ) : null}
 
-        {/* Voice */}
         <Text
           style={[
             theme.typography.label,
@@ -1265,7 +1225,6 @@ export default function CreateRequestScreen() {
           </View>
         ) : null}
 
-        {/* Description */}
         <Text
           style={[
             theme.typography.label,
@@ -1290,7 +1249,6 @@ export default function CreateRequestScreen() {
           textAlignVertical="top"
         />
 
-        {/* Location Picker */}
         <View style={styles.locationHeaderRow}>
           <Text
             style={[
@@ -1387,19 +1345,7 @@ export default function CreateRequestScreen() {
               })}
             </View>
           </View>
-        ) : (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Add a saved address"
-            style={styles.addSavedAddressButton}
-            onPress={() => router.push('/settings/addresses')}
-          >
-            <MapPin color={theme.colors.primary} size={16} />
-            <Text style={styles.savedAddressManage}>
-              Save an address for future bookings
-            </Text>
-          </TouchableOpacity>
-        )}
+        ) : null}
         <TextInput
           placeholder="Enter complete address"
           value={address}
@@ -1437,9 +1383,6 @@ export default function CreateRequestScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-            <Text style={styles.attribution}>
-              © OpenStreetMap contributors, OpenRouteService
-            </Text>
           </View>
         ) : null}
         {addressSearchError ? (
@@ -1479,9 +1422,6 @@ export default function CreateRequestScreen() {
               onChangeText={(value) => updateManualAddress('postalCode', value)}
               keyboardType="number-pad"
             />
-            {errors.locationDetails ? (
-              <Text style={styles.fieldError}>{errors.locationDetails}</Text>
-            ) : null}
           </View>
         ) : null}
         <LocationPicker
@@ -1500,7 +1440,6 @@ export default function CreateRequestScreen() {
             setLocationSource('gps');
             setConfirmedAddressLabel('');
             setAddressDetails(null);
-            setErrors((current) => ({ ...current, location: '' }));
             setDraft({ addressId: null, addressDetails: null });
           }}
           onLocationDetected={(details, nextCoords, displayLabel) => {
@@ -1534,12 +1473,10 @@ export default function CreateRequestScreen() {
                 !details.region.trim(),
             );
             setLocationWarning('');
-            setErrors((current) => ({ ...current, address: '', location: '' }));
             setDraft({ addressId: null, addressDetails: details });
           }}
         />
 
-        {/* AI Workflow Info */}
         <View style={styles.infoCard}>
           <View
             style={{
@@ -1585,8 +1522,6 @@ export default function CreateRequestScreen() {
               const nextConsent = !consent;
               consentRef.current = nextConsent;
               setConsent(nextConsent);
-              setErrors((current) => ({ ...current, consent: '' }));
-              setSubmissionError('');
               if (nextConsent) {
                 if (
                   uploadedMediaRef.current.photo &&
@@ -1625,35 +1560,12 @@ export default function CreateRequestScreen() {
               {process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21'}.
             </Text>
           </TouchableOpacity>
-          {errors.consent ? (
-            <Text style={styles.fieldError}>{errors.consent}</Text>
-          ) : null}
         </View>
       </View>
 
       <View style={styles.footer}>
-        {submissionError ? (
-          <View style={styles.submissionErrorCard}>
-            <Text accessibilityRole="alert" style={styles.submissionError}>
-              {submissionError}
-            </Text>
-            {customerProfile?.verificationStatus !== 'verified' &&
-            customerProfile?.verificationStatus !== 'pending' ? (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Verify identity now"
-                onPress={() => router.push('/(auth)/verify-identity')}
-              >
-                <Text style={styles.submissionErrorAction}>
-                  Verify identity now
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
         <Button
           title={profileLoading ? 'Loading profile…' : 'Continue'}
-          accessibilityLabel="Continue with AI"
           onPress={() => void handleNext(true)}
           loading={saving}
           disabled={saving || profileLoading}
@@ -1671,6 +1583,49 @@ export default function CreateRequestScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={!!selectedParent} transparent animationType="fade" onRequestClose={() => setSelectedParent(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={theme.typography.h3}>{selectedParent} Services</Text>
+              <TouchableOpacity onPress={() => setSelectedParent(null)}>
+                <X color={theme.colors.textSecondary} size={24} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {selectedParent && groupedCategories[selectedParent]?.length > 0 ? (
+                groupedCategories[selectedParent].map((cat) => (
+                  <TouchableOpacity 
+                    key={cat.id} 
+                    style={styles.subcatItem}
+                    onPress={() => {
+                      setSelectedCategory(cat.id);
+                      setErrors((current) => ({ ...current, service: '' }));
+                      setSelectedParent(null);
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={[styles.categoryIconContainer, { backgroundColor: '#e0e7ff', width: 40, height: 40, marginRight: 12 }]}>
+                        {(() => {
+                          const Icon = iconFor(cat.name);
+                          return <Icon color={theme.colors.primary} size={20} />;
+                        })()}
+                      </View>
+                      <Text style={theme.typography.body1}>{cat.name}</Text>
+                    </View>
+                    <ChevronDown color={theme.colors.textTertiary} size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: theme.colors.textSecondary }}>No services available in this category yet.</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -2096,4 +2051,25 @@ const styles = StyleSheet.create({
     padding: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
+  selectedServiceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.sm,
+  },
+  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', marginBottom: theme.spacing.lg },
+  categoryItemWrap: { width: '25%' },
+  categoryItem: { alignItems: 'center', marginBottom: theme.spacing.lg },
+  categoryIconContainer: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: theme.spacing.xs },
+  categoryName: { textAlign: 'center', color: theme.colors.textPrimary, fontSize: 11, fontWeight: '500' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, padding: theme.spacing.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg },
+  subcatItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.borderLight },
 });
