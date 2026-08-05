@@ -1,12 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
-  Switch,
-} from 'react-native';
+  Switch,} from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -42,6 +39,7 @@ import {
   saveWorkerMatchingSetup,
   type WorkerMatchingReadiness,
 } from '@/services/workerMatching';
+import { showAlert } from '@/components/AppAlert';
 
 const MENU_SECTIONS = [
   {
@@ -150,7 +148,7 @@ export default function WorkerProfileScreen() {
         avatarUri: updated.avatarUri,
       }));
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Profile photo',
         error instanceof Error
           ? error.message
@@ -170,7 +168,7 @@ export default function WorkerProfileScreen() {
       });
       setMatchingReadiness(result);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Matching availability',
         error instanceof Error
           ? error.message
@@ -218,7 +216,7 @@ export default function WorkerProfileScreen() {
       id === 'topup-methods' ||
       id === 'topup-history'
     ) {
-      Alert.alert(
+      showAlert(
         'Coming Soon',
         'This feature will be available in a future update.',
       );
@@ -242,7 +240,7 @@ export default function WorkerProfileScreen() {
       });
       return;
     }
-    Alert.alert(
+    showAlert(
       'Coming Soon',
       'This feature will be available in a future update.',
     );

@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
+import {ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View,} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import {
@@ -25,6 +22,7 @@ import {
   subscribeToConversationBroadcast,
   subscribeToTable,
 } from '@/services/api';
+import { showAlert } from '@/components/AppAlert';
 
 interface ConversationListScreenProps {
   emptyDescription: string;
@@ -122,7 +120,7 @@ export function ConversationListScreen({
     if (result.failed.length > 0) {
       setSelectedIds(new Set(result.failed.map(({ id }) => id)));
       setConfirmingDelete(false);
-      Alert.alert(
+      showAlert(
         'Some conversations were not deleted',
         `${result.deleted.length} deleted, ${result.failed.length} failed. Try the remaining conversations again.`,
       );

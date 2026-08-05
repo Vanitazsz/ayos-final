@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
+
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getBackRoute } from '@/constants/backRoutes';
 import { updateMyWorkerSkillsAndIndustry } from '../logic/WorkerIndustrySkillsScreenLogic';
 import { useWorkerSkills } from '@/features/worker/hooks/useWorkerSkills';
+import { showAlert } from '@/components/AppAlert';
 
 export function useWorkerIndustrySkillsScreenController() {
   const router = useRouter();
@@ -54,11 +55,11 @@ export function useWorkerIndustrySkillsScreenController() {
 
   const handleSave = async () => {
     if (!selectedIndustryIds.length) {
-      Alert.alert('Industry required', 'Select at least one industry.');
+      showAlert('Industry required', 'Select at least one industry.');
       return;
     }
     if (!selectedSkillIds.length) {
-      Alert.alert('Skills required', 'Select at least one service skill.');
+      showAlert('Skills required', 'Select at least one service skill.');
       return;
     }
     setSaving(true);

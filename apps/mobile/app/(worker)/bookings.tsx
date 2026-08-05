@@ -1,14 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  AppState,
-  Alert,
+import {AppState,
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Pressable,
-} from 'react-native';
+  Pressable,} from 'react-native';
 import { CalendarDays, Clock, MapPin, CheckCircle2, XCircle, Receipt, Flag, Star, MessageSquare } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/constants/theme';
@@ -27,6 +24,7 @@ import {
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import type { WorkerBooking } from '@/services/api';
+import { showAlert } from '@/components/AppAlert';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -139,7 +137,7 @@ export default function WorkerBookingsScreen() {
       await acceptJob(id);
       load();
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Unable to accept',
         error instanceof Error ? error.message : 'Please retry.',
       );
@@ -151,7 +149,7 @@ export default function WorkerBookingsScreen() {
       await cancelBooking(id, 'Worker declined the assigned booking');
       load();
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Unable to decline',
         error instanceof Error ? error.message : 'Please retry.',
       );
@@ -166,7 +164,7 @@ export default function WorkerBookingsScreen() {
     return bookings.filter((b) => statuses.includes(b.status));
   }, [activeTab, bookings]);
 
-  const comingSoon = () => Alert.alert('Coming Soon', 'Earnings receipts will be available in a future update.');
+  const comingSoon = () => showAlert('Coming Soon', 'Earnings receipts will be available in a future update.');
 
   return (
     <Screen safeArea backgroundColor={theme.colors.background}>

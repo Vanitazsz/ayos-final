@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TextInput,
-  Alert,
-} from 'react-native';
+  TextInput,} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { Screen } from '@/components/layout/Screen';
@@ -23,6 +20,7 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { showAlert } from '@/components/AppAlert';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -91,17 +89,17 @@ export default function LoginScreen() {
   const onForgotPassword = async () => {
     const email = getValues('email');
     if (!email) {
-      Alert.alert('Email required', 'Enter your email address first.');
+      showAlert('Email required', 'Enter your email address first.');
       return;
     }
     try {
       await requestPasswordReset(email);
-      Alert.alert(
+      showAlert(
         'Check your email',
         'A secure password reset link has been sent.',
       );
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Reset failed',
         error instanceof Error ? error.message : 'Unable to send reset email',
       );

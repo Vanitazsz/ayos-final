@@ -1,14 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   Switch,
-  Image,
-  Alert,
-} from 'react-native';
+  Image,} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -20,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { randomUUID } from '@/lib/crypto';
 import { createReview, fetchBookingDetail } from '@/services/api';
 import { supabase } from '@/lib/supabase';
+import { showAlert } from '@/components/AppAlert';
 
 export default function ReviewScreen() {
   const router = useRouter();
@@ -43,11 +41,11 @@ export default function ReviewScreen() {
   const handleSubmit = async () => {
     if (submittingRef.current) return;
     if (rating === 0) {
-      Alert.alert('Rating Required', 'Please select at least 1 star.');
+      showAlert('Rating Required', 'Please select at least 1 star.');
       return;
     }
     if (!bookingId) {
-      Alert.alert(
+      showAlert(
         'Review unavailable',
         'This review is missing its booking reference. Please return to your completed bookings and try again.',
       );
@@ -55,7 +53,7 @@ export default function ReviewScreen() {
     }
     const commentText = review.trim();
     if (commentText.length < 3) {
-      Alert.alert(
+      showAlert(
         'Review required',
         'Write at least 3 characters about the service.',
       );
@@ -107,7 +105,7 @@ export default function ReviewScreen() {
     if (photos.length >= 3) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Photo library access is required.');
+      showAlert('Permission required', 'Photo library access is required.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

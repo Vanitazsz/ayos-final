@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
+import {ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -9,8 +7,7 @@ import {
   Text,
   TextInput as RNTextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View,} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import {
@@ -26,6 +23,7 @@ import { Image } from 'expo-image';
 import { theme } from '@/constants/theme';
 import { fetchConversationForBooking } from '@/services/api';
 import { useConversationChat } from '@/hooks/useConversationChat';
+import { showAlert } from '@/components/AppAlert';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -80,7 +78,7 @@ export default function ChatScreen() {
       !unavailableHandled.current
     ) {
       unavailableHandled.current = true;
-      Alert.alert(
+      showAlert(
         'Conversation deleted',
         'This conversation is no longer available.',
         [{ text: 'OK', onPress: goBack }],

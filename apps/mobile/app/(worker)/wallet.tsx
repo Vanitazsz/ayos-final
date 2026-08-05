@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   ScrollView,
@@ -8,9 +7,7 @@ import {
   Modal,
   TextInput,
   Dimensions,
-  Alert,
-  Keyboard,
-} from 'react-native';
+  Keyboard,} from 'react-native';
 import {
   TrendingUp,
   TrendingDown,
@@ -30,6 +27,7 @@ import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
 import { fetchWallet, fetchWalletTransactions, subscribeToTable, type WalletSummary, type WalletTransaction, type TransactionStatus } from '@/services/api';
+import { showAlert } from '@/components/AppAlert';
 
 type Period = 'week' | 'month' | 'all';
 type TxFilter = 'all' | 'credit' | 'debit';
@@ -147,7 +145,7 @@ export default function WalletScreen() {
               variant="outline"
               size="sm"
               leftIcon={<ArrowUpFromLine size={14} color={Colors.cta} />}
-              onPress={() => Alert.alert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
+              onPress={() => showAlert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
               style={styles.balanceBtn}
             />
             <AppButton
@@ -155,7 +153,7 @@ export default function WalletScreen() {
               variant="secondary"
               size="sm"
               leftIcon={<ArrowDownToLine size={14} color={Colors.cta} />}
-              onPress={() => Alert.alert('Unavailable','Wallet payout is unavailable until a payment provider is configured.')}
+              onPress={() => showAlert('Unavailable','Wallet payout is unavailable until a payment provider is configured.')}
               style={styles.balanceBtn}
             />
           </View>
@@ -366,7 +364,7 @@ export default function WalletScreen() {
                 label="Confirm Top-Up"
                 variant="primary"
                 leftIcon={<ArrowUpFromLine size={14} color={Colors.white} />}
-                onPress={() => Alert.alert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
+                onPress={() => showAlert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
                 style={{ flex: 1 }}
               />
             </View>

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import {View, StyleSheet, ScrollView, Pressable} from 'react-native';
 import {
   ChevronLeft,
   Check,
@@ -18,6 +18,7 @@ import { Badge } from '@/components/Badge';
 import { RatingStars } from '@/components/RatingStars';
 import { fetchProviderProfile, selectWorker } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
+import { showAlert } from '@/components/AppAlert';
 
 const weekDays = Array.from({ length: 7 }, (_, index) => {
   const value = new Date();
@@ -62,7 +63,7 @@ export default function BookingScreen() {
   const handleBack = useGoBack('/(tabs)/home');
   const handleContinue = useCallback(() => {
     if (!draft.requestId) {
-      Alert.alert(
+      showAlert(
         'Service request required',
         'Confirm the service location and request details first.',
         [
@@ -80,7 +81,7 @@ export default function BookingScreen() {
         draft.setDraft({ bookingId: booking.id });
         router.push(`/tracking/${booking.id}`);
       })
-      .catch((error) => Alert.alert('Worker unavailable', error.message));
+      .catch((error) => showAlert('Worker unavailable', error.message));
   }, [draft, id]);
 
   return (

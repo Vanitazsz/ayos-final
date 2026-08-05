@@ -5,16 +5,13 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Platform,
-  ScrollView,
-} from 'react-native';
+  ScrollView,} from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -71,6 +68,7 @@ import {
 import { randomUUID } from '@/lib/crypto';
 import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
+import { showAlert } from '@/components/AppAlert';
 
 type MediaKind = 'photo' | 'voice';
 type MediaStatus =
@@ -195,7 +193,7 @@ export default function CreateRequestScreen() {
     let active = true;
     void fetchServiceCategories().then((result) => {
       if (!active) return;
-      if (result.error) Alert.alert('Services unavailable', result.error);
+      if (result.error) showAlert('Services unavailable', result.error);
       else {
         const loaded = result.data.map((row: any) => ({
           id: row.id,
@@ -636,7 +634,7 @@ export default function CreateRequestScreen() {
       setSubmissionError(
         error instanceof Error ? error.message : 'Unable to continue.',
       );
-      Alert.alert(
+      showAlert(
         'Upload failed',
         error instanceof Error ? error.message : 'Unable to upload media',
       );
@@ -822,7 +820,7 @@ export default function CreateRequestScreen() {
     } catch (error) {
       recordingRef.current = false;
       setVoiceRecording(false);
-      Alert.alert(
+      showAlert(
         'Voice recording unavailable',
         error instanceof Error
           ? error.message
@@ -845,7 +843,7 @@ export default function CreateRequestScreen() {
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Microphone permission required');
+        showAlert('Microphone permission required');
         return;
       }
       await setAudioModeAsync({
@@ -862,7 +860,7 @@ export default function CreateRequestScreen() {
     } catch (error) {
       recordingRef.current = false;
       setVoiceRecording(false);
-      Alert.alert(
+      showAlert(
         'Voice recording unavailable',
         error instanceof Error
           ? error.message

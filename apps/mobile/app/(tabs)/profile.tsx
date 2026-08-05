@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
-  TextInput as NativeTextInput,
-} from 'react-native';
+  TextInput as NativeTextInput,} from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
@@ -28,6 +25,7 @@ import { fetchCustomerProfile } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { updateMyProfile, uploadMyAvatar } from '@/services/profile';
+import { showAlert } from '@/components/AppAlert';
 
 const SETTINGS_SECTIONS = [
   {
@@ -131,7 +129,7 @@ export default function ProfileScreen() {
         avatarUri: updated.avatarUri,
       }));
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Profile photo',
         error instanceof Error
           ? error.message
@@ -156,7 +154,7 @@ export default function ProfileScreen() {
       }));
       setEditing(false);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Profile update',
         error instanceof Error ? error.message : 'Unable to update profile',
       );

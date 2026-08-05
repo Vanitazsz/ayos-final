@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {Pressable, StyleSheet, TextInput, View} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, TriangleAlert } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
@@ -21,6 +21,7 @@ import {
 } from '@/services/profile';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
+import { showAlert } from '@/components/AppAlert';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function PersonalInfoScreen() {
 
   const handleSave = async () => {
     if (!name.trim() || !phone.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields.');
+      showAlert('Missing Fields', 'Please fill in all required fields.');
       return;
     }
     setSaving(true);
@@ -84,11 +85,11 @@ export default function PersonalInfoScreen() {
         bio: bio || null,
         complete: true,
       });
-      Alert.alert('Saved', 'Your personal information has been updated.', [
+      showAlert('Saved', 'Your personal information has been updated.', [
         { text: 'OK', onPress: handleBack },
       ]);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Profile update',
         error instanceof Error ? error.message : 'Unable to update profile',
       );

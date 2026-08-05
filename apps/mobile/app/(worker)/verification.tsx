@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import {View, Text, StyleSheet, ScrollView, Pressable} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft, CheckCircle, Clock, AlertCircle, Upload,
@@ -12,6 +12,7 @@ import { Pill } from '@/components/Pill';
 import { fetchWorkerVerification } from '@/services/api';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
+import { showAlert } from '@/components/AppAlert';
 
 type StepStatus = 'done' | 'active' | 'pending' | 'rejected';
 
@@ -326,7 +327,7 @@ export default function VerificationScreen() {
               ))}
             </View>
 
-            <Pressable style={styles.uploadArea} onPress={() => Alert.alert('Resubmit Documents', 'To resubmit documents, please contact support or re-register as a worker.')}>
+            <Pressable style={styles.uploadArea} onPress={() => showAlert('Resubmit Documents', 'To resubmit documents, please contact support or re-register as a worker.')}>
               <Camera size={20} color={Colors.info} />
               <AppText variant="bodySm" weight="bold" color={Colors.info}>Upload Additional Documents</AppText>
               <AppText variant="caption" color={Colors.textTertiary}>JPG, PNG, PDF · Max 10MB per file</AppText>

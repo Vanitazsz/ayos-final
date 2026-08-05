@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { loadCurrentUser } from '@/services/auth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WorkerPresenceProvider } from '@/context/WorkerPresenceContext';
+import { AppAlertHost } from '@/components/AppAlert';
 
 // Prevent auto hide while checking auth state
 SplashScreen.preventAutoHideAsync();
@@ -67,6 +68,7 @@ export default function RootLayout() {
           enabled={isAuthenticated && user?.role === 'WORKER'}
         >
           <SessionBoundary />
+          <AppAlertHost />
         </WorkerPresenceProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

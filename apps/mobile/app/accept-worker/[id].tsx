@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import {View, StyleSheet, Pressable} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import { CheckCircle2, X } from 'lucide-react-native';
@@ -9,7 +9,8 @@ import { AppButton } from '@/components/AppButton';
 import { Avatar } from '@/components/Avatar';
 import { fetchProviderProfile, selectWorker } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
-import { Alert } from 'react-native';
+
+import { showAlert } from '@/components/AppAlert';
 
 export default function AcceptWorkerModal() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function AcceptWorkerModal() {
 
   const handleHire = async () => {
     if (!draft.requestId) {
-      Alert.alert(
+      showAlert(
         'Request required',
         'Create and publish a service request before hiring a worker.',
       );
@@ -42,7 +43,7 @@ export default function AcceptWorkerModal() {
       draft.setDraft({ bookingId: booking.id });
       router.replace(`/tracking/${booking.id}`);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Worker unavailable',
         error instanceof Error ? error.message : 'Select another worker.',
       );

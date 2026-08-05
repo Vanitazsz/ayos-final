@@ -1,13 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
-  Linking,
-} from 'react-native';
+  Linking,} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import { Screen } from '@/components/layout/Screen';
@@ -34,6 +31,7 @@ import {
 } from '@/services/liveDispatch';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
+import { showAlert } from '@/components/AppAlert';
 
 
 const STATUS_STEP_MAP: Record<string, number> = {
@@ -198,7 +196,7 @@ export default function TrackingScreen() {
       await confirmJobCompletion(bookingId);
       setTracking(await fetchBookingTracking(bookingId));
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Confirmation failed',
         error instanceof Error ? error.message : 'Please try again.',
       );

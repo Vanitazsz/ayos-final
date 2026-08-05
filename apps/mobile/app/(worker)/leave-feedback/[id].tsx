@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator,} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -19,6 +16,7 @@ import {
   submitWorkerFeedback,
   getWorkerFeedback,
 } from '@/services/workerFeedback';
+import { showAlert } from '@/components/AppAlert';
 
 const QUICK_TAGS = [
   'Punctual',
@@ -87,11 +85,11 @@ export default function WorkerLeaveFeedbackScreen() {
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Rating Required', 'Please select at least 1 star.');
+      showAlert('Rating Required', 'Please select at least 1 star.');
       return;
     }
     if (!bookingId) {
-      Alert.alert('Error', 'Missing booking identifier.');
+      showAlert('Error', 'Missing booking identifier.');
       return;
     }
 
@@ -103,7 +101,7 @@ export default function WorkerLeaveFeedbackScreen() {
         comment.trim(),
         selectedTags,
       );
-      Alert.alert(
+      showAlert(
         'Feedback Submitted',
         `Thank you! Your feedback for ${booking?.customerName ?? 'the customer'} has been saved successfully.`,
         [
@@ -114,7 +112,7 @@ export default function WorkerLeaveFeedbackScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Submission Error',
         error instanceof Error
           ? error.message
