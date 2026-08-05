@@ -222,12 +222,16 @@ export default function WorkerProfileScreen() {
       );
       return;
     }
-    if (id === 'payout-methods' || id === 'payout-history') {
-      router.push('/(worker)/wallet');
-      return;
-    }
-    if (id === 'topup-methods' || id === 'topup-history') {
-      router.push('/(worker)/wallet');
+    if (
+      id === 'payout-methods' ||
+      id === 'payout-history' ||
+      id === 'topup-methods' ||
+      id === 'topup-history'
+    ) {
+      Alert.alert(
+        'Coming Soon',
+        'This feature will be available in a future update.',
+      );
       return;
     }
     if (id === 'notifications') {
