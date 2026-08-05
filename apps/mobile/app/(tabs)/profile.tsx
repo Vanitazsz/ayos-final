@@ -385,11 +385,13 @@ const styles = StyleSheet.create({
   },
   userInfo: { alignItems: 'center', marginVertical: theme.spacing.xl },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: theme.colors.border,
     marginBottom: theme.spacing.sm,
+    borderWidth: 3,
+    borderColor: theme.colors.surface,
   },
   verifiedBadge: {
     backgroundColor: `${theme.colors.success}15`,
@@ -405,9 +407,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    ...theme.shadows.sm,
+    borderRadius: theme.radius.xl,
+    ...theme.shadows.md,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   settingItem: {
     flexDirection: 'row',
@@ -438,10 +442,10 @@ const styles = StyleSheet.create({
   },
   editCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.xl,
-    ...theme.shadows.sm,
+    ...theme.shadows.md,
   },
   input: {
     borderWidth: 1,

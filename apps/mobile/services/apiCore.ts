@@ -1450,17 +1450,23 @@ export async function fetchConversationForBooking(bookingId: string) {
     return data;
   });
 }
-export async function fetchConversations() {
+export async function fetchConversations(mode: 'active' | 'archived' = 'active') {
   return wrap(async () => {
     const user = await requireUser();
     const profile = await getMyProfile();
-    const { data, error } = await supabase
+    let query = supabase
       .from('conversations')
       .select(
         'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
-      )
-      .is('archived_at', null)
-      .order('updated_at', { ascending: false });
+      );
+      
+    if (mode === 'active') {
+      query = query.is('archived_at', null);
+    } else {
+      query = query.not('archived_at', 'is', null);
+    }
+    
+    const { data, error } = await query.order('updated_at', { ascending: false });
     if (error) throw error;
     const prepared = (data ?? [])
       .map((row: any) => {
@@ -1522,6 +1528,7 @@ export async function fetchConversations() {
       avatar: avatarMap.get(item.avatarPath) ?? '',
       lastMessage: item.latest?.body ?? '',
       time: item.latest ? relative(item.latest.created_at) : '',
+      timestamp: item.latest?.created_at ?? '',
       unread: item.messages.filter(
         (message: any) =>
           message.sender_id !== user.id &&
@@ -1554,16 +1561,12 @@ export async function archiveConversations(conversationIds: string[]) {
     failed: { id: string; error: string }[];
   }>(
     (summary, result, index) => {
-      const id = conversationIds[index];
       if (result.status === 'fulfilled') {
-        summary.deleted.push(id);
+        summary.deleted.push(conversationIds[index]);
       } else {
         summary.failed.push({
-          id,
-          error:
-            result.reason instanceof Error
-              ? result.reason.message
-              : 'Conversation could not be deleted',
+          id: conversationIds[index],
+          error: normalizeFunctionError(result.reason),
         });
       }
       return summary;
@@ -1571,6 +1574,17 @@ export async function archiveConversations(conversationIds: string[]) {
     { deleted: [], failed: [] },
   );
 }
+
+export async function unarchiveConversations(conversationIds: string[]) {
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({ archived_at: null })
+    .in('id', conversationIds)
+    .select();
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchNotifications() {
   return wrap(async () => {
     const user = await requireUser();

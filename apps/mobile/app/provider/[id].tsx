@@ -376,7 +376,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: Radius.xl,
     padding: Spacing['4'],
-    ...Elevation.sm,
+    ...Elevation.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   statItem: { alignItems: 'center', gap: 4 },
   statIcon: {
@@ -405,10 +407,12 @@ const styles = StyleSheet.create({
   },
   reviewCard: {
     backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     padding: Spacing['4'],
     marginTop: Spacing['3'],
-    ...Elevation.sm,
+    ...Elevation.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -421,7 +425,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: Radius.xl,
     padding: Spacing['4'],
-    ...Elevation.sm,
+    ...Elevation.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   contactItem: {
     flexDirection: 'row',

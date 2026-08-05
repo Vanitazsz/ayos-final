@@ -192,11 +192,11 @@ const styles = StyleSheet.create({
   tabsContainer: { borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   tabsScroll: { paddingHorizontal: theme.layout.screenPadding },
   tabButton: { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md, marginRight: theme.spacing.sm, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabButtonActive: { borderBottomColor: theme.colors.primary },
+  tabButtonActive: { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 },
   content: { flex: 1 },
   contentInner: { padding: theme.layout.screenPadding },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
-  bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.sm },
+  bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.md, borderWidth: 1, borderColor: theme.colors.borderLight },
   seeAllButton: {
     alignItems: 'center',
     justifyContent: 'center',
