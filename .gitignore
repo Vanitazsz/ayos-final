@@ -18,6 +18,7 @@ supabase/.temp/
 supabase/.env.local
 .DS_Store
 apps/mobile/android/app/debug.keystore
+/ios/
 
 
 # ignore admin source code to avoid pushing it
