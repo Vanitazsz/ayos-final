@@ -1556,23 +1556,21 @@ export async function archiveConversations(conversationIds: string[]) {
       archiveConversation(conversationId),
     ),
   );
-  return results.reduce<{
-    deleted: string[];
-    failed: { id: string; error: string }[];
-  }>(
-    (summary, result, index) => {
-      if (result.status === 'fulfilled') {
-        summary.deleted.push(conversationIds[index]);
-      } else {
-        summary.failed.push({
-          id: conversationIds[index],
-          error: normalizeFunctionError(result.reason),
-        });
-      }
-      return summary;
-    },
-    { deleted: [], failed: [] },
-  );
+  const deleted: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      deleted.push(conversationIds[i]);
+    } else {
+      const err = await normalizeFunctionError(result.reason, 'Unable to delete conversation.');
+      failed.push({
+        id: conversationIds[i],
+        error: err.message,
+      });
+    }
+  }
+  return { deleted, failed };
 }
 
 export async function unarchiveConversations(conversationIds: string[]) {

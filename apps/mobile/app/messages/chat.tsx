@@ -138,6 +138,7 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
+        <View style={{ width: 40 }} />
       </View>
 
       {access.canSend && rawBookingId ? (
@@ -443,19 +444,26 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
+    alignItems: 'center',
   },
   closedText: {
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   secondaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
+    width: '100%',
+    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   secondaryActionText: {
     color: theme.colors.primary,

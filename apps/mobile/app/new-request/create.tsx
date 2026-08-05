@@ -1,25 +1,6 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-<<<<<<< Updated upstream
-  ScrollView,} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, ScrollView, Modal } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-=======
-  ScrollView,
-  Modal,
-} from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
->>>>>>> Stashed changes
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
@@ -40,6 +21,8 @@ import {
   Search,
   MapPin,
   ShieldCheck,
+  Check,
+  Plus,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -75,9 +58,7 @@ import {
 import { randomUUID } from '@/lib/crypto';
 import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
-<<<<<<< Updated upstream
 import { showAlert } from '@/components/AppAlert';
-=======
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Fan, Monitor, Shovel, Sparkles } from 'lucide-react-native';
 
@@ -114,7 +95,6 @@ const CATEGORY_COLORS = [
   { color: '#8b5cf6', bg: '#ede9fe' },
   { color: '#22c55e', bg: '#dcfce7' },
 ];
->>>>>>> Stashed changes
 
 type MediaKind = 'photo' | 'voice';
 type MediaStatus =
@@ -1017,7 +997,7 @@ export default function CreateRequestScreen() {
             </Text>
           </View>
         ) : null}
-        <Text style={[theme.typography.h2, styles.title]}>
+        <Text style={[theme.typography.h2, styles.title, { textAlign: 'center' }]}>
           What do you need help with?
         </Text>
 
@@ -1273,17 +1253,8 @@ export default function CreateRequestScreen() {
               }
               disabled={locationLoading}
             >
-              <Navigation color={theme.colors.primary} size={14} />
-              <Text
-                style={[
-                  theme.typography.caption,
-                  {
-                    color: theme.colors.primary,
-                    marginLeft: 4,
-                    fontWeight: '600',
-                  },
-                ]}
-              >
+              <Navigation color={theme.colors.primary} size={16} />
+              <Text style={styles.currentLocationText}>
                 {locationLoading ? 'Detecting…' : 'Use Current'}
               </Text>
             </TouchableOpacity>
@@ -1297,7 +1268,9 @@ export default function CreateRequestScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Manage saved addresses"
                 onPress={() => router.push('/settings/addresses')}
+                style={styles.manageButton}
               >
+                <Plus color={theme.colors.primary} size={16} />
                 <Text style={styles.savedAddressManage}>Manage</Text>
               </TouchableOpacity>
             </View>
@@ -1499,7 +1472,7 @@ export default function CreateRequestScreen() {
               How A-yos AI Works
             </Text>
           </View>
-          <View style={{ marginLeft: 24 }}>
+          <View style={{ marginLeft: 24, paddingRight: 8, gap: 2 }}>
             <Text style={[theme.typography.caption, styles.infoBullet]}>
               • Customer uploads a photo of the problem
             </Text>
@@ -1552,15 +1525,16 @@ export default function CreateRequestScreen() {
           >
             <View
               style={[styles.consentBox, consent && styles.consentBoxChecked]}
-            />
+            >
+              {consent ? <Check color={theme.colors.surface} size={14} /> : null}
+            </View>
             <Text
               style={[
                 theme.typography.caption,
                 { flex: 1, color: theme.colors.textSecondary },
               ]}
             >
-              I consent for Gemini to process this request and for OpenAI to
-              process it only after retryable Gemini failures. Consent version{' '}
+              I consent to the AI processing of this request to provide smart suggestions and a summary of my problem. Consent version{' '}
               {process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21'}.
             </Text>
           </TouchableOpacity>
@@ -1836,6 +1810,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '700',
   },
+  manageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.primary + '15',
+    borderRadius: theme.radius.full,
+  },
   savedAddressList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1878,11 +1861,16 @@ const styles = StyleSheet.create({
   currentLocationBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.infoBackground,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: theme.spacing.sm,
+    gap: 4,
+    backgroundColor: theme.colors.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.radius.full,
+  },
+  currentLocationText: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: '700',
   },
   addressSearchStatus: {
     flexDirection: 'row',
@@ -1983,15 +1971,23 @@ const styles = StyleSheet.create({
   },
 
   infoCard: {
-    backgroundColor: theme.colors.infoBackground,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
     marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   infoBullet: {
     color: theme.colors.textSecondary,
     marginBottom: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   consentRow: {
     flexDirection: 'row',

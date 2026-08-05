@@ -243,7 +243,7 @@ export default function LoginScreen() {
           </View>
 
           <Text style={styles.socialPrompt}>
-            Join With Your Favourite Social Media Account
+            Or continue with
           </Text>
 
           <View style={styles.socialRow}>
@@ -312,9 +312,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#000',
+    ...theme.typography.h1,
     marginBottom: 8,
   },
   subtitleRow: {
@@ -322,12 +320,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
   },
   createAccount: {
-    fontSize: 14,
-    color: '#000',
+    ...theme.typography.body2,
+    color: theme.colors.primary,
     fontWeight: '700',
   },
   form: {
@@ -336,8 +334,10 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
     height: 56,
     paddingHorizontal: 16,
   },
@@ -346,8 +346,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 15,
-    color: '#000',
+    ...theme.typography.body1,
     height: '100%',
   },
   eyeIcon: {
@@ -365,21 +364,20 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   forgotPasswordText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    ...theme.typography.body2,
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#1e3a8a',
+    backgroundColor: theme.colors.primary,
     height: 56,
-    borderRadius: 28,
+    borderRadius: theme.radius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loginButtonText: {
+    ...theme.typography.button,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -389,19 +387,18 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#eee',
+    backgroundColor: theme.colors.borderLight,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#999',
-    fontSize: 14,
+    color: theme.colors.textTertiary,
+    ...theme.typography.body2,
   },
   socialPrompt: {
     textAlign: 'center',
-    fontSize: 14,
-    color: '#333',
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
     marginBottom: 24,
-    fontWeight: '500',
   },
   socialRow: {
     flexDirection: 'row',
@@ -410,12 +407,15 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   socialButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#f5f5f5',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
+    ...theme.shadows.sm,
   },
   socialIcon: {
     width: 24,
@@ -423,12 +423,12 @@ const styles = StyleSheet.create({
   },
   termsText: {
     textAlign: 'center',
-    fontSize: 12,
-    color: '#999',
-    lineHeight: 18,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    lineHeight: 20,
   },
   termsLink: {
-    color: '#333',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },

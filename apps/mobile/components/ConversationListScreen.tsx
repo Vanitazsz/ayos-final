@@ -1,24 +1,6 @@
-<<<<<<< Updated upstream
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {ActivityIndicator,
-=======
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
->>>>>>> Stashed changes
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-<<<<<<< Updated upstream
-  View,} from 'react-native';
-=======
-  View,
-  Modal,
-} from 'react-native';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Alert } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
->>>>>>> Stashed changes
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import {
@@ -35,18 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
-import {
-  archiveConversations,
-  fetchConversations,
-  unarchiveConversations,
-  subscribeToConversationBroadcast,
-  subscribeToTable,
-} from '@/services/api';
-<<<<<<< Updated upstream
-import { showAlert } from '@/components/AppAlert';
-=======
+import { archiveConversations, fetchConversations, unarchiveConversations, subscribeToConversationBroadcast, subscribeToTable, } from '@/services/api';
 import Animated, { FadeInDown } from 'react-native-reanimated';
->>>>>>> Stashed changes
 
 interface ConversationListScreenProps {
   emptyDescription: string;
@@ -115,18 +87,7 @@ export function ConversationListScreen({
     }
     const result = await archiveConversations([chat.id]);
     if (result.failed.length > 0) {
-<<<<<<< Updated upstream
-      setSelectedIds(new Set(result.failed.map(({ id }) => id)));
-      setConfirmingDelete(false);
-      showAlert(
-        'Some conversations were not deleted',
-        `${result.deleted.length} deleted, ${result.failed.length} failed. Try the remaining conversations again.`,
-      );
-    } else {
-      exitSelectionMode();
-=======
       Alert.alert('Error', 'Failed to archive conversation.');
->>>>>>> Stashed changes
     }
     load();
   };
@@ -198,19 +159,21 @@ export function ConversationListScreen({
     <Screen safeArea backgroundColor={theme.colors.background}>
       <View style={styles.header}>
         {viewMode === 'archived' ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={() => setViewMode('active')} style={{ padding: 4 }}>
+          <>
+            <TouchableOpacity onPress={() => setViewMode('active')} style={{ width: 40, justifyContent: 'center', alignItems: 'flex-start' }}>
               <Text style={{ fontSize: 24, color: theme.colors.textPrimary }}>←</Text>
             </TouchableOpacity>
-            <Text style={theme.typography.h2}>Archived</Text>
-          </View>
+            <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Archived</Text>
+            <View style={{ width: 40 }} />
+          </>
         ) : (
-          <Text style={theme.typography.h2}>Messages</Text>
-        )}
-        {viewMode === 'active' && (
-          <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuButton}>
-            <MoreVertical color={theme.colors.textPrimary} size={24} />
-          </TouchableOpacity>
+          <>
+            <View style={{ width: 40 }} />
+            <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Messages</Text>
+            <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuButton}>
+              <MoreVertical color={theme.colors.textPrimary} size={24} />
+            </TouchableOpacity>
+          </>
         )}
       </View>
       <ScrollView 
@@ -242,7 +205,7 @@ export function ConversationListScreen({
               return (
                 <Animated.View key={chat.id} entering={FadeInDown.delay(index * 50).duration(400).springify()} style={{ marginBottom: theme.spacing.sm }}>
                   <Swipeable
-                    ref={(ref) => (swipeableRefs.current[chat.id] = ref)}
+                    ref={(ref) => { swipeableRefs.current[chat.id] = ref; }}
                     renderRightActions={() => renderRightActions(chat)}
                     friction={2}
                     overshootRight={false}

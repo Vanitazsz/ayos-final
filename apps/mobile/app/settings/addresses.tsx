@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
-import { ArrowLeft, Check, Edit3, MapPin, Plus, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Check, Edit3, MapPin, Plus, Trash2, AlertCircle } from 'lucide-react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
@@ -186,7 +186,7 @@ export default function SavedAddressesScreen() {
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
-        <Text style={theme.typography.h4}>Saved Addresses</Text>
+        <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Saved Addresses</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -238,6 +238,7 @@ export default function SavedAddressesScreen() {
                   <Text style={[theme.typography.body2, styles.addressText]}>
                     {formatSavedAddress(address)}
                   </Text>
+                  <View style={styles.divider} />
                   <View style={styles.cardActions}>
                     {!address.isDefault ? (
                       <TouchableOpacity
@@ -245,7 +246,9 @@ export default function SavedAddressesScreen() {
                         accessibilityLabel={`Make ${address.label} default`}
                         onPress={() => void makeDefault(address)}
                         disabled={saving}
+                        style={styles.iconAction}
                       >
+                        <Check color={theme.colors.primary} size={14} />
                         <Text style={styles.actionText}>Make default</Text>
                       </TouchableOpacity>
                     ) : null}
@@ -255,22 +258,27 @@ export default function SavedAddressesScreen() {
                       onPress={() => openEdit(address)}
                       style={styles.iconAction}
                     >
-                      <Edit3 color={theme.colors.primary} size={18} />
+                      <Edit3 color={theme.colors.primary} size={14} />
                       <Text style={styles.actionText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel={`Remove ${address.label}`}
                       onPress={() => setConfirmRemoveId(address.id)}
-                      style={styles.iconAction}
+                      style={styles.removeAction}
                     >
-                      <Trash2 color={theme.colors.error} size={18} />
+                      <Trash2 color={theme.colors.error} size={14} />
                       <Text style={styles.removeText}>Remove</Text>
                     </TouchableOpacity>
                   </View>
                   {confirmRemoveId === address.id ? (
                     <View style={styles.confirmCard}>
-                      <Text style={theme.typography.body2}>Remove this saved address?</Text>
+                      <View style={styles.confirmTextRow}>
+                        <AlertCircle color={theme.colors.error} size={20} />
+                        <Text style={[theme.typography.body2, { flex: 1, color: theme.colors.textPrimary }]}>
+                          Are you sure you want to remove this address?
+                        </Text>
+                      </View>
                       <View style={styles.confirmActions}>
                         <Button
                           title="Cancel"
@@ -297,74 +305,105 @@ export default function SavedAddressesScreen() {
 
         {showForm ? (
           <View style={styles.formCard}>
-            <Text style={theme.typography.h3}>
-              {form.id ? 'Edit Address' : 'Add Address'}
-            </Text>
-            <TextInput
-              accessibilityLabel="Address label"
-              placeholder="Label (e.g. Home)"
-              value={form.label}
-              onChangeText={(value) => updateField('label', value)}
-            />
-            <TextInput
-              accessibilityLabel="Street address"
-              placeholder="House number and street"
-              value={form.line1}
-              onChangeText={(value) => updateField('line1', value)}
-            />
-            <TextInput
-              accessibilityLabel="Address details"
-              placeholder="Subdivision, building, or unit (optional)"
-              value={form.line2}
-              onChangeText={(value) => updateField('line2', value)}
-            />
-            <TextInput
-              accessibilityLabel="Barangay"
-              placeholder="Barangay"
-              value={form.barangay}
-              onChangeText={(value) => updateField('barangay', value)}
-            />
-            <TextInput
-              accessibilityLabel="City or municipality"
-              placeholder="City or municipality"
-              value={form.city}
-              onChangeText={(value) => updateField('city', value)}
-            />
-            <TextInput
-              accessibilityLabel="Province"
-              placeholder="Province"
-              value={form.province}
-              onChangeText={(value) => updateField('province', value)}
-            />
-            <TextInput
-              accessibilityLabel="Postal code"
-              placeholder="Postal code (optional)"
-              value={form.postalCode}
-              onChangeText={(value) => updateField('postalCode', value)}
-              keyboardType="number-pad"
-            />
-            <LocationPicker
-              ref={locationPickerRef}
-              coords={coords}
-              error={!coords && error ? 'Confirm the address location.' : undefined}
-              onWarning={(message) => setLocationWarning(message ?? '')}
-              onCoordinatesDetected={setCoords}
-              onLocationDetected={(details, nextCoords) => {
-                setCoords(nextCoords);
-                setForm((current) => ({
-                  ...current,
-                  line1: current.line1 || details.street,
-                  barangay: current.barangay || details.district,
-                  city: current.city || details.city,
-                  province: current.province || details.region,
-                  postalCode: current.postalCode || details.postalCode,
-                }));
-                setLocationWarning('');
-              }}
-            />
-            {locationWarning ? (
-              <Text style={styles.warningText}>{locationWarning}</Text>
-            ) : null}
+            <View style={styles.formHeader}>
+              <Text style={theme.typography.h3}>
+                {form.id ? 'Edit Address' : 'Add Address'}
+              </Text>
+              <Text style={styles.helpText}>
+                {form.id ? 'Update the details of your saved address.' : 'Provide details for your new address.'}
+              </Text>
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={styles.inputLabel}>Address Label</Text>
+              <TextInput
+                accessibilityLabel="Address label"
+                placeholder="e.g. Home, Office"
+                value={form.label}
+                onChangeText={(value) => updateField('label', value)}
+              />
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={styles.inputLabel}>Street & Building</Text>
+              <TextInput
+                accessibilityLabel="Street address"
+                placeholder="House number and street"
+                value={form.line1}
+                onChangeText={(value) => updateField('line1', value)}
+              />
+              <View style={{ height: theme.spacing.xs }} />
+              <TextInput
+                accessibilityLabel="Address details"
+                placeholder="Subdivision, building, or unit (optional)"
+                value={form.line2}
+                onChangeText={(value) => updateField('line2', value)}
+              />
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={styles.inputLabel}>Location Details</Text>
+              <TextInput
+                accessibilityLabel="Barangay"
+                placeholder="Barangay"
+                value={form.barangay}
+                onChangeText={(value) => updateField('barangay', value)}
+              />
+              <View style={{ height: theme.spacing.xs }} />
+              <TextInput
+                accessibilityLabel="City or municipality"
+                placeholder="City or municipality"
+                value={form.city}
+                onChangeText={(value) => updateField('city', value)}
+              />
+              <View style={{ height: theme.spacing.xs }} />
+              <View style={styles.rowInputs}>
+                <View style={styles.flex1}>
+                  <TextInput
+                    accessibilityLabel="Province"
+                    placeholder="Province"
+                    value={form.province}
+                    onChangeText={(value) => updateField('province', value)}
+                  />
+                </View>
+                <View style={{ width: theme.spacing.sm }} />
+                <View style={styles.flex1}>
+                  <TextInput
+                    accessibilityLabel="Postal code"
+                    placeholder="Postal code (optional)"
+                    value={form.postalCode}
+                    onChangeText={(value) => updateField('postalCode', value)}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={styles.inputLabel}>Pin Location</Text>
+              <LocationPicker
+                ref={locationPickerRef}
+                coords={coords}
+                error={!coords && error ? 'Confirm the address location.' : undefined}
+                onWarning={(message) => setLocationWarning(message ?? '')}
+                onCoordinatesDetected={setCoords}
+                onLocationDetected={(details, nextCoords) => {
+                  setCoords(nextCoords);
+                  setForm((current) => ({
+                    ...current,
+                    line1: current.line1 || details.street,
+                    barangay: current.barangay || details.district,
+                    city: current.city || details.city,
+                    province: current.province || details.region,
+                    postalCode: current.postalCode || details.postalCode,
+                  }));
+                  setLocationWarning('');
+                }}
+              />
+              {locationWarning ? (
+                <Text style={styles.warningText}>{locationWarning}</Text>
+              ) : null}
+            </View>
             <TouchableOpacity
               accessibilityRole="checkbox"
               accessibilityState={{ checked: form.isDefault }}
@@ -418,15 +457,20 @@ const styles = StyleSheet.create({
   emptyText: { color: theme.colors.textSecondary, textAlign: 'center' },
   addressCard: {
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    gap: theme.spacing.sm,
+    borderColor: theme.colors.border + '60',
   },
   addressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   addressTitleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-  addressText: { color: theme.colors.textSecondary, lineHeight: 20 },
+  addressText: { color: theme.colors.textSecondary, lineHeight: 22 },
   defaultBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -437,25 +481,41 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.full,
   },
   defaultBadgeText: { ...theme.typography.caption, color: theme.colors.success, fontWeight: '700' },
-  cardActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.spacing.lg },
-  iconAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cardActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.spacing.sm },
+  iconAction: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary + '15', paddingHorizontal: 12, paddingVertical: 6, borderRadius: theme.radius.full },
+  removeAction: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.errorBackground, paddingHorizontal: 12, paddingVertical: 6, borderRadius: theme.radius.full },
   actionText: { ...theme.typography.caption, color: theme.colors.primary, fontWeight: '700' },
   removeText: { ...theme.typography.caption, color: theme.colors.error, fontWeight: '700' },
+  divider: { height: 1, backgroundColor: theme.colors.borderLight, marginVertical: theme.spacing.xs },
   confirmCard: {
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.errorBackground,
-    borderRadius: theme.radius.md,
-    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.error + '40',
+    borderRadius: theme.radius.lg,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.xs,
   },
+  confirmTextRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   confirmActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.spacing.sm },
   formCard: {
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+    gap: theme.spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    gap: theme.spacing.sm,
+    borderColor: theme.colors.border + '50',
   },
+  formHeader: { marginBottom: theme.spacing.xs },
+  formSection: { gap: theme.spacing.xs },
+  inputLabel: { ...theme.typography.caption, fontWeight: '600', color: theme.colors.textPrimary, marginLeft: 4 },
+  rowInputs: { flexDirection: 'row', alignItems: 'center' },
+  flex1: { flex: 1 },
   warningText: { ...theme.typography.caption, color: theme.colors.warning },
   defaultRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   checkbox: {

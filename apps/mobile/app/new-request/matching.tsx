@@ -45,7 +45,7 @@ type State = 'configuring' | 'starting' | 'live' | 'expired' | 'error';
 function diagnosticMessage(
   diagnostic: DispatchSnapshot['diagnostics'] | undefined,
 ) {
-  switch (diagnostic?.reasonCode) {
+  switch (diagnostic?.reasonCode as string | undefined) {
     case 'NO_CATEGORY_WORKERS':
       return 'No workers in this service category are available nearby.';
     case 'NO_APPROVED_WORKERS':
@@ -498,7 +498,7 @@ function WorkerCard({
       </View>
       <View style={styles.rating}>
         <Star size={16} color={theme.colors.warning} />
-        <Text>
+        <Text style={styles.ratingText}>
           {Number(worker.rating).toFixed(1)} ({worker.reviewCount})
         </Text>
       </View>
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 4,
   },
-  matchCountText: { color: theme.colors.primary, fontWeight: '700' },
+  matchCountText: { ...theme.typography.caption, color: theme.colors.primary, fontWeight: '700' },
   timer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: theme.radius.lg,
   },
-  timerText: { color: theme.colors.primary, fontWeight: '800' },
+  timerText: { ...theme.typography.body2, color: theme.colors.primary, fontWeight: '800' },
   list: { flex: 1 },
   listContent: {
     paddingHorizontal: theme.layout.screenPadding,
@@ -647,6 +647,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyMessage: {
+    ...theme.typography.body2,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
@@ -673,8 +674,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   acceptedPill: { backgroundColor: theme.colors.success },
-  pillText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  pillText: { ...theme.typography.caption, color: '#fff', fontWeight: '700' },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ratingText: { ...theme.typography.caption },
   state: {
     flex: 1,
     alignItems: 'center',
