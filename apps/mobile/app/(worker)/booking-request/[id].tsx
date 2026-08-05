@@ -4,7 +4,6 @@ import {View,
   ScrollView,
   Pressable,
   Image,} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import {
   ChevronLeft,
   MapPin,
@@ -38,7 +37,6 @@ import { CompletedSummary } from '@/components/booking/CompletedSummary';
 import * as Location from 'expo-location';
 import {
   acceptJob,
-  attachBookingProof,
   arriveAtJob,
   completeJob,
   confirmCashPayment,
@@ -56,7 +54,6 @@ import {
   startEnRouteLocationPublisher,
   stopEnRouteLocationPublisher,
 } from '@/services/liveDispatch';
-import { uploadBookingProof } from '@/services/uploads';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import { shouldTransitionToArrivedAfterProximityCheck } from '@/utils/arrivalTransition';
@@ -326,32 +323,6 @@ export default function BookingRequestScreen() {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleComplete error:', msg, error);
       showAlert('Complete failed', msg);
-    }
-  };
-
-  const handleUploadProof = async () => {
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(
-          'Permission required',
-          'Photo-library access is required to attach proof of work.',
-        );
-        return;
-      }
-      const picker = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-      });
-      if (picker.canceled) return;
-      const proof = await uploadBookingProof(picker.assets[0].uri);
-      await attachBookingProof(booking.id, proof);
-      showAlert('Proof attached', 'The photo is tied to this booking.');
-    } catch (error: any) {
-      const msg = error?.message ?? error?.code ?? String(error);
-      console.error('handleUploadProof error:', msg, error);
-      showAlert('Upload failed', msg);
     }
   };
 
@@ -767,12 +738,6 @@ export default function BookingRequestScreen() {
                 paymentStatus={paymentStatus}
                 onConfirmCash={handleConfirmCash}
                 onLeaveFeedback={handleLeaveFeedback}
-              />
-              <AppButton
-                label="Add Proof of Work Photo"
-                variant="outline"
-                fullWidth
-                onPress={handleUploadProof}
               />
             </View>
           )}
