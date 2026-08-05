@@ -15,7 +15,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
@@ -92,6 +92,7 @@ const iconFor = (name: string) =>
 
 export default function CreateRequestScreen() {
   const router = useRouter();
+  const { categoryId } = useLocalSearchParams<{ categoryId?: string }>();
   const locationPickerRef = useRef<LocationPickerHandle>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -195,20 +196,26 @@ export default function CreateRequestScreen() {
     void fetchServiceCategories().then((result) => {
       if (!active) return;
       if (result.error) Alert.alert('Services unavailable', result.error);
-      else
-        setCategories(
-          result.data.map((row: any) => ({
-            id: row.id,
-            name: row.label,
-            slug: row.slug,
-            minimumPriceMinor: row.minimumPriceMinor,
-          })),
-        );
+      else {
+        const loaded = result.data.map((row: any) => ({
+          id: row.id,
+          name: row.label,
+          slug: row.slug,
+          minimumPriceMinor: row.minimumPriceMinor,
+        }));
+        setCategories(loaded);
+        if (
+          typeof categoryId === 'string' &&
+          loaded.some((row) => row.id === categoryId)
+        ) {
+          setSelectedCategory(categoryId);
+        }
+      }
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [categoryId]);
 
   useFocusEffect(
     useCallback(() => {

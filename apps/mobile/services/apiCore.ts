@@ -282,7 +282,10 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
         id: row.account_id,
         name: requireIdentity(row.display_name, 'Worker'),
         category: requireIdentity(
-          row.worker_skills?.[0]?.service_categories?.name,
+          (row.worker_skills ?? [])
+            .map((skill: any) => skill?.service_categories?.name)
+            .filter((name: any) => typeof name === 'string' && name.trim())
+            .join(', '),
           'Worker service',
         ),
         avatarUri: avatarMap.get(row.avatar_path) ?? '',

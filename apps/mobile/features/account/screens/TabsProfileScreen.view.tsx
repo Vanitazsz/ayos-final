@@ -50,7 +50,7 @@ const SETTINGS_SECTIONS = [
         id: 'notifications',
         title: 'Notifications',
         icon: Bell,
-        route: '/(tabs)/profile',
+        route: '/notifications',
       },
       {
         id: 'language',

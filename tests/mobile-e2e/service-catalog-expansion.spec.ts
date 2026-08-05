@@ -165,6 +165,26 @@ test('customer home searches and clears real service results', async ({ page }) 
   await expect(page.getByTestId('home-service-category')).toHaveCount(8);
 });
 
+test('empty category offers booking and preselected request creation', async ({ page }) => {
+  await useCustomerFixture(page);
+  await page.goto('/category/Aircon%20Repair');
+
+  await expect(page.getByText('No workers online right now', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('category-book-cta')).toBeVisible();
+  await page.getByTestId('category-book-cta').click();
+
+  await expect(page).toHaveURL(/\/new-request\/create/);
+  await expect(page.getByRole('radio', { name: 'Aircon Repair' })).toBeChecked();
+});
+
+test('request creation preselected from a category link stays editable', async ({ page }) => {
+  await useCustomerFixture(page);
+  await page.goto('/new-request/create?categoryId=00000000-0000-4000-8000-000000000003');
+
+  await expect(page.getByRole('radio', { name: 'Aircon Repair' })).toBeChecked();
+  await expect(page.getByPlaceholder('Enter complete address')).toBeVisible();
+});
+
 test('request creation reveals services incrementally and preserves selection', async ({
   page,
 }) => {
