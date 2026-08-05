@@ -80,17 +80,6 @@ export default function CategoryScreen() {
         <View style={{ width: 40 }} />
       </View>
       <View style={styles.content}>
-        <Text
-          style={[
-            theme.typography.body2,
-            {
-              color: theme.colors.textSecondary,
-              marginBottom: theme.spacing.lg,
-            },
-          ]}
-        >
-          Showing {workers.length} available verified workers for {title}.
-        </Text>
         {workers.length ? (
           workers.map((worker) => (
             <TouchableOpacity
