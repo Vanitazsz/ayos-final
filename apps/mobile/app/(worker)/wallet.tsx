@@ -29,7 +29,7 @@ import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
-import { fetchWallet, fetchWalletTransactions, requestPayout, subscribeToTable, type WalletSummary, type WalletTransaction, type TransactionStatus } from '@/services/api';
+import { fetchWallet, fetchWalletTransactions, subscribeToTable, type WalletSummary, type WalletTransaction, type TransactionStatus } from '@/services/api';
 
 type Period = 'week' | 'month' | 'all';
 type TxFilter = 'all' | 'credit' | 'debit';
@@ -72,13 +72,10 @@ export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('week');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
-  const [showPayout, setShowPayout] = useState(false);
-  const [payoutAmount, setPayoutAmount] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('5000');
   const [selectedTopUpMethod, setSelectedTopUpMethod] = useState('gcash');
-  const [showPayoutSuccess, setShowPayoutSuccess] = useState(false);
   const [wallet, setWallet] = useState<WalletSummary>(emptyWallet);
   const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
   useEffect(() => {
@@ -158,7 +155,7 @@ export default function WalletScreen() {
               variant="secondary"
               size="sm"
               leftIcon={<ArrowDownToLine size={14} color={Colors.cta} />}
-              onPress={() => setShowPayout(true)}
+              onPress={() => Alert.alert('Unavailable','Wallet payout is unavailable until a payment provider is configured.')}
               style={styles.balanceBtn}
             />
           </View>
@@ -305,78 +302,6 @@ export default function WalletScreen() {
       </ScrollView>
       </View>
 
-      {/* Payout Sheet */}
-      <Modal visible={showPayout} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => { Keyboard.dismiss(); setShowPayout(false); }}>
-          <Pressable style={styles.sheet} onPress={() => Keyboard.dismiss()}>
-            <View style={styles.sheetHandle} />
-            <AppText variant="h4" weight="bold">Request Payout</AppText>
-            <AppText variant="caption" color={Colors.textSecondary}>
-              Available balance: <AppText weight="bold" color={Colors.textPrimary}>{wallet.available}</AppText>
-            </AppText>
-
-            <View style={styles.amountWrap}>
-              <AppText variant="h3" weight="bold" color={Colors.textPrimary}>₱</AppText>
-              <TextInput
-                style={styles.amountInput}
-                value={payoutAmount}
-                onChangeText={setPayoutAmount}
-                keyboardType="number-pad"
-                placeholderTextColor={Colors.textTertiary}
-              />
-            </View>
-
-            <View style={styles.quickAmounts}>
-              {['5,000', '10,000', '18,450'].map((a) => (
-                <Pressable
-                  key={a}
-                  style={styles.quickAmt}
-                  onPress={() => setPayoutAmount(a.replace(',', ''))}
-                >
-                  <AppText variant="caption" weight="bold" color={Colors.info}>₱{a}</AppText>
-                </Pressable>
-              ))}
-            </View>
-
-            <AppText variant="caption" weight="bold" color={Colors.textTertiary} style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Send to
-            </AppText>
-            <View style={styles.methodList}>
-              {walletPayoutMethods.map((m) => (
-                <Pressable
-                  key={m.id}
-                  style={[styles.methodRow, selectedMethod === m.id && styles.methodRowActive]}
-                  onPress={() => setSelectedMethod(m.id)}
-                >
-                  <View style={[styles.methodDot, { backgroundColor: m.color }]} />
-                  <View style={styles.methodInfo}>
-                    <AppText variant="bodySm" weight="bold">{m.label}</AppText>
-                    <AppText variant="caption" color={Colors.textTertiary}>{m.account}</AppText>
-                  </View>
-                  {selectedMethod === m.id && <CheckCircle size={16} color={Colors.info} />}
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={styles.payoutNote}>
-              <AlertCircle size={12} color={Colors.textTertiary} />
-              <AppText variant="caption" color={Colors.textTertiary}>Payouts are processed within 1–2 business days.</AppText>
-            </View>
-
-            <View style={styles.sheetActions}>
-              <AppButton label="Cancel" variant="outline" onPress={() => setShowPayout(false)} style={{ flex: 1 }} />
-              <AppButton
-                label="Confirm Payout"
-                variant="primary"
-                leftIcon={<ArrowDownToLine size={14} color={Colors.white} />}
-                onPress={() => {const amount=Number(payoutAmount);if(!selectedMethod||!Number.isFinite(amount)||amount<=0){Alert.alert('Invalid payout','Select a payout method and enter a valid amount.');return;}void requestPayout(selectedMethod,Math.round(amount*100)).then(()=>{setShowPayout(false);setShowPayoutSuccess(true)}).catch(error=>Alert.alert('Payout not requested',error.message));}}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       {/* Top-Up Sheet */}
       <Modal visible={showTopUp} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => { Keyboard.dismiss(); setShowTopUp(false); }}>
@@ -447,24 +372,6 @@ export default function WalletScreen() {
             </View>
           </Pressable>
         </Pressable>
-      </Modal>
-
-      {/* Payout Success */}
-      <Modal visible={showPayoutSuccess} transparent animationType="fade">
-        <View style={styles.successOverlay}>
-          <View style={styles.successCard}>
-            <View style={styles.successIcon}>
-              <CheckCircle size={48} color={Colors.verified} />
-            </View>
-            <AppText variant="h3" weight="bold" align="center">Payout Requested</AppText>
-            <AppText variant="body" color={Colors.textSecondary} align="center">
-              Your payout of <AppText weight="bold" color={Colors.textPrimary}>₱{Number(payoutAmount).toLocaleString()}</AppText> to{' '}
-              <AppText weight="bold" color={Colors.textPrimary}>{walletPayoutMethods.find((m) => m.id === selectedMethod)?.label}</AppText>{' '}
-              is being processed. Funds will arrive within 1–2 business days.
-            </AppText>
-            <AppButton label="Done" variant="primary" fullWidth onPress={() => setShowPayoutSuccess(false)} />
-          </View>
-        </View>
       </Modal>
 
     </View>
@@ -592,19 +499,4 @@ const styles = StyleSheet.create({
   methodInfo: { flex: 1 },
   payoutNote: { flexDirection: 'row', alignItems: 'center', gap: Spacing['2'] },
   sheetActions: { flexDirection: 'row', gap: Spacing['3'], marginTop: Spacing['2'] },
-
-  // Success popups
-  successOverlay: {
-    flex: 1, backgroundColor: Colors.overlay,
-    justifyContent: 'center', alignItems: 'center', padding: Layout.screenPadding,
-  },
-  successCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xxl,
-    padding: Spacing['6'], width: '100%', maxWidth: 340,
-    alignItems: 'center', gap: Spacing['4'], ...Elevation.lg,
-  },
-  successIcon: {
-    width: 80, height: 80, borderRadius: Radius.full,
-    backgroundColor: Colors.verifiedBg, alignItems: 'center', justifyContent: 'center',
-  },
 });
