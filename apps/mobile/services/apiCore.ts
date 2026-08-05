@@ -118,15 +118,21 @@ export interface IndustryWithSkills {
 }
 const money = (value: number | string | null | undefined) =>
   `₱${Number(value ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-const relative = (date: string) =>
-  rtf.format(
-    -Math.max(
-      1,
-      Math.round((Date.now() - new Date(date).getTime()) / 86400000),
-    ),
-    'day',
+let rtf: Intl.RelativeTimeFormat | undefined;
+const relative = (date: string) => {
+  const days = Math.max(
+    1,
+    Math.round((Date.now() - new Date(date).getTime()) / 86400000),
   );
+  if (
+    typeof Intl !== 'undefined' &&
+    typeof Intl.RelativeTimeFormat === 'function'
+  ) {
+    rtf ??= new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    return rtf.format(-days, 'day');
+  }
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+};
 let cachedUser: { id: string; expiresAt: number } | null = null;
 const requireUser = async () => {
   if (cachedUser && Date.now() < cachedUser.expiresAt) {
