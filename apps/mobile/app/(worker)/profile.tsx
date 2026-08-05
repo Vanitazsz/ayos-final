@@ -53,16 +53,14 @@ const MENU_SECTIONS = [
     ],
   },
   {
-    title: 'Work Portfolio',
+    title: 'Reviews',
     items: [
-      { id: 'portfolio', title: 'Portfolio', icon: Briefcase },
       { id: 'reviews', title: 'My Reviews', icon: Star },
     ],
   },
   {
     title: 'Payments',
     items: [
-      { id: 'transaction-history', title: 'Transaction History', icon: Clock },
       { id: 'payout-methods', title: 'Payout Methods', icon: Wallet },
       { id: 'payout-history', title: 'Payout History', icon: Clock },
       { id: 'topup-methods', title: 'Top-Up Methods', icon: ArrowUpFromLine },
@@ -168,7 +166,6 @@ export default function WorkerProfileScreen() {
         longitude: matchingReadiness.longitude ?? 0,
         radiusMeters: matchingReadiness.radiusMeters ?? 0,
         serviceArea: matchingReadiness.serviceArea ?? '',
-        schedule: matchingReadiness.schedule ?? [],
         online: value,
       });
       setMatchingReadiness(result);
@@ -215,13 +212,6 @@ export default function WorkerProfileScreen() {
       });
       return;
     }
-    if (id === 'portfolio') {
-      Alert.alert(
-        'Coming Soon',
-        'Portfolio features will be available in a future update.',
-      );
-      return;
-    }
     if (id === 'payout-methods' || id === 'payout-history') {
       router.push('/(worker)/wallet');
       return;
@@ -232,6 +222,20 @@ export default function WorkerProfileScreen() {
     }
     if (id === 'notifications') {
       router.push('/notifications');
+      return;
+    }
+    if (id === 'help') {
+      router.push({
+        pathname: '/(worker)/help-center',
+        params: { from: 'profile' },
+      });
+      return;
+    }
+    if (id === 'privacy') {
+      router.push({
+        pathname: '/(worker)/privacy-policy',
+        params: { from: 'profile' },
+      });
       return;
     }
     Alert.alert(

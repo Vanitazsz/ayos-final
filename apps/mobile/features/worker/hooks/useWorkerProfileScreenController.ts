@@ -151,13 +151,6 @@ export function useWorkerProfileScreenController() {
       router.push('/(worker)/industry-skills' as any);
       return;
     }
-    if (id === 'portfolio') {
-      Alert.alert(
-        'Coming Soon',
-        'Portfolio features will be available in a future update.',
-      );
-      return;
-    }
     if (id === 'payout-methods' || id === 'payout-history') {
       router.push('/(worker)/wallet');
       return;
@@ -168,6 +161,14 @@ export function useWorkerProfileScreenController() {
     }
     if (id === 'notifications') {
       router.push('/notifications');
+      return;
+    }
+    if (id === 'help') {
+      router.push('/(worker)/help-center' as any);
+      return;
+    }
+    if (id === 'privacy') {
+      router.push('/(worker)/privacy-policy' as any);
       return;
     }
     Alert.alert(
