@@ -7,6 +7,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,7 +26,10 @@ import {
 } from 'lucide-react-native';
 import {
   attachBookingProof,
+  deleteBookingProof,
+  fetchBookingProofPhotos,
   fetchWorkerBookings,
+  type BookingProofPhoto,
   type WorkerBooking,
 } from '@/services/api';
 import {
@@ -68,7 +72,8 @@ export default function WorkerLeaveFeedbackScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
-  const [proofAttached, setProofAttached] = useState(false);
+  const [removingProof, setRemovingProof] = useState(false);
+  const [proofPhoto, setProofPhoto] = useState<BookingProofPhoto | null>(null);
 
   useEffect(() => {
     if (!bookingId) return;
@@ -110,6 +115,7 @@ export default function WorkerLeaveFeedbackScreen() {
 
   const handleUploadProof = async () => {
     if (!bookingId) return;
+    if (removingProof) return;
     try {
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -126,9 +132,12 @@ export default function WorkerLeaveFeedbackScreen() {
       });
       if (picker.canceled) return;
       setUploadingProof(true);
+      if (proofPhoto) {
+        await deleteBookingProof(bookingId, proofPhoto.storagePath);
+      }
       const proof = await uploadBookingProof(picker.assets[0].uri);
-      await attachBookingProof(bookingId, proof);
-      setProofAttached(true);
+      const attached = await attachBookingProof(bookingId, proof);
+      setProofPhoto(attached);
       showAlert('Proof attached', 'The photo is tied to this booking.');
     } catch (error) {
       showAlert(
@@ -137,6 +146,23 @@ export default function WorkerLeaveFeedbackScreen() {
       );
     } finally {
       setUploadingProof(false);
+    }
+  };
+
+  const handleRemoveProof = async () => {
+    if (!bookingId || !proofPhoto) return;
+    if (uploadingProof) return;
+    setRemovingProof(true);
+    try {
+      await deleteBookingProof(bookingId, proofPhoto.storagePath);
+      setProofPhoto(null);
+    } catch (error) {
+      showAlert(
+        'Remove failed',
+        error instanceof Error ? error.message : 'Could not remove the proof photo.',
+      );
+    } finally {
+      setRemovingProof(false);
     }
   };
 
@@ -214,6 +240,14 @@ export default function WorkerLeaveFeedbackScreen() {
               <Text style={styles.doneSubtitle}>
                 You&apos;ve already left feedback for this customer.
               </Text>
+
+              {proofPhoto?.signedUrl ? (
+                <Image
+                  source={{ uri: proofPhoto.signedUrl }}
+                  style={styles.doneProofImage}
+                  resizeMode="cover"
+                />
+              ) : null}
 
               <View style={styles.doneStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -392,21 +426,37 @@ export default function WorkerLeaveFeedbackScreen() {
                     Proof of Work
                   </Text>
                 </View>
-                {proofAttached ? (
-                  <View style={styles.proofAttachedRow}>
-                    <CheckCircle2
-                      size={18}
-                      color={theme.colors.success}
-                    />
-                    <Text style={styles.proofAttachedText}>
-                      Proof of work photo attached.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => void handleUploadProof()}
-                      disabled={uploadingProof}
-                    >
-                      <Text style={styles.replaceLink}>Replace</Text>
-                    </TouchableOpacity>
+                {proofPhoto ? (
+                  <View>
+                    {proofPhoto.signedUrl ? (
+                      <Image
+                        source={{ uri: proofPhoto.signedUrl }}
+                        style={styles.proofImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.proofPlaceholder}>
+                        <ImageIcon size={28} color={theme.colors.textTertiary} />
+                      </View>
+                    )}
+                    <View style={styles.proofActionsRow}>
+                      <TouchableOpacity
+                        onPress={() => void handleUploadProof()}
+                        disabled={uploadingProof || removingProof}
+                      >
+                        <Text style={styles.replaceLink}>
+                          {uploadingProof ? 'Uploading...' : 'Replace'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => void handleRemoveProof()}
+                        disabled={uploadingProof || removingProof}
+                      >
+                        <Text style={styles.removeLink}>
+                          {removingProof ? 'Removing...' : 'Remove'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ) : (
                   <>
@@ -587,20 +637,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
   },
-  proofAttachedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+  proofImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.borderLight,
+    marginBottom: theme.spacing.md,
   },
-  proofAttachedText: {
-    ...theme.typography.body2,
-    color: theme.colors.textSecondary,
-    flex: 1,
+  proofPlaceholder: {
+    width: '100%',
+    height: 200,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  proofActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.lg,
   },
   replaceLink: {
     ...theme.typography.body2,
     fontWeight: '700',
     color: theme.colors.primary,
+  },
+  removeLink: {
+    ...theme.typography.body2,
+    fontWeight: '700',
+    color: theme.colors.error,
+  },
+  doneProofImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.borderLight,
+    marginBottom: theme.spacing.lg,
   },
   footer: {
     marginTop: theme.spacing.md,
