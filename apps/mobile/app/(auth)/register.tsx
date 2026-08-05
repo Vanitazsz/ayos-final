@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useForm, Controller } from 'react-hook-form';
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import { signUpCustomer } from '@/services/auth';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
+import { showAlert } from '@/components/AppAlert';
 
 type RoleChoice = 'USER' | 'WORKER' | null;
 
@@ -61,7 +62,7 @@ export default function RegisterScreen() {
       await signUpCustomer(data);
       router.push({ pathname: '/(auth)/otp', params: { email: data.email } });
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Registration failed',
         error instanceof Error ? error.message : 'Unable to register',
       );

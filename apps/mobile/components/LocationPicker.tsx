@@ -1,11 +1,12 @@
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import {Platform, Pressable, StyleSheet, View} from 'react-native';
 import * as Location from 'expo-location';
 import { Navigation, MapPin } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
 import { MapSurface } from './maps/MapSurface';
 import { reverseGeocode } from '@/services/api';
+import { showAlert } from '@/components/AppAlert';
 
 export interface AddressDetails {
   streetNumber: string;
@@ -111,7 +112,7 @@ export const LocationPicker = forwardRef<LocationPickerHandle, Props>(
           );
         }
       } catch (reason) {
-        Alert.alert(
+        showAlert(
           'Location unavailable',
           reason instanceof Error
             ? reason.message

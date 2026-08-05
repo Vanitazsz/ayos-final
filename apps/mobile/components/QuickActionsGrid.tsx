@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, Dimensions, Alert } from 'react-native';
+import {View, StyleSheet, Pressable, Dimensions} from 'react-native';
 import { Calendar, DollarSign, Star, Shield } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation, IconSize } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -10,6 +10,7 @@ const CARD_GAP = Spacing['3'];
 const CARD_WIDTH = (screenWidth - Layout.screenPadding * 2 - CARD_GAP) / 2;
 
 import { Layout } from '@/constants/theme';
+import { showAlert } from '@/components/AppAlert';
 
 const quickActions = [
   { id: 'schedule', icon: Calendar, label: 'My Bookings', color: Colors.cta, bg: Colors.primarySurface, route: '/(worker)/bookings' as const },
@@ -29,7 +30,7 @@ export const QuickActionsGrid = React.memo(function QuickActionsGrid() {
             if (action.route) {
               router.push(action.route);
             } else {
-              Alert.alert('Coming Soon', 'Premium features will be available soon.');
+              showAlert('Coming Soon', 'Premium features will be available soon.');
             }
           }}
         >

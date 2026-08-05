@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
-import {
-  View,
+import {View,
   StyleSheet,
   Pressable,
   Image,
-  Alert,
-  ViewStyle,
-} from 'react-native';
+  ViewStyle,} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Upload, X } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
+import { showAlert } from '@/components/AppAlert';
 
 interface ImageUploadCardProps {
   label: string;
@@ -32,7 +30,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
   const handleUploadGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         'Permission required',
         'Photo library access is required to select this image.',
       );
@@ -45,7 +43,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
     if (result.canceled) return;
     const asset = result.assets[0];
     if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
-      Alert.alert('File too large', 'Select an image up to 10 MB.');
+      showAlert('File too large', 'Select an image up to 10 MB.');
       return;
     }
     setImageUri(asset.uri);
@@ -55,7 +53,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
   const handleCapture = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         'Permission required',
         'Camera access is required to capture this image.',
       );
@@ -68,7 +66,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
     if (result.canceled) return;
     const asset = result.assets[0];
     if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
-      Alert.alert('File too large', 'Capture an image up to 10 MB.');
+      showAlert('File too large', 'Capture an image up to 10 MB.');
       return;
     }
     setImageUri(asset.uri);

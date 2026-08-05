@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { ShieldCheck } from 'lucide-react-native';
@@ -11,6 +11,7 @@ import { ImageUploadCard } from '@/components/ImageUploadCard';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { submitCustomerVerification } from '@/services/customerVerification';
 import { detectSubdivision, setMySubdivision } from '@/services/subdivisions';
+import { showAlert } from '@/components/AppAlert';
 
 const ID_TYPES: SelectOption[] = [
   { label: 'PhilSys ID', value: 'philsys' },
@@ -37,7 +38,7 @@ export default function VerifyIdentityScreen() {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
         if (!quiet)
-          Alert.alert(
+          showAlert(
             'Location permission',
             'Choose your subdivision later from your profile.',
           );
@@ -54,14 +55,14 @@ export default function VerifyIdentityScreen() {
         await setMySubdivision(subdivision.id);
         setSubdivisionName(subdivision.name);
       } else if (!quiet) {
-        Alert.alert(
+        showAlert(
           'Outside service area',
           'Your location is not inside an active A-YOS subdivision.',
         );
       }
     } catch (error) {
       if (!quiet)
-        Alert.alert(
+        showAlert(
           'Subdivision detection',
           error instanceof Error
             ? error.message

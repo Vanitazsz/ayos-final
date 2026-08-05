@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
+import {View,
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
-  Image,
-} from 'react-native';
+  Image,} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ChevronLeft,
@@ -64,6 +61,7 @@ import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import { shouldTransitionToArrivedAfterProximityCheck } from '@/utils/arrivalTransition';
 import type { WorkerBooking } from '@/services/api';
+import { showAlert } from '@/components/AppAlert';
 
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
@@ -246,7 +244,7 @@ export default function BookingRequestScreen() {
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('Decline error:', msg, error);
-      Alert.alert('Decline failed', msg);
+      showAlert('Decline failed', msg);
     }
   };
 
@@ -261,7 +259,7 @@ export default function BookingRequestScreen() {
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleConfirmDetails error:', msg, error);
-      Alert.alert('Start En Route failed', msg);
+      showAlert('Start En Route failed', msg);
     }
   };
 
@@ -292,7 +290,7 @@ export default function BookingRequestScreen() {
           proximity.data &&
           !proximity.data.within_proximity
         ) {
-          Alert.alert(
+          showAlert(
             'Outside Arrival Radius',
             proximity.data.message ||
               `You are ${proximity.data.distance_meters}m away. Please get within 50 meters of the customer address.`,
@@ -312,7 +310,7 @@ export default function BookingRequestScreen() {
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleArrived error:', msg, error);
-      Alert.alert('Arrived failed', msg);
+      showAlert('Arrived failed', msg);
     } finally {
       setIsArriving(false);
     }
@@ -327,7 +325,7 @@ export default function BookingRequestScreen() {
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleComplete error:', msg, error);
-      Alert.alert('Complete failed', msg);
+      showAlert('Complete failed', msg);
     }
   };
 
@@ -336,7 +334,7 @@ export default function BookingRequestScreen() {
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAlert(
           'Permission required',
           'Photo-library access is required to attach proof of work.',
         );
@@ -349,11 +347,11 @@ export default function BookingRequestScreen() {
       if (picker.canceled) return;
       const proof = await uploadBookingProof(picker.assets[0].uri);
       await attachBookingProof(booking.id, proof);
-      Alert.alert('Proof attached', 'The photo is tied to this booking.');
+      showAlert('Proof attached', 'The photo is tied to this booking.');
     } catch (error: any) {
       const msg = error?.message ?? error?.code ?? String(error);
       console.error('handleUploadProof error:', msg, error);
-      Alert.alert('Upload failed', msg);
+      showAlert('Upload failed', msg);
     }
   };
 
@@ -367,7 +365,7 @@ export default function BookingRequestScreen() {
     try {
       const payment = await confirmCashPayment(booking.id);
       setPaymentStatus(payment.status);
-      Alert.alert(
+      showAlert(
         payment.status === 'SUCCESSFUL'
           ? 'Cash payment confirmed'
           : 'Confirmation recorded',
@@ -376,7 +374,7 @@ export default function BookingRequestScreen() {
           : 'Waiting for the customer to confirm the cash payment.',
       );
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Confirmation failed',
         error instanceof Error ? error.message : 'Please try again.',
       );
@@ -384,7 +382,7 @@ export default function BookingRequestScreen() {
   };
 
   const handleReport = () => {
-    Alert.alert('Report User', 'Submit a conduct report for this booking?', [
+    showAlert('Report User', 'Submit a conduct report for this booking?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Submit',
@@ -395,12 +393,12 @@ export default function BookingRequestScreen() {
             `Worker submitted a conduct concern for booking ${booking.id}. Administrator review is required.`,
           )
             .then(() =>
-              Alert.alert(
+              showAlert(
                 'Report submitted',
                 'The support team can now review this booking.',
               ),
             )
-            .catch((error) => Alert.alert('Report failed', error.message)),
+            .catch((error) => showAlert('Report failed', error.message)),
       },
     ]);
   };
@@ -622,12 +620,12 @@ export default function BookingRequestScreen() {
                         setBooking((b) => ({ ...b, status: 'accepted' }));
                       })
                       .catch((error) =>
-                        Alert.alert('Unable to accept', error.message),
+                        showAlert('Unable to accept', error.message),
                       )
                       .catch((err: any) => {
                         const msg = err?.message ?? err?.code ?? String(err);
                         console.error('acceptJob error:', msg, err);
-                        Alert.alert('Accept failed', msg);
+                        showAlert('Accept failed', msg);
                       })
                   }
                 />

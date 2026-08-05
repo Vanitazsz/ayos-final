@@ -1,14 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TextInput,
   ScrollView,
   Pressable,
-  Animated,
-  Alert,
-} from 'react-native';
+  Animated,} from 'react-native';
 import { Bell, Search, ChevronRight, Briefcase, Circle, MapPin, Clock, RefreshCw } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
@@ -37,6 +34,7 @@ import {
   type WorkerLiveStatus,
 } from '@/services/liveDispatch';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
+import { showAlert } from '@/components/AppAlert';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   pending: { label: 'Pending', variant: 'warning' },
@@ -353,7 +351,7 @@ export default function WorkerDashboardScreen() {
               status={incomingJob.status === 'ACCEPTED' ? 'accepted' : incomingJob.status === 'DECLINED' ? 'declined' : 'pending'}
               onAccept={() => void respond(incomingJob, 'ACCEPTED')}
               onDecline={() => {
-                Alert.alert(
+                showAlert(
                   'Decline Request',
                   'Are you sure you want to decline this request?',
                   [

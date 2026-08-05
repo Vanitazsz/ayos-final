@@ -1,15 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
+import {ActivityIndicator,
   Linking,
   Modal,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View,} from 'react-native';
 import {
   CameraView,
   useCameraPermissions,
@@ -20,6 +17,7 @@ import { Camera, X } from 'lucide-react-native';
 
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
+import { showAlert } from '@/components/AppAlert';
 
 type Props = {
   visible: boolean;
@@ -61,7 +59,7 @@ export function PhotoCaptureModal({
       });
       if (photo) setPreview(photo);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Photo unavailable',
         error instanceof Error
           ? error.message

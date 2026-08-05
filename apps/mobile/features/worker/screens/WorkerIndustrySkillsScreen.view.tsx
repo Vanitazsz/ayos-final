@@ -1,8 +1,6 @@
-import { styles } from './WorkerIndustrySkillsScreen.styles';
 import {
   View,
   Text,
-  ScrollView,
   Pressable,
   ActivityIndicator,
   Modal,
@@ -17,61 +15,73 @@ import {
 import { Screen } from '@/components/layout/Screen';
 import { AppButton } from '@/components/AppButton';
 import { AppInput } from '@/components/AppInput';
+import { AppText } from '@/components/AppText';
 import { theme } from '@/constants/theme';
+import { styles } from './WorkerIndustrySkillsScreen.styles';
 import type { useWorkerIndustrySkillsScreenController } from '../hooks/useWorkerIndustrySkillsScreenController';
 
-export function WorkerIndustrySkillsView({
+const YEARS_OPTIONS = [1, 2, 3, 5, 8, 10];
+
+export function IndustrySkillsView({
   model,
 }: {
   model: ReturnType<typeof useWorkerIndustrySkillsScreenController>;
 }) {
   const {
     router,
-    loading,
-    error,
+    handleBack,
     industries,
     selectedIndustryIds,
+    toggleIndustry,
     selectedSkillIds,
     yearsExperience,
     setYearsExperience,
     rateBySkillId,
     setRateBySkillId,
+    loading,
+    error,
     saving,
     showSaveConfirmation,
     setShowSaveConfirmation,
-    toggleSkill,
     selectedIndustries,
-    toggleIndustry,
+    toggleSkill,
+    hasChanges,
     handleSave,
   } = model;
-  return loading ? (
-    <Screen safeArea backgroundColor={theme.colors.background}>
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[theme.typography.body2, { marginTop: theme.spacing.md }]}>
-          Loading industry & skills taxonomy...
-        </Text>
-      </View>
-    </Screen>
-  ) : (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+
+  if (loading) {
+    return (
+      <Screen safeArea backgroundColor={theme.colors.background}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text
+            style={[theme.typography.body2, { marginTop: theme.spacing.md }]}
+          >
+            Loading industry & skills taxonomy...
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View style={styles.header}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          hitSlop={12}
-        >
+        <Pressable style={styles.backBtn} onPress={handleBack} hitSlop={12}>
           <ArrowLeft size={24} color={theme.colors.textPrimary} />
         </Pressable>
-        <Text style={theme.typography.h3}>Industry & Skills</Text>
-        <View style={{ width: 40 }} />
+        <AppText variant="h3" weight="bold">
+          Industry & Skills
+        </AppText>
+        <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentInner}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.content}>
         {error ? (
           <View style={styles.errorCard}>
             <Text style={{ color: theme.colors.error, fontSize: 14 }}>
@@ -84,17 +94,13 @@ export function WorkerIndustrySkillsView({
         <View style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
             <Briefcase size={20} color={theme.colors.primary} />
-            <Text style={theme.typography.h4}>Primary Industries</Text>
+            <Text
+              style={[theme.typography.h4, { marginLeft: theme.spacing.sm }]}
+            >
+              Primary Industries
+            </Text>
           </View>
-          <Text
-            style={[
-              theme.typography.caption,
-              {
-                color: theme.colors.textSecondary,
-                marginBottom: theme.spacing.md,
-              },
-            ]}
-          >
+          <Text style={styles.sectionHint}>
             Select one or more work or trade categories:
           </Text>
 
@@ -131,24 +137,18 @@ export function WorkerIndustrySkillsView({
           </View>
         </View>
 
-        {/* Section 2: Skills & Services */}
+        {/* Section 2: Skills & Services per industry */}
         {selectedIndustries.map((industry) => (
-          <View key={industry.id} style={styles.sectionCard}>
+          <View key={industry.id} style={styles.skillCard}>
             <View style={styles.sectionTitleRow}>
               <Wrench size={20} color={theme.colors.primary} />
-              <Text style={theme.typography.h4}>
+              <Text
+                style={[theme.typography.h4, { marginLeft: theme.spacing.sm }]}
+              >
                 {industry.name} Skills & Services
               </Text>
             </View>
-            <Text
-              style={[
-                theme.typography.caption,
-                {
-                  color: theme.colors.textSecondary,
-                  marginBottom: theme.spacing.md,
-                },
-              ]}
-            >
+            <Text style={styles.skillCardHint}>
               Check all specific services you are qualified to perform:
             </Text>
 
@@ -216,13 +216,17 @@ export function WorkerIndustrySkillsView({
         ))}
 
         {/* Section 3: Years of Experience */}
-        <View style={styles.sectionCard}>
+        <View style={styles.skillCard}>
           <View style={styles.sectionTitleRow}>
             <Award size={20} color={theme.colors.primary} />
-            <Text style={theme.typography.h4}>Years of Experience</Text>
+            <Text
+              style={[theme.typography.h4, { marginLeft: theme.spacing.sm }]}
+            >
+              Years of Experience
+            </Text>
           </View>
           <View style={styles.yearsRow}>
-            {[1, 2, 3, 5, 8, 10].map((years) => (
+            {YEARS_OPTIONS.map((years) => (
               <Pressable
                 key={years}
                 style={[
@@ -243,15 +247,14 @@ export function WorkerIndustrySkillsView({
             ))}
           </View>
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
         <AppButton
-          label="Save Industry & Skills"
+          label="Save Changes"
           variant="primary"
           fullWidth
-          onPress={() => void handleSave()}
+          disabled={!hasChanges}
           loading={saving}
+          onPress={() => void handleSave()}
         />
       </View>
 

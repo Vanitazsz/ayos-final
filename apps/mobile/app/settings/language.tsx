@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Check, ChevronLeft, Languages } from 'lucide-react-native';
@@ -8,6 +8,7 @@ import { AppButton } from '@/components/AppButton';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { getMyProfile } from '@/services/profile';
 import { setPreferredLocale } from '@/services/api';
+import { showAlert } from '@/components/AppAlert';
 
 const OPTIONS = [
   { value: 'en' as const, label: 'English' },
@@ -30,13 +31,13 @@ export default function LanguageSettingsScreen() {
     setSaving(true);
     try {
       await setPreferredLocale(locale);
-      Alert.alert(
+      showAlert(
         'Language updated',
         'New messages will be translated to your selected language.',
       );
       goBack();
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Unable to save',
         error instanceof Error ? error.message : 'Please retry.',
       );
