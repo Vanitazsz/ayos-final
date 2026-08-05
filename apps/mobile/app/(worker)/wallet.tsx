@@ -224,21 +224,38 @@ export default function WalletScreen() {
         {/* Transactions */}
         <View style={styles.txSection}>
           <View style={styles.txHeader}>
-            <AppText variant="body" weight="bold">Transactions</AppText>
-            <View style={styles.txFilters}>
-              {(['all', 'credit', 'debit'] as TxFilter[]).map((f) => (
-                <Chip
-                  key={f}
-                  label={f === 'all' ? 'All' : f === 'credit' ? 'Income' : 'Deductions'}
-                  selected={txFilter === f}
-                  onPress={() => setTxFilter(f)}
-                  size="sm"
-                />
-              ))}
-            </View>
+            <AppText variant="h4">Transactions</AppText>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(worker)/transactions-history',
+                  params: { from: 'wallet' },
+                })
+              }
+              style={styles.seeAllLink}
+            >
+              <AppText variant="caption" color={Colors.primary}>See All</AppText>
+              <ChevronRight size={14} color={Colors.primary} />
+            </Pressable>
+          </View>
+          <View style={styles.txFilters}>
+            {(['all', 'credit', 'debit'] as TxFilter[]).map((f) => (
+              <Chip
+                key={f}
+                label={f === 'all' ? 'All' : f === 'credit' ? 'Income' : 'Deductions'}
+                selected={txFilter === f}
+                onPress={() => setTxFilter(f)}
+                size="sm"
+              />
+            ))}
           </View>
           <View style={styles.txList}>
-            {filteredTransactions.map((tx) => (
+            {filteredTransactions.length === 0 ? (
+              <AppText variant="body" color={Colors.textTertiary} style={styles.txEmpty}>
+                No transactions found
+              </AppText>
+            ) : (
+              filteredTransactions.map((tx) => (
               <View key={tx.id + tx.date} style={styles.txRow}>
                 <View
                   style={[
@@ -282,22 +299,8 @@ export default function WalletScreen() {
                   </View>
                 </View>
               </View>
-            ))}
+            )))}
           </View>
-
-          {/* See All */}
-          <Pressable
-            style={styles.seeAllBtn}
-            onPress={() =>
-              router.push({
-                pathname: '/(worker)/transactions-history',
-                params: { from: 'wallet' },
-              })
-            }
-          >
-            <AppText variant="bodySm" weight="bold" color={Colors.info}>See All Transactions</AppText>
-            <ChevronRight size={16} color={Colors.info} />
-          </Pressable>
         </View>
       </ScrollView>
       </View>
@@ -513,13 +516,22 @@ const styles = StyleSheet.create({
   barFill: { width: '100%', borderRadius: Radius.xs },
 
   // Transactions
-  txSection: { gap: Spacing['3'], marginBottom: theme.spacing.xl },
+  txSection: {
+    backgroundColor: Colors.surfaceCard, borderRadius: Radius.xl,
+    padding: Spacing['4'], gap: Spacing['3'],
+    marginBottom: theme.spacing.xl, ...Elevation.sm,
+  },
   txHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  txFilters: { flexDirection: 'row', justifyContent: 'center', gap: Spacing['2'] },
+  seeAllLink: { flexDirection: 'row', alignItems: 'center' },
+  txFilters: { flexDirection: 'row', justifyContent: 'flex-start', gap: Spacing['2'] },
   txList: { gap: Spacing['2'] },
+  txEmpty: {
+    textAlign: 'center',
+    paddingVertical: Spacing['4'],
+  },
   txRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: Spacing['3'],
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
+    backgroundColor: Colors.background, borderRadius: Radius.xl,
     padding: Spacing['3'], ...Elevation.sm,
   },
   txIcon: {
@@ -530,14 +542,6 @@ const styles = StyleSheet.create({
   txTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   txBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   txStatus: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-
-  // See All
-  seeAllBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing['2'], paddingVertical: Spacing['3'],
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    borderWidth: 1, borderColor: Colors.borderLight,
-  },
 
   // Performance card
   perfCard: {
