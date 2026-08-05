@@ -92,6 +92,7 @@ export interface WorkerProfile {
   email: string;
   avatarUri: string;
   category: string;
+  primaryIndustry: string;
   verificationStatus: 'verified' | 'pending' | 'needs_review' | 'rejected';
   profileComplete: boolean;
   yearsExperience: number;
@@ -538,7 +539,9 @@ export async function fetchWorkerProfile(): Promise<
         .single(),
       supabase
         .from('worker_profiles')
-        .select('*,worker_skills(years,rate_minor,service_categories(name))')
+        .select(
+          '*,industries!worker_profiles_primary_industry_id_fkey(name),worker_skills(years,rate_minor,service_categories(name))',
+        )
         .eq('account_id', user.id)
         .single(),
       supabase
@@ -597,6 +600,10 @@ export async function fetchWorkerProfile(): Promise<
         email: account.email,
         avatarUri: await resolveProfileAvatar(profile.avatar_path),
         category: profile.worker_skills?.[0]?.service_categories?.name ?? '',
+        primaryIndustry:
+          profile.industries?.name ??
+          profile.worker_skills?.[0]?.service_categories?.name ??
+          '',
         verificationStatus:
           profile.approval_status === 'APPROVED'
             ? 'verified'
@@ -615,7 +622,7 @@ export async function fetchWorkerProfile(): Promise<
         completedJobs: (bookings ?? []).length,
         earnings: money(earnings),
         hourlyRate: prices.length
-          ? money(Math.min(...prices) / 100)
+          ? money(prices.reduce((sum, p) => sum + p, 0) / prices.length / 100)
           : 'Price pending',
         skills: (profile.worker_skills ?? [])
           .map((skill: any) => skill.service_categories?.name)
