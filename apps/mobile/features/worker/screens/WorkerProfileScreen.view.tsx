@@ -17,7 +17,6 @@ import {
   Wallet,
   Clock,
   Bell,
-  Settings,
   HelpCircle,
   Shield,
   LogOut,
@@ -55,7 +54,6 @@ const MENU_SECTIONS = [
     title: 'Preferences',
     items: [
       { id: 'notifications', title: 'Notifications', icon: Bell },
-      { id: 'appearance', title: 'App Appearance', icon: Settings },
     ],
   },
   {
