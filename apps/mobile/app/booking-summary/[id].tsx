@@ -151,15 +151,12 @@ export default function BookingSummaryScreen() {
     : null;
 
   const handleReport = () => {
-    const { to, subject, body } = buildProviderReportEmail({
-      bookingId: bookingId ?? '',
-      providerName,
-      providerAccountId: workerAccountId,
-      bookingStatus: 'COMPLETED',
-    });
-    void Linking.openURL(
-      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
-    );
+    if (bookingId) {
+      router.push({
+        pathname: '/report-provider/[id]',
+        params: { id: bookingId, providerName: providerName ?? '' },
+      });
+    }
   };
 
   return (
@@ -492,7 +489,7 @@ const styles = StyleSheet.create({
   // Completion Banner
   completionBanner: {
     alignItems: 'center',
-    backgroundColor: theme.colors.successBg,
+    backgroundColor: theme.colors.successBackground,
     borderRadius: theme.radius.xl,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
@@ -620,7 +617,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    backgroundColor: theme.colors.successBg,
+    backgroundColor: theme.colors.successBackground,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radius.full ?? 999,

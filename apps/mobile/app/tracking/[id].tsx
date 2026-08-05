@@ -222,15 +222,15 @@ export default function TrackingScreen() {
     | undefined;
 
   const reportWorker = () => {
-    const { to, subject, body } = buildProviderReportEmail({
-      bookingId: bookingId ?? '',
-      providerName: tracking?.booking?.worker_profiles?.display_name,
-      providerAccountId: workerAccountId,
-      bookingStatus: workerStatus,
-    });
-    void Linking.openURL(
-      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
-    );
+    if (bookingId) {
+      router.push({
+        pathname: '/report-provider/[id]',
+        params: {
+          id: bookingId,
+          providerName: tracking?.booking?.worker_profiles?.display_name ?? '',
+        },
+      });
+    }
   };
 
   return (
