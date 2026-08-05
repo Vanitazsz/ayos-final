@@ -39,7 +39,8 @@
         }
       ],
       "@maplibre/maplibre-react-native",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/withIosPodDeploymentTarget"
     ],
     "experiments": {
       "typedRoutes": true,
