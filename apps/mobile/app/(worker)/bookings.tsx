@@ -16,6 +16,7 @@ import { Screen } from '@/components/layout/Screen';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
+import { Skeleton } from '@/components/Skeleton';
 import {
   acceptJob,
   cancelBooking,
@@ -54,6 +55,32 @@ const TAB_FILTERS: Record<string, WorkerBooking['status'][]> = {
   Completed: ['completed'],
   Cancelled: ['cancelled'],
 };
+
+function BookingSkeletonCard() {
+  return (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonHeader}>
+        <View style={styles.skeletonCustomer}>
+          <Skeleton width={40} height={40} borderRadius={20} />
+          <View style={{ flex: 1, gap: theme.spacing.xs }}>
+            <Skeleton width="70%" height={14} borderRadius={7} />
+            <Skeleton width="45%" height={12} borderRadius={6} />
+          </View>
+        </View>
+        <Skeleton width={72} height={22} borderRadius={11} />
+      </View>
+      <View style={styles.skeletonDetails}>
+        <Skeleton width={88} height={12} borderRadius={6} />
+        <Skeleton width={68} height={12} borderRadius={6} />
+        <Skeleton width={80} height={12} borderRadius={6} />
+      </View>
+      <View style={styles.skeletonFooter}>
+        <Skeleton width={128} height={34} borderRadius={17} />
+        <Skeleton width={128} height={34} borderRadius={17} />
+      </View>
+    </View>
+  );
+}
 
 export default function WorkerBookingsScreen() {
   const { filter } = useLocalSearchParams<{ filter?: string }>();
@@ -163,7 +190,17 @@ export default function WorkerBookingsScreen() {
         </ScrollView>
       </View>
 
-      {loading ? <View style={styles.centerState}><Text style={theme.typography.body1}>Loading bookings\u2026</Text></View> : null}
+      {loading ? (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentInner}
+          showsVerticalScrollIndicator={false}
+        >
+          <BookingSkeletonCard />
+          <BookingSkeletonCard />
+          <BookingSkeletonCard />
+        </ScrollView>
+      ) : null}
       {!loading && loadError ? (
         <View style={styles.centerState}>
           <Text style={[theme.typography.body1, { color: theme.colors.error }]}>{loadError}</Text>
@@ -591,4 +628,38 @@ const styles = StyleSheet.create({
   },
   centerState: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, gap: theme.spacing.sm },
   retryText: { color: theme.colors.primary, fontWeight: '700' },
+  skeletonCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  skeletonCustomer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  skeletonDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.sm,
+  },
+  skeletonFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
 });

@@ -1,5 +1,5 @@
-import { theme } from '@/constants/theme';
 import { StyleSheet } from 'react-native';
+import { theme, Spacing } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
   centerContainer: {
@@ -11,24 +11,19 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.layout.screenPadding,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    paddingVertical: Spacing['3'],
   },
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  content: { flex: 1 },
-  contentInner: {
-    padding: theme.layout.screenPadding,
+  headerSpacer: { width: 40 },
+  content: {
+    flex: 1,
     paddingBottom: theme.spacing.xxxl,
-    gap: theme.spacing.lg,
+    gap: theme.spacing.xl,
   },
   errorCard: {
     backgroundColor: '#fef2f2',
@@ -46,8 +41,12 @@ export const styles = StyleSheet.create({
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
+  },
+  sectionHint: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
   },
   industryGrid: {
     flexDirection: 'row',
@@ -75,6 +74,18 @@ export const styles = StyleSheet.create({
   },
   industryChipTextActive: {
     color: theme.colors.surface,
+  },
+  skillCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    ...theme.shadows.sm,
+  },
+  skillCardHint: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
   },
   skillsList: {
     gap: theme.spacing.sm,
@@ -109,6 +120,10 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
+  currencyPrefix: {
+    ...theme.typography.body1,
+    color: theme.colors.textPrimary,
+  },
   yearsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -134,13 +149,6 @@ export const styles = StyleSheet.create({
   },
   yearBadgeTextActive: {
     color: theme.colors.surface,
-  },
-  footer: {
-    padding: theme.spacing.md,
-    paddingHorizontal: theme.layout.screenPadding,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderLight,
   },
   confirmationOverlay: {
     flex: 1,
@@ -175,9 +183,5 @@ export const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
     color: theme.colors.textSecondary,
-  },
-  currencyPrefix: {
-    ...theme.typography.body1,
-    color: theme.colors.textPrimary,
   },
 });

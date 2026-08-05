@@ -1,7 +1,7 @@
 import { useWorkerIndustrySkillsScreenController } from '../hooks/useWorkerIndustrySkillsScreenController';
-import { WorkerIndustrySkillsView } from './WorkerIndustrySkillsScreen.view';
+import { IndustrySkillsView } from './WorkerIndustrySkillsScreen.view';
 
 export default function WorkerIndustrySkillsScreen() {
   const model = useWorkerIndustrySkillsScreenController();
-  return <WorkerIndustrySkillsView model={model} />;
+  return <IndustrySkillsView model={model} />;
 }
