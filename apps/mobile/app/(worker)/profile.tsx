@@ -45,38 +45,38 @@ const MENU_SECTIONS = [
   {
     title: 'Account',
     items: [
-      { id: 'personal', title: 'Personal Information', icon: User },
-      { id: 'industry', title: 'Industry & Skills', icon: Wrench },
-      { id: 'areas', title: 'Service Areas', icon: MapPin },
+      { id: 'personal', title: 'Personal Information', icon: User, color: theme.colors.primary },
+      { id: 'industry', title: 'Industry & Skills', icon: Wrench, color: theme.colors.success },
+      { id: 'areas', title: 'Service Areas', icon: MapPin, color: theme.colors.info },
     ],
   },
   {
     title: 'Reviews',
     items: [
-      { id: 'reviews', title: 'My Reviews', icon: Star },
+      { id: 'reviews', title: 'My Reviews', icon: Star, color: theme.colors.warning },
     ],
   },
   {
     title: 'Payments',
     items: [
-      { id: 'payout-methods', title: 'Payout Methods', icon: Wallet },
-      { id: 'payout-history', title: 'Payout History', icon: Clock },
-      { id: 'topup-methods', title: 'Top-Up Methods', icon: ArrowUpFromLine },
-      { id: 'topup-history', title: 'Top-Up History', icon: PlusCircle },
+      { id: 'payout-methods', title: 'Payout Methods', icon: Wallet, color: theme.colors.secondary },
+      { id: 'payout-history', title: 'Payout History', icon: Clock, color: theme.colors.textSecondary },
+      { id: 'topup-methods', title: 'Top-Up Methods', icon: ArrowUpFromLine, color: theme.colors.info },
+      { id: 'topup-history', title: 'Top-Up History', icon: PlusCircle, color: theme.colors.success },
     ],
   },
   {
     title: 'Preferences',
     items: [
-      { id: 'notifications', title: 'Notifications', icon: Bell },
+      { id: 'notifications', title: 'Notifications', icon: Bell, color: theme.colors.warning },
     ],
   },
   {
     title: 'Support & Legal',
     items: [
-      { id: 'verification', title: 'Verification', icon: BadgeCheck },
-      { id: 'help', title: 'Help Center', icon: HelpCircle },
-      { id: 'privacy', title: 'Privacy Policy', icon: Shield },
+      { id: 'verification', title: 'Verification', icon: BadgeCheck, color: theme.colors.success },
+      { id: 'help', title: 'Help Center', icon: HelpCircle, color: theme.colors.primaryLight },
+      { id: 'privacy', title: 'Privacy Policy', icon: Shield, color: theme.colors.textSecondary },
     ],
   },
 ];
@@ -557,10 +557,10 @@ export default function WorkerProfileScreen() {
                         <View
                           style={[
                             styles.iconContainer,
-                            { backgroundColor: `${theme.colors.primary}15` },
+                            { backgroundColor: `${item.color}15` },
                           ]}
                         >
-                          <Icon color={theme.colors.primary} size={20} />
+                          <Icon color={item.color} size={20} />
                         </View>
                         <Text
                           style={[theme.typography.body1, styles.settingText]}

@@ -17,6 +17,9 @@ supabase/.branches/
 supabase/.temp/
 supabase/.env.local
 .DS_Store
+
+# macOS Finder duplicate / copy files ("name 2.ext")
+* 2.*
 apps/mobile/android/app/debug.keystore
 /ios/
 

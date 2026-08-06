@@ -104,7 +104,12 @@ export default function PaymentScreen() {
   };
 
   return (
-    <Screen safeArea scrollable>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View
         style={[
           styles.header,

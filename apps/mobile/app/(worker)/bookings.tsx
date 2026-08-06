@@ -82,7 +82,7 @@ export default function WorkerBookingsScreen() {
   const comingSoon = () => showAlert('Coming Soon', 'Earnings receipts will be available in a future update.');
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
       </View>
@@ -95,7 +95,7 @@ export default function WorkerBookingsScreen() {
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
+              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.surface : theme.colors.textSecondary, fontSize: 13 }]}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -256,21 +256,33 @@ export default function WorkerBookingsScreen() {
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                           <TouchableOpacity
                             style={[
-                              styles.primaryBtn,
+                              styles.feedbackBtn,
                               feedbackMap[booking.id]
-                                ? { backgroundColor: theme.colors.success }
-                                : { backgroundColor: theme.colors.primary },
+                                ? { borderColor: theme.colors.success }
+                                : { borderColor: theme.colors.primary },
                             ]}
                             onPress={(e) => {
                               e.stopPropagation();
                               router.push(`/(worker)/leave-feedback/${booking.id}`);
                             }}
                           >
-                            <MessageSquare size={12} color={theme.colors.surface} />
+                            <MessageSquare
+                              size={12}
+                              color={
+                                feedbackMap[booking.id]
+                                  ? theme.colors.success
+                                  : theme.colors.primary
+                              }
+                            />
                             <Text
                               style={[
                                 theme.typography.caption,
-                                { color: theme.colors.surface, fontWeight: '600' },
+                                {
+                                  color: feedbackMap[booking.id]
+                                    ? theme.colors.success
+                                    : theme.colors.primary,
+                                  fontWeight: '600',
+                                },
                               ]}
                             >
                               {feedbackMap[booking.id]
@@ -420,3 +432,170 @@ export default function WorkerBookingsScreen() {
   );
 }
 
+const styles = StyleSheet.create({
+  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding, alignItems: 'center' },
+  tabsContainer: { marginBottom: theme.spacing.md },
+  tabsScroll: { paddingHorizontal: theme.layout.screenPadding, gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+  },
+  tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  content: { flex: 1 },
+  contentInner: {
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: theme.spacing.md,
+    paddingBottom: 88,
+  },
+  bookingCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.md,
+  },
+  customerRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, flex: 1 },
+  cardDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.sm,
+  },
+  detailRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  detailText: { color: theme.colors.textSecondary, marginLeft: 4, flexShrink: 1 },
+  partsRow: { paddingTop: theme.spacing.sm, marginTop: theme.spacing.sm },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  primaryBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  feedbackBtn: {
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  completedCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.success,
+  },
+  completedInfo: {
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  completedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reviewSummary: {
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cancelledCard: {
+    opacity: 0.6,
+    backgroundColor: '#F8F8F8',
+  },
+  cancelledReason: {
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  reportedCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.error,
+  },
+  reportedReason: {
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  incomingActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  declineBtn: {
+    flex: 1,
+    alignItems: 'center',
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+  },
+  acceptBtn: {
+    flex: 1,
+    alignItems: 'center',
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primary,
+  },
+  centerState: { alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, gap: theme.spacing.sm },
+  retryText: { color: theme.colors.primary, fontWeight: '700' },
+  skeletonCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  skeletonCustomer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  skeletonDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.sm,
+  },
+  skeletonFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+});

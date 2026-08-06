@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { isPhilippinesCoordinates } from '@/lib/coordinates';
 
 export interface SavedAddress {
   id: string;
@@ -32,6 +33,12 @@ export interface SavedAddressInput {
   isDefault: boolean;
 }
 
+const parseCoordinate = (value: unknown): number => {
+  if (value == null || value === '') return NaN;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
 const mapAddress = (row: any): SavedAddress => ({
   id: row.id,
   label: row.label,
@@ -41,8 +48,8 @@ const mapAddress = (row: any): SavedAddress => ({
   city: row.city,
   province: row.province,
   postalCode: row.postal_code ?? '',
-  latitude: Number(row.latitude),
-  longitude: Number(row.longitude),
+  latitude: parseCoordinate(row.latitude),
+  longitude: parseCoordinate(row.longitude),
   isDefault: Boolean(row.is_default),
   provider: row.geocoding_provider ?? 'MANUAL',
   providerId: row.geocoding_provider_id ?? undefined,
@@ -61,15 +68,22 @@ export async function fetchSavedAddresses(): Promise<SavedAddress[]> {
     .order('is_default', { ascending: false })
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapAddress).filter(
-    (address) =>
-      Number.isFinite(address.latitude) && Number.isFinite(address.longitude),
+  return (data ?? []).map(mapAddress).filter((address) =>
+    isPhilippinesCoordinates(address),
   );
 }
 
 export async function saveSavedAddress(
   input: SavedAddressInput,
 ): Promise<SavedAddress> {
+  if (
+    !isPhilippinesCoordinates({
+      latitude: input.latitude,
+      longitude: input.longitude,
+    })
+  ) {
+    throw new Error('Choose a service location within the Philippines.');
+  }
   const { data, error } = await supabase.rpc('upsert_my_address', {
     p_id: input.id ?? null,
     p_label: input.label.trim(),

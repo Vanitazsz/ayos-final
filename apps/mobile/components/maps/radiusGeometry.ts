@@ -11,6 +11,14 @@ export function radiusGeoJson(
   center: MapCoordinates,
   meters: number,
 ): GeoJSON.FeatureCollection {
+  if (
+    !Number.isFinite(center.latitude) ||
+    !Number.isFinite(center.longitude) ||
+    !Number.isFinite(meters) ||
+    meters <= 0
+  ) {
+    return { type: 'FeatureCollection', features: [] };
+  }
   const latitudeRadians = (center.latitude * Math.PI) / 180;
   const longitudeScale = Math.max(Math.cos(latitudeRadians), 0.01);
   const coordinates: GeoJSON.Position[] = [];
@@ -36,6 +44,14 @@ export function radiusGeoJson(
 }
 
 export function radiusBounds(center: MapCoordinates, meters: number): [number, number, number, number] {
+  if (
+    !Number.isFinite(center.latitude) ||
+    !Number.isFinite(center.longitude) ||
+    !Number.isFinite(meters) ||
+    meters <= 0
+  ) {
+    return [NaN, NaN, NaN, NaN];
+  }
   const latitudeRadians = (center.latitude * Math.PI) / 180;
   const longitudeDelta = (meters / LONGITUDE_METERS) / Math.max(Math.cos(latitudeRadians), 0.01);
   const latitudeDelta = meters / LATITUDE_METERS;

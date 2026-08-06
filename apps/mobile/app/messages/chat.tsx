@@ -138,6 +138,7 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
+        <View style={{ width: 40 }} />
       </View>
 
       {access.canSend && rawBookingId ? (
@@ -396,3 +397,200 @@ export default function ChatScreen() {
   );
 }
 
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: theme.spacing.sm,
+    backgroundColor: theme.colors.borderLight,
+  },
+  hireBanner: {
+    backgroundColor: theme.colors.infoBackground,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  hireButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+    borderRadius: theme.radius.md,
+  },
+  closedBanner: {
+    backgroundColor: theme.colors.infoBackground,
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+    alignItems: 'center',
+  },
+  closedText: {
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  secondaryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    width: '100%',
+    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+  },
+  secondaryActionText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  chatArea: { flex: 1 },
+  chatScrollContent: { padding: theme.spacing.md },
+  emptyChat: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  loadingText: {
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+  },
+  messageBubbleReceiver: {
+    backgroundColor: theme.colors.surface,
+    alignSelf: 'flex-start',
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    borderBottomLeftRadius: 4,
+    maxWidth: '80%',
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm,
+  },
+  messageBubbleSender: {
+    backgroundColor: theme.colors.primary,
+    alignSelf: 'flex-end',
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    borderBottomRightRadius: 4,
+    maxWidth: '80%',
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm,
+  },
+  messageTime: {
+    fontSize: 10,
+    color: theme.colors.textSecondary,
+    alignSelf: 'flex-end',
+    marginTop: 4,
+  },
+  translationToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  translationLabel: {
+    fontSize: 11,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  errorText: { color: theme.colors.error, textAlign: 'center' },
+  retryText: { color: theme.colors.primary, fontWeight: '600' },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+  },
+  attachBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  textInputWrapper: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    borderRadius: 20,
+    paddingHorizontal: theme.spacing.md,
+    marginHorizontal: theme.spacing.xs,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  textInput: {
+    maxHeight: 100,
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    width: '85%',
+    padding: theme.spacing.xl,
+    borderRadius: theme.radius.lg,
+    alignItems: 'center',
+  },
+  modalDescription: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
+    textAlign: 'center',
+  },
+  modalButton: {
+    width: '100%',
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+  },
+});

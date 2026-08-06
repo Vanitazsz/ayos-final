@@ -52,18 +52,6 @@ const query = (result: unknown) => {
   return builder;
 };
 
-const singleQuery = (result: unknown) => {
-  const builder = {
-    select: vi.fn(),
-    eq: vi.fn(),
-    single: vi.fn(),
-  };
-  builder.select.mockReturnValue(builder);
-  builder.eq.mockReturnValue(builder);
-  builder.single.mockResolvedValue(result);
-  return builder;
-};
-
 describe('fetchWorkerBookings', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -171,9 +159,6 @@ describe('booking completion', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    mocks.from.mockImplementation(() =>
-      singleQuery({ data: { version: 7 }, error: null }),
-    );
     mocks.rpc.mockResolvedValue({
       data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 8 },
       error: null,
@@ -188,7 +173,7 @@ describe('booking completion', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('transition_booking', {
       p_booking_id: 'booking-id',
       p_target_status: 'PENDING_CONFIRMATION',
-      p_expected_version: 7,
+      p_expected_version: null,
       p_reason: null,
     });
   });
@@ -201,39 +186,34 @@ describe('booking completion', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('transition_booking', {
       p_booking_id: 'booking-id',
       p_target_status: 'COMPLETED',
-      p_expected_version: 7,
+      p_expected_version: null,
       p_reason: null,
     });
   });
 
-  it('refreshes the version and retries once after a concurrent booking update', async () => {
-    const bookingVersions = [
-      { data: { version: 7 }, error: null },
-      { data: { version: 8 }, error: null },
-    ];
-    mocks.from.mockImplementation(() =>
-      singleQuery(bookingVersions.shift() ?? { data: { version: 8 }, error: null }),
-    );
-    mocks.rpc
-      .mockResolvedValueOnce({
-        data: null,
-        error: { code: '40001', message: 'BOOKING_VERSION_CONFLICT' },
-      })
-      .mockResolvedValueOnce({
-        data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 9 },
-        error: null,
-      });
-
+  it('resolves the transition result with a single RPC and no version pre-read', async () => {
     const { completeJob } = await import('./api');
 
     await expect(completeJob('booking-id')).resolves.toEqual({
-      data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 9 },
+      data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 8 },
     });
-    expect(mocks.rpc).toHaveBeenLastCalledWith('transition_booking', {
-      p_booking_id: 'booking-id',
-      p_target_status: 'PENDING_CONFIRMATION',
-      p_expected_version: 8,
-      p_reason: null,
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces RPC failures to the caller without retrying', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: 'P0001', message: 'INVALID_BOOKING_TRANSITION' },
     });
+    const { completeJob } = await import('./api');
+
+    await expect(completeJob('booking-id')).rejects.toEqual(
+      expect.objectContaining({
+        code: 'P0001',
+        message: 'INVALID_BOOKING_TRANSITION',
+      }),
+    );
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 });

@@ -36,28 +36,48 @@ export function MapSurface({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRefs = useRef<maplibregl.Marker[]>([]);
   const animationFrameRef = useRef<number | null>(null);
+  const lastFitBoundsRef = useRef<string | undefined>(undefined);
   const displayedRadiusRef = useRef<number | undefined>(undefined);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const initialMapOptions = initialMapOptionsRef.current;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: mapStyleUrl,
-      center: [initialMapOptions.center.longitude, initialMapOptions.center.latitude],
-      zoom: 13,
-      interactive: initialMapOptions.interactive,
+    const ensureMap = () => {
+      if (mapRef.current) return;
+      const width = Math.round(container.clientWidth);
+      const height = Math.round(container.clientHeight);
+      if (width === 0 || height === 0) return;
+
+      const initialMapOptions = initialMapOptionsRef.current;
+      const map = new maplibregl.Map({
+        container,
+        style: mapStyleUrl,
+        center: [initialMapOptions.center.longitude, initialMapOptions.center.latitude],
+        zoom: 13,
+        interactive: initialMapOptions.interactive,
+      });
+      map.addControl(new maplibregl.AttributionControl({ compact: true }));
+      map.on('load', () => {
+        map.resize();
+        setIsMapLoaded(true);
+      });
+      mapRef.current = map;
+    };
+
+    const observer = new ResizeObserver(() => {
+      ensureMap();
+      mapRef.current?.resize();
     });
-    map.addControl(new maplibregl.AttributionControl({ compact: true }));
-    map.on('load', () => setIsMapLoaded(true));
-    mapRef.current = map;
+    observer.observe(container);
+    ensureMap();
 
     return () => {
+      observer.disconnect();
       if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
       markerRefs.current.forEach((marker) => marker.remove());
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
     };
   }, []);
@@ -86,6 +106,23 @@ export function MapSurface({
       map.removeSource('route');
     }
   }, [isMapLoaded, mapCenter, points, route]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded || radiusMeters || points.length < 2) return;
+    const lats = points.map((point) => point.latitude);
+    const lngs = points.map((point) => point.longitude);
+    const box: [number, number, number, number] = [
+      Math.min(...lngs),
+      Math.min(...lats),
+      Math.max(...lngs),
+      Math.max(...lats),
+    ];
+    const key = box.map((value) => value.toFixed(6)).join(',');
+    if (key === lastFitBoundsRef.current) return;
+    lastFitBoundsRef.current = key;
+    map.fitBounds(box, { padding: 40, maxZoom: 15, duration: 0 });
+  }, [isMapLoaded, points, radiusMeters]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -163,6 +163,7 @@ export default function TrackingScreen() {
 
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
+      <View style={styles.wideColumn}>
       <View
         style={[
           styles.header,
@@ -445,7 +446,115 @@ export default function TrackingScreen() {
           </View>
         )}
       </View>
+      </View>
     </Screen>
   );
 }
 
+const styles = StyleSheet.create({
+  wideColumn: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  content: { flex: 1 },
+  mapContainer: { height: 250, position: 'relative' },
+  workerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  workerInfo: { flexDirection: 'row', alignItems: 'center' },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.border,
+    marginRight: theme.spacing.md,
+  },
+  actions: { flexDirection: 'row' },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.infoBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: theme.spacing.sm,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.borderLight,
+    marginHorizontal: theme.spacing.lg,
+  },
+  safetyActions: {
+    gap: theme.spacing.sm,
+    padding: theme.spacing.lg,
+  },
+  cancellationCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.errorBackground,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+  },
+  timeline: { paddingBottom: theme.spacing.xxxl },
+  timelineItem: { flexDirection: 'row', minHeight: 60 },
+  timelineLineContainer: {
+    alignItems: 'center',
+    width: 24,
+    marginRight: theme.spacing.md,
+  },
+  timelineLine: { width: 2, flex: 1, marginVertical: 4 },
+  timelineTextContainer: { flex: 1, paddingBottom: theme.spacing.lg },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    borderLeftWidth: 4,
+    borderTopWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    borderRightColor: theme.colors.borderLight,
+    borderBottomColor: theme.colors.borderLight,
+    ...theme.shadows.md,
+  },
+  timelineSection: {
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+  },
+  footer: {
+    padding: theme.spacing.md,
+    paddingHorizontal: theme.layout.screenPadding,
+  },
+  footerStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+});

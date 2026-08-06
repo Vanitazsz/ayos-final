@@ -7,6 +7,7 @@ import { AppText } from './AppText';
 import { MapSurface } from './maps/MapSurface';
 import { reverseGeocode } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
+import { isPhilippinesCoordinates } from '@/lib/coordinates';
 
 export interface AddressDetails {
   streetNumber: string;
@@ -84,6 +85,11 @@ export const LocationPicker = forwardRef<LocationPickerHandle, Props>(
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
+        if (!isPhilippinesCoordinates(current)) {
+          throw new Error(
+            'Your current location could not be determined. Move to a better signal area and try again.',
+          );
+        }
         onCoordinatesDetected(current);
 
         try {

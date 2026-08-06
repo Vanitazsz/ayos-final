@@ -91,7 +91,7 @@ export default function BookingsScreen() {
     : filteredBookings.slice(0, RECENT_BOOKINGS_LIMIT);
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
       </View>
@@ -108,7 +108,7 @@ export default function BookingsScreen() {
                 setShowAll(false);
               }}
             >
-              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
+              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.surface : theme.colors.textSecondary, fontSize: 13 }]}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -188,13 +188,13 @@ export default function BookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding },
-  tabsContainer: { borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  tabsScroll: { paddingHorizontal: theme.layout.screenPadding },
-  tabButton: { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md, marginRight: theme.spacing.sm, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabButtonActive: { borderBottomColor: theme.colors.primary, borderBottomWidth: 3 },
+  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding, alignItems: 'center' },
+  tabsContainer: { marginBottom: theme.spacing.md },
+  tabsScroll: { paddingHorizontal: theme.layout.screenPadding, gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
+  tabButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.borderLight },
+  tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   content: { flex: 1 },
-  contentInner: { padding: theme.layout.screenPadding },
+  contentInner: { padding: theme.layout.screenPadding, paddingBottom: 88 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
   bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.md, borderWidth: 1, borderColor: theme.colors.borderLight },
   seeAllButton: {

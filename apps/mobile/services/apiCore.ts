@@ -13,7 +13,6 @@ import {
   requireIdentity,
   batchResolveAvatars,
   resolveProfileAvatar,
-  resolveStorageImage,
 } from '@/services/profile';
 import { averageRating } from '@/services/reviewRatings';
 
@@ -84,6 +83,7 @@ export interface WalletTransaction {
 export interface WalletSummary {
   available: string;
   locked: string;
+  completedJobs: number;
   methods: {
     id: string;
     method_type: string;
@@ -110,7 +110,6 @@ export interface WorkerProfile {
   hourlyRate: string;
   skills: string[];
   serviceAreas: string[];
-  portfolioImages: string[];
   bio: string;
 }
 export interface IndustrySkill {
@@ -547,8 +546,6 @@ export async function fetchWorkerProfile(): Promise<
       { data: profile, error: profileError },
       { data: reviews },
       { data: bookings },
-      { data: wallet },
-      { data: portfolio },
       { data: skills },
     ] = await Promise.all([
       supabase
@@ -573,17 +570,6 @@ export async function fetchWorkerProfile(): Promise<
         .eq('worker_account_id', user.id)
         .eq('status', 'COMPLETED'),
       supabase
-        .from('wallet_accounts')
-        .select('wallet_transactions(amount,status)')
-        .eq('account_id', user.id)
-        .maybeSingle(),
-      supabase
-        .from('worker_portfolio_items')
-        .select('worker_portfolio_media(storage_path)')
-        .eq('worker_id', user.id)
-        .eq('is_published', true)
-        .order('sort_order'),
-      supabase
         .from('worker_skills')
         .select('rate_minor')
         .eq('worker_id', user.id),
@@ -601,17 +587,7 @@ export async function fetchWorkerProfile(): Promise<
       (sum: number, item: any) => sum + Number(item.agreed_service_amount ?? 0),
       0,
     );
-    const walletEarnings = (wallet?.wallet_transactions ?? [])
-      .filter(
-        (item: any) =>
-          ['AVAILABLE', 'COMPLETED'].includes(item.status) &&
-          Number(item.amount) > 0,
-      )
-      .reduce((sum: number, item: any) => sum + Number(item.amount), 0);
-    const earnings = Math.max(completedBookingsEarnings, walletEarnings);
-    const portfolioPaths = (portfolio ?? [])
-      .flatMap((item: any) => item.worker_portfolio_media ?? [])
-      .map((item: any) => item.storage_path);
+    const earnings = completedBookingsEarnings;
     return {
       data: {
         id: user.id,
@@ -647,11 +623,6 @@ export async function fetchWorkerProfile(): Promise<
           .map((skill: any) => skill.service_categories?.name)
           .filter(Boolean),
         serviceAreas: profile.service_area ? [profile.service_area] : [],
-        portfolioImages: await Promise.all(
-          portfolioPaths.map((path: string) =>
-            resolveStorageImage(path, 'portfolio-media'),
-          ),
-        ),
         bio: profile.bio ?? '',
       },
     };
@@ -766,37 +737,17 @@ export async function fetchWorkerBookings(): Promise<
     }));
   });
 }
-function isBookingVersionConflict(error: unknown) {
-  return (
-    error &&
-    typeof error === 'object' &&
-    'code' in error &&
-    (error as { code?: unknown }).code === '40001'
-  );
-}
-
 async function transition(
   bookingId: string,
   status: string,
   reason?: string,
-  retried = false,
 ) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('version')
-    .eq('id', bookingId)
-    .single();
-  if (bookingError) throw bookingError;
-
   const { data, error } = await supabase.rpc('transition_booking', {
     p_booking_id: bookingId,
     p_target_status: status,
-    p_expected_version: booking.version,
+    p_expected_version: null,
     p_reason: reason ?? null,
   });
-  if (error && isBookingVersionConflict(error) && !retried) {
-    return transition(bookingId, status, reason, true);
-  }
   if (error) throw error;
   return { data };
 }
@@ -986,11 +937,10 @@ export async function confirmJobCompletion(bookingId: string) {
 export async function cancelBooking(
   bookingId: string,
   reason: string,
-  retried = false,
 ) {
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select('status,version')
+    .select('status')
     .eq('id', bookingId)
     .single();
   if (bookingError) throw bookingError;
@@ -1007,15 +957,12 @@ export async function cancelBooking(
 
   const { data, error } = await supabase.rpc('cancel_booking', {
     p_booking_id: bookingId,
-    p_expected_version: booking.version,
+    p_expected_version: null,
     p_stage: stages[booking.status] ?? 'BEFORE_ACCEPTANCE',
     p_reason_code: 'DECLINED',
     p_details: reason || 'Worker declined assigned booking',
     p_policy_version: '2026-07-21',
   });
-  if (error && isBookingVersionConflict(error) && !retried) {
-    return cancelBooking(bookingId, reason, true);
-  }
   if (error) throw error;
   return { data };
 }
@@ -1023,22 +970,12 @@ export async function cancelBooking(
 export async function declineAssignedBooking(
   bookingId: string,
   reason: string,
-  retried = false,
 ) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('version')
-    .eq('id', bookingId)
-    .single();
-  if (bookingError) throw bookingError;
   const { data, error } = await supabase.rpc('decline_assigned_booking', {
     p_booking_id: bookingId,
-    p_expected_version: booking.version,
+    p_expected_version: null,
     p_reason: reason,
   });
-  if (error && isBookingVersionConflict(error) && !retried) {
-    return declineAssignedBooking(bookingId, reason, true);
-  }
   if (error) throw error;
   return data;
 }
@@ -1048,41 +985,23 @@ export async function fetchWalletTransactions(): Promise<
 > {
   return wrap(async () => {
     const user = await requireUser();
-    const { data: wallet, error: walletError } = await supabase
-      .from('wallet_accounts')
-      .select('id')
-      .eq('account_id', user.id)
-      .maybeSingle();
-    if (walletError) throw walletError;
-    if (!wallet) return [];
     const { data, error } = await supabase
       .from('wallet_transactions')
-      .select('id,kind,description,amount,status,created_at')
-      .eq('wallet_account_id', wallet.id)
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .select('transaction_type,amount_minor,metadata,created_at')
+      .eq('wallet_account_id', user.id)
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row: any) => {
-      const rawKind = String(row.kind).toUpperCase();
-      const label =
-        rawKind === 'TOP_UP'
-          ? 'Top-Up'
-          : rawKind === 'COMMISSION' || rawKind === 'COMMISSION_DEDUCTION'
-            ? 'Commission Deduction'
-            : String(row.kind).replaceAll('_', ' ');
-
+      const credit = Number(row.amount_minor) >= 0;
       return {
         id: row.id,
-        label,
-        sub: row.description,
-        amount: `${Number(row.amount) >= 0 ? '+' : '-'}${money(Math.abs(Number(row.amount)))}`,
-        credit: Number(row.amount) >= 0,
-        status:
-          row.status === 'FAILED'
-            ? 'failed'
-            : row.status === 'PENDING'
-              ? 'pending'
-              : 'completed',
+        label: String(row.transaction_type).replaceAll('_', ' '),
+        sub: String(row.metadata?.booking_id ?? ''),
+        amount: `${credit ? '+' : '-'}${money(
+          Math.abs(Number(row.amount_minor)) / 100,
+        )}`,
+        credit,
+        status: row.transaction_type === 'PAYOUT_HOLD' ? 'pending' : 'completed',
         date: new Date(row.created_at).toLocaleDateString('en-PH', {
           month: 'short',
           day: 'numeric',
@@ -1096,43 +1015,39 @@ export async function fetchWallet(): Promise<ApiResponse<WalletSummary>> {
   return wrap(async () => {
     const user = await requireUser();
     const { data: wallet, error } = await supabase
-      .from('wallet_accounts')
-      .select('id,wallet_transactions(amount,status)')
+      .from('wallets')
+      .select('available_minor,locked_minor')
       .eq('account_id', user.id)
       .maybeSingle();
     if (error) throw error;
-    const walletId = wallet?.id;
     const [
       { data: methods, error: methodsError },
       { data: payouts, error: payoutsError },
+      { count, error: countError },
     ] = await Promise.all([
       supabase
         .from('payout_destinations')
         .select('id,kind,label,account_reference,is_default')
         .eq('worker_id', user.id)
         .eq('status', 'ACTIVE'),
-      walletId
-        ? supabase
-            .from('payout_requests')
-            .select('*')
-            .eq('wallet_account_id', walletId)
-            .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from('payout_requests')
+        .select('*')
+        .eq('account_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('worker_account_id', user.id)
+        .eq('status', 'COMPLETED'),
     ]);
     if (methodsError) throw methodsError;
     if (payoutsError) throw payoutsError;
-    const transactions = wallet?.wallet_transactions ?? [];
-    const available = transactions
-      .filter((row: any) => ['AVAILABLE', 'COMPLETED'].includes(row.status))
-      .reduce((sum: number, row: any) => sum + Number(row.amount), 0);
-    const locked = Math.abs(
-      transactions
-        .filter((row: any) => row.status === 'HELD')
-        .reduce((sum: number, row: any) => sum + Number(row.amount), 0),
-    );
+    if (countError) throw countError;
     return {
-      available: money(available),
-      locked: money(locked),
+      available: money((wallet?.available_minor ?? 0) / 100),
+      locked: money((wallet?.locked_minor ?? 0) / 100),
+      completedJobs: count ?? 0,
       methods: (methods ?? []).map((row: any) => ({
         id: row.id,
         method_type: row.kind,
@@ -1207,6 +1122,24 @@ export async function fetchBookingDetail(id: string) {
       .eq('id', id)
       .single();
     if (error) throw error;
+    try {
+      const avatarMap = await batchResolveAvatars([
+        data.user_profiles?.avatar_path,
+        data.worker_profiles?.avatar_path,
+      ]);
+      if (data.user_profiles?.avatar_path) {
+        data.user_profiles.avatar_path =
+          avatarMap.get(data.user_profiles.avatar_path) ??
+          data.user_profiles.avatar_path;
+      }
+      if (data.worker_profiles?.avatar_path) {
+        data.worker_profiles.avatar_path =
+          avatarMap.get(data.worker_profiles.avatar_path) ??
+          data.worker_profiles.avatar_path;
+      }
+    } catch (e) {
+      console.warn('[fetchBookingDetail] avatar resolve failed:', e);
+    }
     return data;
   });
 }
@@ -1326,7 +1259,7 @@ export async function fetchIndustriesAndSkills(): Promise<
     const { data, error } = await supabase
       .from('industries')
       .select(
-        'id,slug,name,sort_order,service_categories!service_categories_industry_id_fkey(id,slug,name,is_active)',
+        'id,slug,name,sort_order,service_categories!inner!service_categories_industry_id_fkey(id,slug,name,is_active)',
       )
       .eq('is_active', true)
       .order('sort_order')
@@ -1393,15 +1326,95 @@ export async function reportBookingParticipant(
   return data;
 }
 
+export interface BookingProofPhoto {
+  id: string;
+  bookingId: string;
+  storagePath: string;
+  contentType: string;
+  byteSize: number;
+  createdAt: string;
+  signedUrl: string | null;
+}
+
 export async function attachBookingProof(
   bookingId: string,
   media: { path: string; contentType: string; byteSize: number },
-) {
+): Promise<BookingProofPhoto> {
   const { data, error } = await supabase.rpc('attach_booking_proof', {
     p_booking_id: bookingId,
     p_storage_path: media.path,
     p_content_type: media.contentType,
     p_byte_size: media.byteSize,
+  });
+  if (error) throw error;
+  const photo = data as any;
+  let signedUrl: string | null = null;
+  try {
+    const { data: signed } = await supabase.storage
+      .from('booking-proof')
+      .createSignedUrl(photo.storage_path, 60 * 60);
+    signedUrl = signed?.signedUrl ?? null;
+  } catch {
+    signedUrl = null;
+  }
+  return {
+    id: photo.id,
+    bookingId: photo.booking_id,
+    storagePath: photo.storage_path,
+    contentType: photo.content_type,
+    byteSize: photo.byte_size,
+    createdAt: photo.created_at,
+    signedUrl,
+  };
+}
+
+export async function fetchBookingProofPhotos(
+  bookingId: string,
+): Promise<BookingProofPhoto[]> {
+  const { data, error } = await supabase
+    .from('booking_proof_media')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  return Promise.all(
+    rows.map(async (photo: any) => {
+      try {
+        const { data: signed } = await supabase.storage
+          .from('booking-proof')
+          .createSignedUrl(photo.storage_path, 60 * 60);
+        return {
+          id: photo.id,
+          bookingId: photo.booking_id,
+          storagePath: photo.storage_path,
+          contentType: photo.content_type,
+          byteSize: photo.byte_size,
+          createdAt: photo.created_at,
+          signedUrl: signed?.signedUrl ?? null,
+        };
+      } catch {
+        return {
+          id: photo.id,
+          bookingId: photo.booking_id,
+          storagePath: photo.storage_path,
+          contentType: photo.content_type,
+          byteSize: photo.byte_size,
+          createdAt: photo.created_at,
+          signedUrl: null,
+        };
+      }
+    }),
+  );
+}
+
+export async function deleteBookingProof(
+  bookingId: string,
+  storagePath: string,
+) {
+  const { data, error } = await supabase.rpc('delete_booking_proof', {
+    p_booking_id: bookingId,
+    p_storage_path: storagePath,
   });
   if (error) throw error;
   return data;
@@ -1636,17 +1649,23 @@ export async function fetchConversationForBooking(bookingId: string) {
     return data;
   });
 }
-export async function fetchConversations() {
+export async function fetchConversations(mode: 'active' | 'archived' = 'active') {
   return wrap(async () => {
     const user = await requireUser();
     const profile = await getMyProfile();
-    const { data, error } = await supabase
+    let query = supabase
       .from('conversations')
       .select(
         'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
-      )
-      .is('archived_at', null)
-      .order('updated_at', { ascending: false });
+      );
+      
+    if (mode === 'active') {
+      query = query.is('archived_at', null);
+    } else {
+      query = query.not('archived_at', 'is', null);
+    }
+    
+    const { data, error } = await query.order('updated_at', { ascending: false });
     if (error) throw error;
     const prepared = (data ?? [])
       .map((row: any) => {
@@ -1708,6 +1727,7 @@ export async function fetchConversations() {
       avatar: avatarMap.get(item.avatarPath) ?? '',
       lastMessage: item.latest?.body ?? '',
       time: item.latest ? relative(item.latest.created_at) : '',
+      timestamp: item.latest?.created_at ?? '',
       unread: item.messages.filter(
         (message: any) =>
           message.sender_id !== user.id &&
@@ -1735,28 +1755,33 @@ export async function archiveConversations(conversationIds: string[]) {
       archiveConversation(conversationId),
     ),
   );
-  return results.reduce<{
-    deleted: string[];
-    failed: { id: string; error: string }[];
-  }>(
-    (summary, result, index) => {
-      const id = conversationIds[index];
-      if (result.status === 'fulfilled') {
-        summary.deleted.push(id);
-      } else {
-        summary.failed.push({
-          id,
-          error:
-            result.reason instanceof Error
-              ? result.reason.message
-              : 'Conversation could not be deleted',
-        });
-      }
-      return summary;
-    },
-    { deleted: [], failed: [] },
-  );
+  const deleted: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      deleted.push(conversationIds[i]);
+    } else {
+      const err = await normalizeFunctionError(result.reason, 'Unable to delete conversation.');
+      failed.push({
+        id: conversationIds[i],
+        error: err.message,
+      });
+    }
+  }
+  return { deleted, failed };
 }
+
+export async function unarchiveConversations(conversationIds: string[]) {
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({ archived_at: null })
+    .in('id', conversationIds)
+    .select();
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchNotifications() {
   return wrap(async () => {
     const user = await requireUser();

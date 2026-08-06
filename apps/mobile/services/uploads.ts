@@ -37,6 +37,16 @@ function extensionFor(contentType: string) {
   return contentType.split('/')[1] ?? 'bin';
 }
 
+function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
 export async function uploadRequestMedia(
   uri: string,
   fallbackContentType?: string,
@@ -57,7 +67,7 @@ export async function uploadRequestMedia(
     throw new Error('Media must be 15 MB or smaller.');
 
   const path = `${user.id}/${randomUUID()}.${extensionFor(contentType)}`;
-  const bytes = await blob.arrayBuffer();
+  const bytes = await blobToArrayBuffer(blob);
   const { error } = await supabase.storage
     .from('request-media')
     .upload(path, bytes, { contentType, upsert: false });
@@ -98,7 +108,7 @@ export async function uploadBookingProof(uri: string) {
     throw new Error('Proof photos must be 15 MB or smaller.');
 
   const path = `${user.id}/${randomUUID()}.${extensionFor(contentType)}`;
-  const bytes = await blob.arrayBuffer();
+  const bytes = await blobToArrayBuffer(blob);
   const { error } = await supabase.storage
     .from('booking-proof')
     .upload(path, bytes, { contentType, upsert: false });

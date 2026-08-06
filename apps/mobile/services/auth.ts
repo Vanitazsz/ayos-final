@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { normalizePhilippinePhone } from '@/lib/workerRegistration';
+import { normalizePhilippinePhone, signupErrorMessage } from '@/lib/workerRegistration';
 import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 import { invalidateUserCache } from '@/services/apiCore';
 
@@ -98,16 +98,27 @@ export async function signUpCustomer(input: {
   mobile: string;
 }) {
   const mobile = normalizePhilippinePhone(input.mobile);
-  const { data, error } = await supabase.auth.signUp({
-    email: input.email.trim().toLowerCase(),
-    password: input.password,
-    options: {
-      data: { role: 'USER', name: input.name.trim(), mobile },
-      emailRedirectTo: Linking.createURL('/auth/callback'),
-    },
-  });
-  if (error) throw error;
-  return data;
+  let authResult;
+  try {
+    authResult = await supabase.auth.signUp({
+      email: input.email.trim().toLowerCase(),
+      password: input.password,
+      options: {
+        data: { role: 'USER', name: input.name.trim(), mobile },
+        emailRedirectTo: Linking.createURL('/auth/callback'),
+      },
+    });
+  } catch (fetchError) {
+    console.error('[auth] signUpCustomer network error:', fetchError);
+    throw new Error(
+      'Unable to connect. Check your internet connection and try again.',
+    );
+  }
+  if (authResult.error) {
+    console.error('[auth] signUpCustomer error:', authResult.error);
+    throw new Error(signupErrorMessage(authResult.error));
+  }
+  return authResult.data;
 }
 
 export async function verifyEmailOtp(email: string, token: string) {

@@ -292,6 +292,26 @@ export default function RegisterWorkerScreen() {
     setSubmissionStatus('Preparing your worker registration…');
     setSubmitting(true);
     try {
+      const catalog = await fetchIndustriesAndSkills();
+      if (catalog.error) {
+        setSubmissionError(
+          'Unable to refresh the service catalog. Check your connection and try again.',
+        );
+        return;
+      }
+      const freshIndustry = catalog.data.find(
+        (row) => row.id === industryValue,
+      );
+      const freshSkillIds = new Set(freshIndustry?.skills.map((skill) => skill.id));
+      const hasStaleSkill = selectedSkills.some((id) => !freshSkillIds.has(id));
+      if (!freshIndustry || hasStaleSkill) {
+        await loadIndustryCatalog();
+        setSubmissionError(
+          'Your industry or skills changed while filling this form. Review your selections in Industry & Skills and try again.',
+        );
+        setStep(2);
+        return;
+      }
       const result = await submitWorkerApplication(
         {
           email,

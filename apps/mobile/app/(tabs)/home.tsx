@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'rea
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { Image } from 'expo-image';
-import { Search, Bell, MapPin, Star, ChevronRight, Droplets, Zap, Wrench, Sparkles, Monitor, Fan, Paintbrush, Shovel, Wallet } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Search, Bell, MapPin, Star, ChevronRight, Droplets, Zap, Wrench, Sparkles, Monitor, Fan, Paintbrush, Shovel, Calendar } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { homePromotions } from '@/constants/mockData';
@@ -72,12 +73,6 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.topNav, { paddingTop: insets.top + theme.spacing.sm }]}>
-        <View style={styles.greetingRow}>
-          <View>
-            <Text style={[theme.typography.body2, { color: 'rgba(255,255,255,0.8)' }]}>Good morning,</Text>
-            <Text style={[theme.typography.h3, { color: theme.colors.surface }]}>{user?.name || 'Guest'} 👋</Text>
-          </View>
-        </View>
         <View style={styles.headerTopRow}>
           <TouchableOpacity 
             style={styles.searchBar} 
@@ -102,7 +97,32 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.contentContainer}>
-        <Animated.View entering={FadeInDown.duration(400).springify()} style={[styles.mainCard, { marginTop: theme.spacing.md }]}>
+        <Animated.View entering={FadeInDown.duration(300).springify()} style={[styles.aiPromoCard, { marginTop: theme.spacing.sm }]}>
+          <LinearGradient
+            colors={['#1e3a8a', '#3b82f6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={styles.aiPromoContent}>
+            <Text style={[theme.typography.body2, { color: 'rgba(255,255,255,0.9)' }]}>Good morning, {user?.name || 'Guest'} 👋</Text>
+            <Text style={[theme.typography.h3, { color: theme.colors.surface, marginBottom: 8, marginTop: 4 }]}>Need Help Around the House?</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.surface, opacity: 0.9, marginBottom: 16 }]}>
+              Let A-yos AI understand your needs, recommend the right service, and connect you with trusted, verified workers near you.
+            </Text>
+            <TouchableOpacity style={styles.aiPromoButton} onPress={() => { router.push('/new-request/create'); }}>
+              <Text style={[theme.typography.button, { color: theme.colors.primary, fontSize: 13 }]}>Try A-yos AI</Text>
+              <Sparkles color={theme.colors.primary} size={14} style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+          </View>
+          <Image 
+            source="https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=400&auto=format&fit=crop" 
+            style={styles.aiPromoImage}
+            contentFit="cover"
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(200).duration(400).springify()} style={styles.mainCard}>
           <View style={styles.categoriesGrid}>
             {PARENT_CATEGORIES.map((parentCat, index) => {
               const Icon = parentCat.icon;
@@ -127,41 +147,29 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.widgetsRow}>
-            <TouchableOpacity style={styles.widgetCard} onPress={() => router.push('/wallet')}>
+            <TouchableOpacity style={styles.widgetCard} onPress={() => router.push('/bookings' as any)}>
               <View>
-                <Text style={theme.typography.caption}>Active bookings</Text>
-                <Text style={theme.typography.h4}>{activeBookingsCount}</Text>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginBottom: 4 }]}>Active bookings</Text>
+                <Text style={[theme.typography.h3, { color: theme.colors.primary }]}>{activeBookingsCount}</Text>
               </View>
-              <Wallet color={theme.colors.primary} size={24} />
+              <View style={{ backgroundColor: `${theme.colors.primary}15`, padding: 10, borderRadius: 12 }}>
+                <Calendar color={theme.colors.primary} size={24} />
+              </View>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.widgetCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={theme.typography.caption}>Rate</Text>
-                <Text style={theme.typography.body2} numberOfLines={1}>{lastCompletedWorkerName}</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginBottom: 4 }]}>Rate</Text>
+                <Text style={[theme.typography.body1, { fontWeight: '600', color: theme.colors.textPrimary }]} numberOfLines={1}>{lastCompletedWorkerName}</Text>
               </View>
-              <Star color={theme.colors.warning} size={24} fill={theme.colors.warning} />
+              <View style={{ backgroundColor: `${theme.colors.warning}15`, padding: 10, borderRadius: 12 }}>
+                <Star color={theme.colors.warning} size={24} fill={theme.colors.warning} />
+              </View>
             </TouchableOpacity>
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(500).springify()} style={styles.aiPromoCard}>
-          <View style={styles.aiPromoContent}>
-            <Text style={[theme.typography.h3, { color: theme.colors.surface, marginBottom: 8 }]}>Need Help Around the House?</Text>
-            <Text style={[theme.typography.caption, { color: theme.colors.surface, opacity: 0.9, marginBottom: 16 }]}>
-              Let A-yos AI understand your needs, recommend the right service, and connect you with trusted, verified workers near you.
-            </Text>
-            <TouchableOpacity style={styles.aiPromoButton} onPress={() => { router.push('/new-request/create'); }}>
-              <Text style={[theme.typography.button, { color: theme.colors.primary, fontSize: 13 }]}>Try A-yos AI</Text>
-              <Sparkles color={theme.colors.primary} size={14} style={{ marginLeft: 6 }} />
-            </TouchableOpacity>
-          </View>
-          <Image 
-            source="https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=400&auto=format&fit=crop" 
-            style={styles.aiPromoImage}
-            contentFit="cover"
-          />
-        </Animated.View>
+
 
         <Animated.View entering={FadeInDown.delay(300).duration(500).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>

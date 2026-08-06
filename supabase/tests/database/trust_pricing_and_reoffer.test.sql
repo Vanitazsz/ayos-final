@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(51);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -545,6 +545,70 @@ select lives_ok(
   'rate-ready worker can accept the booking'
 );
 
+-- The 40001 BOOKING_VERSION_CONFLICT raise was removed because the status
+-- state machine is forward-only and the RPC validates against the locked row.
+-- A stale expected_version must be tolerated and a repeat transition must be
+-- idempotent, while illegal transitions still fail.
+select lives_ok(
+  $$select public.transition_booking(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    'WORKER_PREPARING',
+    0,
+    null
+  )$$,
+  'a stale expected_version does not raise a version conflict'
+);
+select is(
+  (
+    select version
+    from public.bookings
+    where service_request_id = '96000000-0000-0000-0000-000000000001'
+  ),
+  2,
+  'the transition advances the version for the audit trail'
+);
+select lives_ok(
+  $$select public.transition_booking(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    'WORKER_PREPARING',
+    1,
+    null
+  )$$,
+  'repeating the same transition is an idempotent no-op'
+);
+select is(
+  (
+    select version
+    from public.bookings
+    where service_request_id = '96000000-0000-0000-0000-000000000001'
+  ),
+  2,
+  'the idempotent repeat does not bump the version'
+);
+select throws_ok(
+  $$select public.transition_booking(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    'ACCEPTED',
+    2,
+    null
+  )$$,
+  'P0001',
+  'INVALID_BOOKING_TRANSITION',
+  'illegal transitions are still rejected by the state machine'
+);
+
 reset role;
 select set_config(
   'request.jwt.claims',
@@ -654,6 +718,46 @@ select is(
   1::bigint,
   'proof-of-work metadata is stored once'
 );
+select lives_ok(
+  $$select public.delete_booking_proof(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    auth.uid()::text || '/proof.jpg'
+  )$$,
+  'worker can remove their after-job proof before feedback is confirmed'
+);
+select is(
+  (
+    select count(*)
+    from public.booking_proof_media
+    where booking_id = (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    )
+  ),
+  0::bigint,
+  'proof-of-work metadata is removed'
+);
+reset role;
+select is(
+  (
+    select count(*)
+    from storage.objects
+    where bucket_id = 'booking-proof'
+      and name = (
+        select worker_account_id::text || '/proof.jpg'
+        from public.bookings
+        where service_request_id = '96000000-0000-0000-0000-000000000001'
+      )
+  ),
+  0::bigint,
+  'proof-of-work storage object is removed'
+);
+set local role authenticated;
 select is(
   (
     select status::text

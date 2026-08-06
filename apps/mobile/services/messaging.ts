@@ -7,4 +7,5 @@ export {
   sendMessage,
   startConversation,
   subscribeToConversationBroadcast,
+  unarchiveConversations,
 } from './apiCore';
