@@ -15,14 +15,13 @@ import {
   Plus,
   Star,
   UsersRound,
-  MapPin,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/buttons/Button';
 import { RadiusSlider } from '@/components/inputs/RadiusSlider';
 import { Screen } from '@/components/layout/Screen';
-import { StaticMapPreview } from '@/components/maps/StaticMapPreview';
+import { MapSurface } from '@/components/maps/MapSurface';
 import { theme } from '@/constants/theme';
 import {
   attachRequestMedia,
@@ -351,7 +350,6 @@ function RadiusConfiguration({
   onChange: (radius: number) => void;
   onStart: () => void;
 }) {
-  const [mapVisible, setMapVisible] = useState(false);
   return (
     <ScrollView
       style={styles.configurationScroll}
@@ -360,22 +358,13 @@ function RadiusConfiguration({
     >
       <View style={styles.mapContainer}>
         {center ? (
-          mapVisible ? (
-            <StaticMapPreview center={center} radiusKm={radiusKm} />
-          ) : (
-            <TouchableOpacity
-              accessibilityLabel="Show map preview"
-              style={styles.mapPlaceholder}
-              onPress={() => setMapVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MapPin size={28} color={theme.colors.primary} />
-              <Text style={theme.typography.h4}>Show map preview</Text>
-              <Text style={styles.mapPlaceholderSub}>
-                Tap to view the service location
-              </Text>
-            </TouchableOpacity>
-          )
+          <MapSurface
+            center={center}
+            points={[
+              { id: 'service-location', ...center, color: theme.colors.error },
+            ]}
+            radiusMeters={radiusKm * 1000}
+          />
         ) : (
           <Text style={styles.secondary}>Confirm a service location first.</Text>
         )}
@@ -547,14 +536,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.borderLight,
-  },
-  mapPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-  },
-  mapPlaceholderSub: {
-    color: theme.colors.textSecondary,
   },
   configurationMessage: {
     color: theme.colors.textSecondary,
