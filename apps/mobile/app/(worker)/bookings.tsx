@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import {AppState,
+import React from 'react';
+import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Pressable,} from 'react-native';
+  Pressable,
+} from 'react-native';
 import { CalendarDays, Clock, MapPin, CheckCircle2, XCircle, Receipt, Flag, Star, MessageSquare } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/constants/theme';
@@ -14,17 +14,9 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { Skeleton } from '@/components/Skeleton';
-import {
-  acceptJob,
-  cancelBooking,
-  fetchWorkerBookings,
-  subscribeToBookingFeed,
-  getWorkerFeedback,
-  type WorkerFeedback,
-} from '@/services/api';
-import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
-import type { WorkerBooking } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
+import { styles } from './bookings.styles';
+import { useWorkerBookings } from '@/hooks/useWorkerBookings';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -45,14 +37,6 @@ const statusConfig: Record<string, { label: string; variant: string }> = {
 };
 
 const BOOKING_TABS = ['Upcoming', 'In Progress', 'Pending', 'Completed', 'Cancelled', 'Reported'];
-
-const TAB_FILTERS: Record<string, WorkerBooking['status'][]> = {
-  Upcoming: ['pending', 'hired', 'accepted', 'worker_preparing'],
-  'In Progress': ['en_route', 'worker_en_route', 'arrived', 'worker_arrived', 'service_started', 'in_progress', 'pending_confirmation'],
-  Pending: ['pending_review'],
-  Completed: ['completed'],
-  Cancelled: ['cancelled'],
-};
 
 function BookingSkeletonCard() {
   return (
@@ -82,87 +66,18 @@ function BookingSkeletonCard() {
 
 export default function WorkerBookingsScreen() {
   const { filter } = useLocalSearchParams<{ filter?: string }>();
-  const [activeTab, setActiveTab] = useState(
-    filter === 'Cancelled' ? 'Cancelled' : filter === 'Reported' ? 'Reported' : 'Upcoming',
-  );
-  const [bookings, setBookings] = useState<WorkerBooking[]>([]);
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, WorkerFeedback>>({});
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
-
-  const load = async () => {
-    setLoading(true);
-    const result = await fetchWorkerBookings();
-    setBookings(result.data);
-    setLoadError(result.error ?? '');
-
-    const completedItems = (result.data ?? []).filter(
-      (b) => b.status === 'completed',
-    );
-    const feedbackPairs = await Promise.all(
-      completedItems.map(async (b) => {
-        const fb = await getWorkerFeedback(b.id);
-        return [b.id, fb] as const;
-      }),
-    );
-    const map: Record<string, WorkerFeedback> = {};
-    for (const [id, fb] of feedbackPairs) {
-      if (fb) map[id] = fb;
-    }
-    setFeedbackMap(map);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    let active = true;
-    let stopRealtime = () => {};
-    void load();
-    void subscribeToBookingFeed('worker', () => void load()).then((stop) => {
-      if (active) stopRealtime = stop;
-      else stop();
-    });
-    const appState = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void load();
-    });
-    return () => {
-      active = false;
-      stopRealtime();
-      appState.remove();
-    };
-  }, []);
-
-  const accept = async (id: string) => {
-    try {
-      await acceptJob(id);
-      load();
-    } catch (error) {
-      showAlert(
-        'Unable to accept',
-        error instanceof Error ? error.message : 'Please retry.',
-      );
-    }
-  };
-
-  const decline = async (id: string) => {
-    try {
-      await cancelBooking(id, 'Worker declined the assigned booking');
-      load();
-    } catch (error) {
-      showAlert(
-        'Unable to decline',
-        error instanceof Error ? error.message : 'Please retry.',
-      );
-    }
-  };
-
-  const filteredBookings = useMemo(() => {
-    if (activeTab === 'Reported') {
-      return bookings.filter((b) => b.isReported === true);
-    }
-    const statuses = TAB_FILTERS[activeTab] || [];
-    return bookings.filter((b) => statuses.includes(b.status));
-  }, [activeTab, bookings]);
+  const {
+    activeTab,
+    setActiveTab,
+    feedbackMap,
+    loading,
+    loadError,
+    isCurrentlyWorking,
+    load,
+    accept,
+    decline,
+    filteredBookings,
+  } = useWorkerBookings(filter);
 
   const comingSoon = () => showAlert('Coming Soon', 'Earnings receipts will be available in a future update.');
 

@@ -123,7 +123,7 @@ describe('location write control', () => {
 });
 
 describe('startForegroundWorkerPresence', () => {
-  it('refreshes available-worker presence every fifteen seconds', async () => {
+  it('refreshes available-worker presence every thirty seconds', async () => {
     vi.useFakeTimers();
     const position = {
       coords: {
@@ -146,7 +146,7 @@ describe('startForegroundWorkerPresence', () => {
     const cleanup = await startForegroundWorkerPresence(vi.fn());
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(14999);
+    await vi.advanceTimersByTimeAsync(29999);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(1);

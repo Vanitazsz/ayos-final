@@ -1,13 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import {View,
+import React, { useState } from 'react';
+import {
+  View,
   Text,
-  StyleSheet,
   ScrollView,
   Pressable,
   Modal,
   TextInput,
-  Dimensions,
-  Keyboard,} from 'react-native';
+  Keyboard,
+} from 'react-native';
 import {
   TrendingUp,
   TrendingDown,
@@ -21,18 +21,16 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radius, Spacing, Elevation, Layout, Typography, theme } from '@/constants/theme';
+import { Colors, theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
-import { fetchWallet, fetchWalletTransactions, subscribeToTable, type WalletSummary, type WalletTransaction, type TransactionStatus } from '@/services/api';
+import { type TransactionStatus, simulateTopUp } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
+import { styles } from './wallet.styles';
+import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
 
-type Period = 'week' | 'month' | 'all';
-type TxFilter = 'all' | 'credit' | 'debit';
-
-const { width: screenWidth } = Dimensions.get('window');
 const statusIcon = (s: TransactionStatus) => {
   if (s === 'completed') return <CheckCircle size={12} color={Colors.verified} />;
   if (s === 'pending') return <Clock size={12} color={Colors.warning} />;
@@ -72,7 +70,6 @@ export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('week');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
-  const [selectedMethod, setSelectedMethod] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('5000');
   const [selectedTopUpMethod, setSelectedTopUpMethod] = useState('gcash');
@@ -113,12 +110,30 @@ export default function WalletScreen() {
   const cutoff=period==='week'?Date.now()-7*86400000:period==='month'?Date.now()-30*86400000:0;const periodTransactions=walletTransactions.filter(row=>new Date(row.createdAt).getTime()>=cutoff);const gross=periodTransactions.filter(row=>row.credit).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0);const deductions=periodTransactions.filter(row=>!row.credit).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0);const stats={gross:`₱${gross.toLocaleString()}`,net:`₱${Math.max(0,gross-deductions).toLocaleString()}`,jobs:String(wallet.completedJobs),commission:`₱${deductions.toLocaleString()}`};
   const walletBarData=useMemo(()=>{const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return days.map((day,index)=>({day,val:walletTransactions.filter(row=>row.credit&&new Date(row.createdAt).getDay()===index).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0)}));},[walletTransactions]);const BAR_MAX=Math.max(1,...walletBarData.map(row=>row.val));
 
-  const filteredTransactions = useMemo(() => {
-    let filtered = walletTransactions;
-    if (txFilter === 'credit') filtered = filtered.filter((t) => t.credit);
-    if (txFilter === 'debit') filtered = filtered.filter((t) => !t.credit);
-    return filtered.slice(0, 3);
-  }, [txFilter, walletTransactions]);
+  const handleSimulateTopUp = async () => {
+    const numAmount = Number(topUpAmount.replace(/[^0-9.]/g, ''));
+    if (isNaN(numAmount) || numAmount <= 0) {
+      showAlert('Invalid Amount', 'Please select or enter a valid top-up amount.');
+      return;
+    }
+    try {
+      setIsTopUpLoading(true);
+      const result = await simulateTopUp(numAmount);
+      setShowTopUp(false);
+      await refresh();
+      showAlert(
+        'Simulated Top-Up Successful',
+        `Worker selects: ₱${numAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n` +
+        `Simulated payment status: ${result.status}\n` +
+        `Previous wallet balance: ₱${Number(result.previousBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n` +
+        `New wallet balance: ₱${Number(result.newBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+      );
+    } catch (err: any) {
+      showAlert('Top-Up Failed', err?.message ?? 'Failed to process simulated top-up.');
+    } finally {
+      setIsTopUpLoading(false);
+    }
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -143,7 +158,7 @@ export default function WalletScreen() {
           </View>
           <View style={styles.balanceActions}>
             <AppButton
-              label="Top-Up"
+              label="Simulate Top-Up"
               variant="outline"
               size="sm"
               disabled
@@ -167,7 +182,7 @@ export default function WalletScreen() {
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <AppText variant="body" weight="bold">Daily Earnings — This Week</AppText>
-            <Badge label={`Peak: ₱${BAR_MAX.toLocaleString()}`} variant="info" size="sm" />
+            <Badge label={`Peak: ₱${barMax.toLocaleString()}`} variant="info" size="sm" />
           </View>
           <View style={styles.barChart}>
             {walletBarData.map((d, i) => (
@@ -177,8 +192,8 @@ export default function WalletScreen() {
                     style={[
                       styles.barFill,
                       {
-                        height: `${(d.val / BAR_MAX) * 100}%`,
-                        backgroundColor: d.val === BAR_MAX ? Colors.verified : Colors.info,
+                        height: `${(d.val / barMax) * 100}%`,
+                        backgroundColor: d.val === barMax ? Colors.verified : Colors.info,
                       },
                     ]}
                   />
@@ -309,7 +324,7 @@ export default function WalletScreen() {
         <Pressable style={styles.overlay} onPress={() => { Keyboard.dismiss(); setShowTopUp(false); }}>
           <Pressable style={styles.sheet} onPress={() => Keyboard.dismiss()}>
             <View style={styles.sheetHandle} />
-            <AppText variant="h4" weight="bold">Top-Up Wallet</AppText>
+            <AppText variant="h4" weight="bold">Simulate Top-Up</AppText>
             <AppText variant="caption" color={Colors.textSecondary}>
               Available balance: <AppText weight="bold" color={Colors.textPrimary}>{wallet.available}</AppText>
             </AppText>
@@ -325,50 +340,46 @@ export default function WalletScreen() {
               />
             </View>
 
+            <AppText variant="caption" weight="bold" color={Colors.textTertiary} style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12 }}>
+              Preset Amounts
+            </AppText>
             <View style={styles.quickAmounts}>
-              {['5,000', '10,000', '18,450'].map((a) => (
+              {['100', '200', '500', '1,000'].map((a) => (
                 <Pressable
                   key={a}
-                  style={styles.quickAmt}
+                  style={[
+                    styles.quickAmt,
+                    topUpAmount === a.replace(',', '') && { backgroundColor: Colors.cta, borderColor: Colors.cta },
+                  ]}
                   onPress={() => setTopUpAmount(a.replace(',', ''))}
                 >
-                  <AppText variant="caption" weight="bold" color={Colors.info}>₱{a}</AppText>
-                </Pressable>
-              ))}
-            </View>
-
-            <AppText variant="caption" weight="bold" color={Colors.textTertiary} style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Pay with
-            </AppText>
-            <View style={styles.methodList}>
-              {walletPayoutMethods.map((m) => (
-                <Pressable
-                  key={m.id}
-                  style={[styles.methodRow, selectedTopUpMethod === m.id && styles.methodRowActive]}
-                  onPress={() => setSelectedTopUpMethod(m.id)}
-                >
-                  <View style={[styles.methodDot, { backgroundColor: m.color }]} />
-                  <View style={styles.methodInfo}>
-                    <AppText variant="bodySm" weight="bold">{m.label}</AppText>
-                    <AppText variant="caption" color={Colors.textTertiary}>{m.account}</AppText>
-                  </View>
-                  {selectedTopUpMethod === m.id && <CheckCircle size={16} color={Colors.info} />}
+                  <AppText
+                    variant="caption"
+                    weight="bold"
+                    color={topUpAmount === a.replace(',', '') ? Colors.white : Colors.info}
+                  >
+                    ₱{a}
+                  </AppText>
                 </Pressable>
               ))}
             </View>
 
             <View style={styles.payoutNote}>
-              <AlertCircle size={12} color={Colors.textTertiary} />
-              <AppText variant="caption" color={Colors.textTertiary}>Top-ups are processed instantly.</AppText>
+              <AlertCircle size={14} color={Colors.warning} />
+              <AppText variant="caption" color={Colors.textSecondary} style={{ flex: 1 }}>
+                This is a simulated top-up for demonstration purposes. No actual payment will be processed.
+              </AppText>
             </View>
 
             <View style={styles.sheetActions}>
               <AppButton label="Cancel" variant="outline" onPress={() => setShowTopUp(false)} style={{ flex: 1 }} />
               <AppButton
-                label="Confirm Top-Up"
+                label="Simulate Top-Up"
                 variant="primary"
                 leftIcon={<ArrowUpFromLine size={14} color={Colors.white} />}
-                onPress={() => showAlert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
+                loading={isTopUpLoading}
+                disabled={isTopUpLoading}
+                onPress={handleSimulateTopUp}
                 style={{ flex: 1 }}
               />
             </View>
@@ -380,125 +391,4 @@ export default function WalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding * 2 },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: theme.spacing.xxl },
 
-  // Balance card
-  balanceCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['5'], gap: Spacing['4'], ...Elevation.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  balanceTop: { gap: Spacing['1'] },
-  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing['1'], marginTop: Spacing['1'] },
-  balanceActions: { flexDirection: 'row', gap: Spacing['3'] },
-  balanceBtn: { flex: 1 },
-
-  // Period toggle
-  periodToggle: { flexDirection: 'row', justifyContent: 'center', gap: Spacing['2'], marginBottom: theme.spacing.md },
-
-  // Stats grid
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing['3'], marginBottom: theme.spacing.xl },
-  statCard: {
-    width: (screenWidth - Layout.screenPadding * 4 - Spacing['3']) / 2,
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['4'], gap: Spacing['2'], ...Elevation.sm,
-  },
-  statIcon: {
-    width: 36, height: 36, borderRadius: Radius.md,
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // Bar chart
-  chartCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['4'], ...Elevation.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  chartHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing['4'] },
-  barChart: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing['2'], height: 100 },
-  barCol: { flex: 1, alignItems: 'center', gap: Spacing['1'], height: '100%' },
-  barTrack: { flex: 1, width: '100%', backgroundColor: Colors.borderLight, borderRadius: Radius.xs, justifyContent: 'flex-end', overflow: 'hidden' },
-  barFill: { width: '100%', borderRadius: Radius.xs },
-
-  // Transactions
-  txSection: {
-    backgroundColor: Colors.surfaceCard, borderRadius: Radius.xl,
-    padding: Spacing['4'], gap: Spacing['3'],
-    marginBottom: theme.spacing.xl, ...Elevation.sm,
-  },
-  txHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  seeAllLink: { flexDirection: 'row', alignItems: 'center' },
-  txFilters: { flexDirection: 'row', justifyContent: 'flex-start', gap: Spacing['2'] },
-  txList: { gap: Spacing['2'] },
-  txEmpty: {
-    textAlign: 'center',
-    paddingVertical: Spacing['4'],
-  },
-  txRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing['3'],
-    backgroundColor: Colors.background, borderRadius: Radius.xl,
-    padding: Spacing['3'], ...Elevation.sm,
-  },
-  txIcon: {
-    width: 36, height: 36, borderRadius: Radius.md,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  txBody: { flex: 1, gap: 2 },
-  txTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  txBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  txStatus: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-
-  // Performance card
-  perfCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['4'], ...Elevation.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  perfHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing['3'], marginBottom: Spacing['4'] },
-  perfAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.info, alignItems: 'center', justifyContent: 'center',
-  },
-  perfInfo: { flex: 1, gap: 2 },
-  perfStats: { gap: Spacing['3'] },
-  perfRow: { gap: Spacing['1'] },
-  perfRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  perfTrack: { height: 6, backgroundColor: Colors.borderLight, borderRadius: Radius.full, overflow: 'hidden' },
-  perfFill: { height: '100%', borderRadius: Radius.full },
-
-  // Payout sheet
-  overlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: Colors.white, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl,
-    padding: Spacing['5'], gap: Spacing['3'],
-  },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: Spacing['2'] },
-  amountWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceLight,
-    borderRadius: Radius.xl, padding: Spacing['4'], gap: Spacing['2'],
-  },
-  amountInput: {
-    flex: 1, fontSize: Typography['5xl'], fontWeight: '800', color: Colors.textPrimary,
-    paddingVertical: 0,
-  },
-  quickAmounts: { flexDirection: 'row', gap: Spacing['2'] },
-  quickAmt: {
-    flex: 1, paddingVertical: Spacing['2'], borderRadius: Radius.md,
-    backgroundColor: Colors.primarySurface, alignItems: 'center',
-  },
-  methodList: { gap: Spacing['2'] },
-  methodRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing['3'],
-    backgroundColor: Colors.surfaceLight, borderRadius: Radius.xl,
-    padding: Spacing['3'], borderWidth: 2, borderColor: 'transparent',
-  },
-  methodRowActive: { borderColor: Colors.info, backgroundColor: Colors.primarySurface },
-  methodDot: { width: 12, height: 12, borderRadius: 6 },
-  methodInfo: { flex: 1 },
-  payoutNote: { flexDirection: 'row', alignItems: 'center', gap: Spacing['2'] },
-  sheetActions: { flexDirection: 'row', gap: Spacing['3'], marginTop: Spacing['2'] },
-});

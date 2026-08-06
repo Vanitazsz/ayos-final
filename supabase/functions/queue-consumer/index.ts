@@ -122,33 +122,84 @@ Deno.serve(async (request) => {
     const { data, error } = await admin.rpc('read_job_batch', {
       queue_name: queue,
       visibility_seconds: 60,
-      batch_size: 20,
+      batch_size: 50,
     });
     if (error) {
       failed += 1;
       continue;
     }
-    for (const raw of (data ?? []) as QueueMessage[]) {
+    const messages = (data ?? []) as QueueMessage[];
+    const archive = async (raw: QueueMessage) => {
+      const archived = await admin.rpc('archive_job', {
+        queue_name: queue,
+        message_id: raw.msg_id,
+      });
+      assertSuccess(archived.error, 'queue archive');
+      processed += 1;
+    };
+    const recordFailure = async (raw: QueueMessage, error: unknown) => {
+      failed += 1;
+      if (raw.read_ct >= 5 || queue === 'provider_work') {
+        const failure = await admin.from('job_failures').upsert(
+          {
+            queue_name: queue,
+            message_id: raw.msg_id,
+            payload: raw.message,
+            attempts: raw.read_ct,
+            error: error instanceof Error ? error.message : 'Unknown queue error',
+          },
+          { onConflict: 'queue_name,message_id' },
+        );
+        assertSuccess(failure.error, 'failure record');
+        const archived = await admin.rpc('archive_job', {
+          queue_name: queue,
+          message_id: raw.msg_id,
+        });
+        assertSuccess(archived.error, 'failed queue archive');
+      }
+    };
+
+    if (queue === 'no_match_notifications') {
+      const rows = messages
+        .filter((raw) => raw.message.user_account_id)
+        .map((raw) => ({
+          recipient_id: raw.message.user_account_id,
+          title: 'No workers available yet',
+          body: 'Adjust the schedule or budget, or keep notifications enabled while A-YOS looks for a match.',
+          category: 'MATCHING',
+          status: 'SENT',
+          sent_at: new Date().toISOString(),
+          source_key: `no-match:${String(raw.message.service_request_id)}`,
+        }));
+      if (rows.length > 0) {
+        try {
+          const result = await admin.from('notifications').upsert(rows, {
+            onConflict: 'source_key',
+            ignoreDuplicates: true,
+          });
+          assertSuccess(result.error, 'no-match notification');
+        } catch (error) {
+          for (const raw of messages) await recordFailure(raw, error);
+          continue;
+        }
+      }
+      for (const raw of messages) {
+        try {
+          await archive(raw);
+        } catch (error) {
+          await recordFailure(raw, error);
+        }
+      }
+      continue;
+    }
+
+    for (const raw of messages) {
       try {
         if (queue === 'booking_timeouts') {
           const result = await admin.rpc('expire_booking_request', {
             target_booking: raw.message.booking_id,
           });
           assertSuccess(result.error, 'booking timeout');
-        } else if (queue === 'no_match_notifications' && raw.message.user_account_id) {
-          const result = await admin.from('notifications').upsert(
-            {
-              recipient_id: raw.message.user_account_id,
-              title: 'No workers available yet',
-              body: 'Adjust the schedule or budget, or keep notifications enabled while A-YOS looks for a match.',
-              category: 'MATCHING',
-              status: 'SENT',
-              sent_at: new Date().toISOString(),
-              source_key: `no-match:${String(raw.message.service_request_id)}`,
-            },
-            { onConflict: 'source_key', ignoreDuplicates: true },
-          );
-          assertSuccess(result.error, 'no-match notification');
         } else if (queue === 'scheduled_notifications' && raw.message.notification_id) {
           const result = await admin
             .from('notifications')
@@ -167,25 +218,7 @@ Deno.serve(async (request) => {
         assertSuccess(archived.error, 'queue archive');
         processed += 1;
       } catch (error) {
-        failed += 1;
-        if (raw.read_ct >= 5) {
-          const failure = await admin.from('job_failures').upsert(
-            {
-              queue_name: queue,
-              message_id: raw.msg_id,
-              payload: raw.message,
-              attempts: raw.read_ct,
-              error: error instanceof Error ? error.message : 'Unknown queue error',
-            },
-            { onConflict: 'queue_name,message_id' },
-          );
-          assertSuccess(failure.error, 'failure record');
-          const archived = await admin.rpc('archive_job', {
-            queue_name: queue,
-            message_id: raw.msg_id,
-          });
-          assertSuccess(archived.error, 'failed queue archive');
-        }
+        await recordFailure(raw, error);
       }
     }
   }

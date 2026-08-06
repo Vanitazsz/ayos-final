@@ -19,7 +19,6 @@ Deno.serve(async (request) => {
   try {
     if (request.method !== 'POST') return failure(405, 'method_not_allowed', 'POST required');
     const { client, admin, user } = await requestContext(request);
-    await enforceGeoRateLimit(admin, user.id);
     const body = await jsonBody(request);
     const start = Array.isArray(body.start) ? body.start.map(Number) : [];
     const end = Array.isArray(body.end) ? body.end.map(Number) : [];
@@ -44,6 +43,7 @@ Deno.serve(async (request) => {
       { start, end, profile: 'driving-car' },
       900,
       async () => {
+        await enforceGeoRateLimit(admin, user.id);
         const geojson = await ors('/v2/directions/driving-car/geojson', {
           method: 'POST',
           body: JSON.stringify({ coordinates: [start, end], instructions: false }),

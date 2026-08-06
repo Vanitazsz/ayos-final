@@ -61,6 +61,13 @@ export interface WorkerBooking {
   hourlyRate?: number;
   hasParts?: boolean;
   partsDescription?: string;
+  duration?: string;
+  workerRating?: number;
+  workerReview?: string;
+  cancelledBy?: 'customer' | 'worker';
+  cancelledReason?: string;
+  reportedReason?: string;
+  isReported?: boolean;
 }
 export type TransactionStatus = 'completed' | 'pending' | 'failed';
 export interface WalletTransaction {
@@ -184,13 +191,18 @@ export function subscribeToTable(
   onChange: () => void,
   filter?: string,
   onStatus?: (status: string) => void,
+  events: ('INSERT' | 'UPDATE' | 'DELETE')[] = ['INSERT', 'UPDATE', 'DELETE'],
 ) {
   const channel = supabase
     .channel(`${table}:${filter ?? 'all'}:${randomUUID()}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table, filter },
-      onChange,
+      (payload) => {
+        if (events.includes(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE')) {
+          onChange();
+        }
+      },
     )
     .subscribe((status) => onStatus?.(status));
   return () => {
@@ -231,7 +243,7 @@ export async function subscribeToBookingFeed(
       clearInterval(fallback);
       fallback = null;
     } else if (!connected && !fallback) {
-      fallback = setInterval(onChange, 10000);
+      fallback = setInterval(onChange, 20000);
     }
   };
   const track = (table: string) => (status: string) => {
@@ -245,12 +257,14 @@ export async function subscribeToBookingFeed(
       onChange,
       `${role === 'customer' ? 'user_account_id' : 'worker_account_id'}=eq.${user.id}`,
       track('bookings'),
+      ['INSERT', 'UPDATE'],
     ),
     subscribeToTable(
       'service_requests',
       onChange,
       `${role === 'customer' ? 'user_account_id' : 'selected_worker_id'}=eq.${user.id}`,
       track('service_requests'),
+      ['INSERT', 'UPDATE'],
     ),
   ];
   syncFallback();
@@ -268,7 +282,8 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
         'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name)),reviews:account_id(stars,moderation_status)',
       )
       .eq('approval_status', 'APPROVED')
-      .eq('is_available', true);
+      .eq('is_available', true)
+      .limit(50);
     if (error) throw error;
     const rows = data ?? [];
     const avatarMap = await batchResolveAvatars(
@@ -503,7 +518,8 @@ export async function fetchServiceCategories() {
         'id,name,slug,minimum_price_minor,maximum_price_minor,is_safety_critical',
       )
       .eq('is_active', true)
-      .order('name');
+      .order('name')
+      .limit(50);
     if (error) throw error;
     return (data ?? []).map((row: any) => ({
       id: row.id,
@@ -735,9 +751,168 @@ async function transition(
   if (error) throw error;
   return { data };
 }
+export const PLATFORM_COMMISSION_RATE = 0.10;
+
+export async function simulateTopUp(amount: number) {
+  const user = await requireUser();
+  const { data, error } = await supabase.rpc('simulate_wallet_topup', {
+    p_amount: amount,
+  });
+  if (!error && data) {
+    return data as {
+      previousBalance: number;
+      newBalance: number;
+      amount: number;
+      status: string;
+      transactionId: string;
+    };
+  }
+
+  let { data: wallet } = await supabase
+    .from('wallet_accounts')
+    .select('id,wallet_transactions(amount,status)')
+    .eq('account_id', user.id)
+    .maybeSingle();
+
+  if (!wallet) {
+    const { data: newWallet } = await supabase
+      .from('wallet_accounts')
+      .insert({ account_id: user.id })
+      .select('id,wallet_transactions(amount,status)')
+      .single();
+    wallet = newWallet;
+  }
+
+  const prevTrans = wallet?.wallet_transactions ?? [];
+  const previousBalance = prevTrans
+    .filter((row: any) => ['AVAILABLE', 'COMPLETED'].includes(row.status))
+    .reduce((sum: number, row: any) => sum + Number(row.amount), 0);
+
+  if (wallet?.id) {
+    await supabase.from('wallet_transactions').insert({
+      wallet_account_id: wallet.id,
+      kind: 'TOP_UP',
+      status: 'AVAILABLE',
+      amount: amount,
+      source_type: 'SIMULATED_TOP_UP',
+      source_id: randomUUID(),
+      description: 'Simulated wallet top-up',
+    });
+  }
+
+  const newBalance = previousBalance + amount;
+  return {
+    previousBalance,
+    newBalance,
+    amount,
+    status: 'Successful',
+  };
+}
+
 export async function acceptJob(bookingId: string) {
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('agreed_service_amount')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  const serviceAmount = Number(booking?.agreed_service_amount ?? 1000);
+  const requiredCommission = Math.round(serviceAmount * PLATFORM_COMMISSION_RATE);
+
+  const walletSummary = await fetchWallet();
+  const availableBalance = Number(
+    (walletSummary.data?.available ?? '0').replace(/[^0-9.]/g, ''),
+  );
+
+  if (availableBalance < requiredCommission) {
+    throw new Error(
+      `Insufficient wallet balance. You need at least ₱${requiredCommission.toLocaleString()} in your wallet balance to accept this booking. Please top up your wallet.`,
+    );
+  }
+
   return transition(bookingId, 'ACCEPTED');
 }
+
+export async function confirmPaymentWithCommission(
+  bookingId: string,
+  paymentMethod: 'CASH' | 'ONLINE_SIMULATED' = 'CASH',
+) {
+  const { data, error } = await supabase.rpc('deduct_booking_commission', {
+    p_booking_id: bookingId,
+    p_payment_method: paymentMethod === 'ONLINE_SIMULATED' ? 'ONLINE_SIMULATED' : 'CASH',
+  });
+
+  if (!error && data) {
+    return data;
+  }
+
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('worker_account_id,agreed_service_amount')
+    .eq('id', bookingId)
+    .single();
+
+  if (!booking) throw new Error('Booking not found');
+
+  const serviceAmount = Number(booking.agreed_service_amount ?? 1000);
+  const commissionAmount = Math.round(serviceAmount * PLATFORM_COMMISSION_RATE);
+
+  let { data: wallet } = await supabase
+    .from('wallet_accounts')
+    .select('id')
+    .eq('account_id', booking.worker_account_id)
+    .maybeSingle();
+
+  if (!wallet) {
+    const { data: newWallet } = await supabase
+      .from('wallet_accounts')
+      .insert({ account_id: booking.worker_account_id })
+      .select('id')
+      .single();
+    wallet = newWallet;
+  }
+
+  if (wallet?.id) {
+    const { data: existing } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .eq('wallet_account_id', wallet.id)
+      .eq('source_type', 'BOOKING_COMMISSION')
+      .eq('source_id', bookingId)
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from('wallet_transactions').insert({
+        wallet_account_id: wallet.id,
+        kind: 'COMMISSION',
+        status: 'AVAILABLE',
+        amount: -commissionAmount,
+        source_type: 'BOOKING_COMMISSION',
+        source_id: bookingId,
+        description: 'Platform commission deduction (10%)',
+      });
+    }
+
+    await supabase
+      .from('payments')
+      .upsert(
+        {
+          booking_id: bookingId,
+          method: paymentMethod === 'ONLINE_SIMULATED' ? 'ONLINE_SIMULATED' : 'CASH',
+          status: 'SUCCESSFUL',
+          service_amount: serviceAmount,
+          commission_rate: 0.10,
+          commission_amount: commissionAmount,
+          worker_net_amount: serviceAmount - commissionAmount,
+          idempotency_key: `comm-${bookingId}`,
+        },
+        { onConflict: 'booking_id' },
+      );
+  }
+
+  return { status: 'COMPLETED' };
+}
+
 export async function prepareJob(bookingId: string) {
   return transition(bookingId, 'WORKER_PREPARING');
 }
@@ -1612,9 +1787,10 @@ export async function fetchNotifications() {
     const user = await requireUser();
     const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select('id,title,body,read_at,created_at,payload')
       .eq('recipient_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
     if (error) throw error;
     return (data ?? []).map((row: any) => ({
       id: row.id,

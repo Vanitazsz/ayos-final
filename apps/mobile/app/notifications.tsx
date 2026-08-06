@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -9,22 +9,16 @@ import { ArrowLeft, Bell, MessageCircle, Calendar, Wrench, MoreVertical, CheckCh
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/layout/EmptyState';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { fetchNotifications, markNotificationRead, subscribeToTable } from '@/services/api';
+import { styles } from './notifications.styles';
+import { useNotificationsFeed } from '@/hooks/useNotificationsFeed';
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const goBack = useGoBack(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home');
   const insets = useSafeAreaInsets();
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
-
-  useEffect(() => {
-    const load = () => void fetchNotifications().then(result => setNotifications(result.data));
-    load();
-    return subscribeToTable('notifications', load);
-  }, []);
+  const { notifications, filter, setFilter, markRead, markAllRead } = useNotificationsFeed();
 
   return (
     <Screen safeArea backgroundColor={theme.colors.background}>
@@ -79,9 +73,7 @@ export default function NotificationsScreen() {
                   activeOpacity={0.8}
                   onPress={() => {
                     if (notif.unread) {
-                      void markNotificationRead(notif.id).then(() =>
-                        setNotifications(rows => rows.map(row => row.id === notif.id ? { ...row, unread: false } : row))
-                      );
+                      void markRead(notif.id);
                     }
                     
                     const isMessage = titleLower.includes('message') || titleLower.includes('chat');
@@ -134,12 +126,7 @@ export default function NotificationsScreen() {
               style={styles.dropdownItem}
               onPress={() => {
                 setMenuVisible(false);
-                const unreadNotifs = notifications.filter(n => n.unread);
-                if (unreadNotifs.length > 0) {
-                  void Promise.all(unreadNotifs.map(n => markNotificationRead(n.id))).then(() => {
-                    setNotifications(rows => rows.map(row => ({ ...row, unread: false })));
-                  });
-                }
+                void markAllRead();
               }}
             >
               <CheckCheck color={theme.colors.textPrimary} size={20} style={{ marginRight: 12 }} />
@@ -165,44 +152,3 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
-  menuButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
-  content: { flex: 1 },
-  contentContainer: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: theme.spacing.xxxl, paddingTop: theme.spacing.md },
-  notificationCard: { 
-    flexDirection: 'row', 
-    backgroundColor: theme.colors.surface, 
-    borderRadius: theme.radius.xl, 
-    padding: theme.spacing.lg, 
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight
-  },
-  unreadCard: {
-    borderColor: `${theme.colors.primary}40`,
-    backgroundColor: '#f8fafc',
-  },
-  iconContainer: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: theme.spacing.md },
-  textContainer: { flex: 1, justifyContent: 'center' },
-  unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.primary, marginLeft: theme.spacing.sm, alignSelf: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
-  dropdownMenu: { 
-    position: 'absolute', 
-    right: theme.layout.screenPadding, 
-    backgroundColor: theme.colors.surface, 
-    borderRadius: theme.radius.lg, 
-    ...theme.shadows.md,
-    minWidth: 220,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.md,
-  }
-});

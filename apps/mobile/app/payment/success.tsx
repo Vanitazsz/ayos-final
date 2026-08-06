@@ -42,7 +42,7 @@ export default function PaymentSuccessScreen() {
           />
           <Button
             title="Back to Home"
-            variant="outline"
+            variant="outlined"
             onPress={handleHome}
             fullWidth
           />

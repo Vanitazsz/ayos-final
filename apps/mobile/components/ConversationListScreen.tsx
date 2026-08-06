@@ -53,8 +53,8 @@ export function ConversationListScreen({
   useEffect(() => {
     load(true);
     const stops = [
-      subscribeToTable('messages', () => load()),
-      subscribeToTable('conversations', () => load()),
+      subscribeToTable('messages', () => load(), undefined, undefined, ['INSERT']),
+      subscribeToTable('conversations', () => load(), undefined, undefined, ['INSERT', 'UPDATE']),
     ];
     return () => stops.forEach((stop) => stop());
   }, [load, viewMode]);

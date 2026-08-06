@@ -3,7 +3,6 @@ import {ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput as RNTextInput,
   TouchableOpacity,
@@ -24,6 +23,7 @@ import { theme } from '@/constants/theme';
 import { fetchConversationForBooking } from '@/services/api';
 import { useConversationChat } from '@/hooks/useConversationChat';
 import { showAlert } from '@/components/AppAlert';
+import { styles } from './chat.styles';
 
 export default function ChatScreen() {
   const router = useRouter();

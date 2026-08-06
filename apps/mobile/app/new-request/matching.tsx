@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import {
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -66,20 +65,22 @@ function diagnosticMessage(
 
 export default function MatchingScreen() {
   const router = useRouter();
-  const draft = useRequestStore();
-  const [state, setState] = useState<State>('configuring');
-  const [radiusKm, setRadiusKm] = useState(draft.searchRadiusKm);
-  const [dispatchRequestId, setDispatchRequestId] = useState<string | null>(
-    null,
-  );
-  const [snapshot, setSnapshot] = useState<DispatchSnapshot | null>(null);
-  const [error, setError] = useState('');
-  const [selectionError, setSelectionError] = useState('');
-  const [selectingWorkerId, setSelectingWorkerId] = useState<string | null>(
-    null,
-  );
-  const selectionGate = useRef(createWorkerSelectionGate());
-  const [now, setNow] = useState(Date.now());
+  const {
+    state,
+    center,
+    radiusKm,
+    setRadiusKm,
+    snapshot,
+    error,
+    selectionError,
+    selectingWorkerId,
+    candidates,
+    accepted,
+    secondsLeft,
+    startMatching,
+    choose,
+    reset,
+  } = useLiveMatching();
 
   useEffect(() => {
     if (!dispatchRequestId) return;
@@ -218,8 +219,6 @@ export default function MatchingScreen() {
         normalizeSupabaseError(reason, 'Choose another worker.').message,
     );
     if (!booking) return;
-
-    draft.setDraft({ bookingId: booking.id });
     router.replace(`/tracking/${booking.id}` as never);
   };
 
@@ -241,7 +240,7 @@ export default function MatchingScreen() {
 
       {state === 'configuring' ? (
         <RadiusConfiguration
-          center={draft.coords}
+          center={center}
           radiusKm={radiusKm}
           onChange={setRadiusKm}
           onStart={() => void startMatching()}
@@ -260,7 +259,7 @@ export default function MatchingScreen() {
             <View style={styles.matchCount}>
               <UsersRound size={16} color={theme.colors.primary} />
               <Text style={styles.matchCountText}>
-                {candidates.length} notified · {accepted.length} accepted
+                {candidates.length} notified Â· {accepted.length} accepted
               </Text>
             </View>
           </View>
@@ -279,10 +278,7 @@ export default function MatchingScreen() {
           title="Matching Unavailable"
           message={error}
           action="Try Again"
-          onAction={() => {
-            setError('');
-            setState('configuring');
-          }}
+          onAction={reset}
         />
       ) : null}
       {state === 'expired' && !accepted.length ? (
@@ -328,7 +324,7 @@ export default function MatchingScreen() {
               <WorkerCard
                 key={worker.dispatchId}
                 worker={worker}
-                onChoose={() => void choose(worker)}
+                onChoose={() => void onChoose(worker)}
                 choosing={selectingWorkerId === worker.workerId}
                 selectionDisabled={selectingWorkerId !== null}
               />
@@ -467,7 +463,7 @@ function WorkerCard({
   const priceLabel =
     worker.rateMinor == null
       ? 'Price pending'
-      : `₱${(worker.rateMinor / 100).toLocaleString('en-PH', {
+      : `â‚±${(worker.rateMinor / 100).toLocaleString('en-PH', {
           minimumFractionDigits: 2,
         })} worker rate`;
   return (
@@ -479,7 +475,7 @@ function WorkerCard({
         <View style={{ flex: 1 }}>
           <Text style={theme.typography.h4}>{worker.name}</Text>
           <Text style={styles.secondary}>
-            {(worker.distanceMeters / 1000).toFixed(1)} km away · {priceLabel}
+            {(worker.distanceMeters / 1000).toFixed(1)} km away Â· {priceLabel}
           </Text>
         </View>
         <View
@@ -509,7 +505,7 @@ function WorkerCard({
         />
       ) : (
         <Text style={styles.secondary}>
-          Waiting for this worker to respond…
+          Waiting for this worker to respondâ€¦
         </Text>
       )}
     </View>

@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   Linking,} from 'react-native';
@@ -19,19 +18,11 @@ import {
   MapPin,
   Wrench,
 } from 'lucide-react-native';
-import {
-  confirmJobCompletion,
-  fetchBookingTracking,
-  subscribeToTable,
-} from '@/services/api';
 import { buildProviderReportEmail } from '@/services/support';
-import {
-  subscribeToEnRouteLocation,
-  type LiveEnRouteLocation,
-} from '@/services/liveDispatch';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
-import { showAlert } from '@/components/AppAlert';
+import { styles } from './tracking.styles';
+import { useBookingTracking } from '@/hooks/useBookingTracking';
 
 
 const STATUS_STEP_MAP: Record<string, number> = {
@@ -122,62 +113,15 @@ const TIMELINE_STEPS = [
 export default function TrackingScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [tracking, setTracking] = useState<any>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [liveLocation, setLiveLocation] = useState<LiveEnRouteLocation | null>(
-    null,
-  );
   const bookingId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/(tabs)/bookings');
-
-  useEffect(() => {
-    if (!bookingId) return;
-    const stopBroadcast = subscribeToEnRouteLocation(bookingId, (loc) => {
-      setLiveLocation(loc);
-    });
-    return () => {
-      stopBroadcast();
-    };
-  }, [bookingId]);
-
-  const workerStatus = tracking?.booking?.status as string | undefined;
-  useEffect(() => {
-    if (!bookingId) return;
-    const load = () =>
-      void fetchBookingTracking(bookingId)
-        .then(setTracking)
-        .catch(() => setTracking(null));
-    load();
-    const stopLocation = subscribeToTable(
-      'location_updates',
-      load,
-      `booking_id=eq.${bookingId}`,
-    );
-    const stopBooking = subscribeToTable(
-      'bookings',
-      load,
-      `id=eq.${bookingId}`,
-    );
-    const stopStatusEvents = subscribeToTable(
-      'booking_status_events',
-      load,
-      `booking_id=eq.${bookingId}`,
-    );
-    const poll = setInterval(() => {
-      if (
-        !tracking?.booking?.status ||
-        !['COMPLETED', 'CANCELLED'].includes(tracking.booking.status)
-      )
-        load();
-    }, 10000);
-    return () => {
-      stopLocation();
-      stopBooking();
-      stopStatusEvents();
-      clearInterval(poll);
-    };
-  }, [bookingId, tracking?.booking?.status]);
-
+  const {
+    tracking,
+    isConfirming,
+    liveLocation,
+    workerStatus,
+    confirmCompletion,
+  } = useBookingTracking(bookingId);
 
   const stepIndex = useMemo(() => {
     return workerStatus && STATUS_STEP_MAP[workerStatus] !== undefined
@@ -187,22 +131,6 @@ export default function TrackingScreen() {
 
   const handlePayment = () => {
     router.push(`/payment/${id}`);
-  };
-
-  const handleConfirmCompletion = async () => {
-    if (!bookingId || isConfirming) return;
-    setIsConfirming(true);
-    try {
-      await confirmJobCompletion(bookingId);
-      setTracking(await fetchBookingTracking(bookingId));
-    } catch (error) {
-      showAlert(
-        'Confirmation failed',
-        error instanceof Error ? error.message : 'Please try again.',
-      );
-    } finally {
-      setIsConfirming(false);
-    }
   };
 
   const address = tracking?.booking?.service_requests?.addresses;
@@ -408,7 +336,7 @@ export default function TrackingScreen() {
               {tracking.booking.cancellations[0].reason}
             </Text>
             <Text style={theme.typography.body2}>
-              Refund: ₱
+              Refund: â‚±
               {Number(
                 tracking.booking.cancellations[0].refund_amount ?? 0,
               ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
@@ -488,7 +416,7 @@ export default function TrackingScreen() {
         {isPendingConfirmation ? (
           <Button
             title={isConfirming ? 'Confirming...' : 'Confirm Job Completion'}
-            onPress={() => void handleConfirmCompletion()}
+            onPress={() => void confirmCompletion()}
             fullWidth
           />
         ) : isCompleted ? (
