@@ -39,6 +39,7 @@ import {
 } from '@/services/liveDispatch';
 import { createWorkerSelectionGate } from '@/services/workerSelection';
 import { useRequestStore } from '@/store/useRequestStore';
+import { isPhilippinesCoordinates } from '@/lib/coordinates';
 
 type State = 'configuring' | 'starting' | 'live' | 'expired' | 'error';
 
@@ -147,7 +148,7 @@ export default function MatchingScreen() {
 
   const startMatching = async () => {
     try {
-      if (!draft.coords)
+      if (!draft.coords || !isPhilippinesCoordinates(draft.coords))
         throw new Error('A confirmed service location is required.');
       if (!draft.categoryId) throw new Error('A service category is required.');
       draft.setDraft({ searchRadiusKm: radiusKm });

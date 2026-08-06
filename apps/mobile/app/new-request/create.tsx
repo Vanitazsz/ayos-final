@@ -56,6 +56,7 @@ import {
   type SavedAddress,
 } from '@/services/addresses';
 import { randomUUID } from '@/lib/crypto';
+import { isPhilippinesCoordinates } from '@/lib/coordinates';
 import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 import { showAlert } from '@/components/AppAlert';
@@ -546,7 +547,7 @@ export default function CreateRequestScreen() {
         : 'Describe the issue using at least 10 characters.';
     if (address.trim().length < 5)
       next.address = 'Enter a complete service address.';
-    if (!coords)
+    if (!isPhilippinesCoordinates(coords))
       next.location =
         'Select a suggested address or confirm your current location.';
     if (manualAddressMode) {
