@@ -23,7 +23,7 @@ function usefulErrorValue(value: unknown): string | null {
   return message;
 }
 
-export function workerRegistrationErrorMessage(error: unknown): string {
+function errorDiagnostic(error: unknown): string {
   const record =
     error && typeof error === 'object'
       ? (error as {
@@ -41,11 +41,25 @@ export function workerRegistrationErrorMessage(error: unknown): string {
   );
   const details = usefulErrorValue(record?.details);
   const hint = usefulErrorValue(record?.hint);
-  const values = [code, message, inheritedMessage, details, hint]
+  return [code, message, inheritedMessage, details, hint]
     .map(usefulErrorValue)
-    .filter((value): value is string => Boolean(value));
-  const diagnostic = values.join(' ');
+    .filter((value): value is string => Boolean(value))
+    .join(' ');
+}
 
+function mobileAlreadyRegisteredMessage(): string {
+  return 'This mobile number is already registered. Sign in or use a different number.';
+}
+
+export function workerRegistrationErrorMessage(error: unknown): string {
+  const diagnostic = errorDiagnostic(error);
+
+  if (
+    /MOBILE_ALREADY_REGISTERED|accounts_mobile_key|duplicate key.*mobile/i.test(
+      diagnostic,
+    )
+  )
+    return mobileAlreadyRegisteredMessage();
   if (/INVALID_MOBILE_NUMBER|accounts_mobile_check/i.test(diagnostic))
     return 'Enter a valid Philippine mobile number.';
   if (/WORKER_ROLE_REQUIRED|WORKER_PROFILE_NOT_FOUND/i.test(diagnostic))
@@ -68,11 +82,55 @@ export function workerRegistrationErrorMessage(error: unknown): string {
     return 'Your worker account could not be created. Check your mobile number and try again.';
 
   return (
-    message ??
-    inheritedMessage ??
-    details ??
-    hint ??
-    code ??
+    readableErrorValue(error) ||
     'Worker registration could not be submitted. Please try again.'
   );
+}
+
+export function signupErrorMessage(error: unknown): string {
+  const diagnostic = errorDiagnostic(error);
+
+  if (
+    /MOBILE_ALREADY_REGISTERED|accounts_mobile_key|duplicate key.*mobile/i.test(
+      diagnostic,
+    )
+  )
+    return mobileAlreadyRegisteredMessage();
+  if (/INVALID_MOBILE_NUMBER|accounts_mobile_check/i.test(diagnostic))
+    return 'Enter a valid Philippine mobile number.';
+  if (/user_already_exists|already registered|already exists/i.test(diagnostic))
+    return 'An account already exists for this email. Sign in to continue.';
+  if (
+    /over_email_send_rate_limit|rate.?limit|too many requests/i.test(diagnostic)
+  )
+    return 'Too many registration attempts. Wait a few minutes and try again.';
+  if (/unexpected_failure|database error saving new user/i.test(diagnostic))
+    return 'Your account could not be created. Check your details and try again.';
+
+  return readableErrorValue(error) || 'Unable to create your account. Please try again.';
+}
+
+function readableErrorValue(error: unknown): string {
+  const record =
+    error && typeof error === 'object'
+      ? (error as {
+          code?: unknown;
+          error_code?: unknown;
+          message?: unknown;
+          details?: unknown;
+          hint?: unknown;
+        })
+      : null;
+  const candidates = [
+    record?.message,
+    error instanceof Error ? error.message : null,
+    record?.details,
+    record?.hint,
+    record?.code ?? record?.error_code,
+  ];
+  for (const candidate of candidates) {
+    const useful = usefulErrorValue(candidate);
+    if (useful) return useful;
+  }
+  return '';
 }
