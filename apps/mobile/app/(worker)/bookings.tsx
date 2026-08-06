@@ -180,7 +180,7 @@ export default function WorkerBookingsScreen() {
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
+              <Text style={[theme.typography.button, { color: activeTab === tab ? theme.colors.surface : theme.colors.textSecondary, fontSize: 13 }]}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -341,21 +341,33 @@ export default function WorkerBookingsScreen() {
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                           <TouchableOpacity
                             style={[
-                              styles.primaryBtn,
+                              styles.feedbackBtn,
                               feedbackMap[booking.id]
-                                ? { backgroundColor: theme.colors.success }
-                                : { backgroundColor: theme.colors.primary },
+                                ? { borderColor: theme.colors.success }
+                                : { borderColor: theme.colors.primary },
                             ]}
                             onPress={(e) => {
                               e.stopPropagation();
                               router.push(`/(worker)/leave-feedback/${booking.id}`);
                             }}
                           >
-                            <MessageSquare size={12} color={theme.colors.surface} />
+                            <MessageSquare
+                              size={12}
+                              color={
+                                feedbackMap[booking.id]
+                                  ? theme.colors.success
+                                  : theme.colors.primary
+                              }
+                            />
                             <Text
                               style={[
                                 theme.typography.caption,
-                                { color: theme.colors.surface, fontWeight: '600' },
+                                {
+                                  color: feedbackMap[booking.id]
+                                    ? theme.colors.success
+                                    : theme.colors.primary,
+                                  fontWeight: '600',
+                                },
                               ]}
                             >
                               {feedbackMap[booking.id]
@@ -506,17 +518,18 @@ export default function WorkerBookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding },
-  tabsContainer: { borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  tabsScroll: { paddingHorizontal: theme.layout.screenPadding },
+  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding, alignItems: 'center' },
+  tabsContainer: { marginBottom: theme.spacing.md },
+  tabsScroll: { paddingHorizontal: theme.layout.screenPadding, gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
   tabButton: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    marginRight: theme.spacing.sm,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
-  tabButtonActive: { borderBottomColor: theme.colors.primary },
+  tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   content: { flex: 1 },
   contentInner: {
     paddingHorizontal: theme.layout.screenPadding,
@@ -561,6 +574,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  feedbackBtn: {
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
