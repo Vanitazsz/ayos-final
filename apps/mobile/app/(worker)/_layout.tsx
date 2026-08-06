@@ -203,18 +203,54 @@ export default function WorkerTabLayout() {
             ),
           }}
         />
-        <Tabs.Screen name="verification" options={{ href: null }} />
-        <Tabs.Screen name="transactions-history" options={{ href: null }} />
-        <Tabs.Screen name="reviews" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
-        <Tabs.Screen name="personal-info" options={{ href: null }} />
-        <Tabs.Screen name="service-setup" options={{ href: null }} />
-        <Tabs.Screen name="industry-skills" options={{ href: null }} />
-        <Tabs.Screen name="help-center" options={{ href: null }} />
-        <Tabs.Screen name="privacy-policy" options={{ href: null }} />
-        <Tabs.Screen name="booking-request/[id]" options={{ href: null }} />
-        <Tabs.Screen name="cancel-service/[id]" options={{ href: null }} />
-        <Tabs.Screen name="leave-feedback/[id]" options={{ href: null }} />
+        <Tabs.Screen
+          name="verification"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="transactions-history"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="reviews"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="personal-info"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="service-setup"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="industry-skills"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="help-center"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="privacy-policy"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="booking-request/[id]"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="cancel-service/[id]"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="leave-feedback/[id]"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
       </Tabs>
 
       {config && Icon && !startingHidden ? (

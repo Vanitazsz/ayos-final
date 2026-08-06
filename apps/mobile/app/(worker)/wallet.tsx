@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import {View,
+import {
+  View,
   Text,
   ScrollView,
   Pressable,
   Modal,
   TextInput,
-  Keyboard,} from 'react-native';
+  Keyboard,
+} from 'react-native';
 import {
   TrendingUp,
   TrendingDown,
@@ -24,7 +26,7 @@ import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
-import { type TransactionStatus } from '@/services/api';
+import { type TransactionStatus, simulateTopUp } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
 import { styles } from './wallet.styles';
 import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
@@ -46,16 +48,41 @@ export default function WalletScreen() {
   const [period, setPeriod] = useState<Period>('week');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
   const [showTopUp, setShowTopUp] = useState(false);
-  const [topUpAmount, setTopUpAmount] = useState('5000');
-  const [selectedTopUpMethod, setSelectedTopUpMethod] = useState('gcash');
+  const [topUpAmount, setTopUpAmount] = useState('500');
+  const [isTopUpLoading, setIsTopUpLoading] = useState(false);
   const {
     wallet,
-    walletPayoutMethods,
     stats,
     walletBarData,
     barMax,
     filteredTransactions,
+    refresh,
   } = useWalletData(period, txFilter);
+
+  const handleSimulateTopUp = async () => {
+    const numAmount = Number(topUpAmount.replace(/[^0-9.]/g, ''));
+    if (isNaN(numAmount) || numAmount <= 0) {
+      showAlert('Invalid Amount', 'Please select or enter a valid top-up amount.');
+      return;
+    }
+    try {
+      setIsTopUpLoading(true);
+      const result = await simulateTopUp(numAmount);
+      setShowTopUp(false);
+      await refresh();
+      showAlert(
+        'Simulated Top-Up Successful',
+        `Worker selects: ₱${numAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n` +
+        `Simulated payment status: ${result.status}\n` +
+        `Previous wallet balance: ₱${Number(result.previousBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n` +
+        `New wallet balance: ₱${Number(result.newBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+      );
+    } catch (err: any) {
+      showAlert('Top-Up Failed', err?.message ?? 'Failed to process simulated top-up.');
+    } finally {
+      setIsTopUpLoading(false);
+    }
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -80,11 +107,14 @@ export default function WalletScreen() {
           </View>
           <View style={styles.balanceActions}>
             <AppButton
-              label="Top-Up"
+              label="Simulate Top-Up"
               variant="outline"
               size="sm"
               leftIcon={<ArrowUpFromLine size={14} color={Colors.cta} />}
-              onPress={() => showAlert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
+              onPress={() => {
+                setTopUpAmount('500');
+                setShowTopUp(true);
+              }}
               style={styles.balanceBtn}
             />
             <AppButton
@@ -244,7 +274,7 @@ export default function WalletScreen() {
         <Pressable style={styles.overlay} onPress={() => { Keyboard.dismiss(); setShowTopUp(false); }}>
           <Pressable style={styles.sheet} onPress={() => Keyboard.dismiss()}>
             <View style={styles.sheetHandle} />
-            <AppText variant="h4" weight="bold">Top-Up Wallet</AppText>
+            <AppText variant="h4" weight="bold">Simulate Top-Up</AppText>
             <AppText variant="caption" color={Colors.textSecondary}>
               Available balance: <AppText weight="bold" color={Colors.textPrimary}>{wallet.available}</AppText>
             </AppText>
@@ -260,50 +290,46 @@ export default function WalletScreen() {
               />
             </View>
 
+            <AppText variant="caption" weight="bold" color={Colors.textTertiary} style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12 }}>
+              Preset Amounts
+            </AppText>
             <View style={styles.quickAmounts}>
-              {['5,000', '10,000', '18,450'].map((a) => (
+              {['100', '200', '500', '1,000'].map((a) => (
                 <Pressable
                   key={a}
-                  style={styles.quickAmt}
+                  style={[
+                    styles.quickAmt,
+                    topUpAmount === a.replace(',', '') && { backgroundColor: Colors.cta, borderColor: Colors.cta },
+                  ]}
                   onPress={() => setTopUpAmount(a.replace(',', ''))}
                 >
-                  <AppText variant="caption" weight="bold" color={Colors.info}>₱{a}</AppText>
-                </Pressable>
-              ))}
-            </View>
-
-            <AppText variant="caption" weight="bold" color={Colors.textTertiary} style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Pay with
-            </AppText>
-            <View style={styles.methodList}>
-              {walletPayoutMethods.map((m) => (
-                <Pressable
-                  key={m.id}
-                  style={[styles.methodRow, selectedTopUpMethod === m.id && styles.methodRowActive]}
-                  onPress={() => setSelectedTopUpMethod(m.id)}
-                >
-                  <View style={[styles.methodDot, { backgroundColor: m.color }]} />
-                  <View style={styles.methodInfo}>
-                    <AppText variant="bodySm" weight="bold">{m.label}</AppText>
-                    <AppText variant="caption" color={Colors.textTertiary}>{m.account}</AppText>
-                  </View>
-                  {selectedTopUpMethod === m.id && <CheckCircle size={16} color={Colors.info} />}
+                  <AppText
+                    variant="caption"
+                    weight="bold"
+                    color={topUpAmount === a.replace(',', '') ? Colors.white : Colors.info}
+                  >
+                    ₱{a}
+                  </AppText>
                 </Pressable>
               ))}
             </View>
 
             <View style={styles.payoutNote}>
-              <AlertCircle size={12} color={Colors.textTertiary} />
-              <AppText variant="caption" color={Colors.textTertiary}>Top-ups are processed instantly.</AppText>
+              <AlertCircle size={14} color={Colors.warning} />
+              <AppText variant="caption" color={Colors.textSecondary} style={{ flex: 1 }}>
+                This is a simulated top-up for demonstration purposes. No actual payment will be processed.
+              </AppText>
             </View>
 
             <View style={styles.sheetActions}>
               <AppButton label="Cancel" variant="outline" onPress={() => setShowTopUp(false)} style={{ flex: 1 }} />
               <AppButton
-                label="Confirm Top-Up"
+                label="Simulate Top-Up"
                 variant="primary"
                 leftIcon={<ArrowUpFromLine size={14} color={Colors.white} />}
-                onPress={() => showAlert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
+                loading={isTopUpLoading}
+                disabled={isTopUpLoading}
+                onPress={handleSimulateTopUp}
                 style={{ flex: 1 }}
               />
             </View>
@@ -314,4 +340,5 @@ export default function WalletScreen() {
     </View>
   );
 }
+
 

@@ -10,7 +10,7 @@ interface CompletedSummaryProps {
   duration: string;
   earnings: string;
   paymentStatus: string;
-  onConfirmCash: () => void;
+  onConfirmCash: (method?: 'CASH' | 'ONLINE_SIMULATED') => void;
   onLeaveFeedback: () => void;
 }
 
@@ -44,8 +44,8 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         style={styles.subtitle}
       >
         {paymentConfirmed
-          ? 'Cash payment has been confirmed by both parties.'
-          : 'Confirm only after you have received the cash payment.'}
+          ? 'Payment and 10% platform commission deduction have been recorded.'
+          : 'Mark customer payment as received to complete 10% commission deduction.'}
       </AppText>
 
       <View style={styles.summaryCard}>
@@ -69,23 +69,49 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
           <AppText variant="body" color={Colors.textTertiary}>
-            Earnings
+            Service Amount
           </AppText>
           <AppText variant="body" weight="bold" color={Colors.success}>
             {earnings}
           </AppText>
         </View>
+        <View style={styles.divider} />
+        <View style={styles.summaryRow}>
+          <AppText variant="body" color={Colors.textTertiary}>
+            Platform Commission (10%)
+          </AppText>
+          <AppText variant="body" weight="bold" color={Colors.error}>
+            -₱{(
+              (Number(earnings.replace(/[^0-9.]/g, '')) || 1000) * 0.10
+            ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+          </AppText>
+        </View>
       </View>
 
-      <AppButton
-        label={
-          paymentConfirmed ? 'Cash Payment Confirmed' : 'Confirm Cash Received'
-        }
-        variant="primary"
-        fullWidth
-        disabled={paymentConfirmed}
-        onPress={onConfirmCash}
-      />
+      {!paymentConfirmed ? (
+        <View style={{ width: '100%', gap: Spacing['2'] }}>
+          <AppButton
+            label="Confirm Payment — Cash 💵"
+            variant="primary"
+            fullWidth
+            onPress={() => onConfirmCash('CASH')}
+          />
+          <AppButton
+            label="Confirm Payment — Online (Simulated) 💳"
+            variant="secondary"
+            fullWidth
+            onPress={() => onConfirmCash('ONLINE_SIMULATED')}
+          />
+        </View>
+      ) : (
+        <AppButton
+          label="Payment & Commission Recorded ✅"
+          variant="primary"
+          fullWidth
+          disabled
+          onPress={() => {}}
+        />
+      )}
       <AppButton
         label="Leave Feedback"
         variant="outline"

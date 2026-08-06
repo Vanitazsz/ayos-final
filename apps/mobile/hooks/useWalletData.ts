@@ -38,30 +38,33 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
   const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
   const [selectedMethod, setSelectedMethod] = useState('');
 
+  const refresh = async () => {
+    const [balance, transactions] = await Promise.all([
+      fetchWallet(),
+      fetchWalletTransactions(),
+    ]);
+
+    if (!balance.error) {
+      const nextWallet = normalizeWallet(balance.data);
+      setWallet(nextWallet);
+      setSelectedMethod((current) =>
+        current ||
+        nextWallet.methods.find((method) => method.is_default)?.id ||
+        nextWallet.methods[0]?.id ||
+        '',
+      );
+    }
+    if (!transactions.error && Array.isArray(transactions.data)) {
+      setWalletTransactions(transactions.data);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
 
     const load = async () => {
-      const [balance, transactions] = await Promise.all([
-        fetchWallet(),
-        fetchWalletTransactions(),
-      ]);
-      if (!mounted) return;
-
-      if (!balance.error) {
-        const nextWallet = normalizeWallet(balance.data);
-        setWallet(nextWallet);
-        setSelectedMethod((current) =>
-          current ||
-          nextWallet.methods.find((method) => method.is_default)?.id ||
-          nextWallet.methods[0]?.id ||
-          '',
-        );
-      }
-      if (!transactions.error && Array.isArray(transactions.data)) {
-        setWalletTransactions(transactions.data);
-      }
+      await refresh();
     };
 
     const setupSubscription = async () => {
@@ -149,5 +152,8 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
     filteredTransactions,
     selectedMethod,
     setSelectedMethod,
+    refresh,
   };
 }
+
+

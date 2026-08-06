@@ -117,12 +117,12 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="help-center"
-        options={{ href: null }}
+        options={{ href: null, tabBarItemStyle: { display: 'none' } }}
       />
 
       <Tabs.Screen
         name="privacy-policy"
-        options={{ href: null }}
+        options={{ href: null, tabBarItemStyle: { display: 'none' } }}
       />
       
     </Tabs>
