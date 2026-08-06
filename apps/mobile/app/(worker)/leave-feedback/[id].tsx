@@ -80,6 +80,10 @@ export default function WorkerLeaveFeedbackScreen() {
         if (isMounted && found) {
           setBooking(found);
         }
+        const photos = await fetchBookingProofPhotos(bookingId);
+        if (isMounted && photos.length > 0) {
+          setProofPhoto(photos[photos.length - 1]);
+        }
         const existing = await getWorkerFeedback(bookingId);
         if (isMounted && existing) {
           setSubmitted(true);

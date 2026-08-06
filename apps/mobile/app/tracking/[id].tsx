@@ -235,6 +235,7 @@ export default function TrackingScreen() {
 
   return (
     <Screen safeArea backgroundColor={theme.colors.surface}>
+      <View style={styles.wideColumn}>
       <View
         style={[
           styles.header,
@@ -517,11 +518,18 @@ export default function TrackingScreen() {
           </View>
         )}
       </View>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  wideColumn: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

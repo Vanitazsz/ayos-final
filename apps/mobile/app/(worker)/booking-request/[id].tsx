@@ -580,7 +580,7 @@ export default function BookingRequestScreen() {
               </AppText>
               <View style={styles.hiredActions}>
                 <AppButton
-                  label="Accept Booking ✅"
+                  label="Accept Booking"
                   variant="primary"
                   leftIcon={<Calendar size={18} color={Colors.white} />}
                   fullWidth
@@ -601,10 +601,13 @@ export default function BookingRequestScreen() {
                   }
                 />
                 <AppButton
-                  label="Decline ❌"
+                  label="Decline"
                   variant="outline"
                   fullWidth
                   onPress={handleDecline}
+                  labelStyle={{ color: Colors.error }}
+                  style={{ borderColor: Colors.error }}
+                  pressedStyle={{ backgroundColor: Colors.errorBg }}
                 />
               </View>
             </View>
