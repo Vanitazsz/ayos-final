@@ -1101,7 +1101,7 @@ export async function fetchIndustriesAndSkills(): Promise<
     const { data, error } = await supabase
       .from('industries')
       .select(
-        'id,slug,name,sort_order,service_categories!service_categories_industry_id_fkey(id,slug,name,is_active)',
+        'id,slug,name,sort_order,service_categories!inner!service_categories_industry_id_fkey(id,slug,name,is_active)',
       )
       .eq('is_active', true)
       .order('sort_order')
