@@ -34,6 +34,7 @@ export function MapSurface({
   const cameraRef = useRef<MapLibreGL.CameraRef>(null);
   const animationFrameRef = useRef<number | null>(null);
   const displayedRadiusRef = useRef<number | undefined>(radiusMeters);
+  const lastFitBoundsRef = useRef<string | undefined>(undefined);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [displayedRadius, setDisplayedRadius] = useState(radiusMeters);
 
@@ -74,6 +75,25 @@ export function MapSurface({
       if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
     };
   }, [animateRadius, isMapLoaded, mapCenter, radiusMeters]);
+
+  useEffect(() => {
+    if (!isMapLoaded || radiusMeters || points.length < 2) return;
+    const lats = points.map((point) => point.latitude);
+    const lngs = points.map((point) => point.longitude);
+    const box: [number, number, number, number] = [
+      Math.min(...lngs),
+      Math.min(...lats),
+      Math.max(...lngs),
+      Math.max(...lats),
+    ];
+    const key = box.map((value) => value.toFixed(6)).join(',');
+    if (key === lastFitBoundsRef.current) return;
+    lastFitBoundsRef.current = key;
+    cameraRef.current?.fitBounds(box, {
+      padding: { top: 40, right: 40, bottom: 40, left: 40 },
+      duration: 0,
+    });
+  }, [isMapLoaded, points, radiusMeters]);
 
   useEffect(() => () => {
     if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);

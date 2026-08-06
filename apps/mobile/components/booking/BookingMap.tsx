@@ -40,7 +40,7 @@ export const BookingMap = React.memo(function BookingMap({
       .then((value) => {
         if (active) {
           setRoute(value.geojson);
-          setEta(value.durationSeconds);
+          setEta(value.durationSeconds ?? null);
         }
       })
       .catch(() => {

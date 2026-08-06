@@ -896,7 +896,12 @@ export default function CreateRequestScreen() {
   ]);
 
   return (
-    <Screen safeArea scrollable scrollViewRef={scrollRef}>
+    <Screen
+      safeArea
+      scrollable
+      scrollViewRef={scrollRef}
+      contentContainerStyle={styles.wideColumn}
+    >
       <PhotoCaptureModal
         visible={cameraOpen}
         onClose={() => setCameraOpen(false)}
@@ -1676,6 +1681,12 @@ export default function CreateRequestScreen() {
 }
 
 const styles = StyleSheet.create({
+  wideColumn: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    marginHorizontal: 'auto',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

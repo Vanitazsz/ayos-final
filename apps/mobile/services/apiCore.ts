@@ -750,37 +750,17 @@ export async function fetchWorkerBookings(): Promise<
     }));
   });
 }
-function isBookingVersionConflict(error: unknown) {
-  return (
-    error &&
-    typeof error === 'object' &&
-    'code' in error &&
-    (error as { code?: unknown }).code === '40001'
-  );
-}
-
 async function transition(
   bookingId: string,
   status: string,
   reason?: string,
-  retried = false,
 ) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('version')
-    .eq('id', bookingId)
-    .single();
-  if (bookingError) throw bookingError;
-
   const { data, error } = await supabase.rpc('transition_booking', {
     p_booking_id: bookingId,
     p_target_status: status,
-    p_expected_version: booking.version,
+    p_expected_version: null,
     p_reason: reason ?? null,
   });
-  if (error && isBookingVersionConflict(error) && !retried) {
-    return transition(bookingId, status, reason, true);
-  }
   if (error) throw error;
   return { data };
 }
@@ -811,11 +791,10 @@ export async function confirmJobCompletion(bookingId: string) {
 export async function cancelBooking(
   bookingId: string,
   reason: string,
-  retried = false,
 ) {
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select('status,version')
+    .select('status')
     .eq('id', bookingId)
     .single();
   if (bookingError) throw bookingError;
@@ -832,15 +811,12 @@ export async function cancelBooking(
 
   const { data, error } = await supabase.rpc('cancel_booking', {
     p_booking_id: bookingId,
-    p_expected_version: booking.version,
+    p_expected_version: null,
     p_stage: stages[booking.status] ?? 'BEFORE_ACCEPTANCE',
     p_reason_code: 'DECLINED',
     p_details: reason || 'Worker declined assigned booking',
     p_policy_version: '2026-07-21',
   });
-  if (error && isBookingVersionConflict(error) && !retried) {
-    return cancelBooking(bookingId, reason, true);
-  }
   if (error) throw error;
   return { data };
 }
@@ -848,22 +824,12 @@ export async function cancelBooking(
 export async function declineAssignedBooking(
   bookingId: string,
   reason: string,
-  retried = false,
 ) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('version')
-    .eq('id', bookingId)
-    .single();
-  if (bookingError) throw bookingError;
   const { data, error } = await supabase.rpc('decline_assigned_booking', {
     p_booking_id: bookingId,
-    p_expected_version: booking.version,
+    p_expected_version: null,
     p_reason: reason,
   });
-  if (error && isBookingVersionConflict(error) && !retried) {
-    return declineAssignedBooking(bookingId, reason, true);
-  }
   if (error) throw error;
   return data;
 }
@@ -1021,6 +987,24 @@ export async function fetchBookingDetail(id: string) {
       .eq('id', id)
       .single();
     if (error) throw error;
+    try {
+      const avatarMap = await batchResolveAvatars([
+        data.user_profiles?.avatar_path,
+        data.worker_profiles?.avatar_path,
+      ]);
+      if (data.user_profiles?.avatar_path) {
+        data.user_profiles.avatar_path =
+          avatarMap.get(data.user_profiles.avatar_path) ??
+          data.user_profiles.avatar_path;
+      }
+      if (data.worker_profiles?.avatar_path) {
+        data.worker_profiles.avatar_path =
+          avatarMap.get(data.worker_profiles.avatar_path) ??
+          data.worker_profiles.avatar_path;
+      }
+    } catch (e) {
+      console.warn('[fetchBookingDetail] avatar resolve failed:', e);
+    }
     return data;
   });
 }
@@ -1207,15 +1191,95 @@ export async function reportBookingParticipant(
   return data;
 }
 
+export interface BookingProofPhoto {
+  id: string;
+  bookingId: string;
+  storagePath: string;
+  contentType: string;
+  byteSize: number;
+  createdAt: string;
+  signedUrl: string | null;
+}
+
 export async function attachBookingProof(
   bookingId: string,
   media: { path: string; contentType: string; byteSize: number },
-) {
+): Promise<BookingProofPhoto> {
   const { data, error } = await supabase.rpc('attach_booking_proof', {
     p_booking_id: bookingId,
     p_storage_path: media.path,
     p_content_type: media.contentType,
     p_byte_size: media.byteSize,
+  });
+  if (error) throw error;
+  const photo = data as any;
+  let signedUrl: string | null = null;
+  try {
+    const { data: signed } = await supabase.storage
+      .from('booking-proof')
+      .createSignedUrl(photo.storage_path, 60 * 60);
+    signedUrl = signed?.signedUrl ?? null;
+  } catch {
+    signedUrl = null;
+  }
+  return {
+    id: photo.id,
+    bookingId: photo.booking_id,
+    storagePath: photo.storage_path,
+    contentType: photo.content_type,
+    byteSize: photo.byte_size,
+    createdAt: photo.created_at,
+    signedUrl,
+  };
+}
+
+export async function fetchBookingProofPhotos(
+  bookingId: string,
+): Promise<BookingProofPhoto[]> {
+  const { data, error } = await supabase
+    .from('booking_proof_media')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  return Promise.all(
+    rows.map(async (photo: any) => {
+      try {
+        const { data: signed } = await supabase.storage
+          .from('booking-proof')
+          .createSignedUrl(photo.storage_path, 60 * 60);
+        return {
+          id: photo.id,
+          bookingId: photo.booking_id,
+          storagePath: photo.storage_path,
+          contentType: photo.content_type,
+          byteSize: photo.byte_size,
+          createdAt: photo.created_at,
+          signedUrl: signed?.signedUrl ?? null,
+        };
+      } catch {
+        return {
+          id: photo.id,
+          bookingId: photo.booking_id,
+          storagePath: photo.storage_path,
+          contentType: photo.content_type,
+          byteSize: photo.byte_size,
+          createdAt: photo.created_at,
+          signedUrl: null,
+        };
+      }
+    }),
+  );
+}
+
+export async function deleteBookingProof(
+  bookingId: string,
+  storagePath: string,
+) {
+  const { data, error } = await supabase.rpc('delete_booking_proof', {
+    p_booking_id: bookingId,
+    p_storage_path: storagePath,
   });
   if (error) throw error;
   return data;

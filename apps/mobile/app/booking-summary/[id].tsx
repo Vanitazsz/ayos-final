@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   // Completion Banner
   completionBanner: {
     alignItems: 'center',
-    backgroundColor: theme.colors.successBg,
+    backgroundColor: theme.colors.successBackground,
     borderRadius: theme.radius.xl,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    backgroundColor: theme.colors.successBg,
+    backgroundColor: theme.colors.successBackground,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radius.full ?? 999,
