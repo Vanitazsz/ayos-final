@@ -14,7 +14,6 @@ const queues = [
   'booking_timeouts',
   'no_match_notifications',
   'scheduled_notifications',
-  'provider_work',
   'push_notifications',
   'account_storage_purges',
 ] as const;
@@ -160,7 +159,7 @@ Deno.serve(async (request) => {
           await sendPushNotification(admin, raw.message.notification_id, raw.message.recipient_id);
         } else if (queue === 'account_storage_purges') {
           await purgeAccountStorage(admin, raw.message.bucket_id, raw.message.paths);
-        } else if (queue === 'provider_work') throw new Error('PROVIDER_UNAVAILABLE');
+        }
         const archived = await admin.rpc('archive_job', {
           queue_name: queue,
           message_id: raw.msg_id,
