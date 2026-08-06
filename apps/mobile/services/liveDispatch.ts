@@ -3,8 +3,8 @@ import { AppState } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { getWorkerMatchingReadiness } from '@/services/workerMatching';
 
-export const WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS = 15_000;
-export const LIVE_DISPATCH_REFRESH_INTERVAL_MS = 30_000;
+export const WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS = 30_000;
+export const LIVE_DISPATCH_REFRESH_INTERVAL_MS = 60_000;
 export const EN_ROUTE_LOCATION_INTERVAL_MS = 5_000;
 export const MIN_LOCATION_MOVEMENT_METERS = 20;
 
@@ -38,6 +38,7 @@ export type DispatchDiagnostics = {
     | 'NO_FRESH_PRESENCE'
     | 'OUTSIDE_SERVICE_RADIUS'
     | 'OUTSIDE_SEARCH_RADIUS'
+    | 'OUTSIDE_WORKING_HOURS'
     | 'WAITING_FOR_RESPONSE';
   counts: {
     active: number;
@@ -91,6 +92,7 @@ export type DispatchOffer = {
   description: string;
   rateMinor: number | null;
   area: string;
+  budget?: string;
 };
 export type PresenceState =
   | 'starting'

@@ -1,12 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import {View,
   Text,
-  StyleSheet,
   ScrollView,
   Pressable,
   Modal,
   TextInput,
-  Dimensions,
   Keyboard,} from 'react-native';
 import {
   TrendingUp,
@@ -21,18 +19,16 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radius, Spacing, Elevation, Layout, Typography, theme } from '@/constants/theme';
+import { Colors, theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
-import { fetchWallet, fetchWalletTransactions, subscribeToTable, type WalletSummary, type WalletTransaction, type TransactionStatus } from '@/services/api';
+import { type TransactionStatus } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
+import { styles } from './wallet.styles';
+import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
 
-type Period = 'week' | 'month' | 'all';
-type TxFilter = 'all' | 'credit' | 'debit';
-
-const { width: screenWidth } = Dimensions.get('window');
 const statusIcon = (s: TransactionStatus) => {
   if (s === 'completed') return <CheckCircle size={12} color={Colors.verified} />;
   if (s === 'pending') return <Clock size={12} color={Colors.warning} />;
@@ -45,78 +41,21 @@ const statusColor = (s: TransactionStatus) => {
   return Colors.error;
 };
 
-const emptyWallet: WalletSummary = {
-  available: '₱0.00',
-  locked: '₱0.00',
-  methods: [],
-  payouts: [],
-};
-
-function normalizeWallet(value: unknown): WalletSummary {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return emptyWallet;
-  }
-
-  const candidate = value as Partial<WalletSummary>;
-  return {
-    available: typeof candidate.available === 'string' ? candidate.available : emptyWallet.available,
-    locked: typeof candidate.locked === 'string' ? candidate.locked : emptyWallet.locked,
-    methods: Array.isArray(candidate.methods) ? candidate.methods : [],
-    payouts: Array.isArray(candidate.payouts) ? candidate.payouts : [],
-  };
-}
-
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('week');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
-  const [selectedMethod, setSelectedMethod] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('5000');
   const [selectedTopUpMethod, setSelectedTopUpMethod] = useState('gcash');
-  const [wallet, setWallet] = useState<WalletSummary>(emptyWallet);
-  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      const [balance, transactions] = await Promise.all([
-        fetchWallet(),
-        fetchWalletTransactions(),
-      ]);
-      if (!mounted) return;
-
-      if (!balance.error) {
-        const nextWallet = normalizeWallet(balance.data);
-        setWallet(nextWallet);
-        setSelectedMethod((current) =>
-          current || nextWallet.methods.find((method) => method.is_default)?.id || nextWallet.methods[0]?.id || '',
-        );
-      }
-      if (!transactions.error && Array.isArray(transactions.data)) {
-        setWalletTransactions(transactions.data);
-      }
-    };
-    void load();
-    const unsubscribe = subscribeToTable('wallet_transactions', load);
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
-  }, []);
-  const walletPayoutMethods = (Array.isArray(wallet.methods) ? wallet.methods : []).map((method) => ({
-    ...method,
-    account: method.last_four ? `•••• ${method.last_four}` : method.method_type,
-    color: Colors.info,
-  }));
-  const cutoff=period==='week'?Date.now()-7*86400000:period==='month'?Date.now()-30*86400000:0;const periodTransactions=walletTransactions.filter(row=>new Date(row.createdAt).getTime()>=cutoff);const gross=periodTransactions.filter(row=>row.credit).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0);const deductions=periodTransactions.filter(row=>!row.credit).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0);const stats={gross:`₱${gross.toLocaleString()}`,net:`₱${Math.max(0,gross-deductions).toLocaleString()}`,jobs:String(periodTransactions.filter(row=>row.label.toLowerCase().includes('earning')).length),commission:`₱${deductions.toLocaleString()}`};
-  const walletBarData=useMemo(()=>{const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return days.map((day,index)=>({day,val:walletTransactions.filter(row=>row.credit&&new Date(row.createdAt).getDay()===index).reduce((sum,row)=>sum+Number(row.amount.replace(/[^0-9.]/g,'')),0)}));},[walletTransactions]);const BAR_MAX=Math.max(1,...walletBarData.map(row=>row.val));
-
-  const filteredTransactions = useMemo(() => {
-    let filtered = walletTransactions;
-    if (txFilter === 'credit') filtered = filtered.filter((t) => t.credit);
-    if (txFilter === 'debit') filtered = filtered.filter((t) => !t.credit);
-    return filtered.slice(0, 3);
-  }, [txFilter, walletTransactions]);
+  const {
+    wallet,
+    walletPayoutMethods,
+    stats,
+    walletBarData,
+    barMax,
+    filteredTransactions,
+  } = useWalletData(period, txFilter);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -163,7 +102,7 @@ export default function WalletScreen() {
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <AppText variant="body" weight="bold">Daily Earnings — This Week</AppText>
-            <Badge label={`Peak: ₱${BAR_MAX.toLocaleString()}`} variant="info" size="sm" />
+            <Badge label={`Peak: ₱${barMax.toLocaleString()}`} variant="info" size="sm" />
           </View>
           <View style={styles.barChart}>
             {walletBarData.map((d, i) => (
@@ -173,8 +112,8 @@ export default function WalletScreen() {
                     style={[
                       styles.barFill,
                       {
-                        height: `${(d.val / BAR_MAX) * 100}%`,
-                        backgroundColor: d.val === BAR_MAX ? Colors.verified : Colors.info,
+                        height: `${(d.val / barMax) * 100}%`,
+                        backgroundColor: d.val === barMax ? Colors.verified : Colors.info,
                       },
                     ]}
                   />
@@ -376,125 +315,3 @@ export default function WalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding * 2 },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: theme.spacing.xxl },
-
-  // Balance card
-  balanceCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['5'], gap: Spacing['4'], ...Elevation.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  balanceTop: { gap: Spacing['1'] },
-  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing['1'], marginTop: Spacing['1'] },
-  balanceActions: { flexDirection: 'row', gap: Spacing['3'] },
-  balanceBtn: { flex: 1 },
-
-  // Period toggle
-  periodToggle: { flexDirection: 'row', justifyContent: 'center', gap: Spacing['2'], marginBottom: theme.spacing.md },
-
-  // Stats grid
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing['3'], marginBottom: theme.spacing.xl },
-  statCard: {
-    width: (screenWidth - Layout.screenPadding * 4 - Spacing['3']) / 2,
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['4'], gap: Spacing['2'], ...Elevation.sm,
-  },
-  statIcon: {
-    width: 36, height: 36, borderRadius: Radius.md,
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // Bar chart
-  chartCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['4'], ...Elevation.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  chartHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing['4'] },
-  barChart: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing['2'], height: 100 },
-  barCol: { flex: 1, alignItems: 'center', gap: Spacing['1'], height: '100%' },
-  barTrack: { flex: 1, width: '100%', backgroundColor: Colors.borderLight, borderRadius: Radius.xs, justifyContent: 'flex-end', overflow: 'hidden' },
-  barFill: { width: '100%', borderRadius: Radius.xs },
-
-  // Transactions
-  txSection: {
-    backgroundColor: Colors.surfaceCard, borderRadius: Radius.xl,
-    padding: Spacing['4'], gap: Spacing['3'],
-    marginBottom: theme.spacing.xl, ...Elevation.sm,
-  },
-  txHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  seeAllLink: { flexDirection: 'row', alignItems: 'center' },
-  txFilters: { flexDirection: 'row', justifyContent: 'flex-start', gap: Spacing['2'] },
-  txList: { gap: Spacing['2'] },
-  txEmpty: {
-    textAlign: 'center',
-    paddingVertical: Spacing['4'],
-  },
-  txRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing['3'],
-    backgroundColor: Colors.background, borderRadius: Radius.xl,
-    padding: Spacing['3'], ...Elevation.sm,
-  },
-  txIcon: {
-    width: 36, height: 36, borderRadius: Radius.md,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  txBody: { flex: 1, gap: 2 },
-  txTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  txBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  txStatus: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-
-  // Performance card
-  perfCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing['4'], ...Elevation.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  perfHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing['3'], marginBottom: Spacing['4'] },
-  perfAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.info, alignItems: 'center', justifyContent: 'center',
-  },
-  perfInfo: { flex: 1, gap: 2 },
-  perfStats: { gap: Spacing['3'] },
-  perfRow: { gap: Spacing['1'] },
-  perfRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  perfTrack: { height: 6, backgroundColor: Colors.borderLight, borderRadius: Radius.full, overflow: 'hidden' },
-  perfFill: { height: '100%', borderRadius: Radius.full },
-
-  // Payout sheet
-  overlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: Colors.white, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl,
-    padding: Spacing['5'], gap: Spacing['3'],
-  },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: Spacing['2'] },
-  amountWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceLight,
-    borderRadius: Radius.xl, padding: Spacing['4'], gap: Spacing['2'],
-  },
-  amountInput: {
-    flex: 1, fontSize: Typography['5xl'], fontWeight: '800', color: Colors.textPrimary,
-    paddingVertical: 0,
-  },
-  quickAmounts: { flexDirection: 'row', gap: Spacing['2'] },
-  quickAmt: {
-    flex: 1, paddingVertical: Spacing['2'], borderRadius: Radius.md,
-    backgroundColor: Colors.primarySurface, alignItems: 'center',
-  },
-  methodList: { gap: Spacing['2'] },
-  methodRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing['3'],
-    backgroundColor: Colors.surfaceLight, borderRadius: Radius.xl,
-    padding: Spacing['3'], borderWidth: 2, borderColor: 'transparent',
-  },
-  methodRowActive: { borderColor: Colors.info, backgroundColor: Colors.primarySurface },
-  methodDot: { width: 12, height: 12, borderRadius: 6 },
-  methodInfo: { flex: 1 },
-  payoutNote: { flexDirection: 'row', alignItems: 'center', gap: Spacing['2'] },
-  sheetActions: { flexDirection: 'row', gap: Spacing['3'], marginTop: Spacing['2'] },
-});

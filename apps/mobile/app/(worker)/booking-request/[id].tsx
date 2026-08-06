@@ -216,7 +216,7 @@ export default function BookingRequestScreen() {
     load();
     let unsub = () => {};
     try {
-      unsub = subscribeToTable('bookings', load, `id=eq.${id}`);
+      unsub = subscribeToTable('bookings', load, `id=eq.${id}`, undefined, ['INSERT', 'UPDATE']);
     } catch (e) {
       console.warn('[booking-detail] realtime subscribe failed:', e);
     }

@@ -95,7 +95,7 @@ export function useConversationChat(conversationId: string | null) {
         ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status) &&
         !fallback
       ) {
-        fallback = setInterval(() => void refresh(), 5000);
+        fallback = setInterval(() => void refresh(), 15000);
       }
     };
     const stops = [
@@ -104,12 +104,15 @@ export function useConversationChat(conversationId: string | null) {
         () => void refresh(),
         `conversation_id=eq.${conversationId}`,
         syncFallback,
+        ['INSERT'],
       ),
-      subscribeToTable('message_translations', () => void refresh()),
+      subscribeToTable('message_translations', () => void refresh(), undefined, undefined, ['INSERT', 'UPDATE']),
       subscribeToTable(
         'conversations',
         () => void refresh(),
         `id=eq.${conversationId}`,
+        undefined,
+        ['INSERT', 'UPDATE'],
       ),
     ];
     const broadcastChannel = supabase
@@ -135,6 +138,8 @@ export function useConversationChat(conversationId: string | null) {
           'bookings',
           () => void refresh(),
           `id=eq.${access.bookingId}`,
+          undefined,
+          ['INSERT', 'UPDATE'],
         ),
       );
     }
@@ -144,6 +149,8 @@ export function useConversationChat(conversationId: string | null) {
           'service_requests',
           () => void refresh(),
           `id=eq.${access.serviceRequestId}`,
+          undefined,
+          ['INSERT', 'UPDATE'],
         ),
       );
     }

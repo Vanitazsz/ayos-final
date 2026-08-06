@@ -202,6 +202,39 @@ function getTimeout() {
   return Number(Deno.env.get('AI_TIMEOUT_MS') ?? 45000);
 }
 
+const CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+let catalogCache: {
+  categories: unknown[];
+  services: unknown[];
+  expiresAt: number;
+} | null = null;
+
+async function getCatalog(admin: SupabaseClient) {
+  const now = Date.now();
+  if (catalogCache && catalogCache.expiresAt > now)
+    return { categories: catalogCache.categories, services: catalogCache.services };
+  const [
+    { data: categories, error: categoryError },
+    { data: services, error: serviceError },
+  ] = await Promise.all([
+    admin
+      .from('service_categories')
+      .select('id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
+      .eq('is_active', true),
+    admin
+      .from('services')
+      .select('id,category_id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
+      .eq('is_active', true),
+  ]);
+  if (categoryError || serviceError) throw new Error('CATALOG_UNAVAILABLE');
+  catalogCache = {
+    categories: categories ?? [],
+    services: services ?? [],
+    expiresAt: now + CATALOG_CACHE_TTL_MS,
+  };
+  return catalogCache;
+}
+
 async function transcribeGemini(item: Awaited<ReturnType<typeof loadMedia>>[number]) {
   const key = Deno.env.get('GEMINI_API_KEY');
   const model = Deno.env.get('GEMINI_MODEL');
@@ -464,23 +497,9 @@ export async function runAnalysis(
   description: string,
   mediaInput: MediaInput[],
 ) {
-  const [
-    { data: categories, error: categoryError },
-    { data: services, error: serviceError },
-    media,
-  ] = await Promise.all([
-    admin
-      .from('service_categories')
-      .select('id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
-      .eq('is_active', true),
-    admin
-      .from('services')
-      .select('id,category_id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
-      .eq('is_active', true),
-    loadMedia(admin, accountId, mediaInput),
-  ]);
-  if (categoryError || serviceError) throw new Error('CATALOG_UNAVAILABLE');
-  const catalog = { categories: categories ?? [], services: services ?? [] };
+  const mediaPromise = loadMedia(admin, accountId, mediaInput);
+  const catalog = await getCatalog(admin);
+  const media = await mediaPromise;
   const attempts: ProviderAttempt[] = [];
   let lastError: unknown;
 

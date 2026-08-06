@@ -62,6 +62,13 @@ export interface WorkerBooking {
   hourlyRate?: number;
   hasParts?: boolean;
   partsDescription?: string;
+  duration?: string;
+  workerRating?: number;
+  workerReview?: string;
+  cancelledBy?: 'customer' | 'worker';
+  cancelledReason?: string;
+  reportedReason?: string;
+  isReported?: boolean;
 }
 export type TransactionStatus = 'completed' | 'pending' | 'failed';
 export interface WalletTransaction {
@@ -185,13 +192,18 @@ export function subscribeToTable(
   onChange: () => void,
   filter?: string,
   onStatus?: (status: string) => void,
+  events: ('INSERT' | 'UPDATE' | 'DELETE')[] = ['INSERT', 'UPDATE', 'DELETE'],
 ) {
   const channel = supabase
     .channel(`${table}:${filter ?? 'all'}:${randomUUID()}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table, filter },
-      onChange,
+      (payload) => {
+        if (events.includes(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE')) {
+          onChange();
+        }
+      },
     )
     .subscribe((status) => onStatus?.(status));
   return () => {
@@ -232,7 +244,7 @@ export async function subscribeToBookingFeed(
       clearInterval(fallback);
       fallback = null;
     } else if (!connected && !fallback) {
-      fallback = setInterval(onChange, 10000);
+      fallback = setInterval(onChange, 20000);
     }
   };
   const track = (table: string) => (status: string) => {
@@ -246,12 +258,14 @@ export async function subscribeToBookingFeed(
       onChange,
       `${role === 'customer' ? 'user_account_id' : 'worker_account_id'}=eq.${user.id}`,
       track('bookings'),
+      ['INSERT', 'UPDATE'],
     ),
     subscribeToTable(
       'service_requests',
       onChange,
       `${role === 'customer' ? 'user_account_id' : 'selected_worker_id'}=eq.${user.id}`,
       track('service_requests'),
+      ['INSERT', 'UPDATE'],
     ),
   ];
   syncFallback();
@@ -269,7 +283,8 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
         'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name)),reviews:account_id(stars,moderation_status)',
       )
       .eq('approval_status', 'APPROVED')
-      .eq('is_available', true);
+      .eq('is_available', true)
+      .limit(50);
     if (error) throw error;
     const rows = data ?? [];
     const avatarMap = await batchResolveAvatars(
@@ -504,7 +519,8 @@ export async function fetchServiceCategories() {
         'id,name,slug,minimum_price_minor,maximum_price_minor,is_safety_critical',
       )
       .eq('is_active', true)
-      .order('name');
+      .order('name')
+      .limit(50);
     if (error) throw error;
     return (data ?? []).map((row: any) => ({
       id: row.id,
@@ -882,9 +898,10 @@ export async function fetchWalletTransactions(): Promise<
     if (!wallet) return [];
     const { data, error } = await supabase
       .from('wallet_transactions')
-      .select('*')
+      .select('id,kind,description,amount,status,created_at')
       .eq('wallet_account_id', wallet.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (error) throw error;
     return (data ?? []).map((row: any) => ({
       id: row.id,
@@ -1576,9 +1593,10 @@ export async function fetchNotifications() {
     const user = await requireUser();
     const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select('id,title,body,read_at,created_at,payload')
       .eq('recipient_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
     if (error) throw error;
     return (data ?? []).map((row: any) => ({
       id: row.id,
