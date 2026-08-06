@@ -37,7 +37,13 @@ export default function CategoryScreen() {
   };
 
   return (
-    <Screen safeArea scrollable backgroundColor={theme.colors.background}>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+      backgroundColor={theme.colors.background}
+    >
       <View style={[styles.header, { paddingHorizontal: theme.layout.screenPadding }]}> 
         <TouchableOpacity onPress={goBack} style={styles.backButton}>
           <ArrowLeft color={theme.colors.textPrimary} size={24} />

@@ -91,7 +91,7 @@ export default function BookingsScreen() {
     : filteredBookings.slice(0, RECENT_BOOKINGS_LIMIT);
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
       </View>
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   tabButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.borderLight },
   tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   content: { flex: 1 },
-  contentInner: { padding: theme.layout.screenPadding },
+  contentInner: { padding: theme.layout.screenPadding, paddingBottom: 88 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
   bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.md, borderWidth: 1, borderColor: theme.colors.borderLight },
   seeAllButton: {

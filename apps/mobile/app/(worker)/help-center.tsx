@@ -107,7 +107,12 @@ export default function WorkerHelpCenterScreen() {
   );
 
   return (
-    <Screen safeArea scrollable contentContainerStyle={styles.screenContent}>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={[styles.screenContent, { paddingBottom: 80 }]}
+      style={{ paddingBottom: 0 }}
+    >
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable
@@ -151,6 +156,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 840,
     alignSelf: 'center',
+    flexGrow: 1,
   },
   header: {
     minHeight: 56,
@@ -178,6 +184,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: Radius.xl,
     padding: Spacing['5'],
+    flexGrow: 1,
   },
   body: {
     gap: Spacing['3'],

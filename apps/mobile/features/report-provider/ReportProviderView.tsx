@@ -97,7 +97,13 @@ export function ReportProviderView(
   }
 
   return (
-    <Screen safeArea scrollable backgroundColor={theme.colors.background}>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+      backgroundColor={theme.colors.background}
+    >
       {/* Header */}
       <View
         style={[

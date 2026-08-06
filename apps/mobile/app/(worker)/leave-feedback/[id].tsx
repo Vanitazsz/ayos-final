@@ -225,7 +225,12 @@ export default function WorkerLeaveFeedbackScreen() {
   };
 
   return (
-    <Screen safeArea scrollable style={styles.screen}>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={[styles.screen, { paddingBottom: 0 }]}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}

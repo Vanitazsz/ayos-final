@@ -167,7 +167,7 @@ export default function WorkerBookingsScreen() {
   const comingSoon = () => showAlert('Coming Soon', 'Earnings receipts will be available in a future update.');
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
       </View>
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   contentInner: {
     paddingHorizontal: theme.layout.screenPadding,
     paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xxxl,
+    paddingBottom: 88,
   },
   bookingCard: {
     backgroundColor: theme.colors.surface,

@@ -156,7 +156,7 @@ export function ConversationListScreen({
   };
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         {viewMode === 'archived' ? (
           <>
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: theme.layout.screenPadding,
-    paddingBottom: theme.spacing.xxxl,
+    paddingBottom: 88,
   },
   listContainer: { marginBottom: theme.spacing.lg },
   swipeableContainer: {

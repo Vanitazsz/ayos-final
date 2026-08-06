@@ -108,7 +108,12 @@ export default function VerifyIdentityScreen() {
   };
 
   return (
-    <Screen safeArea scrollable>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View style={styles.header}>
         <View style={styles.icon}>
           <ShieldCheck size={30} color={Colors.primary} />
