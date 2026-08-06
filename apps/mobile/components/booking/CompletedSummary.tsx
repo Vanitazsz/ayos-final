@@ -23,6 +23,12 @@ export const CompletedSummary = React.memo(function CompletedSummary({
   onLeaveFeedback,
 }: CompletedSummaryProps) {
   const paymentConfirmed = paymentStatus === 'SUCCESSFUL';
+  const MAX_ID_LENGTH = 14;
+  const paddedId = bookingId.padStart(4, '0');
+  const displayId =
+    paddedId.length > MAX_ID_LENGTH
+      ? `${paddedId.slice(0, MAX_ID_LENGTH - 3)}...`
+      : paddedId;
   return (
     <View style={styles.container}>
       <View style={styles.iconRow}>
@@ -53,8 +59,14 @@ export const CompletedSummary = React.memo(function CompletedSummary({
           <AppText variant="body" color={Colors.textTertiary}>
             Booking ID
           </AppText>
-          <AppText variant="body" weight="semiBold">
-            #{bookingId.padStart(4, '0')}
+          <AppText
+            variant="body"
+            weight="semiBold"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={styles.idValue}
+          >
+            #{displayId}
           </AppText>
         </View>
         <View style={styles.divider} />
@@ -127,6 +139,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  idValue: {
+    flexShrink: 1,
+    marginLeft: Spacing['2'],
   },
   divider: {
     height: 1,
