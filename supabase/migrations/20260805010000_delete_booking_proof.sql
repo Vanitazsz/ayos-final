@@ -1,9 +1,12 @@
 begin;
 
 -- Allow the assigned worker to remove an attached proof-of-work photo before
--- the feedback is confirmed. booking_proof_media and the private booking-proof
--- bucket only grant SELECT (no DELETE), so a security-definer RPC is required
--- to remove both the storage object and the metadata row atomically.
+-- the feedback is confirmed. The client removes the storage object through the
+-- Storage API (the booking-proof bucket relies on the general
+-- storage_owner_delete RLS policy, owner_id = auth.uid()), while this
+-- security-definer RPC removes the metadata row and records an audit entry.
+-- Raw SQL deletes from storage.objects are blocked by Supabase's storage guard,
+-- so the storage object must be deleted via the Storage API.
 --
 -- The worker is only allowed to remove their own proof while the booking is
 -- still in a proof-eligible state, mirroring the attach_booking_proof gate.
@@ -45,11 +48,6 @@ begin
   if removed.id is null then
     raise exception using errcode = '22023', message = 'BOOKING_PROOF_NOT_FOUND';
   end if;
-
-  delete from storage.objects object
-  where object.bucket_id = 'booking-proof'
-    and object.name = p_storage_path
-    and object.owner_id = auth.uid()::text;
 
   delete from public.booking_proof_media
   where id = removed.id;

@@ -37,6 +37,7 @@ import {
   getWorkerFeedback,
 } from '@/services/workerFeedback';
 import { uploadBookingProof } from '@/services/uploads';
+import { supabase } from '@/lib/supabase';
 import { showAlert } from '@/components/AppAlert';
 
 const QUICK_TAGS = [
@@ -55,6 +56,24 @@ const RATING_LABELS: Record<number, string> = {
   4: '4/5 - Good Customer',
   5: '5/5 - Excellent Customer!',
 };
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message) return message;
+  }
+  return fallback;
+}
+
+async function removeBookingProofStorage(storagePath: string) {
+  const { error } = await supabase.storage
+    .from('booking-proof')
+    .remove([storagePath]);
+  if (error) {
+    console.warn('booking-proof storage removal failed:', error);
+  }
+}
 
 export default function WorkerLeaveFeedbackScreen() {
   const router = useRouter();
@@ -133,6 +152,7 @@ export default function WorkerLeaveFeedbackScreen() {
       if (picker.canceled) return;
       setUploadingProof(true);
       if (proofPhoto) {
+        await removeBookingProofStorage(proofPhoto.storagePath);
         await deleteBookingProof(bookingId, proofPhoto.storagePath);
       }
       const proof = await uploadBookingProof(picker.assets[0].uri);
@@ -140,10 +160,8 @@ export default function WorkerLeaveFeedbackScreen() {
       setProofPhoto(attached);
       showAlert('Proof attached', 'The photo is tied to this booking.');
     } catch (error) {
-      showAlert(
-        'Upload failed',
-        error instanceof Error ? error.message : 'Could not attach proof of work.',
-      );
+      console.error('uploadBookingProof failed:', error);
+      showAlert('Upload failed', errorMessage(error, 'Could not attach proof of work.'));
     } finally {
       setUploadingProof(false);
     }
@@ -154,13 +172,12 @@ export default function WorkerLeaveFeedbackScreen() {
     if (uploadingProof) return;
     setRemovingProof(true);
     try {
+      await removeBookingProofStorage(proofPhoto.storagePath);
       await deleteBookingProof(bookingId, proofPhoto.storagePath);
       setProofPhoto(null);
     } catch (error) {
-      showAlert(
-        'Remove failed',
-        error instanceof Error ? error.message : 'Could not remove the proof photo.',
-      );
+      console.error('deleteBookingProof failed:', error);
+      showAlert('Remove failed', errorMessage(error, 'Could not remove the proof photo.'));
     } finally {
       setRemovingProof(false);
     }
