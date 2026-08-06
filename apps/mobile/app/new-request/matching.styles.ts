@@ -81,7 +81,7 @@ export const styles = StyleSheet.create({
     gap: 6,
     marginTop: 4,
   },
-  matchCountText: { color: theme.colors.primary, fontWeight: '700' },
+  matchCountText: { ...theme.typography.caption, color: theme.colors.primary, fontWeight: '700' },
   timer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -90,7 +90,7 @@ export const styles = StyleSheet.create({
     padding: 10,
     borderRadius: theme.radius.lg,
   },
-  timerText: { color: theme.colors.primary, fontWeight: '800' },
+  timerText: { ...theme.typography.body2, color: theme.colors.primary, fontWeight: '800' },
   list: { flex: 1 },
   listContent: {
     paddingHorizontal: theme.layout.screenPadding,
@@ -129,6 +129,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyMessage: {
+    ...theme.typography.body2,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
@@ -155,8 +156,9 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
   },
   acceptedPill: { backgroundColor: theme.colors.success },
-  pillText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  pillText: { ...theme.typography.caption, color: '#fff', fontWeight: '700' },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ratingText: { ...theme.typography.caption },
   state: {
     flex: 1,
     alignItems: 'center',
