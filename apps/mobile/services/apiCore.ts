@@ -13,7 +13,6 @@ import {
   requireIdentity,
   batchResolveAvatars,
   resolveProfileAvatar,
-  resolveStorageImage,
 } from '@/services/profile';
 import { averageRating } from '@/services/reviewRatings';
 
@@ -104,7 +103,6 @@ export interface WorkerProfile {
   hourlyRate: string;
   skills: string[];
   serviceAreas: string[];
-  portfolioImages: string[];
   bio: string;
 }
 export interface IndustrySkill {
@@ -532,7 +530,6 @@ export async function fetchWorkerProfile(): Promise<
       { data: profile, error: profileError },
       { data: reviews },
       { data: bookings },
-      { data: portfolio },
       { data: skills },
     ] = await Promise.all([
       supabase
@@ -557,12 +554,6 @@ export async function fetchWorkerProfile(): Promise<
         .eq('worker_account_id', user.id)
         .eq('status', 'COMPLETED'),
       supabase
-        .from('worker_portfolio_items')
-        .select('worker_portfolio_media(storage_path)')
-        .eq('worker_id', user.id)
-        .eq('is_published', true)
-        .order('sort_order'),
-      supabase
         .from('worker_skills')
         .select('rate_minor')
         .eq('worker_id', user.id),
@@ -581,9 +572,6 @@ export async function fetchWorkerProfile(): Promise<
       0,
     );
     const earnings = completedBookingsEarnings;
-    const portfolioPaths = (portfolio ?? [])
-      .flatMap((item: any) => item.worker_portfolio_media ?? [])
-      .map((item: any) => item.storage_path);
     return {
       data: {
         id: user.id,
@@ -619,11 +607,6 @@ export async function fetchWorkerProfile(): Promise<
           .map((skill: any) => skill.service_categories?.name)
           .filter(Boolean),
         serviceAreas: profile.service_area ? [profile.service_area] : [],
-        portfolioImages: await Promise.all(
-          portfolioPaths.map((path: string) =>
-            resolveStorageImage(path, 'portfolio-media'),
-          ),
-        ),
         bio: profile.bio ?? '',
       },
     };
