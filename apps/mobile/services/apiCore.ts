@@ -77,6 +77,7 @@ export interface WalletTransaction {
 export interface WalletSummary {
   available: string;
   locked: string;
+  completedJobs: number;
   methods: {
     id: string;
     method_type: string;
@@ -531,7 +532,6 @@ export async function fetchWorkerProfile(): Promise<
       { data: profile, error: profileError },
       { data: reviews },
       { data: bookings },
-      { data: wallet },
       { data: portfolio },
       { data: skills },
     ] = await Promise.all([
@@ -557,11 +557,6 @@ export async function fetchWorkerProfile(): Promise<
         .eq('worker_account_id', user.id)
         .eq('status', 'COMPLETED'),
       supabase
-        .from('wallet_accounts')
-        .select('wallet_transactions(amount,status)')
-        .eq('account_id', user.id)
-        .maybeSingle(),
-      supabase
         .from('worker_portfolio_items')
         .select('worker_portfolio_media(storage_path)')
         .eq('worker_id', user.id)
@@ -585,14 +580,7 @@ export async function fetchWorkerProfile(): Promise<
       (sum: number, item: any) => sum + Number(item.agreed_service_amount ?? 0),
       0,
     );
-    const walletEarnings = (wallet?.wallet_transactions ?? [])
-      .filter(
-        (item: any) =>
-          ['AVAILABLE', 'COMPLETED'].includes(item.status) &&
-          Number(item.amount) > 0,
-      )
-      .reduce((sum: number, item: any) => sum + Number(item.amount), 0);
-    const earnings = Math.max(completedBookingsEarnings, walletEarnings);
+    const earnings = completedBookingsEarnings;
     const portfolioPaths = (portfolio ?? [])
       .flatMap((item: any) => item.worker_portfolio_media ?? [])
       .map((item: any) => item.storage_path);
@@ -839,80 +827,69 @@ export async function fetchWalletTransactions(): Promise<
 > {
   return wrap(async () => {
     const user = await requireUser();
-    const { data: wallet, error: walletError } = await supabase
-      .from('wallet_accounts')
-      .select('id')
-      .eq('account_id', user.id)
-      .maybeSingle();
-    if (walletError) throw walletError;
-    if (!wallet) return [];
     const { data, error } = await supabase
       .from('wallet_transactions')
-      .select('*')
-      .eq('wallet_account_id', wallet.id)
+      .select('transaction_type,amount_minor,metadata,created_at')
+      .eq('wallet_account_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row: any) => ({
-      id: row.id,
-      label: String(row.kind).replaceAll('_', ' '),
-      sub: row.description,
-      amount: `${Number(row.amount) >= 0 ? '+' : '-'}${money(Math.abs(Number(row.amount)))}`,
-      credit: Number(row.amount) >= 0,
-      status:
-        row.status === 'FAILED'
-          ? 'failed'
-          : row.status === 'PENDING'
-            ? 'pending'
-            : 'completed',
-      date: new Date(row.created_at).toLocaleDateString('en-PH', {
-        month: 'short',
-        day: 'numeric',
-      }),
-      createdAt: row.created_at,
-    }));
+    return (data ?? []).map((row: any) => {
+      const credit = Number(row.amount_minor) >= 0;
+      return {
+        id: row.id,
+        label: String(row.transaction_type).replaceAll('_', ' '),
+        sub: String(row.metadata?.booking_id ?? ''),
+        amount: `${credit ? '+' : '-'}${money(
+          Math.abs(Number(row.amount_minor)) / 100,
+        )}`,
+        credit,
+        status: row.transaction_type === 'PAYOUT_HOLD' ? 'pending' : 'completed',
+        date: new Date(row.created_at).toLocaleDateString('en-PH', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        createdAt: row.created_at,
+      };
+    });
   });
 }
 export async function fetchWallet(): Promise<ApiResponse<WalletSummary>> {
   return wrap(async () => {
     const user = await requireUser();
     const { data: wallet, error } = await supabase
-      .from('wallet_accounts')
-      .select('id,wallet_transactions(amount,status)')
+      .from('wallets')
+      .select('available_minor,locked_minor')
       .eq('account_id', user.id)
       .maybeSingle();
     if (error) throw error;
-    const walletId = wallet?.id;
     const [
       { data: methods, error: methodsError },
       { data: payouts, error: payoutsError },
+      { count, error: countError },
     ] = await Promise.all([
       supabase
         .from('payout_destinations')
         .select('id,kind,label,account_reference,is_default')
         .eq('worker_id', user.id)
         .eq('status', 'ACTIVE'),
-      walletId
-        ? supabase
-            .from('payout_requests')
-            .select('*')
-            .eq('wallet_account_id', walletId)
-            .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from('payout_requests')
+        .select('*')
+        .eq('account_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('worker_account_id', user.id)
+        .eq('status', 'COMPLETED'),
     ]);
     if (methodsError) throw methodsError;
     if (payoutsError) throw payoutsError;
-    const transactions = wallet?.wallet_transactions ?? [];
-    const available = transactions
-      .filter((row: any) => ['AVAILABLE', 'COMPLETED'].includes(row.status))
-      .reduce((sum: number, row: any) => sum + Number(row.amount), 0);
-    const locked = Math.abs(
-      transactions
-        .filter((row: any) => row.status === 'HELD')
-        .reduce((sum: number, row: any) => sum + Number(row.amount), 0),
-    );
+    if (countError) throw countError;
     return {
-      available: money(available),
-      locked: money(locked),
+      available: money((wallet?.available_minor ?? 0) / 100),
+      locked: money((wallet?.locked_minor ?? 0) / 100),
+      completedJobs: count ?? 0,
       methods: (methods ?? []).map((row: any) => ({
         id: row.id,
         method_type: row.kind,

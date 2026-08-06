@@ -93,6 +93,7 @@ export const AppButton = React.memo(function AppButton({
   };
 
   const getBorderColor = (): string => {
+    if (disabled) return 'transparent';
     switch (variant) {
       case 'outline':
         return Colors.primaryBorder;
@@ -126,7 +127,7 @@ export const AppButton = React.memo(function AppButton({
           paddingHorizontal: s.paddingHorizontal,
           backgroundColor: getBgColor(pressed),
           borderColor: getBorderColor(),
-          borderWidth: variant === 'outline' ? 1.5 : 0,
+          borderWidth: variant === 'outline' && !disabled ? 1.5 : 0,
           opacity: pressed && variant === 'ghost' ? 0.6 : 1,
           ...(variant === 'primary' && !disabled ? Elevation.sm : {}),
         },

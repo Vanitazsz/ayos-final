@@ -16,7 +16,6 @@ import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import {
-  fetchWalletTransactions,
   fetchWorkerBookings,
   fetchWorkerProfile,
   subscribeToTable,
@@ -66,9 +65,8 @@ export default function WorkerDashboardScreen() {
       void Promise.all([
         fetchWorkerProfile(),
         fetchWorkerBookings(),
-        fetchWalletTransactions(),
       ])
-        .then(([profile, bookings, transactions]) => {
+        .then(([profile, bookings]) => {
           if (!profile.error) setWorkerProfile(profile.data);
           setWorkerBookings(bookings.data);
           const completedBookingSum = (bookings.data ?? [])
@@ -78,19 +76,7 @@ export default function WorkerDashboardScreen() {
                 sum + Number(row.price.replace(/[^0-9.]/g, '') || 0),
               0,
             );
-          const walletTxSum = (transactions.data ?? [])
-            .filter((row) => row.credit && row.status === 'completed')
-            .reduce(
-              (sum, row) =>
-                sum + Number(row.amount.replace(/[^0-9.]/g, '') || 0),
-              0,
-            );
-          const profileEarnings = profile.data?.earnings
-            ? Number(profile.data.earnings.replace(/[^0-9.]/g, '') || 0)
-            : 0;
-          setEarnings(
-            Math.max(completedBookingSum, walletTxSum, profileEarnings),
-          );
+          setEarnings(completedBookingSum);
         })
         .catch((e) => console.warn('[worker-dashboard] load failed:', e));
     load();
