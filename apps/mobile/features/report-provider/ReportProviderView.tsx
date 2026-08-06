@@ -20,11 +20,11 @@ import {
   Lock,
   CheckCircle2,
 } from 'lucide-react-native';
-import { styles } from './_reportProvider.styles';
+import { styles } from './reportProvider.styles';
 import {
   useReportProviderController,
   REPORT_REASONS,
-} from './_useReportProviderController';
+} from './useReportProviderController';
 
 export function ReportProviderView(
   props: ReturnType<typeof useReportProviderController>,

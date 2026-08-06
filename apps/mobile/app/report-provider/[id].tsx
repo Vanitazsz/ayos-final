@@ -1,6 +1,6 @@
 import React from 'react';
-import { useReportProviderController } from './_useReportProviderController';
-import { ReportProviderView } from './_ReportProviderView';
+import { useReportProviderController } from '@/features/report-provider/useReportProviderController';
+import { ReportProviderView } from '@/features/report-provider/ReportProviderView';
 
 export default function ReportProviderScreen() {
   const controller = useReportProviderController();
