@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { homePromotions } from '@/constants/mockData';
 import * as Haptics from 'expo-haptics';
-import { styles } from './_home.styles';
+import { styles } from '@/features/customer/CustomerHome.styles';
 import { useHomeData } from '@/hooks/useHomeData';
 
 const getParentForCategory = (name: string) => {

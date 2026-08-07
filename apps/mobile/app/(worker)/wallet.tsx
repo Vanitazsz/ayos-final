@@ -28,7 +28,7 @@ import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
 import { type TransactionStatus, simulateTopUp } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
-import { styles } from './_wallet.styles';
+import { styles } from '@/features/worker/screens/WorkerWallet.styles';
 import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
 
 const statusIcon = (s: TransactionStatus) => {
@@ -347,5 +347,4 @@ export default function WalletScreen() {
     </View>
   );
 }
-
 
