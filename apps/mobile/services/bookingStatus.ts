@@ -51,21 +51,21 @@ export const CUSTOMER_BOOKING_STATUS_META: Record<
     color: '#0277BD',
     bg: '#E1F5FE',
   },
-  WORKER_EN_ROUTE: { label: 'En Route 🚚', color: '#1565C0', bg: '#E8EAF6' },
-  WORKER_ARRIVED: { label: 'Arrived 📍', color: '#2E7D32', bg: '#E8F5E9' },
+  WORKER_EN_ROUTE: { label: 'En Route', color: '#1565C0', bg: '#E8EAF6' },
+  WORKER_ARRIVED: { label: 'Arrived', color: '#2E7D32', bg: '#E8F5E9' },
   SERVICE_STARTED: {
-    label: 'In Progress 🛠️',
+    label: 'In Progress',
     color: '#2E7D32',
     bg: '#E8F5E9',
   },
-  IN_PROGRESS: { label: 'In Progress 🛠️', color: '#2E7D32', bg: '#E8F5E9' },
+  IN_PROGRESS: { label: 'In Progress', color: '#2E7D32', bg: '#E8F5E9' },
   PENDING_CONFIRMATION: {
     label: 'Awaiting Your Confirmation',
     color: '#B78103',
     bg: '#FFF8E1',
   },
-  COMPLETED: { label: 'Completed ✅', color: '#2E7D32', bg: '#E8F5E9' },
-  CANCELLED: { label: 'Cancelled ❌', color: '#C62828', bg: '#FFEBEE' },
+  COMPLETED: { label: 'Completed', color: '#2E7D32', bg: '#E8F5E9' },
+  CANCELLED: { label: 'Cancelled', color: '#C62828', bg: '#FFEBEE' },
 };
 
 export function customerBookingStatusMeta(

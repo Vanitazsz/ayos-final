@@ -86,12 +86,12 @@ describe('CUSTOMER_BOOKING_STATUS_META', () => {
       bg: '#FFF8E1',
     });
     expect(customerBookingStatusMeta('COMPLETED', { color: '#111', bg: '#222' })).toEqual({
-      label: 'Completed ✅',
+      label: 'Completed',
       color: '#2E7D32',
       bg: '#E8F5E9',
     });
     expect(customerBookingStatusMeta('WORKER_EN_ROUTE', { color: '#111', bg: '#222' })).toEqual({
-      label: 'En Route 🚚',
+      label: 'En Route',
       color: '#1565C0',
       bg: '#E8EAF6',
     });

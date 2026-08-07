@@ -617,7 +617,7 @@ export default function BookingRequestScreen() {
           {booking.status === 'accepted' && (
             <View style={{ gap: 12 }}>
               <AppButton
-                label="Start En Route 🚚"
+                label="Start En Route"
                 variant="primary"
                 fullWidth
                 onPress={handleConfirmDetails}
@@ -652,7 +652,7 @@ export default function BookingRequestScreen() {
                 </Pressable>
               </View>
               <AppButton
-                label="I've Arrived & Start Job 📍"
+                label="I've Arrived & Start Job"
                 variant="primary"
                 leftIcon={<MapPin size={18} color={Colors.white} />}
                 fullWidth
@@ -681,7 +681,7 @@ export default function BookingRequestScreen() {
                 </Pressable>
               </View>
               <AppButton
-                label="Complete Job ✅"
+                label="Complete Job"
                 variant="primary"
                 leftIcon={<CheckCircle2 size={18} color={Colors.white} />}
                 fullWidth
