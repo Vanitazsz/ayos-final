@@ -15,6 +15,7 @@ export type TxFilter = 'all' | 'credit' | 'debit';
 const emptyWallet: WalletSummary = {
   available: '₱0.00',
   locked: '₱0.00',
+  completedJobs: 0,
   methods: [],
   payouts: [],
 };
@@ -28,6 +29,7 @@ function normalizeWallet(value: unknown): WalletSummary {
   return {
     available: typeof candidate.available === 'string' ? candidate.available : emptyWallet.available,
     locked: typeof candidate.locked === 'string' ? candidate.locked : emptyWallet.locked,
+    completedJobs: typeof candidate.completedJobs === 'number' ? candidate.completedJobs : 0,
     methods: Array.isArray(candidate.methods) ? candidate.methods : [],
     payouts: Array.isArray(candidate.payouts) ? candidate.payouts : [],
   };
