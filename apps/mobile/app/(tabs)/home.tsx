@@ -1,16 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, Bell, MapPin, Star, ChevronRight, Droplets, Zap, Wrench, Sparkles, Monitor, Fan, Paintbrush, Shovel, Calendar } from 'lucide-react-native';
+import { Search, Bell, MapPin, Star, ChevronRight, Droplets, Zap, Wrench, Sparkles, Monitor, Fan, Paintbrush, Shovel, Calendar, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { homePromotions } from '@/constants/mockData';
 import * as Haptics from 'expo-haptics';
 import { styles } from '@/features/customer/CustomerHome.styles';
 import { useHomeData } from '@/hooks/useHomeData';
+import { filterServiceCatalog } from '@/services/catalogSearch';
 
 const getParentForCategory = (name: string) => {
   const lower = name.toLowerCase();
@@ -58,6 +59,12 @@ export default function HomeScreen() {
 
   const { user, categories, workers, profile, activeBookingsCount, lastCompletedWorkerName } = useHomeData();
   const [selectedParent, setSelectedParent] = useState<string | null>(null);
+  const [serviceQuery, setServiceQuery] = useState('');
+
+  const filteredCategories = useMemo(
+    () => filterServiceCatalog(categories, serviceQuery),
+    [categories, serviceQuery],
+  );
 
   const groupedCategories = useMemo(() => {
     const groups: Record<string, any[]> = {
@@ -74,14 +81,27 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={[styles.topNav, { paddingTop: insets.top + theme.spacing.sm }]}>
         <View style={styles.headerTopRow}>
-          <TouchableOpacity 
-            style={styles.searchBar} 
-            activeOpacity={0.8}
-            onPress={() => router.push('/search' as any)}
-          >
+          <View style={styles.searchBar}>
             <Search color={theme.colors.textSecondary} size={20} style={{ marginRight: 8 }} />
-            <Text style={{ color: theme.colors.textTertiary, fontSize: 14 }}>Search workers...</Text>
-          </TouchableOpacity>
+            <TextInput
+              placeholder="Search services"
+              style={styles.searchInput}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={serviceQuery}
+              onChangeText={setServiceQuery}
+              returnKeyType="search"
+              accessibilityLabel="Search services"
+            />
+            {serviceQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setServiceQuery('')}
+                hitSlop={8}
+                accessibilityLabel="Clear service search"
+              >
+                <X color={theme.colors.textSecondary} size={18} />
+              </TouchableOpacity>
+            )}
+          </View>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/notifications')}>
             <Bell color={theme.colors.surface} size={24} />
             <View style={styles.badge} />
@@ -122,6 +142,33 @@ export default function HomeScreen() {
           />
         </Animated.View>
 
+        {serviceQuery.trim().length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).duration(300).springify()} style={styles.mainCard}>
+            <Text style={[theme.typography.h4, { marginBottom: theme.spacing.sm }]}>
+              {filteredCategories.length > 0
+                ? `Search results for "${serviceQuery.trim()}"`
+                : `No services found for "${serviceQuery.trim()}"`}
+            </Text>
+            {filteredCategories.length > 0 ? (
+              filteredCategories.map((subcat: any) => (
+                <TouchableOpacity
+                  key={subcat.id}
+                  style={styles.subcatItem}
+                  onPress={() => router.push(`/category/${subcat.label.toLowerCase()}` as any)}
+                >
+                  <Text style={theme.typography.body1}>{subcat.label}</Text>
+                  <ChevronRight color={theme.colors.textTertiary} size={20} />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={{ color: theme.colors.textSecondary, paddingVertical: theme.spacing.sm }}>
+                Try a different service name.
+              </Text>
+            )}
+          </Animated.View>
+        )}
+
+        {serviceQuery.trim().length === 0 && (
         <Animated.View entering={FadeInDown.delay(200).duration(400).springify()} style={styles.mainCard}>
           <View style={styles.categoriesGrid}>
             {PARENT_CATEGORIES.map((parentCat, index) => {
@@ -168,6 +215,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+        )}
 
 
 
