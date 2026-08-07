@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Pressable,
 } from 'react-native';
-import { CalendarDays, Clock, MapPin, CheckCircle2, XCircle, Receipt, Flag, Star, MessageSquare } from 'lucide-react-native';
+import { CalendarDays, Clock, MapPin, CheckCircle2, XCircle, Receipt, Flag, Star } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { Screen } from '@/components/layout/Screen';
@@ -69,7 +69,6 @@ export default function WorkerBookingsScreen() {
   const {
     activeTab,
     setActiveTab,
-    feedbackMap,
     loading,
     loadError,
     isCurrentlyWorking,
@@ -253,48 +252,10 @@ export default function WorkerBookingsScreen() {
 
                       <View style={styles.cardFooter}>
                         <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>Paid</Text>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <TouchableOpacity
-                            style={[
-                              styles.feedbackBtn,
-                              feedbackMap[booking.id]
-                                ? { borderColor: theme.colors.success }
-                                : { borderColor: theme.colors.primary },
-                            ]}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              router.push(`/(worker)/leave-feedback/${booking.id}`);
-                            }}
-                          >
-                            <MessageSquare
-                              size={12}
-                              color={
-                                feedbackMap[booking.id]
-                                  ? theme.colors.success
-                                  : theme.colors.primary
-                              }
-                            />
-                            <Text
-                              style={[
-                                theme.typography.caption,
-                                {
-                                  color: feedbackMap[booking.id]
-                                    ? theme.colors.success
-                                    : theme.colors.primary,
-                                  fontWeight: '600',
-                                },
-                              ]}
-                            >
-                              {feedbackMap[booking.id]
-                                ? `Feedback (${feedbackMap[booking.id].rating}★)`
-                                : 'Leave Feedback'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.primaryBtn} onPress={comingSoon}>
-                            <Receipt size={12} color={theme.colors.surface} />
-                            <Text style={[theme.typography.caption, { color: theme.colors.surface, fontWeight: '600' }]}>Receipt</Text>
-                          </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity style={styles.primaryBtn} onPress={comingSoon}>
+                          <Receipt size={12} color={theme.colors.surface} />
+                          <Text style={[theme.typography.caption, { color: theme.colors.surface, fontWeight: '600' }]}>Receipt</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   </Pressable>

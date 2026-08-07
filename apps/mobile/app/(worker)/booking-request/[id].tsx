@@ -741,7 +741,6 @@ export default function BookingRequestScreen() {
                 earnings={booking.price}
                 paymentStatus={paymentStatus}
                 onConfirmCash={handleConfirmCash}
-                onLeaveFeedback={handleLeaveFeedback}
               />
             </View>
           )}
