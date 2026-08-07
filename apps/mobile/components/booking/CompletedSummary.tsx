@@ -10,7 +10,7 @@ interface CompletedSummaryProps {
   duration: string;
   earnings: string;
   paymentStatus: string;
-  onConfirmCash: () => void;
+  onConfirmCash: (method?: 'CASH' | 'ONLINE_SIMULATED') => void;
   onLeaveFeedback: () => void;
 }
 
@@ -23,6 +23,12 @@ export const CompletedSummary = React.memo(function CompletedSummary({
   onLeaveFeedback,
 }: CompletedSummaryProps) {
   const paymentConfirmed = paymentStatus === 'SUCCESSFUL';
+  const MAX_ID_LENGTH = 14;
+  const paddedId = bookingId.padStart(4, '0');
+  const displayId =
+    paddedId.length > MAX_ID_LENGTH
+      ? `${paddedId.slice(0, MAX_ID_LENGTH - 3)}...`
+      : paddedId;
   return (
     <View style={styles.container}>
       <View style={styles.iconRow}>
@@ -44,8 +50,8 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         style={styles.subtitle}
       >
         {paymentConfirmed
-          ? 'Cash payment has been confirmed by both parties.'
-          : 'Confirm only after you have received the cash payment.'}
+          ? 'Payment and 10% platform commission deduction have been recorded.'
+          : 'Mark customer payment as received to complete 10% commission deduction.'}
       </AppText>
 
       <View style={styles.summaryCard}>
@@ -53,8 +59,14 @@ export const CompletedSummary = React.memo(function CompletedSummary({
           <AppText variant="body" color={Colors.textTertiary}>
             Booking ID
           </AppText>
-          <AppText variant="body" weight="semiBold">
-            #{bookingId.padStart(4, '0')}
+          <AppText
+            variant="body"
+            weight="semiBold"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={styles.idValue}
+          >
+            #{displayId}
           </AppText>
         </View>
         <View style={styles.divider} />
@@ -69,23 +81,49 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
           <AppText variant="body" color={Colors.textTertiary}>
-            Earnings
+            Service Amount
           </AppText>
           <AppText variant="body" weight="bold" color={Colors.success}>
             {earnings}
           </AppText>
         </View>
+        <View style={styles.divider} />
+        <View style={styles.summaryRow}>
+          <AppText variant="body" color={Colors.textTertiary}>
+            Platform Commission (10%)
+          </AppText>
+          <AppText variant="body" weight="bold" color={Colors.error}>
+            -₱{(
+              (Number(earnings.replace(/[^0-9.]/g, '')) || 1000) * 0.10
+            ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+          </AppText>
+        </View>
       </View>
 
-      <AppButton
-        label={
-          paymentConfirmed ? 'Cash Payment Confirmed' : 'Confirm Cash Received'
-        }
-        variant="primary"
-        fullWidth
-        disabled={paymentConfirmed}
-        onPress={onConfirmCash}
-      />
+      {!paymentConfirmed ? (
+        <View style={{ width: '100%', gap: Spacing['2'] }}>
+          <AppButton
+            label="Confirm Payment — Cash 💵"
+            variant="primary"
+            fullWidth
+            onPress={() => onConfirmCash('CASH')}
+          />
+          <AppButton
+            label="Confirm Payment — Online (Simulated) 💳"
+            variant="secondary"
+            fullWidth
+            onPress={() => onConfirmCash('ONLINE_SIMULATED')}
+          />
+        </View>
+      ) : (
+        <AppButton
+          label="Payment & Commission Recorded ✅"
+          variant="primary"
+          fullWidth
+          disabled
+          onPress={() => {}}
+        />
+      )}
       <AppButton
         label="Leave Feedback"
         variant="outline"
@@ -127,6 +165,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  idValue: {
+    flexShrink: 1,
+    marginLeft: Spacing['2'],
   },
   divider: {
     height: 1,

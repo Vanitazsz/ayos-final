@@ -1,12 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {View,
   Text,
-  StyleSheet,
   TextInput,
   ScrollView,
   Pressable,
   Animated,} from 'react-native';
-import { Bell, Search, ChevronRight, Briefcase, Circle, MapPin, Clock, RefreshCw } from 'lucide-react-native';
+import { Bell, Search, ChevronRight, Circle, MapPin, Clock, RefreshCw } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +15,6 @@ import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
 import {
-  fetchWalletTransactions,
   fetchWorkerBookings,
   fetchWorkerProfile,
   subscribeToTable,
@@ -35,6 +33,8 @@ import {
 } from '@/services/liveDispatch';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 import { showAlert } from '@/components/AppAlert';
+import { styles } from '@/features/worker/screens/WorkerDashboard.styles';
+import { useWorkerDashboard } from '@/hooks/useWorkerDashboard';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   pending: { label: 'Pending', variant: 'warning' },
@@ -50,15 +50,21 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
 
 export default function WorkerDashboardScreen() {
   const insets = useSafeAreaInsets();
-  const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
-  const currentBookingId = useWorkerBookingStore((s) => s.currentBookingId);
-  const [workerProfile, setWorkerProfile] = useState<WorkerProfile | null>(null);
-  const [workerBookings, setWorkerBookings] = useState<WorkerBooking[]>([]);
-  const [earnings, setEarnings] = useState(0);
-  const [dispatchOffers, setDispatchOffers] = useState<DispatchOffer[]>([]);
-  const { state: presenceState, message: presenceMessage, ready } = useWorkerPresence();
-  const [liveStatus, setLiveStatus] = useState<WorkerLiveStatus | null>(null);
-  const [refreshingLocation, setRefreshingLocation] = useState(false);
+  const {
+    workerProfile,
+    activeBookings,
+    todayStats,
+    completionRate,
+    incomingJob,
+    isOnline,
+    presenceState,
+    presenceMessage,
+    ready,
+    liveStatus,
+    refreshingLocation,
+    refreshLocation,
+    respond,
+  } = useWorkerDashboard();
   const pingAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -66,9 +72,8 @@ export default function WorkerDashboardScreen() {
       void Promise.all([
         fetchWorkerProfile(),
         fetchWorkerBookings(),
-        fetchWalletTransactions(),
       ])
-        .then(([profile, bookings, transactions]) => {
+        .then(([profile, bookings]) => {
           if (!profile.error) setWorkerProfile(profile.data);
           setWorkerBookings(bookings.data);
           const completedBookingSum = (bookings.data ?? [])
@@ -78,19 +83,7 @@ export default function WorkerDashboardScreen() {
                 sum + Number(row.price.replace(/[^0-9.]/g, '') || 0),
               0,
             );
-          const walletTxSum = (transactions.data ?? [])
-            .filter((row) => row.credit && row.status === 'completed')
-            .reduce(
-              (sum, row) =>
-                sum + Number(row.amount.replace(/[^0-9.]/g, '') || 0),
-              0,
-            );
-          const profileEarnings = profile.data?.earnings
-            ? Number(profile.data.earnings.replace(/[^0-9.]/g, '') || 0)
-            : 0;
-          setEarnings(
-            Math.max(completedBookingSum, walletTxSum, profileEarnings),
-          );
+          setEarnings(completedBookingSum);
         })
         .catch((e) => console.warn('[worker-dashboard] load failed:', e));
     load();
@@ -137,67 +130,6 @@ export default function WorkerDashboardScreen() {
       pingAnim.setValue(0);
     }
   }, [presenceState, pingAnim]);
-
-  const refreshLocation = async () => {
-    setRefreshingLocation(true);
-    try {
-      const status = await refreshWorkerPresence();
-      setLiveStatus(status);
-    } catch (error) {
-      console.warn(error);
-    } finally {
-      setRefreshingLocation(false);
-    }
-  };
-
-  const respond = async (offer: DispatchOffer, response: 'ACCEPTED' | 'DECLINED') => {
-    await respondToDispatch(offer.dispatchId, response);
-    setDispatchOffers((current) =>
-      current.map((item) =>
-        item.dispatchId === offer.dispatchId
-          ? { ...item, status: response }
-          : item,
-      ),
-    );
-  };
-
-  const activeBookings = workerBookings.filter(
-    (row) => !['completed', 'cancelled'].includes(row.status),
-  );
-  const completed = workerBookings.filter(
-    (row) => row.status === 'completed',
-  ).length;
-  const todayStats = [
-    {
-      label: 'Active',
-      value: workerBookings
-        .filter((row) =>
-          [
-            'worker_en_route',
-            'worker_arrived',
-            'service_started',
-            'in_progress',
-          ].includes(row.status),
-        )
-        .length.toString(),
-    },
-    {
-      label: 'Pending',
-      value: workerBookings
-        .filter((row) =>
-          ['pending', 'accepted', 'worker_preparing'].includes(row.status),
-        )
-        .length.toString(),
-    },
-    { label: 'Completed', value: completed.toString() },
-    { label: 'Earnings', value: `₱${earnings.toLocaleString()}` },
-  ];
-  const completionRate = workerBookings.length
-    ? Math.round((completed / workerBookings.length) * 100)
-    : 0;
-  const incomingJob = dispatchOffers.find((o) => o.status === 'OFFERED' || o.status === 'VIEWED');
-
-  const isOnline = presenceState === 'online';
 
   return (
     <View style={styles.container}>
@@ -281,27 +213,27 @@ export default function WorkerDashboardScreen() {
                   ? ''
                   : presenceMessage ||
                     {
-                      starting: 'Starting location sharing…',
-                      paused: 'Tab inactive — matching will pause after 60 seconds.',
+                      starting: 'Starting location sharingâ€¦',
+                      paused: 'Tab inactive â€” matching will pause after 60 seconds.',
                       offline: 'Return to this tab to go online.',
                       permission_denied: 'Allow location access in your browser.',
                       not_ready: 'Complete Service Availability and switch Available for matching on.',
                       error: 'Location sharing could not start.',
-                      online: 'Your foreground location updates every 10–15 seconds.',
+                      online: 'Your foreground location updates every 10â€“15 seconds.',
                     }[presenceState]}
               </Text>
               <View style={styles.liveDivider} />
               <View style={styles.liveDetailList}>
                 <View style={styles.liveDetailRow}>
-                  <View style={{ width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={styles.liveDetailMarker}>
                     <Circle size={14} color={theme.colors.textTertiary} />
-                    <View style={{ position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: theme.colors.textTertiary }} />
+                    <View style={styles.liveDetailDot} />
                   </View>
                   <Text style={styles.liveDetailText}>
                     <Text style={styles.liveDetailLabel}>Service area:</Text>{' '}
                     {liveStatus?.serviceArea ?? 'Not configured'}
                     {liveStatus?.radiusMeters
-                      ? ` · ${(liveStatus.radiusMeters / 1000).toFixed(0)} km radius`
+                      ? ` Â· ${(liveStatus.radiusMeters / 1000).toFixed(0)} km radius`
                       : ''}
                   </Text>
                 </View>
@@ -331,7 +263,7 @@ export default function WorkerDashboardScreen() {
               >
                 <RefreshCw size={14} color={isOnline ? theme.colors.success : theme.colors.warning} />
                 <Text style={[styles.liveRefreshText, { color: isOnline ? theme.colors.success : theme.colors.warning }]}>
-                  {refreshingLocation ? 'Refreshing…' : 'Refresh location and matching setup'}
+                  {refreshingLocation ? 'Refreshingâ€¦' : 'Refresh location and matching setup'}
                 </Text>
               </Pressable>
             </View>
@@ -345,7 +277,7 @@ export default function WorkerDashboardScreen() {
               category={incomingJob.category}
               area={incomingJob.area}
               distance={`${(incomingJob.distanceMeters / 1000).toFixed(1)} km`}
-              budget={incomingJob.budget || (incomingJob.rateMinor == null ? 'Rate unavailable' : `₱${(incomingJob.rateMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
+              budget={incomingJob.budget || (incomingJob.rateMinor == null ? 'Rate unavailable' : `â‚±${(incomingJob.rateMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
               postedTime={new Date(incomingJob.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               description={incomingJob.description}
               status={incomingJob.status === 'ACCEPTED' ? 'accepted' : incomingJob.status === 'DECLINED' ? 'declined' : 'pending'}
@@ -406,7 +338,7 @@ export default function WorkerDashboardScreen() {
                   </View>
                   <View style={styles.bookingMeta}>
                     <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>{booking.time}</Text>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>·</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>Â·</Text>
                     <Text style={[theme.typography.caption, { color: theme.colors.textTertiary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{booking.address}</Text>
                   </View>
                 </Pressable>
@@ -468,252 +400,3 @@ export default function WorkerDashboardScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  topNav: {
-    backgroundColor: '#1e3a8a',
-    paddingHorizontal: theme.layout.screenPadding,
-    paddingBottom: theme.spacing.md,
-  },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.full,
-    paddingHorizontal: theme.spacing.md,
-    height: 44,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: theme.colors.textPrimary },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.error,
-    borderWidth: 1,
-    borderColor: '#1e3a8a',
-  },
-  avatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: theme.colors.surface,
-  },
-  headerAvatar: { width: '100%', height: '100%' },
-  content: { flex: 1, zIndex: 5 },
-  contentContainer: {
-    paddingBottom: theme.spacing.xxxl,
-    paddingTop: theme.spacing.lg,
-  },
-
-  // Stats Card
-  statsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.md,
-    ...theme.shadows.sm,
-  },
-  statItem: { alignItems: 'center', flex: 1 },
-  statDivider: { width: 1, height: 28, backgroundColor: theme.colors.borderLight },
-  section: {
-    marginBottom: theme.spacing.xl,
-    paddingHorizontal: theme.layout.screenPadding,
-  },
-
-  // Live Status Card
-  liveCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1.5,
-    borderColor: theme.colors.warning,
-    overflow: 'hidden',
-    ...theme.shadows.sm,
-  },
-  liveCardActive: { borderColor: theme.colors.success },
-  liveHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xs,
-  },
-  liveDotRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    flex: 1,
-  },
-  liveDotWrapper: {
-    width: 10,
-    height: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  liveDot: { width: 10, height: 10, borderRadius: 5 },
-  liveDotActive: { backgroundColor: theme.colors.success },
-  liveDotInactive: { backgroundColor: theme.colors.warning },
-  liveDotPing: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.success,
-    opacity: 0.3,
-  },
-  liveLabel: {
-    ...theme.typography.body2,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    flexShrink: 1,
-  },
-  liveBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: theme.radius.full,
-    marginLeft: theme.spacing.sm,
-  },
-  liveBadgeActive: { backgroundColor: theme.colors.successBackground },
-  liveBadgeInactive: { backgroundColor: theme.colors.warningBackground },
-  liveBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  liveBadgeTextActive: { color: '#065f46' },
-  liveBadgeTextInactive: { color: '#92400e' },
-  liveSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-  },
-  liveDivider: {
-    height: 1,
-    backgroundColor: theme.colors.borderLight,
-    marginHorizontal: theme.spacing.md,
-  },
-  liveDetailList: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
-  },
-  liveDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-  },
-  liveDetailText: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-    flexShrink: 1,
-  },
-  liveDetailLabel: {
-    fontWeight: '500',
-    color: theme.colors.textPrimary,
-  },
-  liveRefreshBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    marginTop: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1.5,
-    backgroundColor: 'transparent',
-  },
-  liveRefreshText: {
-    ...theme.typography.button,
-    fontSize: 13,
-  },
-
-  // Bookings
-  bookingsContainer: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.md,
-    ...theme.shadows.sm,
-  },
-  bookingsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  seeAllBtn: { flexDirection: 'row', alignItems: 'center' },
-  bookingCard: {
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  bookingHeader: { flexDirection: 'row', alignItems: 'center' },
-  bookingInfo: { flex: 1, marginLeft: theme.spacing.sm },
-  bookingMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderLight,
-  },
-
-  // Performance Card (kept from current project)
-  perfCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    ...theme.shadows.sm,
-  },
-  perfHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
-  },
-  perfAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.colors.info,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  perfInfo: { flex: 1, gap: 2 },
-  perfStats: { gap: theme.spacing.md },
-  perfRow: { gap: theme.spacing.xs },
-  perfRowTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  perfTrack: {
-    height: 6,
-    backgroundColor: theme.colors.borderLight,
-    borderRadius: theme.radius.full,
-    overflow: 'hidden',
-  },
-  perfFill: { height: '100%', borderRadius: theme.radius.full },
-});

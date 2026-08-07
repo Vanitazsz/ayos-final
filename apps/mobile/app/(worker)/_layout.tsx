@@ -20,6 +20,7 @@ import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import type { PresenceState } from '@/services/liveDispatch';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -129,6 +130,17 @@ export default function WorkerTabLayout() {
   return (
     <View style={styles.container}>
       <Tabs
+        tabBar={(props) => (
+          <BottomTabBar
+            {...props}
+            state={{
+              ...props.state,
+              routes: props.state.routes.filter(
+                (route) => props.descriptors[route.key]?.options?.href !== null
+              ),
+            }}
+          />
+        )}
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: theme.colors.primary,
@@ -203,18 +215,54 @@ export default function WorkerTabLayout() {
             ),
           }}
         />
-        <Tabs.Screen name="verification" options={{ href: null }} />
-        <Tabs.Screen name="transactions-history" options={{ href: null }} />
-        <Tabs.Screen name="reviews" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
-        <Tabs.Screen name="personal-info" options={{ href: null }} />
-        <Tabs.Screen name="service-setup" options={{ href: null }} />
-        <Tabs.Screen name="industry-skills" options={{ href: null }} />
-        <Tabs.Screen name="help-center" options={{ href: null }} />
-        <Tabs.Screen name="privacy-policy" options={{ href: null }} />
-        <Tabs.Screen name="booking-request/[id]" options={{ href: null }} />
-        <Tabs.Screen name="cancel-service/[id]" options={{ href: null }} />
-        <Tabs.Screen name="leave-feedback/[id]" options={{ href: null }} />
+        <Tabs.Screen
+          name="verification"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="transactions-history"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="reviews"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="personal-info"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="service-setup"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="industry-skills"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="help-center"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="privacy-policy"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="booking-request/[id]"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="cancel-service/[id]"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tabs.Screen
+          name="leave-feedback/[id]"
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
+        />
       </Tabs>
 
       {config && Icon && !startingHidden ? (

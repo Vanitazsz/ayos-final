@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Redirect, Tabs, useRouter } from 'expo-router';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { theme } from '@/constants/theme';
 import { Home, FileText, MessageSquare, User, Plus } from 'lucide-react-native';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -46,6 +47,17 @@ export default function TabLayout() {
   if (!isLoading && user?.role !== 'USER') return <Redirect href="/(worker)" />;
   return (
     <Tabs
+      tabBar={(props) => (
+        <BottomTabBar
+          {...props}
+          state={{
+            ...props.state,
+            routes: props.state.routes.filter(
+              (route) => props.descriptors[route.key]?.options?.href !== null
+            ),
+          }}
+        />
+      )}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
@@ -117,12 +129,12 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="help-center"
-        options={{ href: null }}
+        options={{ href: null, tabBarItemStyle: { display: 'none' } }}
       />
 
       <Tabs.Screen
         name="privacy-policy"
-        options={{ href: null }}
+        options={{ href: null, tabBarItemStyle: { display: 'none' } }}
       />
       
     </Tabs>

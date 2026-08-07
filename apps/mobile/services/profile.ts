@@ -72,16 +72,26 @@ export function requireIdentity(value: unknown, context: string): string {
   return value.trim();
 }
 
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const SIGNED_URL_TTL_MS = 55 * 60 * 1000;
+
 export async function resolveStorageImage(
   path: unknown,
   bucket = 'profile-avatars',
 ): Promise<string> {
   if (typeof path !== 'string' || !path) return '';
   if (/^https?:\/\//i.test(path)) return path;
+  const key = `${bucket}/${path}`;
+  const cached = signedUrlCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, 60 * 60);
   if (error) throw error;
+  signedUrlCache.set(key, {
+    url: data.signedUrl,
+    expiresAt: Date.now() + SIGNED_URL_TTL_MS,
+  });
   return data.signedUrl;
 }
 

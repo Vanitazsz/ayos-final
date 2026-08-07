@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: 'transparent',
     borderRadius: Radius.full,
   },
   overlay: {

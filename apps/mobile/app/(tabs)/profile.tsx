@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import {View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  TextInput as NativeTextInput,} from 'react-native';
+  TouchableOpacity,} from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
+import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'expo-router';
@@ -36,18 +36,21 @@ const SETTINGS_SECTIONS = [
         title: 'Personal Information',
         icon: Fingerprint,
         route: '/(tabs)/profile',
+        color: theme.colors.primary,
       },
       {
         id: 'identity',
         title: 'Identity Verification',
         icon: Shield,
         route: '/(auth)/verify-identity',
+        color: theme.colors.success,
       },
       {
         id: 'addresses',
         title: 'Saved Addresses',
         icon: MapPin,
         route: '/settings/addresses',
+        color: theme.colors.info,
       },
     ],
   },
@@ -59,12 +62,14 @@ const SETTINGS_SECTIONS = [
         title: 'Notifications',
         icon: Bell,
         route: '/notifications',
+        color: theme.colors.warning,
       },
       {
         id: 'language',
         title: 'Message Language',
         icon: Languages,
         route: '/settings/language',
+        color: theme.colors.secondary,
       },
     ],
   },
@@ -76,12 +81,14 @@ const SETTINGS_SECTIONS = [
         title: 'Help Center',
         icon: HelpCircle,
         route: '/(tabs)/help-center',
+        color: theme.colors.primaryLight,
       },
       {
         id: 'privacy',
         title: 'Privacy Policy',
         icon: Shield,
         route: '/(tabs)/privacy-policy',
+        color: theme.colors.textSecondary,
       },
     ],
   },
@@ -169,7 +176,12 @@ export default function ProfileScreen() {
   };
 
   return (
-    <Screen safeArea scrollable>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View style={styles.header}>
         <Text style={theme.typography.h2}>Profile</Text>
       </View>
@@ -283,14 +295,12 @@ export default function ProfileScreen() {
                     ? 'Personal Information'
                     : 'Complete your profile'}
                 </Text>
-                <NativeTextInput
-                  style={styles.input}
+                <TextInput
                   value={name}
                   onChangeText={setName}
                   placeholder="Full name"
                 />
-                <NativeTextInput
-                  style={styles.input}
+                <TextInput
                   value={mobile}
                   onChangeText={setMobile}
                   placeholder="Mobile number"
@@ -334,10 +344,10 @@ export default function ProfileScreen() {
                         <View
                           style={[
                             styles.iconContainer,
-                            { backgroundColor: `${theme.colors.primary}15` },
+                            { backgroundColor: `${item.color}15` },
                           ]}
                         >
-                          <Icon color={theme.colors.primary} size={20} />
+                          <Icon color={item.color} size={20} />
                         </View>
                         <Text
                           style={[theme.typography.body1, styles.settingText]}
@@ -377,6 +387,8 @@ const styles = StyleSheet.create({
   header: {
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.layout.screenPadding,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -385,11 +397,13 @@ const styles = StyleSheet.create({
   },
   userInfo: { alignItems: 'center', marginVertical: theme.spacing.xl },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: theme.colors.border,
     marginBottom: theme.spacing.sm,
+    borderWidth: 3,
+    borderColor: theme.colors.surface,
   },
   verifiedBadge: {
     backgroundColor: `${theme.colors.success}15`,
@@ -405,9 +419,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    ...theme.shadows.sm,
+    borderRadius: theme.radius.xl,
+    ...theme.shadows.md,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   settingItem: {
     flexDirection: 'row',
@@ -438,18 +454,10 @@ const styles = StyleSheet.create({
   },
   editCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.xl,
-    ...theme.shadows.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    color: theme.colors.textPrimary,
+    ...theme.shadows.md,
   },
   editActions: {
     flexDirection: 'row',

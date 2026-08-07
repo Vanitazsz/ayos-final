@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isValidPhilippinePhone,
   normalizePhilippinePhone,
+  signupErrorMessage,
   workerRegistrationErrorMessage,
 } from './workerRegistration';
 
@@ -56,5 +57,53 @@ describe('workerRegistrationErrorMessage', () => {
         message: 'Readable failure',
       }),
     ).toBe('Readable failure');
+  });
+
+  it('maps a duplicate mobile to an actionable message', () => {
+    expect(
+      workerRegistrationErrorMessage({
+        code: 'MOBILE_ALREADY_REGISTERED',
+        message: '{}',
+      }),
+    ).toBe(
+      'This mobile number is already registered. Sign in or use a different number.',
+    );
+  });
+
+  it('maps a raw unique-constraint violation on mobile to the same message', () => {
+    expect(
+      workerRegistrationErrorMessage({
+        message: 'Database error saving new user',
+        details: 'duplicate key value violates unique constraint "accounts_mobile_key"',
+      }),
+    ).toBe(
+      'This mobile number is already registered. Sign in or use a different number.',
+    );
+  });
+});
+
+describe('signupErrorMessage', () => {
+  it('maps a duplicate mobile to an actionable message', () => {
+    expect(signupErrorMessage({ code: 'MOBILE_ALREADY_REGISTERED' })).toBe(
+      'This mobile number is already registered. Sign in or use a different number.',
+    );
+  });
+
+  it('maps a masked Auth signup failure to a generic message', () => {
+    expect(
+      signupErrorMessage({ code: 'unexpected_failure', message: '{}' }),
+    ).toBe('Your account could not be created. Check your details and try again.');
+  });
+
+  it('keeps a readable message over an unknown code', () => {
+    expect(
+      signupErrorMessage({ code: 'UNKNOWN_CODE', message: 'Readable failure' }),
+    ).toBe('Readable failure');
+  });
+
+  it('falls back when no usable detail is present', () => {
+    expect(signupErrorMessage({})).toBe(
+      'Unable to create your account. Please try again.',
+    );
   });
 });

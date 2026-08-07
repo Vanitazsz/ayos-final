@@ -6,7 +6,7 @@ A-YOS is a local service-matching and booking platform with the approved Expo ap
 
 - Supabase email/password authentication, email OTP verification and recovery, persistent mobile sessions, and administrator TOTP MFA.
 - Permanently separated User/Worker accounts, structured worker verification, categories, availability, matching, booking lifecycle, Cash settlement, receipts, reviews, support, reports, audit, Trash, and Restore.
-- Cash-only customer settlement plus administrator-verified manual GCash/bank Worker top-ups and transactional payout holds, completion, and reversal.
+- Cash settlement and mock GCash payment simulation with internal ledger records (distinguished from real financial settlement) plus administrator-verified manual GCash/bank Worker top-ups and transactional payout holds, completion, and reversal.
 - Direct RLS-protected reads and low-risk updates; sensitive workflow changes use transactional security-definer RPC functions.
 - Private media buckets, signed access, private Realtime channels, PGMQ jobs, and scheduled queue consumption.
 - Authenticated queued AI processing with per-request consent, Gemini primary analysis, retryable OpenAI fallback, and persisted provider-attempt audit data.

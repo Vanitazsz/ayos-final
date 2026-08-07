@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface ScreenProps {
   children: React.ReactNode;
   scrollable?: boolean;
-  style?: ViewStyle;
-  contentContainerStyle?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
   safeArea?: boolean;
   keyboardAvoiding?: boolean;
   backgroundColor?: string;

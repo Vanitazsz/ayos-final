@@ -5,6 +5,7 @@ import { useGoBack } from '@/hooks/useGoBack';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
+import { MockGCashPayment } from '@/components/payment/MockGCashPayment';
 import {
   ArrowLeft,
   CreditCard,
@@ -30,7 +31,7 @@ const PAYMENT_METHODS = [
     title: 'GCash',
     icon: Smartphone,
     color: '#0052cc',
-    available: false,
+    available: true,
   },
   {
     id: 'maya',
@@ -52,6 +53,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [selectedMethod, setSelectedMethod] = useState<string | null>('cash');
+  const [showGcashSim, setShowGcashSim] = useState(false);
   const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState<number | null>(null);
   const [homeownerCharge, setHomeownerCharge] = useState(0);
@@ -81,6 +83,10 @@ export default function PaymentScreen() {
 
   const handlePayment = async () => {
     if (!selectedMethod || !bookingId) return;
+    if (selectedMethod === 'gcash') {
+      setShowGcashSim(true);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -103,8 +109,26 @@ export default function PaymentScreen() {
     }
   };
 
+  if (showGcashSim && bookingId) {
+    return (
+      <Screen scrollable style={{ paddingBottom: 0 }}>
+        <MockGCashPayment
+          bookingId={bookingId}
+          totalAmount={total}
+          onSuccess={() => router.push(`/payment/success?id=${bookingId}`)}
+          onCancel={() => setShowGcashSim(false)}
+        />
+      </Screen>
+    );
+  }
+
   return (
-    <Screen safeArea scrollable>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View
         style={[
           styles.header,
@@ -276,7 +300,11 @@ export default function PaymentScreen() {
           </Text>
         ) : null}
         <Button
-          title={`Confirm cash payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+          title={
+            selectedMethod === 'gcash'
+              ? `Proceed to GCash Payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+              : `Confirm cash payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+          }
           onPress={handlePayment}
           disabled={!selectedMethod || amount == null}
           loading={loading}

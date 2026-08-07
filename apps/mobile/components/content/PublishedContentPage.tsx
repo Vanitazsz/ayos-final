@@ -104,9 +104,10 @@ export function PublishedContentPage({
 
   return (
     <Screen
-      safeArea
       scrollable
-      contentContainerStyle={styles.screenContent}
+      keyboardAvoiding={false}
+      contentContainerStyle={[styles.screenContent, { paddingBottom: 80 }]}
+      style={{ paddingBottom: 0 }}
     >
       <View style={styles.container}>
         <View style={styles.header}>
@@ -204,6 +205,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 840,
     alignSelf: 'center',
+    flexGrow: 1,
   },
   header: {
     minHeight: 56,
@@ -235,6 +237,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.xl,
+    flexGrow: 1,
   },
   retryButton: {
     minWidth: 160,
@@ -245,6 +248,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: Radius.xl,
     padding: Spacing['5'],
+    flexGrow: 1,
   },
   body: {
     gap: Spacing['3'],

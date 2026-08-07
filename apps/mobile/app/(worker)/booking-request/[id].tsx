@@ -4,7 +4,6 @@ import {View,
   ScrollView,
   Pressable,
   Image,} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import {
   ChevronLeft,
   MapPin,
@@ -38,10 +37,10 @@ import { CompletedSummary } from '@/components/booking/CompletedSummary';
 import * as Location from 'expo-location';
 import {
   acceptJob,
-  attachBookingProof,
   arriveAtJob,
   completeJob,
   confirmCashPayment,
+  confirmPaymentWithCommission,
   confirmWorkerArrival,
   declineAssignedBooking,
   departForJob,
@@ -56,7 +55,6 @@ import {
   startEnRouteLocationPublisher,
   stopEnRouteLocationPublisher,
 } from '@/services/liveDispatch';
-import { uploadBookingProof } from '@/services/uploads';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import { shouldTransitionToArrivedAfterProximityCheck } from '@/utils/arrivalTransition';
@@ -216,7 +214,7 @@ export default function BookingRequestScreen() {
     load();
     let unsub = () => {};
     try {
-      unsub = subscribeToTable('bookings', load, `id=eq.${id}`);
+      unsub = subscribeToTable('bookings', load, `id=eq.${id}`, undefined, ['INSERT', 'UPDATE']);
     } catch (e) {
       console.warn('[booking-detail] realtime subscribe failed:', e);
     }
@@ -329,49 +327,20 @@ export default function BookingRequestScreen() {
     }
   };
 
-  const handleUploadProof = async () => {
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(
-          'Permission required',
-          'Photo-library access is required to attach proof of work.',
-        );
-        return;
-      }
-      const picker = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-      });
-      if (picker.canceled) return;
-      const proof = await uploadBookingProof(picker.assets[0].uri);
-      await attachBookingProof(booking.id, proof);
-      showAlert('Proof attached', 'The photo is tied to this booking.');
-    } catch (error: any) {
-      const msg = error?.message ?? error?.code ?? String(error);
-      console.error('handleUploadProof error:', msg, error);
-      showAlert('Upload failed', msg);
-    }
-  };
-
   const handleLeaveFeedback = () => {
     if (booking?.id) {
       router.push(`/(worker)/leave-feedback/${booking.id}`);
     }
   };
 
-  const handleConfirmCash = async () => {
+  const handleConfirmCash = async (method: 'CASH' | 'ONLINE_SIMULATED' = 'CASH') => {
     try {
-      const payment = await confirmCashPayment(booking.id);
-      setPaymentStatus(payment.status);
+      const payment = await confirmPaymentWithCommission(booking.id, method);
+      setPaymentStatus('SUCCESSFUL');
       showAlert(
-        payment.status === 'SUCCESSFUL'
-          ? 'Cash payment confirmed'
-          : 'Confirmation recorded',
-        payment.status === 'SUCCESSFUL'
-          ? 'Both parties confirmed the cash payment.'
-          : 'Waiting for the customer to confirm the cash payment.',
+        'Payment & Commission Recorded',
+        `Payment method: ${method === 'ONLINE_SIMULATED' ? 'Online Payment (Simulated)' : 'Cash'}\n` +
+        `10% platform commission deduction has been successfully applied to your wallet.`,
       );
     } catch (error) {
       showAlert(
@@ -609,7 +578,7 @@ export default function BookingRequestScreen() {
               </AppText>
               <View style={styles.hiredActions}>
                 <AppButton
-                  label="Accept Booking ✅"
+                  label="Accept Booking"
                   variant="primary"
                   leftIcon={<Calendar size={18} color={Colors.white} />}
                   fullWidth
@@ -619,21 +588,34 @@ export default function BookingRequestScreen() {
                         setBackendStatus('ACCEPTED');
                         setBooking((b) => ({ ...b, status: 'accepted' }));
                       })
-                      .catch((error) =>
-                        showAlert('Unable to accept', error.message),
-                      )
                       .catch((err: any) => {
                         const msg = err?.message ?? err?.code ?? String(err);
-                        console.error('acceptJob error:', msg, err);
-                        showAlert('Accept failed', msg);
+                        if (msg.includes('Insufficient wallet balance') || msg.includes('INSUFFICIENT_WALLET_BALANCE')) {
+                          showAlert(
+                            'Insufficient Wallet Balance',
+                            msg,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Go to Wallet',
+                                onPress: () => router.push('/(worker)/wallet'),
+                              },
+                            ],
+                          );
+                        } else {
+                          showAlert('Accept failed', msg);
+                        }
                       })
                   }
                 />
                 <AppButton
-                  label="Decline ❌"
+                  label="Decline"
                   variant="outline"
                   fullWidth
                   onPress={handleDecline}
+                  labelStyle={{ color: Colors.error }}
+                  style={{ borderColor: Colors.error }}
+                  pressedStyle={{ backgroundColor: Colors.errorBg }}
                 />
               </View>
             </View>
@@ -767,12 +749,6 @@ export default function BookingRequestScreen() {
                 paymentStatus={paymentStatus}
                 onConfirmCash={handleConfirmCash}
                 onLeaveFeedback={handleLeaveFeedback}
-              />
-              <AppButton
-                label="Add Proof of Work Photo"
-                variant="outline"
-                fullWidth
-                onPress={handleUploadProof}
               />
             </View>
           )}

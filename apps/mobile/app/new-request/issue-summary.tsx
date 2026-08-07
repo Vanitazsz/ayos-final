@@ -8,14 +8,18 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
-import { Button } from '@/components/buttons/Button';
-import { TextInput } from '@/components/inputs/TextInput';
+import { AppButton } from '@/components/AppButton';
+import { AppInput } from '@/components/AppInput';
 import { theme } from '@/constants/theme';
 import {
   ArrowLeft,
   Sparkles,
   CheckCircle2,
   AlertTriangle,
+  ShieldAlert,
+  Clock,
+  Wrench,
+  CreditCard,
 } from 'lucide-react-native';
 import {
   fetchWorkerRateEstimate,
@@ -192,7 +196,12 @@ export default function IssueSummaryScreen() {
   };
 
   return (
-    <Screen safeArea scrollable>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View
         style={[
           styles.header,
@@ -252,8 +261,8 @@ export default function IssueSummaryScreen() {
             >
               {error}
             </Text>
-            <Button
-              title="Retry AI"
+            <AppButton
+              label="Retry AI"
               onPress={() => void start()}
               fullWidth
               style={{ marginTop: theme.spacing.lg }}
@@ -279,66 +288,51 @@ export default function IssueSummaryScreen() {
             </View>
 
             {result?.safetyCritical && (
-              <View
-                style={[
-                  styles.card,
-                  { borderColor: theme.colors.error, borderWidth: 1 },
-                ]}
-              >
-                <Text
-                  style={[
-                    theme.typography.label,
-                    { color: theme.colors.error },
-                  ]}
-                >
-                  Safety escalation required
-                </Text>
-                <Text style={theme.typography.body1}>
-                  {result.safetyAdvice?.join('\n')}
-                </Text>
+              <View style={styles.card}>
+                <Text style={[theme.typography.label, { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs }]}>Safety Advice</Text>
+                <View style={styles.safetyBox}>
+                  <ShieldAlert color={theme.colors.error} size={20} />
+                  <Text style={[theme.typography.caption, { color: theme.colors.error, marginLeft: 8, flex: 1 }]}>
+                    {result.safetyAdvice?.join('\n')}
+                  </Text>
+                </View>
               </View>
             )}
 
             <View style={styles.card}>
-              <Text style={styles.label}>Issue Identified</Text>
-              <Text
-                style={[
-                  theme.typography.body1,
-                  { marginBottom: theme.spacing.md },
-                ]}
-              >
-                {result?.detectedIssue}
-              </Text>
+              <Text style={[theme.typography.label, { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs }]}>Issue Identified</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: theme.spacing.md }}>
+                <Wrench color={theme.colors.primary} size={16} style={{ marginTop: 2 }} />
+                <Text style={[theme.typography.body1, { marginLeft: 8, flex: 1 }]}>
+                  {result?.detectedIssue}
+                </Text>
+              </View>
 
-              <Text style={styles.label}>Estimated Repair Time</Text>
-              <Text
-                style={[
-                  theme.typography.body1,
-                  { marginBottom: theme.spacing.md },
-                ]}
-              >
-                {result?.estimatedDurationMinutes} minutes
-              </Text>
+              <Text style={[theme.typography.label, { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs }]}>Estimated Repair Time</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.md }}>
+                <Clock color={theme.colors.primary} size={16} />
+                <Text style={[theme.typography.body1, { marginLeft: 8 }]}>
+                  {result?.estimatedDurationMinutes} minutes
+                </Text>
+              </View>
 
-              <Text style={styles.label}>Estimated Cost</Text>
-              <Text
-                style={[
-                  theme.typography.body1,
-                  { marginBottom: theme.spacing.md },
-                ]}
-              >
-                {rateLabel}
-              </Text>
+              <Text style={[theme.typography.label, { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs }]}>Estimated Cost</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: theme.spacing.xs }}>
+                <CreditCard color={theme.colors.primary} size={16} style={{ marginTop: 2 }} />
+                <Text style={[theme.typography.body1, { marginLeft: 8, flex: 1 }]}>
+                  {rateLabel}
+                </Text>
+              </View>
               {!rateLoading && rateEstimate?.workerCount ? (
                 <Text style={styles.rateNote}>
                   Based on {rateEstimate.workerCount} currently eligible{' '}
                   {rateEstimate.workerCount === 1 ? 'worker' : 'workers'}.
-                  The selected worker&apos;s saved rate is the booking price.
+                  The selected worker's saved rate is the booking price.
                 </Text>
-              ) : null}
+              ) : <View style={{ marginBottom: theme.spacing.md }} />}
 
-              <Text style={styles.label}>Editable Request Draft</Text>
-              <TextInput
+              <Text style={[theme.typography.label, { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs }]}>Editable Request Draft</Text>
+              <AppInput
                 accessibilityLabel="Editable request draft"
                 multiline
                 numberOfLines={5}
@@ -359,8 +353,8 @@ export default function IssueSummaryScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Button
-          title={
+        <AppButton
+          label={
             result?.safetyCritical
               ? 'Continue to manual request'
               : 'Continue to AI Matching'
@@ -401,10 +395,19 @@ const styles = StyleSheet.create({
   successHeader: { alignItems: 'center', marginBottom: theme.spacing.xxl },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    ...theme.shadows.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+  },
+  safetyBox: {
+    flexDirection: 'row',
+    backgroundColor: `${theme.colors.error}10`,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
   },
   label: {
     ...theme.typography.label,

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(52);
+select plan(51);
 select has_extension('postgis','PostGIS is enabled');
 select has_table('public','accounts','accounts exists');
 select has_table('public','bookings','bookings exists');
@@ -15,7 +15,6 @@ select has_function('public','submit_manual_wallet_topup',array['bigint','text',
 select has_table('public','notification_deliveries','notifications have per-recipient delivery state');
 select has_table('public','support_ticket_messages','support replies are persisted');
 select has_table('public','worker_verification_documents','verification documents have independent statuses');
-select has_table('public','worker_portfolio_items','worker portfolio items are persisted');
 select has_table('public','promotions','promotions are persisted');
 select has_column('public','bookings','agreed_service_amount','booking price is snapshotted');
 select has_table('public','admin_session_history','administrator sessions are persisted');

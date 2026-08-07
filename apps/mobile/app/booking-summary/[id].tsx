@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   // Completion Banner
   completionBanner: {
     alignItems: 'center',
-    backgroundColor: theme.colors.successBg,
+    backgroundColor: theme.colors.successBackground,
     borderRadius: theme.radius.xl,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
@@ -520,10 +520,12 @@ const styles = StyleSheet.create({
   // Cards
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    ...theme.shadows.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   cardTitleRow: {
     flexDirection: 'row',
@@ -620,7 +622,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    backgroundColor: theme.colors.successBg,
+    backgroundColor: theme.colors.successBackground,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radius.full ?? 999,
@@ -641,7 +643,11 @@ const styles = StyleSheet.create({
   // Actions
   actionsCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.md,
+    ...theme.shadows.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
     marginBottom: theme.spacing.md,
     overflow: 'hidden',
     ...theme.shadows.sm,

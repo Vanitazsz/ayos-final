@@ -80,7 +80,12 @@ export default function RegisterScreen() {
   };
 
   return (
-    <Screen safeArea scrollable>
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      contentContainerStyle={{ paddingBottom: 80 }}
+      style={{ paddingBottom: 0 }}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
@@ -202,9 +207,8 @@ export default function RegisterScreen() {
                 rules={{ required: 'Full name is required' }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Full name"
                     accessibilityLabel="Full name"
-                    placeholder="Enter your full name"
+                    placeholder="Full name"
                     leftIcon={User}
                     onBlur={onBlur}
                     onChangeText={onChange}
@@ -225,9 +229,8 @@ export default function RegisterScreen() {
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Mobile number (+63…)"
                     accessibilityLabel="Mobile number (+63…)"
-                    placeholder="Enter your mobile number"
+                    placeholder="Mobile number (+63…)"
                     leftIcon={Phone}
                     keyboardType="phone-pad"
                     onBlur={onBlur}
@@ -250,9 +253,8 @@ export default function RegisterScreen() {
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Email"
                     accessibilityLabel="Email"
-                    placeholder="Enter your email address"
+                    placeholder="Email Address"
                     leftIcon={Mail}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -276,9 +278,8 @@ export default function RegisterScreen() {
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Password"
                     accessibilityLabel="Password"
-                    placeholder="Create password"
+                    placeholder="Password"
                     leftIcon={Lock}
                     isPassword
                     onBlur={onBlur}
@@ -299,7 +300,6 @@ export default function RegisterScreen() {
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    label="Confirm password"
                     accessibilityLabel="Confirm password"
                     placeholder="Confirm password"
                     leftIcon={Lock}
@@ -387,14 +387,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.sm,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: theme.colors.border || '#e0e0e0',
-    backgroundColor: '#fff',
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.sm,
   },
   roleCardSelected: {
     borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '08',
+    backgroundColor: `${theme.colors.primary}08`,
   },
   roleIconCircle: {
     width: 56,
