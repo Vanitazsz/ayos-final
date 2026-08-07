@@ -3,5 +3,6 @@ export {
   confirmPaymentWithCommission,
   fetchPaymentForBooking,
   fetchPlatformFeeSettings,
+  simulateMockGcashPayment,
 } from './apiCore';
 

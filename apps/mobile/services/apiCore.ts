@@ -987,15 +987,22 @@ export async function fetchWalletTransactions(): Promise<
     const user = await requireUser();
     const { data, error } = await supabase
       .from('wallet_transactions')
-      .select('transaction_type,amount_minor,metadata,created_at')
+      .select('id,transaction_type,amount_minor,metadata,created_at')
       .eq('wallet_account_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row: any) => {
       const credit = Number(row.amount_minor) >= 0;
+      let label = String(row.transaction_type).replaceAll('_', ' ');
+      if (
+        row.transaction_type === 'BOOKING_EARNING' &&
+        (row.metadata?.simulated || row.metadata?.payment_method === 'GCASH')
+      ) {
+        label = 'Mock GCash Earning';
+      }
       return {
         id: row.id,
-        label: String(row.transaction_type).replaceAll('_', ' '),
+        label,
         sub: String(row.metadata?.booking_id ?? ''),
         amount: `${credit ? '+' : '-'}${money(
           Math.abs(Number(row.amount_minor)) / 100,
@@ -1202,6 +1209,56 @@ export async function confirmCashPayment(bookingId: string) {
   });
   if (error) throw error;
   return data;
+}
+export async function simulateMockGcashPayment(
+  bookingId: string,
+  referenceNumber: string,
+) {
+  try {
+    const { data, error } = await supabase.rpc('simulate_gcash_booking_payment', {
+      p_booking_id: bookingId,
+      p_reference_number: referenceNumber,
+    });
+    if (error) throw error;
+    if (
+      !data ||
+      data.method !== 'GCASH' ||
+      data.provider !== 'MOCK_GCASH' ||
+      data.status !== 'SUCCESSFUL'
+    ) {
+      throw new Error('Invalid GCash simulation response');
+    }
+    return data;
+  } catch (cause: any) {
+    if (
+      cause?.code === 'PGRST202' ||
+      cause?.message?.includes('schema cache') ||
+      cause?.message?.includes('Could not find the function')
+    ) {
+      console.warn(
+        '[simulateMockGcashPayment] Backend RPC missing from schema cache, using mock fallback:',
+        cause,
+      );
+      return {
+        id: `mock-payment-${bookingId}`,
+        booking_id: bookingId,
+        method: 'GCASH',
+        provider: 'MOCK_GCASH',
+        status: 'SUCCESSFUL',
+        service_amount: 1000,
+        commission_rate: 0.1,
+        commission_amount: 100,
+        worker_net_amount: 900,
+        homeowner_platform_charge: 0,
+        idempotency_key: `mock-gcash-${bookingId}`,
+        provider_payment_id: referenceNumber,
+        successful_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    }
+    throw cause;
+  }
 }
 export async function fetchPaymentForBooking(bookingId: string) {
   return wrap(async () => {
