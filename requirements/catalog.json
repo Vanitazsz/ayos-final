@@ -97,7 +97,7 @@
   },
   {
     "id": "FR-25",
-    "text": "The system shall support Cash as the payment method for a completed booking. Cash shall follow the confirmation flow in FR-26."
+    "text": "The system shall support Cash as the payment method for a completed booking, and simulated GCash payment with persisted internal mock ledger records (distinguished from real financial settlement). Cash shall follow the confirmation flow in FR-26."
   },
   {
     "id": "FR-26",
