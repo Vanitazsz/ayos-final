@@ -13,6 +13,10 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: Spacing['3'],
   },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -20,10 +24,34 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerSpacer: { width: 40 },
-  content: {
+  scroll: {
     flex: 1,
-    paddingBottom: theme.spacing.xxxl,
-    gap: theme.spacing.xl,
+  },
+  content: {
+    flexGrow: 1,
+    paddingBottom: 88,
+    gap: theme.spacing.lg,
+  },
+  progressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.infoBackground,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  progressText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+  },
+  progressStrong: {
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+  progressDim: {
+    color: theme.colors.textTertiary,
   },
   errorCard: {
     backgroundColor: '#fef2f2',
@@ -31,6 +59,48 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     padding: theme.spacing.md,
     borderRadius: theme.radius.md,
+    gap: theme.spacing.sm,
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  retryBtn: {
+    alignSelf: 'flex-start',
+  },
+  emptyCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    ...theme.shadows.sm,
+  },
+  emptyTitle: {
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  inlineHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+  },
+  inlineHintText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    flex: 1,
   },
   sectionCard: {
     backgroundColor: theme.colors.surface,
@@ -75,16 +145,50 @@ export const styles = StyleSheet.create({
   industryChipTextActive: {
     color: theme.colors.surface,
   },
+  skillsSection: {
+    gap: theme.spacing.md,
+  },
   skillCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.xl,
     padding: theme.spacing.lg,
     ...theme.shadows.sm,
   },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  accordionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  accordionTitle: {
+    marginLeft: theme.spacing.sm,
+    flexShrink: 1,
+  },
+  countBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    marginLeft: theme.spacing.sm,
+  },
+  countBadgeText: {
+    color: theme.colors.surface,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  skillCardBody: {
+    marginTop: theme.spacing.md,
+  },
   skillCardHint: {
     color: theme.colors.textSecondary,
     fontSize: 12,
-    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   skillsList: {
@@ -107,6 +211,10 @@ export const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
     backgroundColor: `${theme.colors.primary}0D`,
   },
+  skillRowError: {
+    borderColor: theme.colors.error,
+    backgroundColor: '#fef2f2',
+  },
   checkbox: {
     width: 22,
     height: 22,
@@ -119,6 +227,17 @@ export const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
+  },
+  rateWrap: {
+    marginBottom: theme.spacing.xs,
+  },
+  rateInput: {
+    marginBottom: 0,
+  },
+  rateHelper: {
+    color: theme.colors.textTertiary,
+    fontSize: 12,
+    marginTop: 4,
   },
   currencyPrefix: {
     ...theme.typography.body1,
@@ -150,6 +269,47 @@ export const styles = StyleSheet.create({
   yearBadgeTextActive: {
     color: theme.colors.surface,
   },
+  reviewCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.sm,
+  },
+  reviewTitle: {
+    marginLeft: theme.spacing.sm,
+  },
+  reviewList: {
+    marginTop: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  reviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reviewLabel: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    flex: 1,
+    marginRight: theme.spacing.md,
+  },
+  reviewValue: {
+    ...theme.typography.body2,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  reviewWarning: {
+    ...theme.typography.body2,
+    color: theme.colors.error,
+    fontWeight: '600',
+    marginTop: theme.spacing.xs,
+  },
+  saveBar: {
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
+  },
   confirmationOverlay: {
     flex: 1,
     alignItems: 'center',
@@ -180,7 +340,7 @@ export const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   confirmationDescription: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: 0,
     textAlign: 'center',
     color: theme.colors.textSecondary,
   },

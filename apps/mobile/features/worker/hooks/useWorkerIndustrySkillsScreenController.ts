@@ -28,9 +28,11 @@ export function useWorkerIndustrySkillsScreenController() {
     loading,
     error,
     setError,
+    reload,
   } = useWorkerSkills();
   const [saving, setSaving] = useState(false);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [rateErrorSkillIds, setRateErrorSkillIds] = useState<string[]>([]);
 
   const selectedIndustries = industries.filter((item) =>
     selectedIndustryIds.includes(item.id),
@@ -54,12 +56,24 @@ export function useWorkerIndustrySkillsScreenController() {
         initialSnapshot.rates);
 
   const handleSave = async () => {
+    setRateErrorSkillIds([]);
     if (!selectedIndustryIds.length) {
       showAlert('Industry required', 'Select at least one industry.');
       return;
     }
     if (!selectedSkillIds.length) {
       showAlert('Skills required', 'Select at least one service skill.');
+      return;
+    }
+    const missingRateIds = selectedSkillIds.filter(
+      (skillId) => !rateBySkillId[skillId] || rateBySkillId[skillId]! <= 0,
+    );
+    if (missingRateIds.length) {
+      setRateErrorSkillIds(missingRateIds);
+      showAlert(
+        'Rates required',
+        'Set a rate greater than ₱0 for every selected service.',
+      );
       return;
     }
     setSaving(true);
@@ -100,9 +114,12 @@ export function useWorkerIndustrySkillsScreenController() {
     saving,
     showSaveConfirmation,
     setShowSaveConfirmation,
+    rateErrorSkillIds,
+    setRateErrorSkillIds,
     selectedIndustries,
     toggleSkill,
     hasChanges,
     handleSave,
+    reload,
   };
 }

@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import {View,
+import {
+  View,
   Text,
-  StyleSheet,
   TouchableOpacity,
-  Switch,} from 'react-native';
+  Switch,
+} from 'react-native';
 import { Screen } from '@/components/layout/Screen';
+import { Avatar } from '@/components/Avatar';
 import { theme } from '@/constants/theme';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
 import {
   ChevronRight,
   User,
@@ -40,43 +41,44 @@ import {
   type WorkerMatchingReadiness,
 } from '@/services/workerMatching';
 import { showAlert } from '@/components/AppAlert';
+import { styles } from '@/styles/(worker)/profile.styles';
 
 const MENU_SECTIONS = [
   {
     title: 'Account',
     items: [
-      { id: 'personal', title: 'Personal Information', icon: User },
-      { id: 'industry', title: 'Industry & Skills', icon: Wrench },
-      { id: 'areas', title: 'Service Areas', icon: MapPin },
+      { id: 'personal', title: 'Personal Information', icon: User, color: theme.colors.primary },
+      { id: 'industry', title: 'Industry & Skills', icon: Wrench, color: theme.colors.success },
+      { id: 'areas', title: 'Service Areas', icon: MapPin, color: theme.colors.info },
     ],
   },
   {
     title: 'Reviews',
     items: [
-      { id: 'reviews', title: 'My Reviews', icon: Star },
+      { id: 'reviews', title: 'My Reviews', icon: Star, color: theme.colors.warning },
     ],
   },
   {
     title: 'Payments',
     items: [
-      { id: 'payout-methods', title: 'Payout Methods', icon: Wallet },
-      { id: 'payout-history', title: 'Payout History', icon: Clock },
-      { id: 'topup-methods', title: 'Top-Up Methods', icon: ArrowUpFromLine },
-      { id: 'topup-history', title: 'Top-Up History', icon: PlusCircle },
+      { id: 'payout-methods', title: 'Payout Methods', icon: Wallet, color: theme.colors.secondary },
+      { id: 'payout-history', title: 'Payout History', icon: Clock, color: theme.colors.textSecondary },
+      { id: 'topup-methods', title: 'Top-Up Methods', icon: ArrowUpFromLine, color: theme.colors.info },
+      { id: 'topup-history', title: 'Top-Up History', icon: PlusCircle, color: theme.colors.success },
     ],
   },
   {
     title: 'Preferences',
     items: [
-      { id: 'notifications', title: 'Notifications', icon: Bell },
+      { id: 'notifications', title: 'Notifications', icon: Bell, color: theme.colors.warning },
     ],
   },
   {
     title: 'Support & Legal',
     items: [
-      { id: 'verification', title: 'Verification', icon: BadgeCheck },
-      { id: 'help', title: 'Help Center', icon: HelpCircle },
-      { id: 'privacy', title: 'Privacy Policy', icon: Shield },
+      { id: 'verification', title: 'Verification', icon: BadgeCheck, color: theme.colors.success },
+      { id: 'help', title: 'Help Center', icon: HelpCircle, color: theme.colors.primaryLight },
+      { id: 'privacy', title: 'Privacy Policy', icon: Shield, color: theme.colors.textSecondary },
     ],
   },
 ];
@@ -286,10 +288,11 @@ export default function WorkerProfileScreen() {
                   onPress={chooseAvatar}
                   accessibilityLabel="Change profile photo"
                 >
-                  <Image
-                    source={workerProfile.avatarUri || undefined}
-                    style={styles.avatar}
-                    contentFit="cover"
+                  <Avatar
+                    uri={workerProfile.avatarUri}
+                    name={workerProfile.name}
+                    size={88}
+                    style={{ marginBottom: theme.spacing.sm }}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -557,10 +560,10 @@ export default function WorkerProfileScreen() {
                         <View
                           style={[
                             styles.iconContainer,
-                            { backgroundColor: `${theme.colors.primary}15` },
+                            { backgroundColor: `${item.color}15` },
                           ]}
                         >
-                          <Icon color={theme.colors.primary} size={20} />
+                          <Icon color={item.color} size={20} />
                         </View>
                         <Text
                           style={[theme.typography.body1, styles.settingText]}
@@ -595,144 +598,3 @@ export default function WorkerProfileScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.layout.screenPadding,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: theme.layout.screenPadding,
-    paddingBottom: theme.spacing.xxxl,
-  },
-  userInfo: { alignItems: 'center', marginVertical: theme.spacing.xl },
-  avatarWrapper: { position: 'relative', alignSelf: 'center' },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.colors.border,
-    marginBottom: theme.spacing.sm,
-  },
-  editBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: theme.colors.primary,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${theme.colors.success}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-    marginTop: theme.spacing.xs,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    ...theme.shadows.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  statItem: { alignItems: 'center' },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: theme.colors.borderLight,
-  },
-  section: { marginBottom: theme.spacing.xl },
-  sectionTitle: {
-    marginBottom: theme.spacing.md,
-    marginLeft: theme.spacing.xs,
-  },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    ...theme.shadows.sm,
-    overflow: 'hidden',
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-  },
-  borderBottom: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  settingText: { flex: 1 },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.md,
-    backgroundColor: `${theme.colors.error}10`,
-    borderRadius: theme.radius.md,
-    marginTop: theme.spacing.md,
-  },
-  infoSection: { marginBottom: theme.spacing.lg },
-  infoSectionTitle: {
-    marginBottom: theme.spacing.sm,
-    marginLeft: theme.spacing.xs,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-  infoCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-    ...theme.shadows.sm,
-  },
-  infoCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  infoCardItem: { flexDirection: 'row', alignItems: 'center' },
-  infoCardValue: { flexShrink: 1, textAlign: 'right' },
-  infoCardDivider: {
-    height: 1,
-    backgroundColor: theme.colors.borderLight,
-    marginVertical: theme.spacing.sm,
-  },
-  matchingCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadows.sm,
-  },
-  matchingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  matchingCopy: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-});
