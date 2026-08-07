@@ -336,7 +336,7 @@ export default function TrackingScreen() {
               {tracking.booking.cancellations[0].reason}
             </Text>
             <Text style={theme.typography.body2}>
-              Refund: â‚±
+              Refund: ₱
               {Number(
                 tracking.booking.cancellations[0].refund_amount ?? 0,
               ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
