@@ -28,7 +28,7 @@ import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
 import { type TransactionStatus, simulateTopUp } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
-import { styles } from './wallet.styles';
+import { styles } from './_wallet.styles';
 import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
 
 const statusIcon = (s: TransactionStatus) => {

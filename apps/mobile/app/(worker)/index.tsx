@@ -33,7 +33,7 @@ import {
 } from '@/services/liveDispatch';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 import { showAlert } from '@/components/AppAlert';
-import { styles } from './worker-dashboard.styles';
+import { styles } from './_worker-dashboard.styles';
 import { useWorkerDashboard } from '@/hooks/useWorkerDashboard';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {

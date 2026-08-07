@@ -21,7 +21,7 @@ import {
 import { buildProviderReportEmail } from '@/services/support';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
-import { styles } from './tracking.styles';
+import { styles } from './_tracking.styles';
 import { useBookingTracking } from '@/hooks/useBookingTracking';
 
 

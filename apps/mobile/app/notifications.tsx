@@ -9,7 +9,7 @@ import { ArrowLeft, Bell, MessageCircle, Calendar, Wrench, MoreVertical, CheckCh
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/layout/EmptyState';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { styles } from './notifications.styles';
+import { styles } from './_notifications.styles';
 import { useNotificationsFeed } from '@/hooks/useNotificationsFeed';
 
 export default function NotificationsScreen() {

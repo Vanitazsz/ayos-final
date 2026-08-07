@@ -15,7 +15,7 @@ import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { Skeleton } from '@/components/Skeleton';
 import { showAlert } from '@/components/AppAlert';
-import { styles } from './bookings.styles';
+import { styles } from './_bookings.styles';
 import { useWorkerBookings } from '@/hooks/useWorkerBookings';
 
 const statusConfig: Record<string, { label: string; variant: string }> = {

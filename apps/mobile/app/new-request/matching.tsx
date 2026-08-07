@@ -23,7 +23,7 @@ import { Screen } from '@/components/layout/Screen';
 import { MapSurface } from '@/components/maps/MapSurface';
 import { theme } from '@/constants/theme';
 import type { DispatchSnapshot, LiveWorkerCandidate } from '@/services/liveDispatch';
-import { styles } from './matching.styles';
+import { styles } from './_matching.styles';
 import { useLiveMatching } from '@/hooks/useLiveMatching';
 
 function diagnosticMessage(
