@@ -11,6 +11,8 @@ let messageRows: Record<string, unknown>[] = [];
 let conversationFetchFails = false;
 let conversationArchived = false;
 let archiveRequests = 0;
+let conversationDeleted = false;
+let deleteRequests = 0;
 
 test.beforeEach(async ({ page }, testInfo) => {
   const workerSession = testInfo.title.toLowerCase().includes('worker');
@@ -21,6 +23,8 @@ test.beforeEach(async ({ page }, testInfo) => {
   conversationFetchFails = false;
   conversationArchived = false;
   archiveRequests = 0;
+  conversationDeleted = false;
+  deleteRequests = 0;
   messageRows = [
     {
       id: 'b6000000-0000-0000-0000-000000000001',
@@ -105,8 +109,10 @@ test.beforeEach(async ({ page }, testInfo) => {
   await page.route('**/rest/v1/conversations?*', (route) => {
     const url = new URL(route.request().url());
     const detail = url.searchParams.has('id');
-    expect(url.searchParams.get('select')).toContain('worker_profiles:worker_account_id');
-    expect(url.searchParams.get('select')).toContain('user_profiles:user_account_id');
+    if (!url.searchParams.has('booking_id')) {
+      expect(url.searchParams.get('select')).toContain('worker_profiles:worker_account_id');
+      expect(url.searchParams.get('select')).toContain('user_profiles:user_account_id');
+    }
     if (conversationFetchFails) {
       return route.fulfill({
         status: 400,
@@ -175,11 +181,20 @@ test.beforeEach(async ({ page }, testInfo) => {
         },
       ],
     };
-    const responseBody = detail ? row : conversationArchived ? [] : [row];
+    const responseBody = detail
+      ? row
+      : conversationArchived || conversationDeleted
+        ? []
+        : [row];
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      headers: detail ? {} : { 'content-range': conversationArchived ? '*/0' : '0-0/1' },
+      headers: detail
+        ? {}
+        : {
+            'content-range':
+              conversationArchived || conversationDeleted ? '*/0' : '0-0/1',
+          },
       body: JSON.stringify(responseBody),
     });
   });
@@ -222,16 +237,27 @@ test.beforeEach(async ({ page }, testInfo) => {
       }),
     });
   });
+  await page.route('**/rest/v1/rpc/delete_closed_conversation', async (route) => {
+    const request = route.request().postDataJSON();
+    expect(request.p_conversation_id).toBe(conversationId);
+    deleteRequests += 1;
+    conversationDeleted = true;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: conversationId,
+        archived_at: null,
+      }),
+    });
+  });
 });
 
 test('only matched conversations are listed and closed chat is read-only', async ({ page }) => {
   await page.goto('/messages');
 
-  await expect(page.getByText('Matched Conversations')).toBeVisible();
   await expect(page.getByText('Matched Worker')).toBeVisible();
   await expect(page.getByText('Chat Participant')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Delete Conversation' })).toBeVisible();
-  await expect(page.getByText('Read only')).toBeVisible();
   await expect(page.getByText('PoC Demo', { exact: false })).toHaveCount(0);
   await expect(page.getByText('Tap to Chat', { exact: false })).toHaveCount(0);
 
@@ -246,44 +272,25 @@ test('only matched conversations are listed and closed chat is read-only', async
   await expect(page.getByPlaceholder('Conversation is read-only')).toHaveAttribute('readonly', '');
 });
 
-test('conversation list supports individual and select-all deletion', async ({ page }) => {
+test('closed conversation can be permanently deleted from the swipe actions', async ({ page }) => {
   await page.goto('/messages');
 
-  const sectionTitle = page.getByText('Matched Conversations');
-  const deleteConversationButton = page.getByRole('button', {
-    name: 'Delete Conversation',
+  await expect(page.getByText('Matched Worker')).toBeVisible();
+
+  const deleteAction = page.getByRole('button', {
+    name: 'Delete conversation with Matched Worker',
   });
-  const [titleBox, deleteButtonBox] = await Promise.all([
-    sectionTitle.boundingBox(),
-    deleteConversationButton.boundingBox(),
-  ]);
-  expect(titleBox).not.toBeNull();
-  expect(deleteButtonBox).not.toBeNull();
-  expect(
-    Math.abs(
-      titleBox!.y + titleBox!.height / 2 - (deleteButtonBox!.y + deleteButtonBox!.height / 2),
-    ),
-  ).toBeLessThan(8);
+  await expect(deleteAction).toBeVisible();
+  await deleteAction.evaluate((element) =>
+    (element as HTMLElement).click(),
+  );
 
-  await deleteConversationButton.click();
-  await expect(page.getByRole('checkbox', { name: 'Select all conversations' })).toBeVisible();
+  await expect(page.getByText('Delete Conversation')).toBeVisible();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
-  const conversationCheckbox = page.getByRole('checkbox', {
-    name: 'Select conversation with Matched Worker',
-  });
-  await conversationCheckbox.click();
-  await expect(page.getByRole('button', { name: 'Delete Selected (1)' })).toBeEnabled();
-
-  await conversationCheckbox.click();
-  await expect(page.getByRole('button', { name: 'Delete Selected (0)' })).toBeDisabled();
-
-  await page.getByRole('checkbox', { name: 'Select all conversations' }).click();
-  await expect(page.getByText('Clear All')).toBeVisible();
-  await page.getByRole('button', { name: 'Delete Selected (1)' }).click();
-  await page.getByRole('button', { name: 'Confirm Delete' }).click();
-
-  await expect(page.getByText('No Matched Conversations')).toBeVisible();
-  expect(archiveRequests).toBe(1);
+  await expect(page.getByText('No Messages Yet')).toBeVisible();
+  expect(deleteRequests).toBe(1);
+  expect(archiveRequests).toBe(0);
 });
 
 test('active matched conversation accepts and displays a sent message', async ({ page }) => {

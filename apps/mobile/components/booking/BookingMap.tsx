@@ -61,13 +61,20 @@ export const BookingMap = React.memo(function BookingMap({
   const safeLng = (v: number) => (Number.isFinite(v) ? v : destinationLng);
   const centerLat = safeLat((current.latitude + destinationLat) / 2);
   const centerLng = safeLng((current.longitude + destinationLng) / 2);
+  const isDifferentStart =
+    startLat != null &&
+    startLng != null &&
+    Number.isFinite(startLat) &&
+    Number.isFinite(startLng) &&
+    (startLat !== workerLat || startLng !== workerLng);
+
   const points = [
-    ...(startLat != null && startLng != null && Number.isFinite(startLat) && Number.isFinite(startLng)
+    ...(isDifferentStart
       ? [
           {
             id: 'start',
-            latitude: startLat,
-            longitude: startLng,
+            latitude: startLat!,
+            longitude: startLng!,
             color: '#7C3AED',
           },
         ]

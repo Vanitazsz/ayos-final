@@ -202,22 +202,54 @@ export default function TrackingScreen() {
                   .filter(Boolean)
                   .join(', ')}
                 startLat={
-                  tracking?.booking?.worker_start_lat == null
-                    ? undefined
-                    : Number(tracking.booking.worker_start_lat)
+                  tracking?.booking?.worker_start_lat != null
+                    ? Number(tracking.booking.worker_start_lat)
+                    : tracking?.booking?.worker_profiles?.latitude != null
+                      ? Number(tracking.booking.worker_profiles.latitude)
+                      : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined)
                 }
                 startLng={
-                  tracking?.booking?.worker_start_lng == null
-                    ? undefined
-                    : Number(tracking.booking.worker_start_lng)
+                  tracking?.booking?.worker_start_lng != null
+                    ? Number(tracking.booking.worker_start_lng)
+                    : tracking?.booking?.worker_profiles?.longitude != null
+                      ? Number(tracking.booking.worker_profiles.longitude)
+                      : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined)
                 }
                 workerLat={
-                  liveLocation?.latitude ??
-                  (latest ? Number(latest.latitude) : undefined)
+                  ['WORKER_ARRIVED', 'SERVICE_STARTED', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED'].includes(workerStatus ?? '')
+                    ? (latest
+                        ? Number(latest.latitude)
+                        : (tracking?.booking?.worker_start_lat != null
+                            ? Number(tracking.booking.worker_start_lat)
+                            : (tracking?.booking?.worker_profiles?.latitude != null
+                                ? Number(tracking.booking.worker_profiles.latitude)
+                                : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined))))
+                    : (liveLocation?.latitude ??
+                        (latest
+                          ? Number(latest.latitude)
+                          : (tracking?.booking?.worker_start_lat != null
+                              ? Number(tracking.booking.worker_start_lat)
+                              : (tracking?.booking?.worker_profiles?.latitude != null
+                                  ? Number(tracking.booking.worker_profiles.latitude)
+                                  : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined)))))
                 }
                 workerLng={
-                  liveLocation?.longitude ??
-                  (latest ? Number(latest.longitude) : undefined)
+                  ['WORKER_ARRIVED', 'SERVICE_STARTED', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED'].includes(workerStatus ?? '')
+                    ? (latest
+                        ? Number(latest.longitude)
+                        : (tracking?.booking?.worker_start_lng != null
+                            ? Number(tracking.booking.worker_start_lng)
+                            : (tracking?.booking?.worker_profiles?.longitude != null
+                                ? Number(tracking.booking.worker_profiles.longitude)
+                                : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined))))
+                    : (liveLocation?.longitude ??
+                        (latest
+                          ? Number(latest.longitude)
+                          : (tracking?.booking?.worker_start_lng != null
+                              ? Number(tracking.booking.worker_start_lng)
+                              : (tracking?.booking?.worker_profiles?.longitude != null
+                                  ? Number(tracking.booking.worker_profiles.longitude)
+                                  : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined)))))
                 }
               />
             </View>

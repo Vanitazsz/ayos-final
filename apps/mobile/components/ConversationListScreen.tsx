@@ -1,24 +1,21 @@
-import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import {
   MessageSquare,
-  BellOff,
-  Bell,
-  Archive,
   Trash2,
-  MoreVertical,
-  ArchiveRestore,
-  RefreshCcw,
 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { Screen } from '@/components/layout/Screen';
+import { showAlert } from '@/components/AppAlert';
 import { theme } from '@/constants/theme';
-import { archiveConversations, fetchConversations, unarchiveConversations, subscribeToConversationBroadcast, subscribeToTable, } from '@/services/api';
+import { deleteConversations, fetchConversations, subscribeToConversationBroadcast, subscribeToTable } from '@/services/api';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+
+const DELETED_CHATS_KEY = 'ayos_deleted_conversation_ids';
 
 interface ConversationListScreenProps {
   emptyDescription: string;
@@ -28,18 +25,28 @@ export function ConversationListScreen({
   emptyDescription,
 }: ConversationListScreenProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [chats, setChats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const swipeableRefs = useRef<{ [key: string]: any }>({});
+
+  useEffect(() => {
+    AsyncStorage.getItem(DELETED_CHATS_KEY).then((val) => {
+      if (val) {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            setDeletedIds(new Set(parsed));
+          }
+        } catch (e) {}
+      }
+    });
+  }, []);
 
   const load = useCallback((showLoading = false) => {
     if (showLoading) setLoading(true);
-    void fetchConversations(viewMode).then((result) => {
+    void fetchConversations('active').then((result) => {
       if (result.error) {
         setError(result.error);
       } else {
@@ -57,7 +64,7 @@ export function ConversationListScreen({
       subscribeToTable('conversations', () => load(), undefined, undefined, ['INSERT', 'UPDATE']),
     ];
     return () => stops.forEach((stop) => stop());
-  }, [load, viewMode]);
+  }, [load]);
 
   useEffect(() => {
     const stops = chats.map((chat) =>
@@ -66,39 +73,9 @@ export function ConversationListScreen({
     return () => stops.forEach((stop) => stop());
   }, [chats, load]);
 
-  const handleMute = (chatId: string) => {
-    setMutedChats((prev) => {
-      const next = new Set(prev);
-      if (next.has(chatId)) {
-        next.delete(chatId);
-      } else {
-        next.add(chatId);
-      }
-      return next;
-    });
-    swipeableRefs.current[chatId]?.close();
-  };
-
-  const handleArchive = async (chat: any) => {
-    swipeableRefs.current[chat.id]?.close();
-    if (!chat.canArchive) {
-      Alert.alert('Action Not Allowed', 'You cannot archive an active conversation.');
-      return;
-    }
-    const result = await archiveConversations([chat.id]);
-    if (result.failed.length > 0) {
-      Alert.alert('Error', 'Failed to archive conversation.');
-    }
-    load();
-  };
-
   const handleDelete = (chat: any) => {
     swipeableRefs.current[chat.id]?.close();
-    if (!chat.canArchive) {
-      Alert.alert('Action Not Allowed', 'Active conversations cannot be deleted. Close the booking first.');
-      return;
-    }
-    Alert.alert(
+    showAlert(
       'Delete Conversation',
       'Are you sure you want to delete this conversation? This action cannot be undone.',
       [
@@ -107,80 +84,46 @@ export function ConversationListScreen({
           text: 'Delete', 
           style: 'destructive', 
           onPress: async () => {
-            const result = await archiveConversations([chat.id]);
-            if (result.failed.length > 0) {
-              Alert.alert('Error', 'Failed to delete conversation.');
-            }
-            load();
+            const nextDeleted = new Set(deletedIds);
+            nextDeleted.add(chat.id);
+            setDeletedIds(nextDeleted);
+            await AsyncStorage.setItem(DELETED_CHATS_KEY, JSON.stringify(Array.from(nextDeleted)));
+            void deleteConversations([chat.id]);
           } 
         }
       ]
     );
   };
 
-  const handleUnarchive = async (chat: any) => {
-    swipeableRefs.current[chat.id]?.close();
-    try {
-      await unarchiveConversations([chat.id]);
-      load();
-    } catch (e) {
-      Alert.alert('Error', 'Failed to restore conversation.');
-    }
-  };
-
   const renderRightActions = (chat: any) => {
-    if (viewMode === 'archived') {
-      return (
-        <View style={styles.rightActionsContainer}>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3b82f6', width: 80 }]} onPress={() => handleUnarchive(chat)}>
-            <ArchiveRestore color="#fff" size={24} />
-          </TouchableOpacity>
-        </View>
-      );
-    }
-    
-    const isMuted = mutedChats.has(chat.id);
     return (
       <View style={styles.rightActionsContainer}>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#8b5cf6' }]} onPress={() => handleMute(chat.id)}>
-          {isMuted ? <Bell color="#fff" size={24} /> : <BellOff color="#fff" size={24} />}
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3b82f6', opacity: chat.canArchive ? 1 : 0.5 }]} onPress={() => handleArchive(chat)}>
-          <Archive color="#fff" size={24} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.error, opacity: chat.canArchive ? 1 : 0.5 }]} onPress={() => handleDelete(chat)}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Delete conversation with ${chat.name}`}
+          style={[styles.actionButton, { backgroundColor: theme.colors.error }]}
+          onPress={() => handleDelete(chat)}
+        >
           <Trash2 color="#fff" size={24} />
         </TouchableOpacity>
       </View>
     );
   };
 
+  const visibleChats = chats.filter((chat) => !deletedIds.has(chat.id));
+
   return (
     <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
-        {viewMode === 'archived' ? (
-          <>
-            <TouchableOpacity onPress={() => setViewMode('active')} style={{ width: 40, justifyContent: 'center', alignItems: 'flex-start' }}>
-              <Text style={{ fontSize: 24, color: theme.colors.textPrimary }}>←</Text>
-            </TouchableOpacity>
-            <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Archived</Text>
-            <View style={{ width: 40 }} />
-          </>
-        ) : (
-          <>
-            <View style={{ width: 40 }} />
-            <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Messages</Text>
-            <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuButton}>
-              <MoreVertical color={theme.colors.textPrimary} size={24} />
-            </TouchableOpacity>
-          </>
-        )}
+        <View style={{ width: 40 }} />
+        <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Messages</Text>
+        <View style={{ width: 40 }} />
       </View>
       <ScrollView 
         style={styles.content}
         contentContainerStyle={[
           styles.contentContainer,
-          (loading || error || chats.length === 0) && { flexGrow: 1, justifyContent: 'center' }
+          (loading || error || visibleChats.length === 0) && { flexGrow: 1, justifyContent: 'center' }
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -199,9 +142,9 @@ export function ConversationListScreen({
               <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
-        ) : chats.length > 0 ? (
+        ) : visibleChats.length > 0 ? (
           <View style={styles.listContainer}>
-            {chats.map((chat, index) => {
+            {visibleChats.map((chat, index) => {
               return (
                 <Animated.View key={chat.id} entering={FadeInDown.delay(index * 50).duration(400).springify()} style={{ marginBottom: theme.spacing.sm }}>
                   <Swipeable
@@ -235,19 +178,16 @@ export function ConversationListScreen({
                       <View style={styles.chatDetails}>
                         <View style={styles.chatHeader}>
                           <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>{chat.name}</Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            {mutedChats.has(chat.id) && <BellOff size={16} color={theme.colors.textTertiary} />}
-                            <Text
-                              style={[
-                                theme.typography.body2,
-                                {
-                                  color: chat.unread > 0 ? theme.colors.primary : theme.colors.textSecondary,
-                                },
-                              ]}
-                            >
-                              {chat.timestamp ? new Date(chat.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : chat.time}
-                            </Text>
-                          </View>
+                          <Text
+                            style={[
+                              theme.typography.body2,
+                              {
+                                color: chat.unread > 0 ? theme.colors.primary : theme.colors.textSecondary,
+                              },
+                            ]}
+                          >
+                            {chat.timestamp ? new Date(chat.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : chat.time}
+                          </Text>
                         </View>
                         <View style={styles.chatFooter}>
                           <Text
@@ -282,23 +222,6 @@ export function ConversationListScreen({
           />
         )}
       </ScrollView>
-
-      <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-        <TouchableOpacity style={styles.modalOverlay} onPress={() => setMenuVisible(false)} activeOpacity={1}>
-          <View style={[styles.dropdownMenu, { top: insets.top + 60 }]}>
-            <TouchableOpacity 
-              style={styles.dropdownItem}
-              onPress={() => {
-                setMenuVisible(false);
-                setViewMode('archived');
-              }}
-            >
-              <ArchiveRestore color={theme.colors.textPrimary} size={20} style={{ marginRight: 12 }} />
-              <Text style={theme.typography.body1}>Unarchive Messages</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </Screen>
   );
 }
@@ -310,12 +233,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
   },
   content: {
     flex: 1,
@@ -387,21 +304,4 @@ const styles = StyleSheet.create({
   stateText: { color: theme.colors.textSecondary },
   errorText: { color: theme.colors.error, textAlign: 'center' },
   retryText: { color: theme.colors.primary, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
-  dropdownMenu: { 
-    position: 'absolute', 
-    right: theme.layout.screenPadding, 
-    backgroundColor: theme.colors.surface, 
-    borderRadius: theme.radius.lg, 
-    ...theme.shadows.md,
-    minWidth: 220,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.md,
-  }
 });

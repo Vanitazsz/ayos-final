@@ -1,6 +1,8 @@
 export {
   archiveConversation,
   archiveConversations,
+  deleteConversation,
+  deleteConversations,
   fetchConversation,
   fetchConversationForBooking,
   fetchConversations,

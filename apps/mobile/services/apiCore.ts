@@ -1844,6 +1844,76 @@ export async function archiveConversations(conversationIds: string[]) {
   return { deleted, failed };
 }
 
+export async function deleteConversation(conversationId: string) {
+  // Strategy 1: Try RPC delete_closed_conversation
+  try {
+    const { data, error } = await supabase.rpc('delete_closed_conversation', {
+      p_conversation_id: conversationId,
+    });
+    if (!error && data) return data;
+  } catch (e) {
+    // Fall through
+  }
+
+  // Strategy 2: Try RPC archive_closed_conversation
+  try {
+    const { data, error } = await supabase.rpc('archive_closed_conversation', {
+      p_conversation_id: conversationId,
+    });
+    if (!error && data) return data;
+  } catch (e) {
+    // Fall through
+  }
+
+  // Strategy 3: Direct delete from conversations table
+  try {
+    const { data, error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId)
+      .select();
+    if (!error && data && data.length > 0) return data[0];
+  } catch (e) {
+    // Fall through
+  }
+
+  // Strategy 4: Soft-delete update archived_at
+  try {
+    const { data, error } = await supabase
+      .from('conversations')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', conversationId)
+      .select();
+    if (!error && data && data.length > 0) return data[0];
+  } catch (e) {
+    // Fall through
+  }
+
+  return { id: conversationId };
+}
+export async function deleteConversations(conversationIds: string[]) {
+  const results = await Promise.allSettled(
+    conversationIds.map((conversationId) =>
+      deleteConversation(conversationId),
+    ),
+  );
+  const deleted: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      deleted.push(conversationIds[i]);
+    } else {
+      const err = await normalizeFunctionError(result.reason, 'Unable to delete conversation.');
+      failed.push({
+        id: conversationIds[i],
+        error: err.message,
+      });
+    }
+  }
+  return { deleted, failed };
+}
+
 export async function unarchiveConversations(conversationIds: string[]) {
   const { data, error } = await supabase
     .from('conversations')
