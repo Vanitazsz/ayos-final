@@ -213,13 +213,13 @@ export default function WorkerDashboardScreen() {
                   ? ''
                   : presenceMessage ||
                     {
-                      starting: 'Starting location sharingâ€¦',
-                      paused: 'Tab inactive â€” matching will pause after 60 seconds.',
+                      starting: 'Starting location sharing…',
+                      paused: 'Tab inactive — matching will pause after 60 seconds.',
                       offline: 'Return to this tab to go online.',
                       permission_denied: 'Allow location access in your browser.',
                       not_ready: 'Complete Service Availability and switch Available for matching on.',
                       error: 'Location sharing could not start.',
-                      online: 'Your foreground location updates every 10â€“15 seconds.',
+                      online: 'Your foreground location updates every 10–15 seconds.',
                     }[presenceState]}
               </Text>
               <View style={styles.liveDivider} />
@@ -233,7 +233,7 @@ export default function WorkerDashboardScreen() {
                     <Text style={styles.liveDetailLabel}>Service area:</Text>{' '}
                     {liveStatus?.serviceArea ?? 'Not configured'}
                     {liveStatus?.radiusMeters
-                      ? ` Â· ${(liveStatus.radiusMeters / 1000).toFixed(0)} km radius`
+                      ? ` · ${(liveStatus.radiusMeters / 1000).toFixed(0)} km radius`
                       : ''}
                   </Text>
                 </View>
@@ -263,7 +263,7 @@ export default function WorkerDashboardScreen() {
               >
                 <RefreshCw size={14} color={isOnline ? theme.colors.success : theme.colors.warning} />
                 <Text style={[styles.liveRefreshText, { color: isOnline ? theme.colors.success : theme.colors.warning }]}>
-                  {refreshingLocation ? 'Refreshingâ€¦' : 'Refresh location and matching setup'}
+                  {refreshingLocation ? 'Refreshing…' : 'Refresh location and matching setup'}
                 </Text>
               </Pressable>
             </View>
@@ -277,7 +277,7 @@ export default function WorkerDashboardScreen() {
               category={incomingJob.category}
               area={incomingJob.area}
               distance={`${(incomingJob.distanceMeters / 1000).toFixed(1)} km`}
-              budget={incomingJob.budget || (incomingJob.rateMinor == null ? 'Rate unavailable' : `â‚±${(incomingJob.rateMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
+              budget={incomingJob.budget || (incomingJob.rateMinor == null ? 'Rate unavailable' : `₱${(incomingJob.rateMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
               postedTime={new Date(incomingJob.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               description={incomingJob.description}
               status={incomingJob.status === 'ACCEPTED' ? 'accepted' : incomingJob.status === 'DECLINED' ? 'declined' : 'pending'}
@@ -338,7 +338,7 @@ export default function WorkerDashboardScreen() {
                   </View>
                   <View style={styles.bookingMeta}>
                     <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>{booking.time}</Text>
-                    <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>Â·</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>·</Text>
                     <Text style={[theme.typography.caption, { color: theme.colors.textTertiary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{booking.address}</Text>
                   </View>
                 </Pressable>

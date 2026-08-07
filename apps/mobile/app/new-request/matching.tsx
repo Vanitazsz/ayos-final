@@ -103,7 +103,7 @@ export default function MatchingScreen() {
             <View style={styles.matchCount}>
               <UsersRound size={16} color={theme.colors.primary} />
               <Text style={styles.matchCountText}>
-                {candidates.length} notified Â· {accepted.length} accepted
+                {candidates.length} notified · {accepted.length} accepted
               </Text>
             </View>
           </View>
@@ -312,7 +312,7 @@ function WorkerCard({
   const priceLabel =
     worker.rateMinor == null
       ? 'Price pending'
-      : `â‚±${(worker.rateMinor / 100).toLocaleString('en-PH', {
+      : `₱${(worker.rateMinor / 100).toLocaleString('en-PH', {
           minimumFractionDigits: 2,
         })} worker rate`;
   return (
@@ -324,7 +324,7 @@ function WorkerCard({
         <View style={{ flex: 1 }}>
           <Text style={theme.typography.h4}>{worker.name}</Text>
           <Text style={styles.secondary}>
-            {(worker.distanceMeters / 1000).toFixed(1)} km away Â· {priceLabel}
+            {(worker.distanceMeters / 1000).toFixed(1)} km away · {priceLabel}
           </Text>
         </View>
         <View
@@ -354,7 +354,7 @@ function WorkerCard({
         />
       ) : (
         <Text style={styles.secondary}>
-          Waiting for this worker to respondâ€¦
+          Waiting for this worker to respond…
         </Text>
       )}
     </View>
