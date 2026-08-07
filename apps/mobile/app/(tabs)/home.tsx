@@ -268,7 +268,7 @@ export default function HomeScreen() {
                     style={styles.subcatItem}
                     onPress={() => {
                       setSelectedParent(null);
-                      router.push(`/category/${subcat.label.toLowerCase()}` as any);
+                      router.push({ pathname: '/new-request/create', params: { categoryId: subcat.id } });
                     }}
                   >
                     <Text style={theme.typography.body1}>{subcat.label}</Text>
