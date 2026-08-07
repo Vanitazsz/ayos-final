@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
-import {View,
+import React, { useState, useEffect } from 'react';
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TextInput,} from 'react-native';
+  TextInput,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Screen } from '@/components/layout/Screen';
+import { LegalContentModal } from '@/components/LegalContentModal';
 import { theme } from '@/constants/theme';
 import {
   loadCurrentUser,
@@ -18,9 +22,11 @@ import {
   signInWithPassword,
 } from '@/services/auth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Check } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { showAlert } from '@/components/AppAlert';
+
+const REMEMBER_ME_EMAIL_KEY = 'remember_me_email';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -30,21 +36,47 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [legalModal, setLegalModal] = useState<'TERMS' | 'PRIVACY' | null>(null);
 
   const {
     control,
     handleSubmit,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: { email: '', password: '' },
   });
+
+  useEffect(() => {
+    async function loadRememberedUser() {
+      try {
+        const savedEmail = await AsyncStorage.getItem(REMEMBER_ME_EMAIL_KEY);
+        if (savedEmail) {
+          setValue('email', savedEmail);
+          setRememberMe(true);
+        }
+      } catch (err) {
+        console.warn('[login] Failed to load remembered email:', err);
+      }
+    }
+    loadRememberedUser();
+  }, [setValue]);
 
   const onSubmit = async (data: any) => {
     clearSessionNotice();
     setErrorMessage('');
     setLoading(true);
     try {
+      if (rememberMe) {
+        await AsyncStorage.setItem(
+          REMEMBER_ME_EMAIL_KEY,
+          data.email.trim().toLowerCase(),
+        );
+      } else {
+        await AsyncStorage.removeItem(REMEMBER_ME_EMAIL_KEY);
+      }
       const user = await signInWithPassword(data.email, data.password);
       setSessionUser(user);
       router.replace(user?.role === 'WORKER' ? '/(worker)' : '/(tabs)/home');
@@ -218,12 +250,35 @@ export default function LoginScreen() {
               </Text>
             )}
 
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={onForgotPassword}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-            </TouchableOpacity>
+            <View style={styles.rememberAndForgotRow}>
+              <TouchableOpacity
+                style={styles.rememberMeContainer}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.7}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: rememberMe }}
+                accessibilityLabel="Remember me"
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    rememberMe && styles.checkboxChecked,
+                  ]}
+                >
+                  {rememberMe && (
+                    <Check color="#ffffff" size={12} strokeWidth={3} />
+                  )}
+                </View>
+                <Text style={styles.rememberMeText}>Remember me</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={onForgotPassword}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.loginButton}
@@ -266,11 +321,29 @@ export default function LoginScreen() {
 
           <Text style={styles.termsText}>
             By signing in with an account, you agree to SO&apos;s{'\n'}
-            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-            <Text style={styles.termsLink}>Privacy Policy</Text>.
+            <Text
+              style={styles.termsLink}
+              onPress={() => setLegalModal('TERMS')}
+            >
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => setLegalModal('PRIVACY')}
+            >
+              Privacy Policy
+            </Text>
+            .
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <LegalContentModal
+        visible={!!legalModal}
+        type={legalModal}
+        onClose={() => setLegalModal(null)}
+      />
     </Screen>
   );
 }
@@ -358,11 +431,37 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 4,
   },
-  forgotPassword: {
-    alignSelf: 'flex-start',
+  rememberAndForgotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 16,
     marginBottom: 32,
   },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1.5,
+    borderColor: theme.colors.textSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    backgroundColor: theme.colors.surface,
+  },
+  checkboxChecked: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  rememberMeText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+  },
+  forgotPassword: {},
   forgotPasswordText: {
     ...theme.typography.body2,
     color: theme.colors.primary,

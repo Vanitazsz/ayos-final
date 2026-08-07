@@ -410,8 +410,11 @@ export default function CreateRequestScreen() {
         const result = await assistRequestMedia({
           media,
           description,
-          consentVersion:
-            process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21',
+          consentVersion: (
+            process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21'
+          )
+            .replace(/^"|"$/g, '')
+            .trim(),
           idempotencyKey:
             mediaIdempotencyRef.current[kind] ||
             (mediaIdempotencyRef.current[kind] = randomUUID()),

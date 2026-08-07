@@ -56,7 +56,14 @@ Deno.serve(async (request) => {
         'ai_disabled',
         'AI analysis is currently disabled; continue manually',
       );
-    if (consent.version !== map['ai.consent_version'])
+    const rawConsentVersion =
+      typeof map['ai.consent_version'] === 'string'
+        ? map['ai.consent_version'].replace(/^"|"$/g, '').trim()
+        : '2026-07-21';
+    const clientConsentVersion = String(consent.version ?? '')
+      .replace(/^"|"$/g, '')
+      .trim();
+    if (rawConsentVersion && clientConsentVersion !== rawConsentVersion)
       throw new HttpError(
         422,
         'consent_version_invalid',

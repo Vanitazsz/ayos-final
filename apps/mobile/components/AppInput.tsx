@@ -14,6 +14,7 @@ import { AppText } from './AppText';
 interface AppInputProps extends TextInputProps {
   label?: string;
   error?: string;
+  helperText?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   onRightIconPress?: () => void;
@@ -25,6 +26,7 @@ export const AppInput = React.forwardRef<TextInput, AppInputProps>(function AppI
   {
     label,
     error,
+    helperText,
     leftIcon,
     rightIcon,
     onRightIconPress,
@@ -70,11 +72,15 @@ export const AppInput = React.forwardRef<TextInput, AppInputProps>(function AppI
           </Pressable>
         )}
       </View>
-      {error && (
+      {error ? (
         <AppText variant="caption" color={Colors.error} style={styles.errorText}>
           {error}
         </AppText>
-      )}
+      ) : helperText ? (
+        <AppText variant="caption" color={Colors.textSecondary} style={styles.errorText}>
+          {helperText}
+        </AppText>
+      ) : null}
     </View>
   );
 });

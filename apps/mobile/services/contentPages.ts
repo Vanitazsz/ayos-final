@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type ContentPageKey = 'HELP_CENTER' | 'PRIVACY';
+export type ContentPageKey = 'HELP_CENTER' | 'PRIVACY' | 'TERMS';
 
 export interface ContentPageViewModel {
   title: string;

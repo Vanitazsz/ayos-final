@@ -55,8 +55,11 @@ export default function IssueSummaryScreen() {
           description: draft.description,
           media: draft.media,
           locale: 'en-PH',
-          consentVersion:
-            process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21',
+          consentVersion: (
+            process.env.EXPO_PUBLIC_AI_CONSENT_VERSION ?? '2026-07-21'
+          )
+            .replace(/^"|"$/g, '')
+            .trim(),
           idempotencyKey: randomUUID(),
         });
         jobId = job.id;

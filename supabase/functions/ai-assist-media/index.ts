@@ -94,7 +94,14 @@ Deno.serve(async (request) => {
     const settingMap = Object.fromEntries((settings ?? []).map((row) => [row.key, row.value]));
     if (settingMap['ai.enabled'] !== true)
       throw new HttpError(503, 'ai_disabled', 'AI assistance is currently disabled');
-    if (consent.version !== settingMap['ai.consent_version'])
+    const rawConsentVersion =
+      typeof settingMap['ai.consent_version'] === 'string'
+        ? settingMap['ai.consent_version'].replace(/^"|"$/g, '').trim()
+        : '2026-07-21';
+    const clientConsentVersion = String(consent.version ?? '')
+      .replace(/^"|"$/g, '')
+      .trim();
+    if (rawConsentVersion && clientConsentVersion !== rawConsentVersion)
       throw new HttpError(422, 'consent_version_invalid', 'Review the updated AI consent notice');
     if (existing)
       return success(responseFromAnalysis(existing), 'Existing media analysis returned');

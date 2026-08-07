@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useForm, Controller } from 'react-hook-form';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
+import { LegalContentModal } from '@/components/LegalContentModal';
 import { theme } from '@/constants/theme';
 import {
   User,
@@ -30,6 +31,7 @@ export default function RegisterScreen() {
   const { role } = useLocalSearchParams<{ role?: string }>();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [legalModal, setLegalModal] = useState<'TERMS' | 'PRIVACY' | null>(null);
   const [selectedRole, setSelectedRole] = useState<RoleChoice>(
     role === 'USER' ? 'USER' : null,
   );
@@ -271,10 +273,9 @@ export default function RegisterScreen() {
                 control={control}
                 rules={{
                   required: 'Password is required',
-                  minLength: { value: 8, message: 'Minimum 8 characters' },
                   validate: (value) =>
-                    /[A-Z]/.test(value) ||
-                    'Password must include an uppercase letter.',
+                    /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(value) ||
+                    'Use 8+ characters with uppercase, number, and symbol',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
@@ -286,6 +287,7 @@ export default function RegisterScreen() {
                     onChangeText={onChange}
                     value={value}
                     error={errors.password?.message}
+                    helperText="Use 8+ characters with uppercase, number, and symbol"
                   />
                 )}
                 name="password"
@@ -313,25 +315,41 @@ export default function RegisterScreen() {
                 name="confirmPassword"
               />
 
-              <TouchableOpacity
-                style={styles.termsContainer}
-                activeOpacity={0.7}
-                onPress={() => setAcceptedTerms(!acceptedTerms)}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: acceptedTerms }}
-                aria-checked={acceptedTerms}
-              >
-                {acceptedTerms ? (
-                  <CheckSquare color={theme.colors.primary} size={20} />
-                ) : (
-                  <Square color={theme.colors.textSecondary} size={20} />
-                )}
+              <View style={styles.termsContainer}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: acceptedTerms }}
+                  style={styles.checkboxTouchable}
+                >
+                  {acceptedTerms ? (
+                    <CheckSquare color={theme.colors.primary} size={20} />
+                  ) : (
+                    <Square color={theme.colors.textSecondary} size={20} />
+                  )}
+                </TouchableOpacity>
                 <Text style={[theme.typography.body2, styles.termsText]}>
-                  I accept the{' '}
-                  <Text style={styles.termsLink}>Terms and Conditions</Text> and{' '}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                  <Text onPress={() => setAcceptedTerms(!acceptedTerms)}>
+                    I accept the{' '}
+                  </Text>
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => setLegalModal('TERMS')}
+                  >
+                    Terms and Conditions
+                  </Text>
+                  <Text onPress={() => setAcceptedTerms(!acceptedTerms)}>
+                    {' '}and{' '}
+                  </Text>
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => setLegalModal('PRIVACY')}
+                  >
+                    Privacy Policy
+                  </Text>
                 </Text>
-              </TouchableOpacity>
+              </View>
             </View>
 
             <Button
@@ -355,6 +373,12 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <LegalContentModal
+        visible={!!legalModal}
+        type={legalModal}
+        onClose={() => setLegalModal(null)}
+      />
     </Screen>
   );
 }
@@ -433,6 +457,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginTop: theme.spacing.sm,
+  },
+  checkboxTouchable: {
+    paddingTop: 2,
   },
   termsText: {
     flex: 1,

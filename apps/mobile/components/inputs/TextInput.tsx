@@ -13,6 +13,7 @@ import { LucideIcon, Eye, EyeOff } from 'lucide-react-native';
 export interface TextInputProps extends RNTextInputProps {
   label?: string;
   error?: string;
+  helperText?: string;
   leftIcon?: LucideIcon;
   rightIcon?: LucideIcon;
   onRightIconPress?: () => void;
@@ -22,6 +23,7 @@ export interface TextInputProps extends RNTextInputProps {
 export const TextInput: React.FC<TextInputProps> = ({
   label,
   error,
+  helperText,
   leftIcon: LeftIcon,
   rightIcon: RightIcon,
   onRightIconPress,
@@ -78,11 +80,15 @@ export const TextInput: React.FC<TextInputProps> = ({
           </TouchableOpacity>
         ) : null}
       </View>
-      {error && (
+      {error ? (
         <Text style={[theme.typography.caption, styles.errorText, styles.errorMargin]}>
           {error}
         </Text>
-      )}
+      ) : helperText ? (
+        <Text style={[theme.typography.caption, styles.helperText, styles.errorMargin]}>
+          {helperText}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -124,6 +130,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: theme.colors.error,
+  },
+  helperText: {
+    color: theme.colors.textSecondary,
   },
   errorMargin: {
     marginTop: theme.spacing.xs,

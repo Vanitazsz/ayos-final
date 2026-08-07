@@ -36,6 +36,7 @@ import { AppSelect, SelectOption } from '@/components/AppSelect';
 import { AppAutocomplete } from '@/components/AppAutocomplete';
 import { Chip } from '@/components/Chip';
 import { ImageUploadCard } from '@/components/ImageUploadCard';
+import { LegalContentModal } from '@/components/LegalContentModal';
 import { fetchIndustriesAndSkills } from '@/services/api';
 import { submitWorkerApplication } from '@/services/workerApplication';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
@@ -105,6 +106,7 @@ export default function RegisterWorkerScreen() {
   const [infoAccurate, setInfoAccurate] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [legalModal, setLegalModal] = useState<'TERMS' | 'PRIVACY' | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -524,6 +526,7 @@ export default function RegisterWorkerScreen() {
         value={password}
         onChangeText={setPassword}
         error={errors.password}
+        helperText="Use 8+ characters with uppercase, number, and symbol"
         secureTextEntry={!showPassword}
         rightIcon={
           showPassword ? (
@@ -1112,7 +1115,12 @@ export default function RegisterWorkerScreen() {
             style={{ flex: 1 }}
           >
             I agree to the{' '}
-            <AppText variant="bodySm" weight="bold" color={Colors.textLink}>
+            <AppText
+              variant="bodySm"
+              weight="bold"
+              color={Colors.textLink}
+              onPress={() => setLegalModal('PRIVACY')}
+            >
               Privacy Policy
             </AppText>
             .
@@ -1133,7 +1141,12 @@ export default function RegisterWorkerScreen() {
             style={{ flex: 1 }}
           >
             I agree to the{' '}
-            <AppText variant="bodySm" weight="bold" color={Colors.textLink}>
+            <AppText
+              variant="bodySm"
+              weight="bold"
+              color={Colors.textLink}
+              onPress={() => setLegalModal('TERMS')}
+            >
               Terms of Service
             </AppText>
             .
@@ -1242,6 +1255,12 @@ export default function RegisterWorkerScreen() {
           </View>
         </View>
       </Modal>
+
+      <LegalContentModal
+        visible={!!legalModal}
+        type={legalModal}
+        onClose={() => setLegalModal(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
