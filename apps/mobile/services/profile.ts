@@ -17,6 +17,7 @@ export interface CustomerProfile extends ParticipantProfile {
   status: string;
   emailVerified: boolean;
   profileComplete: boolean;
+  bio: string | null;
   defaultAddress: Record<string, unknown> | null;
   subdivisionId: string | null;
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected';
@@ -173,6 +174,7 @@ export async function getMyProfile(): Promise<
   return {
     ...common,
     role: 'USER',
+    bio: typeof result.profile.bio === 'string' ? result.profile.bio : null,
     defaultAddress: result.default_address,
     subdivisionId:
       typeof result.profile.subdivision_id === 'string'

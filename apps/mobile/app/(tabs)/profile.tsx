@@ -35,7 +35,7 @@ const SETTINGS_SECTIONS = [
         id: 'personal',
         title: 'Personal Information',
         icon: Fingerprint,
-        route: '/(tabs)/profile',
+        route: '/(tabs)/personal-info',
         color: theme.colors.primary,
       },
       {
@@ -99,7 +99,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
-  const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const load = async () => {
@@ -159,7 +158,6 @@ export default function ProfileScreen() {
         name: updated.displayName,
         profileComplete: updated.profileComplete,
       }));
-      setEditing(false);
     } catch (error) {
       showAlert(
         'Profile update',
@@ -288,12 +286,10 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {(editing || !profile.profileComplete) && (
+            {!profile.profileComplete && (
               <View style={styles.editCard}>
                 <Text style={theme.typography.h4}>
-                  {profile.profileComplete
-                    ? 'Personal Information'
-                    : 'Complete your profile'}
+                  Complete your profile
                 </Text>
                 <TextInput
                   value={name}
@@ -307,13 +303,6 @@ export default function ProfileScreen() {
                   keyboardType="phone-pad"
                 />
                 <View style={styles.editActions}>
-                  {profile.profileComplete && (
-                    <Button
-                      title="Cancel"
-                      variant="outlined"
-                      onPress={() => setEditing(false)}
-                    />
-                  )}
                   <Button title="Save" onPress={saveProfile} />
                 </View>
               </View>
@@ -335,11 +324,7 @@ export default function ProfileScreen() {
                           styles.settingItem,
                           !isLast && styles.borderBottom,
                         ]}
-                        onPress={() =>
-                          item.id === 'personal'
-                            ? setEditing(true)
-                            : router.push(item.route as any)
-                        }
+                        onPress={() => router.push(item.route as any)}
                       >
                         <View
                           style={[
