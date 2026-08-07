@@ -239,6 +239,10 @@ async function publishWorkerPosition(
   position: Location.LocationObject,
   online = true,
 ) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return { online, lastSeenAt: new Date().toISOString() };
   return rpc<{ online: boolean; lastSeenAt: string }>(
     'update_worker_presence',
     {

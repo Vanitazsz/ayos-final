@@ -26,13 +26,18 @@ export async function submitWorkerFeedback(
   };
 
   try {
-    const { error } = await supabase.rpc('submit_worker_feedback', {
-      p_booking_id: bookingId,
-      p_rating: rating,
-      p_comment: comment,
-      p_tags: tags,
-    });
-    if (error) throw error;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      const { error } = await supabase.rpc('submit_worker_feedback', {
+        p_booking_id: bookingId,
+        p_rating: rating,
+        p_comment: comment,
+        p_tags: tags,
+      });
+      if (error) throw error;
+    }
   } catch (err) {
     console.warn('Server feedback submission failed, keeping local copy:', err);
   }
@@ -48,22 +53,27 @@ export async function getWorkerFeedback(
   bookingId: string,
 ): Promise<WorkerFeedback | null> {
   try {
-    const { data, error } = await supabase
-      .from('worker_feedback')
-      .select('rating,comment,tags,created_at')
-      .eq('booking_id', bookingId)
-      .maybeSingle();
-    if (!error && data) {
-      return {
-        bookingId,
-        rating: data.rating,
-        comment: data.comment ?? '',
-        tags: Array.isArray(data.tags) ? data.tags : [],
-        submittedAt: data.created_at ?? new Date().toISOString(),
-      };
-    }
-    if (error) {
-      console.warn('Server feedback lookup failed, falling back to local:', error);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      const { data, error } = await supabase
+        .from('worker_feedback')
+        .select('rating,comment,tags,created_at')
+        .eq('booking_id', bookingId)
+        .maybeSingle();
+      if (!error && data) {
+        return {
+          bookingId,
+          rating: data.rating,
+          comment: data.comment ?? '',
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          submittedAt: data.created_at ?? new Date().toISOString(),
+        };
+      }
+      if (error) {
+        console.warn('Server feedback lookup failed, falling back to local:', error);
+      }
     }
   } catch (err) {
     console.warn('Server feedback lookup threw, falling back to local:', err);
