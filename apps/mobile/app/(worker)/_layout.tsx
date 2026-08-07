@@ -20,6 +20,7 @@ import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import type { PresenceState } from '@/services/liveDispatch';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -129,6 +130,17 @@ export default function WorkerTabLayout() {
   return (
     <View style={styles.container}>
       <Tabs
+        tabBar={(props) => (
+          <BottomTabBar
+            {...props}
+            state={{
+              ...props.state,
+              routes: props.state.routes.filter(
+                (route) => props.descriptors[route.key]?.options?.href !== null
+              ),
+            }}
+          />
+        )}
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: theme.colors.primary,

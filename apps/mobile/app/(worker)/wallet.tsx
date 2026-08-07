@@ -116,9 +116,11 @@ export default function WalletScreen() {
               label="Simulate Top-Up"
               variant="outline"
               size="sm"
-              disabled
-              leftIcon={<ArrowUpFromLine size={14} color={Colors.textTertiary} />}
-              onPress={() => showAlert('Unavailable','Wallet top-up is unavailable until a payment provider is configured.')}
+              leftIcon={<ArrowUpFromLine size={14} color={Colors.cta} />}
+              onPress={() => {
+                setTopUpAmount('500');
+                setShowTopUp(true);
+              }}
               style={styles.balanceBtn}
             />
             <AppButton
