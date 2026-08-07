@@ -265,10 +265,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#f8fafc',
   },
   unreadRow: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.colors.surface,
   },
   avatar: {
     width: 52,
