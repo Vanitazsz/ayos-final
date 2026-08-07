@@ -7,13 +7,12 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
+import { QUICK_TAGS, RATING_LABELS } from '@/constants/workerFeedback';
 import {
   ArrowLeft,
   Star,
@@ -22,58 +21,16 @@ import {
   CheckCircle2,
   MessageSquare,
   ThumbsUp,
-  ImageIcon,
 } from 'lucide-react-native';
 import {
-  attachBookingProof,
-  deleteBookingProof,
-  fetchBookingProofPhotos,
   fetchWorkerBookings,
-  type BookingProofPhoto,
   type WorkerBooking,
 } from '@/services/api';
 import {
   submitWorkerFeedback,
   getWorkerFeedback,
 } from '@/services/workerFeedback';
-import { uploadBookingProof } from '@/services/uploads';
-import { supabase } from '@/lib/supabase';
 import { showAlert } from '@/components/AppAlert';
-
-const QUICK_TAGS = [
-  'Punctual',
-  'Easy Communication',
-  'Prompt Payment',
-  'Respectful',
-  'Clear Instructions',
-  'Pleasant Experience',
-];
-
-const RATING_LABELS: Record<number, string> = {
-  1: '1/5 - Poor Experience',
-  2: '2/5 - Below Average',
-  3: '3/5 - Average Customer',
-  4: '4/5 - Good Customer',
-  5: '5/5 - Excellent Customer!',
-};
-
-function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string' && message) return message;
-  }
-  return fallback;
-}
-
-async function removeBookingProofStorage(storagePath: string) {
-  const { error } = await supabase.storage
-    .from('booking-proof')
-    .remove([storagePath]);
-  if (error) {
-    console.warn('booking-proof storage removal failed:', error);
-  }
-}
 
 export default function WorkerLeaveFeedbackScreen() {
   const router = useRouter();
@@ -90,9 +47,6 @@ export default function WorkerLeaveFeedbackScreen() {
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [uploadingProof, setUploadingProof] = useState(false);
-  const [removingProof, setRemovingProof] = useState(false);
-  const [proofPhoto, setProofPhoto] = useState<BookingProofPhoto | null>(null);
 
   useEffect(() => {
     if (!bookingId) return;
@@ -103,10 +57,6 @@ export default function WorkerLeaveFeedbackScreen() {
         const found = (result.data ?? []).find((b) => b.id === bookingId);
         if (isMounted && found) {
           setBooking(found);
-        }
-        const photos = await fetchBookingProofPhotos(bookingId);
-        if (isMounted && photos.length > 0) {
-          setProofPhoto(photos[photos.length - 1]);
         }
         const existing = await getWorkerFeedback(bookingId);
         if (isMounted && existing) {
@@ -130,57 +80,6 @@ export default function WorkerLeaveFeedbackScreen() {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
-  };
-
-  const handleUploadProof = async () => {
-    if (!bookingId) return;
-    if (removingProof) return;
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(
-          'Permission required',
-          'Photo-library access is required to attach proof of work.',
-        );
-        return;
-      }
-      const picker = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-      });
-      if (picker.canceled) return;
-      setUploadingProof(true);
-      if (proofPhoto) {
-        await removeBookingProofStorage(proofPhoto.storagePath);
-        await deleteBookingProof(bookingId, proofPhoto.storagePath);
-      }
-      const proof = await uploadBookingProof(picker.assets[0].uri);
-      const attached = await attachBookingProof(bookingId, proof);
-      setProofPhoto(attached);
-      showAlert('Proof attached', 'The photo is tied to this booking.');
-    } catch (error) {
-      console.error('uploadBookingProof failed:', error);
-      showAlert('Upload failed', errorMessage(error, 'Could not attach proof of work.'));
-    } finally {
-      setUploadingProof(false);
-    }
-  };
-
-  const handleRemoveProof = async () => {
-    if (!bookingId || !proofPhoto) return;
-    if (uploadingProof) return;
-    setRemovingProof(true);
-    try {
-      await removeBookingProofStorage(proofPhoto.storagePath);
-      await deleteBookingProof(bookingId, proofPhoto.storagePath);
-      setProofPhoto(null);
-    } catch (error) {
-      console.error('deleteBookingProof failed:', error);
-      showAlert('Remove failed', errorMessage(error, 'Could not remove the proof photo.'));
-    } finally {
-      setRemovingProof(false);
-    }
   };
 
   const handleSubmit = async () => {
@@ -262,14 +161,6 @@ export default function WorkerLeaveFeedbackScreen() {
               <Text style={styles.doneSubtitle}>
                 You&apos;ve already left feedback for this customer.
               </Text>
-
-              {proofPhoto?.signedUrl ? (
-                <Image
-                  source={{ uri: proofPhoto.signedUrl }}
-                  style={styles.doneProofImage}
-                  resizeMode="cover"
-                />
-              ) : null}
 
               <View style={styles.doneStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -440,63 +331,6 @@ export default function WorkerLeaveFeedbackScreen() {
                 />
               </View>
 
-              {/* Proof of Work */}
-              <View style={styles.card}>
-                <View style={styles.sectionHeader}>
-                  <ImageIcon size={18} color={theme.colors.primary} />
-                  <Text style={[theme.typography.h4, styles.sectionTitle]}>
-                    Proof of Work
-                  </Text>
-                </View>
-                {proofPhoto ? (
-                  <View>
-                    {proofPhoto.signedUrl ? (
-                      <Image
-                        source={{ uri: proofPhoto.signedUrl }}
-                        style={styles.proofImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={styles.proofPlaceholder}>
-                        <ImageIcon size={28} color={theme.colors.textTertiary} />
-                      </View>
-                    )}
-                    <View style={styles.proofActionsRow}>
-                      <TouchableOpacity
-                        onPress={() => void handleUploadProof()}
-                        disabled={uploadingProof || removingProof}
-                      >
-                        <Text style={styles.replaceLink}>
-                          {uploadingProof ? 'Uploading...' : 'Replace'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => void handleRemoveProof()}
-                        disabled={uploadingProof || removingProof}
-                      >
-                        <Text style={styles.removeLink}>
-                          {removingProof ? 'Removing...' : 'Remove'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.sectionHint}>
-                      Add a photo showing the completed work. It will be saved
-                      against this booking.
-                    </Text>
-                    <Button
-                      title="Add Proof of Work Photo"
-                      variant="outlined"
-                      onPress={() => void handleUploadProof()}
-                      loading={uploadingProof}
-                      fullWidth
-                    />
-                  </>
-                )}
-              </View>
-
               <View style={styles.footer}>
                 <Button
                   title="Submit Feedback"
@@ -600,11 +434,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: theme.colors.textPrimary,
   },
-  sectionHint: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
-  },
   starsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -658,44 +487,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
-  },
-  proofImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.borderLight,
-    marginBottom: theme.spacing.md,
-  },
-  proofPlaceholder: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  proofActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.lg,
-  },
-  replaceLink: {
-    ...theme.typography.body2,
-    fontWeight: '700',
-    color: theme.colors.primary,
-  },
-  removeLink: {
-    ...theme.typography.body2,
-    fontWeight: '700',
-    color: theme.colors.error,
-  },
-  doneProofImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.borderLight,
-    marginBottom: theme.spacing.lg,
   },
   footer: {
     marginTop: theme.spacing.md,

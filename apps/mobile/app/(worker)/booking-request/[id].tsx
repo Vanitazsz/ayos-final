@@ -34,11 +34,11 @@ import { BookingStepIndicator } from '@/components/booking/BookingStepIndicator'
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { CompletedSummary } from '@/components/booking/CompletedSummary';
+import { CompleteJobModal } from '@/components/booking/CompleteJobModal';
 import * as Location from 'expo-location';
 import {
   acceptJob,
   arriveAtJob,
-  completeJob,
   confirmCashPayment,
   confirmPaymentWithCommission,
   confirmWorkerArrival,
@@ -117,6 +117,7 @@ export default function BookingRequestScreen() {
   const [routeDetails, setRouteDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('UNCONFIRMED');
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
 
@@ -315,22 +316,14 @@ export default function BookingRequestScreen() {
   };
 
 
-  const handleComplete = async () => {
-    try {
-      await completeJob(booking.id);
-      setBackendStatus('PENDING_CONFIRMATION');
-      setBooking((b) => ({ ...b, status: 'pending_review' }));
-    } catch (error: any) {
-      const msg = error?.message ?? error?.code ?? String(error);
-      console.error('handleComplete error:', msg, error);
-      showAlert('Complete failed', msg);
-    }
+  const handleComplete = () => {
+    setShowCompleteModal(true);
   };
 
-  const handleLeaveFeedback = () => {
-    if (booking?.id) {
-      router.push(`/(worker)/leave-feedback/${booking.id}`);
-    }
+  const handleJobCompleted = () => {
+    setShowCompleteModal(false);
+    setBackendStatus('PENDING_CONFIRMATION');
+    setBooking((b) => ({ ...b, status: 'pending_review' }));
   };
 
   const handleConfirmCash = async (method: 'CASH' | 'ONLINE_SIMULATED' = 'CASH') => {
@@ -770,6 +763,15 @@ export default function BookingRequestScreen() {
           )}
         </ScrollView>
       )}
+
+      <CompleteJobModal
+        visible={showCompleteModal}
+        bookingId={booking.id}
+        customerName={booking.customerName}
+        serviceName={booking.service}
+        onClose={() => setShowCompleteModal(false)}
+        onCompleted={handleJobCompleted}
+      />
     </View>
   );
 }
