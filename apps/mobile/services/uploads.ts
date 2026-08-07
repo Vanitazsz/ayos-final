@@ -1,6 +1,7 @@
 import { randomUUID } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
 import type { MediaInput } from '@/types/ai';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 const supportedTypes = new Set([
   'image/jpeg',
@@ -97,7 +98,8 @@ export async function uploadBookingProof(uri: string) {
   if (userError || !user)
     throw userError ?? new Error('Authentication required');
 
-  const response = await fetch(uri);
+  const sourceUri = await compressProofImage(uri);
+  const response = await fetch(sourceUri);
   if (!response.ok)
     throw new Error('The selected proof photo could not be read.');
   const blob = await response.blob();
@@ -114,6 +116,21 @@ export async function uploadBookingProof(uri: string) {
     .upload(path, bytes, { contentType, upsert: false });
   if (error) throw error;
   return { path, contentType, byteSize: bytes.byteLength };
+}
+
+async function compressProofImage(uri: string): Promise<string> {
+  try {
+    const imageRef = await ImageManipulator.manipulate(uri)
+      .resize({ width: 1600 })
+      .renderAsync();
+    const result = await imageRef.saveAsync({
+      format: SaveFormat.JPEG,
+      compress: 0.7,
+    });
+    return result.uri;
+  } catch {
+    return uri;
+  }
 }
 
 export async function uploadReviewMedia(uris: string[]) {

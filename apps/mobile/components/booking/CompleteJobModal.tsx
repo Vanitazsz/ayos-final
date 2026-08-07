@@ -98,7 +98,7 @@ export const CompleteJobModal = React.memo(function CompleteJobModal({
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
         selectionLimit: 3 - proofImages.length,
-        quality: 0.85,
+        quality: 0.7,
       });
       if (picker.canceled) return;
       const uris = picker.assets.map((asset) => asset.uri);
