@@ -328,7 +328,10 @@ export default function BookingRequestScreen() {
 
   const handleConfirmCash = async (method: 'CASH' | 'ONLINE_SIMULATED' = 'CASH') => {
     try {
-      const payment = await confirmPaymentWithCommission(booking.id, method);
+      if (method === 'CASH') {
+        await confirmCashPayment(booking.id);
+      }
+      await confirmPaymentWithCommission(booking.id, method);
       setPaymentStatus('SUCCESSFUL');
       showAlert(
         'Payment & Commission Recorded',
