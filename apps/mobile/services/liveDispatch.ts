@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import { AppState } from 'react-native';
+import { randomUUID } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
 import { getWorkerMatchingReadiness } from '@/services/workerMatching';
 
@@ -170,7 +171,7 @@ export const respondToDispatch = (
 
 export function subscribeToDispatch(onChange: () => void, filter?: string) {
   const channel = supabase
-    .channel(`live-dispatch:${filter ?? 'mine'}:${Date.now()}`)
+    .channel(`live-dispatch:${filter ?? 'mine'}:${randomUUID()}`)
     .on(
       'postgres_changes',
       {
