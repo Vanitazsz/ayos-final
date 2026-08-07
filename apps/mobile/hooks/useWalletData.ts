@@ -121,9 +121,10 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
     const periodTransactions = walletTransactions.filter(
       (row) => new Date(row.createdAt).getTime() >= cutoff,
     );
-    const gross = periodTransactions
+    const rawGross = periodTransactions
       .filter((row) => row.credit)
       .reduce((sum, row) => sum + Number(row.amount.replace(/[^0-9.]/g, '')), 0);
+    const gross = rawGross < 1000000000 ? rawGross : 0;
     const deductions = periodTransactions
       .filter((row) => !row.credit)
       .reduce((sum, row) => sum + Number(row.amount.replace(/[^0-9.]/g, '')), 0);

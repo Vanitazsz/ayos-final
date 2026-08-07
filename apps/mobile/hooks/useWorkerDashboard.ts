@@ -55,8 +55,9 @@ export function useWorkerDashboard() {
           const profileEarnings = profile.data?.earnings
             ? Number(profile.data.earnings.replace(/[^0-9.]/g, '') || 0)
             : 0;
+          const validWalletTxSum = walletTxSum < 1000000000 ? walletTxSum : 0;
           setEarnings(
-            Math.max(completedBookingSum, walletTxSum, profileEarnings),
+            profileEarnings || completedBookingSum || validWalletTxSum,
           );
         })
         .catch((e) => console.warn('[worker-dashboard] load failed:', e));

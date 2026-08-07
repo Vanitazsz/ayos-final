@@ -991,47 +991,49 @@ export async function fetchWalletTransactions(): Promise<
       .eq('wallet_account_id', user.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row: any) => {
-      const credit = Number(row.amount_minor) >= 0;
-      let label = String(row.transaction_type).replaceAll('_', ' ');
-      if (
-        row.transaction_type === 'BOOKING_EARNING' &&
-        (row.metadata?.simulated || row.metadata?.payment_method === 'GCASH')
-      ) {
-        label = 'Mock GCash Earning';
-      }
-      return {
-        id: row.id,
-        label,
-        sub: String(row.metadata?.booking_id ?? ''),
-        amount: `${credit ? '+' : '-'}${money(
-          Math.abs(Number(row.amount_minor)) / 100,
-        )}`,
-        credit,
-        status: row.transaction_type === 'PAYOUT_HOLD' ? 'pending' : 'completed',
-        date: new Date(row.created_at).toLocaleDateString('en-PH', {
-          month: 'short',
-          day: 'numeric',
-        }),
-        createdAt: row.created_at,
-      };
-    });
+    return (data ?? [])
+      .filter((row: any) => Math.abs(Number(row.amount_minor ?? 0)) < 100000000000)
+      .map((row: any) => {
+        const credit = Number(row.amount_minor) >= 0;
+        let label = String(row.transaction_type).replaceAll('_', ' ');
+        if (
+          row.transaction_type === 'BOOKING_EARNING' &&
+          (row.metadata?.simulated || row.metadata?.payment_method === 'GCASH')
+        ) {
+          label = 'Mock GCash Earning';
+        }
+        return {
+          id: row.id,
+          label,
+          sub: String(row.metadata?.booking_id ?? ''),
+          amount: `${credit ? '+' : '-'}${money(
+            Math.abs(Number(row.amount_minor)) / 100,
+          )}`,
+          credit,
+          status: row.transaction_type === 'PAYOUT_HOLD' ? 'pending' : 'completed',
+          date: new Date(row.created_at).toLocaleDateString('en-PH', {
+            month: 'short',
+            day: 'numeric',
+          }),
+          createdAt: row.created_at,
+        };
+      });
   });
 }
 export async function fetchWallet(): Promise<ApiResponse<WalletSummary>> {
   return wrap(async () => {
     const user = await requireUser();
-    const { data: wallet, error } = await supabase
-      .from('wallets')
-      .select('available_minor,locked_minor')
-      .eq('account_id', user.id)
-      .maybeSingle();
-    if (error) throw error;
     const [
+      { data: wallet, error },
       { data: methods, error: methodsError },
       { data: payouts, error: payoutsError },
-      { count, error: countError },
+      { data: completedBookings, error: bookingsError },
     ] = await Promise.all([
+      supabase
+        .from('wallets')
+        .select('available_minor,locked_minor')
+        .eq('account_id', user.id)
+        .maybeSingle(),
       supabase
         .from('payout_destinations')
         .select('id,kind,label,account_reference,is_default')
@@ -1044,17 +1046,30 @@ export async function fetchWallet(): Promise<ApiResponse<WalletSummary>> {
         .order('created_at', { ascending: false }),
       supabase
         .from('bookings')
-        .select('id', { count: 'exact', head: true })
+        .select('id,agreed_service_amount')
         .eq('worker_account_id', user.id)
         .eq('status', 'COMPLETED'),
     ]);
+    if (error) throw error;
     if (methodsError) throw methodsError;
     if (payoutsError) throw payoutsError;
-    if (countError) throw countError;
+    if (bookingsError) throw bookingsError;
+
+    const completedEarnings = (completedBookings ?? []).reduce(
+      (sum: number, item: any) => sum + Number(item.agreed_service_amount ?? 0),
+      0,
+    );
+
+    const rawAvailable = (wallet?.available_minor ?? 0) / 100;
+    const availableAmount =
+      rawAvailable > 0 && rawAvailable < 1000000000
+        ? rawAvailable
+        : completedEarnings;
+
     return {
-      available: money((wallet?.available_minor ?? 0) / 100),
+      available: money(availableAmount),
       locked: money((wallet?.locked_minor ?? 0) / 100),
-      completedJobs: count ?? 0,
+      completedJobs: (completedBookings ?? []).length,
       methods: (methods ?? []).map((row: any) => ({
         id: row.id,
         method_type: row.kind,

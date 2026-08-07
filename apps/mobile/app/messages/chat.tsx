@@ -31,7 +31,6 @@ export default function ChatScreen() {
   const searchParams = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
-  const [showConfirm, setShowConfirm] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const scrollRef = useRef<ScrollView>(null);
@@ -97,10 +96,6 @@ export default function ChatScreen() {
     }
   };
 
-  const handleHire = () => {
-    setShowConfirm(false);
-    if (rawBookingId) router.push(`/tracking/${rawBookingId}`);
-  };
 
   return (
     <KeyboardAvoidingView
@@ -140,27 +135,6 @@ export default function ChatScreen() {
         </View>
         <View style={{ width: 40 }} />
       </View>
-
-      {access.canSend && rawBookingId ? (
-        <View style={styles.hireBanner}>
-          <Text style={[theme.typography.body2, { flex: 1 }]}>
-            Ready to start the job?
-          </Text>
-          <TouchableOpacity
-            style={styles.hireButton}
-            onPress={() => setShowConfirm(true)}
-          >
-            <Text
-              style={[
-                theme.typography.button,
-                { color: theme.colors.surface, fontSize: 14 },
-              ]}
-            >
-              Hire Worker
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
 
       {!loading && !error && !access.canSend && access.status ? (
         <View style={styles.closedBanner}>
@@ -343,56 +317,6 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {showConfirm && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text
-              style={[theme.typography.h3, { marginBottom: theme.spacing.sm }]}
-            >
-              Confirm Hiring
-            </Text>
-            <Text style={styles.modalDescription}>
-              Continue to live tracking for{' '}
-              {access.participant.name || 'this worker'}?
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                { backgroundColor: theme.colors.primary },
-              ]}
-              onPress={handleHire}
-            >
-              <Text
-                style={[
-                  theme.typography.button,
-                  { color: theme.colors.surface },
-                ]}
-              >
-                Yes, Hire Worker
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                {
-                  backgroundColor: theme.colors.background,
-                  marginTop: theme.spacing.sm,
-                },
-              ]}
-              onPress={() => setShowConfirm(false)}
-            >
-              <Text
-                style={[
-                  theme.typography.button,
-                  { color: theme.colors.textPrimary },
-                ]}
-              >
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
     </KeyboardAvoidingView>
   );
 }
