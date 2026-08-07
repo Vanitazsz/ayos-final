@@ -61,21 +61,8 @@ export function IndustrySkillsView({
 
   useEffect(() => {
     setExpandedIndustryIds((current) => {
-      const next = new Set(current);
-      let changed = false;
-      for (const id of selectedIndustryIds) {
-        if (!next.has(id)) {
-          next.add(id);
-          changed = true;
-        }
-      }
-      for (const id of current) {
-        if (!selectedIndustryIds.includes(id)) {
-          next.delete(id);
-          changed = true;
-        }
-      }
-      return changed ? [...next] : current;
+      const next = current.filter((id) => selectedIndustryIds.includes(id));
+      return next.length === current.length ? current : next;
     });
   }, [selectedIndustryIds]);
 
