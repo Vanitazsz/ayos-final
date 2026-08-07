@@ -14,24 +14,6 @@ import { DispatchOffer as DispatchOfferCard } from '@/components/DispatchOffer';
 import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
 import { Avatar } from '@/components/Avatar';
-import {
-  fetchWorkerBookings,
-  fetchWorkerProfile,
-  subscribeToTable,
-  type WorkerBooking,
-  type WorkerProfile,
-} from '@/services/api';
-import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
-import {
-  getMyDispatchOffers,
-  getMyWorkerLiveStatus,
-  refreshWorkerPresence,
-  respondToDispatch,
-  subscribeToDispatch,
-  type DispatchOffer,
-  type WorkerLiveStatus,
-} from '@/services/liveDispatch';
-import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 import { showAlert } from '@/components/AppAlert';
 import { styles } from '@/features/worker/screens/WorkerDashboard.styles';
 import { useWorkerDashboard } from '@/hooks/useWorkerDashboard';
@@ -66,55 +48,6 @@ export default function WorkerDashboardScreen() {
     respond,
   } = useWorkerDashboard();
   const pingAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const load = () =>
-      void Promise.all([
-        fetchWorkerProfile(),
-        fetchWorkerBookings(),
-      ])
-        .then(([profile, bookings]) => {
-          if (!profile.error) setWorkerProfile(profile.data);
-          setWorkerBookings(bookings.data);
-          const completedBookingSum = (bookings.data ?? [])
-            .filter((row) => row.status === 'completed')
-            .reduce(
-              (sum, row) =>
-                sum + Number(row.price.replace(/[^0-9.]/g, '') || 0),
-              0,
-            );
-          setEarnings(completedBookingSum);
-        })
-        .catch((e) => console.warn('[worker-dashboard] load failed:', e));
-    load();
-    const stops = ['bookings', 'service_requests', 'wallet_transactions'].map(
-      (table) => subscribeToTable(table, load),
-    );
-    return () => stops.forEach((stop) => stop());
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    const loadOffers = () =>
-      void getMyDispatchOffers()
-        .then((rows) => {
-          if (active) setDispatchOffers(rows);
-        })
-        .catch(() => {});
-    const loadLiveStatus = () =>
-      void getMyWorkerLiveStatus()
-        .then((status) => {
-          if (active) setLiveStatus(status);
-        })
-        .catch(() => {});
-    loadOffers();
-    loadLiveStatus();
-    const stopDispatch = subscribeToDispatch(loadOffers);
-    return () => {
-      active = false;
-      stopDispatch();
-    };
-  }, []);
 
   useEffect(() => {
     if (presenceState === 'online') {

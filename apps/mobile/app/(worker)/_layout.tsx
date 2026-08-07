@@ -95,8 +95,8 @@ export default function WorkerTabLayout() {
   const {
     state: presenceState,
     message: presenceMessage,
-    ready,
   } = useWorkerPresence();
+  const ready = presenceState !== 'starting';
   const [startingDismissed, setStartingDismissed] = useState(false);
   useEffect(() => {
     if (pathname !== '/bookings' || presenceState !== 'starting' || !ready) {
