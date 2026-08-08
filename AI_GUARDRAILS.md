@@ -6,7 +6,7 @@ This file prevents AI-generated duplication, uncontrolled refactoring, architect
 
 > Every AI agent must read this file before analyzing, planning, or modifying the project.
 
-These rules apply to the entire pnpm workspace: the Expo mobile/web client, the Vite administrator client, shared packages, Supabase migrations and Edge Functions, tests, scripts, and documentation. Preserve existing user behavior, database integrity, authorization, and migration history. A task request is not permission to clean up unrelated code.
+These rules apply to the entire pnpm workspace: the Expo mobile/web client, shared packages, Supabase migrations and Edge Functions, tests, scripts, and documentation. The administrator client was moved to a separate repository. Preserve existing user behavior, database integrity, authorization, and migration history. A task request is not permission to clean up unrelated code.
 
 ## 2. Project Context
 
@@ -15,15 +15,14 @@ These rules apply to the entire pnpm workspace: the Expo mobile/web client, the 
 | Product                   | A local service-matching and booking platform for permanently separated customer (`USER`), worker (`WORKER`), and administrator (`ADMIN`) accounts                                                                                  |
 | Repository                | pnpm 11.9 workspace and Turborepo 2.5 monorepo (`apps/*`, `packages/*`, `tests/*`)                                                                                                                                                  |
 | Mobile/user-worker client | Expo 54, React 19.1, React Native 0.81.5, React Native Web 0.21, TypeScript 5.9, Expo Router 6 file-based routes                                                                                                                    |
-| Administrator client      | Vite 8, React 19.1, JavaScript/JSX, React Router 7                                                                                                                                                                                  |
+| Administrator client      | **Moved to a separate repository (deleted from this tree).** Backend provisioning (`pnpm admin:bootstrap`, `admin-invite-account`) remains in this repo                                                                                   |
 | Backend                   | Supabase PostgreSQL 17/PostGIS, Auth, Data API, Storage, Realtime, Edge Functions, queues, cron, and Vault                                                                                                                          |
 | Authentication            | Supabase email/password, email OTP, password recovery, Google OAuth support, persisted sessions, database-backed role/profile checks; Admin additionally requires the protected bootstrap flow and AAL2/TOTP for sensitive commands |
 | Mobile state              | Zustand for auth, request drafts, and worker booking UI state; React Context for worker presence; TanStack Query is provided at the root but no `useQuery`/`useMutation` usage was found                                            |
-| Admin state               | `AuthContext` and `ToastContext`, with page-local state and shared data services                                                                                                                                                    |
 | External services         | Gemini, OpenAI, and OpenRouter AI providers; OpenRouteService; MapLibre; Expo Push; Supabase Storage and Realtime                                                                                                                   |
-| Styling                   | React Native `StyleSheet` plus `apps/mobile/constants/theme.ts`; admin Tailwind CSS v4 tokens/utilities in `apps/admin/src/index.css` plus shared `components/ui`                                                                   |
-| Important features        | Authentication, customer requests, live worker dispatch/matching, bookings, chat, tracking, worker registration/verification/profile, wallet/top-ups, reviews, content pages, and administrator operations                          |
-| Tests                     | Vitest package/mobile tests, pgTAP database tests, Deno Edge Function test/checks, and Playwright admin/mobile-web suites                                                                                                           |
+| Styling                   | React Native `StyleSheet` plus `apps/mobile/constants/theme.ts`                                                                                                                                                                     |
+| Important features        | Authentication, customer requests, live worker dispatch/matching, bookings, chat, tracking, worker registration/verification/profile, wallet/top-ups, reviews, content pages, and administrator operations (via the separate repo)     |
+| Tests                     | Vitest package/mobile tests, pgTAP database tests, Deno Edge Function test/checks, and Playwright mobile-web suites                                                                                                           |
 
 Native release signing, final production legal content, production OAuth callback domains, retention policy, performance targets, RPO, and RTO are **Not confirmed from the current repository**.
 
@@ -35,31 +34,28 @@ Common commands from the root are `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm t
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Workspace scripts/dependencies | `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `turbo.json`                                           | Run root scripts where possible; never hand-edit the lockfile                                                                            |
 | Mobile dependencies/scripts    | `apps/mobile/package.json`                                                                                      | Check Expo/RN compatibility before adding anything                                                                                       |
-| Admin dependencies/scripts     | `apps/admin/package.json`                                                                                       | Do not infer versions from the stale prose in `apps/admin/README.md`                                                                     |
 | Mobile routes                  | `apps/mobile/app/` and layouts in `apps/mobile/app/_layout.tsx`, `(tabs)/_layout.tsx`, `(worker)/_layout.tsx`   | Expo Router file paths are route names; search every navigation literal before changing one                                              |
-| Admin routes                   | `apps/admin/src/App.jsx`                                                                                        | Extend this router; do not create another router or admin stack                                                                          |
+| Admin routes                   | Separate repository (deleted from this tree)                                                                  | Do not recreate an admin client stack in this repository                                                                                |
 | Mobile auth/session            | `apps/mobile/services/auth.ts`, `apps/mobile/store/useAuthStore.ts`, `apps/mobile/app/_layout.tsx`              | Do not create another session store or bypass `loadCurrentUser`                                                                          |
-| Admin auth/session             | `apps/admin/src/context/AuthContext.jsx`, `apps/admin/src/components/ProtectedRoute.jsx`                        | Preserve database role/profile checks and protected routing                                                                              |
+| Admin auth/session             | Separate repository (deleted from this tree)                                                                  | Backend bootstrap (`scripts/bootstrap-admin.ts`, `admin-invite-account`) remains here and must stay RLS/AAL2-safe                          |
 | Mobile Supabase client         | `apps/mobile/lib/supabase.ts`                                                                                   | This is the only mobile client instance                                                                                                  |
-| Admin Supabase client          | `apps/admin/src/lib/supabase.js`                                                                                | This is the only admin browser client instance                                                                                           |
+| Admin Supabase client          | Separate repository (deleted from this tree)                                                                  | No admin browser client exists in this repository                                                                                        |
 | Edge Function clients/auth     | `supabase/functions/_shared/auth.ts` and `supabase/functions/_frontend_shared/supabase.ts`                      | Two established helper families exist; reuse the family already used by the target function and do not initialize clients in an endpoint |
 | Database schema/history        | `supabase/migrations/`                                                                                          | Migrations are canonical and append-only; do not treat `dbsql.md` or `dbtables.md` as executable authority                               |
 | Generated DB types             | `packages/supabase/src/database.generated.ts`                                                                   | Regenerate with `pnpm db:types`; never edit manually                                                                                     |
 | Shared DB/storage contracts    | `packages/supabase/src/index.ts`                                                                                | Reuse bucket and realtime-topic helpers                                                                                                  |
 | Mobile service/data access     | `apps/mobile/services/`                                                                                         | Prefer focused services; `services/api.ts` is legacy-central and must not grow casually                                                  |
-| Admin data access              | Focused modules in `apps/admin/src/services/`; `adminData.js` is a compatibility export facade                  | Keep queries out of pages; extend the focused domain service                                                                             |
 | External-function invocation   | `apps/mobile/services/authenticatedFunctions.ts`                                                                | Use its authenticated invocation and session-expiry behavior                                                                             |
 | Mobile theme                   | `apps/mobile/constants/theme.ts`                                                                                | Use existing tokens; note that lowercase and PascalCase token families currently compete in this one file                                |
 | Mobile shared UI               | `apps/mobile/components/`                                                                                       | Search both `App*` components and nested component families before adding UI                                                             |
-| Admin shared UI                | `apps/admin/src/components/ui/`                                                                                 | Reuse its Button, Input, Card, modal, table, pagination, skeleton, and badge components                                                  |
 | Mobile global/flow state       | `apps/mobile/store/`                                                                                            | Zustand is canonical for auth and the current request draft                                                                              |
 | Worker presence                | `apps/mobile/context/WorkerPresenceContext.tsx`                                                                 | Keep subscription lifecycle in this provider                                                                                             |
 | Shared domain/contracts        | `packages/domain/src/`, `packages/contracts/src/`                                                               | Prefer these types, schemas, enums, errors, events, and domain functions over client-local duplicates                                    |
-| Environment examples           | `.env.example`, `apps/mobile/.env.example`, `apps/admin/.env.example`                                           | Never invent names or expose server secrets through `EXPO_PUBLIC_*`/`VITE_*`                                                             |
+| Environment examples           | `.env.example`, `apps/mobile/.env.example`                                                                      | Never invent names or expose server secrets through `EXPO_PUBLIC_*`/`VITE_*`                                                             |
 | TypeScript                     | `tsconfig.base.json`, package `tsconfig.json` files, `apps/mobile/tsconfig.json`                                | Preserve strictness; the mobile app extends Expo's config rather than the root base                                                      |
 | Lint/format                    | `eslint.config.mjs`, `apps/mobile/eslint.config.js`, `.prettierrc.json`                                         | Do not disable rules to hide failures                                                                                                    |
 | Test runners                   | `vitest.config.ts`, `apps/mobile/vitest.config.ts`, `playwright.config.ts`, `supabase/tests/database/`          | Put tests in the existing suite nearest the behavior                                                                                     |
-| Supabase local/build config    | `supabase/config.toml`, root `package.json`, `apps/mobile/app.json`, `apps/admin/vite.config.js`, `vercel.json` | Do not create parallel configuration without approval                                                                                    |
+| Supabase local/build config    | `supabase/config.toml`, root `package.json`, `apps/mobile/app.json`, `vercel.json`                              | Do not create parallel configuration without approval                                                                                    |
 | Requirements/traceability      | `REQUIREMENTS.md`, `requirements/catalog.json`, `scripts/check-traceability.ts`                                 | Update traceability when requirements or contracted behavior changes                                                                     |
 
 Conflicts to manage deliberately:
@@ -96,7 +92,7 @@ Risks
 Validation steps
 ```
 
-For this repository, also state whether the task touches mobile, admin, shared packages, Edge Functions, migrations, or more than one of these. Do not start a multi-surface change without tracing the shared contract.
+For this repository, also state whether the task touches mobile, shared packages, Edge Functions, migrations, or more than one of these. Do not start a multi-surface change without tracing the shared contract.
 
 ## 5. Mandatory Repository Search
 
@@ -105,7 +101,6 @@ Before creating a component, screen, route, hook, service, repository function, 
 At minimum, search:
 
 - `apps/mobile/components/`, `hooks/`, `services/`, `store/`, `context/`, and `app/`;
-- `apps/admin/src/components/ui/`, `context/`, `services/`, and `pages/`;
 - `packages/contracts/src/`, `packages/domain/src/`, and `packages/supabase/src/`;
 - `supabase/migrations/` and `supabase/functions/` for table, RPC, policy, event, and endpoint names.
 
@@ -125,7 +120,7 @@ The intended client flow is route/screen -> hook or screen coordinator -> servic
 
 ### Routes
 
-Expo route files may read parameters, configure navigation, redirect, and render/compose a screen. Admin route declarations belong in `apps/admin/src/App.jsx`. Route files must not initialize clients, issue raw queries, hold large forms, reproduce service logic, or accumulate hundreds of style lines. **50 lines is a warning threshold**, especially for compatibility/redirect routes. Existing route files are frequently full screens; improve them only within task scope.
+Expo route files may read parameters, configure navigation, redirect, and render/compose a screen. Route files must not initialize clients, issue raw queries, hold large forms, reproduce service logic, or accumulate hundreds of style lines. **50 lines is a warning threshold**, especially for compatibility/redirect routes. Existing route files are frequently full screens; improve them only within task scope.
 
 ### Screens/pages
 
@@ -133,7 +128,7 @@ Screens/pages may compose components, call feature hooks/services, coordinate sc
 
 ### Components
 
-Components focus on presentation and interaction. Shared mobile components live in `apps/mobile/components/`; feature-specific components should live near their feature when introduced through a reviewed plan. Admin shared components live in `apps/admin/src/components/ui/`. Components do not access Supabase. **120 lines is a warning threshold.**
+Components focus on presentation and interaction. Shared mobile components live in `apps/mobile/components/`; feature-specific components should live near their feature when introduced through a reviewed plan. Components do not access Supabase. **120 lines is a warning threshold.**
 
 ### Hooks
 
@@ -147,10 +142,10 @@ Line limits are warnings, not automatic reasons to split. Separate by responsibi
 
 ## 7. Database and Supabase Constraints
 
-- Mobile uses only `apps/mobile/lib/supabase.ts`; admin uses only `apps/admin/src/lib/supabase.js`. Their separation is platform-specific and intentional.
+- Mobile uses only `apps/mobile/lib/supabase.ts`. Their separation is platform-specific and intentional.
 - Edge Functions must reuse `supabase/functions/_shared/auth.ts` or `_frontend_shared/supabase.ts` according to the target function's existing family. Never initialize a client in a screen, component, hook, page, or endpoint.
 - Move existing route-level raw queries toward `apps/mobile/services/` incrementally. Do not add new raw queries to `app/`.
-- Search `apps/mobile/services/api.ts`, focused services, `apps/admin/src/services/`, migrations, and generated types before creating or renaming a query/RPC.
+- Search `apps/mobile/services/api.ts`, focused services, migrations, and generated types before creating or renaming a query/RPC.
 - `supabase/migrations/` is append-only schema history. Do not edit an applied migration unless explicitly directed for an unshipped local-only migration. Never reorder, duplicate, squash, or force hosted migration history.
 - Do not change schemas, table/column names, RLS policies, grants, triggers, buckets, or RPC signatures without explicit approval and impact analysis.
 - Never delete fields or database objects because code search shows no caller; SQL, RLS, hosted clients, queues, reports, and external consumers may use them.
@@ -165,14 +160,14 @@ Actual database locations: `supabase/config.toml`, `supabase/migrations/`, `supa
 
 ## 8. Navigation Constraints
 
-Mobile uses Expo Router file routes under `apps/mobile/app/`; customer and worker protected tabs are configured in their `_layout.tsx` files, with global guards in `app/_layout.tsx`. Admin uses React Router routes in `apps/admin/src/App.jsx` wrapped by `ProtectedRoute` and `AdminLayout`.
+Mobile uses Expo Router file routes under `apps/mobile/app/`; customer and worker protected tabs are configured in their `_layout.tsx` files, with global guards in `app/_layout.tsx`. The administrator client moved to a separate repository.
 
 - Do not rename/move a route until every `router.push`, `router.replace`, `Redirect`, `Link`, notification payload, OAuth callback, test, and deep-link reference is found.
 - Do not duplicate route names or create another navigation stack when an existing group can be extended.
 - Preserve parameter meaning. The current messaging route accepts either `conversationId` or booking `id`; do not silently conflate them.
 - Keep navigation parameter types centralized when adding typed contracts; do not use `as any` to evade Expo typed routes.
 - Check the `ayos` scheme, Supabase redirect URLs, OAuth callback at `app/auth/callback.tsx`, and Vercel/web paths before path changes.
-- Never bypass root/customer/worker/Admin guards, create circular redirects, or put a full feature in a compatibility route.
+- Never bypass root/customer/worker guards, create circular redirects, or put a full feature in a compatibility route.
 - Verify direct protected-route entry, role mismatch, incomplete profiles, browser/native back behavior, notification navigation, and logout/session expiration.
 - Known hazard: `apps/mobile/app/new-request/success.tsx` navigates to `/request/${requestId}`, but no `app/request/[id].tsx` exists. Do not copy or expand this target; resolve it in a focused navigation fix.
 - `app/chat/[id].tsx` and `app/messages/chat.tsx` overlap but have different entry contracts. Do not add a third chat route; document and migrate callers before consolidation.
@@ -181,7 +176,7 @@ Mobile uses Expo Router file routes under `apps/mobile/app/`; customer and worke
 
 The mobile login flow is implemented by `apps/mobile/services/auth.ts`, synchronized in `app/_layout.tsx`, and stored in `useAuthStore.ts`. It accepts only active `USER` and `WORKER` accounts whose database profile and active role match the Auth user. Customer signup uses role metadata `USER`; worker registration has a separate flow. Google OAuth returns through `app/auth/callback.tsx`.
 
-Admin auth is `apps/admin/src/context/AuthContext.jsx`: it verifies `is_admin`, `get_my_profile`, active `ADMIN` role, active-role equality, and a complete profile. Sensitive administrator commands depend on database AAL2/TOTP enforcement and secure bootstrap migrations.
+Admin authentication and authorization are enforced in the database and consumed by the separate administrator repository: `is_admin`, `get_my_profile`, active `ADMIN` role, active-role equality, a complete profile, and AAL2/TOTP for sensitive commands. This repository keeps the secure bootstrap migration, `scripts/bootstrap-admin.ts`, and the `admin-invite-account` Edge Function intact.
 
 - Do not add public signup unless explicitly requested; never add Admin self-registration.
 - Do not add a second auth provider, session context/store, or auth listener.
@@ -190,19 +185,18 @@ Admin auth is `apps/admin/src/context/AuthContext.jsx`: it verifies `is_admin`, 
 - Hidden buttons are not permission checks. Preserve RLS/RPC authorization and Admin AAL2 requirements.
 - Do not persist sensitive tokens outside Supabase's established session storage. Mobile native persistence uses AsyncStorage through the configured client; web uses Supabase browser handling.
 - Preserve sign-out, local sign-out on invalid mobile roles, refresh-token rotation, 15-minute JWT expiry, session-expiration messaging, incomplete-profile redirects, and account-status checks.
-- Do not weaken `ProtectedRoute`, `SessionBoundary`, `resolveAdmin`, `loadCurrentUser`, bootstrap protections, or database role checks for convenience.
+- Do not weaken `SessionBoundary`, `loadCurrentUser`, bootstrap protections, or database role checks for convenience.
 
 ## 10. Styling and Design-System Constraints
 
 - Mobile theme authority is `apps/mobile/constants/theme.ts`. Reuse existing color, typography, spacing, radius, shadow, layout, touch-target, button, avatar, and icon tokens.
 - Do not create another palette or token file. The two naming families already in `theme.ts` are sufficient pending consolidation.
 - Extend `AppButton` and `AppInput` when a shared variant is required. Do not introduce `NewButton`, feature-local generic buttons, or another shared system.
-- Admin styling uses `apps/admin/src/index.css`, Tailwind v4, and `apps/admin/src/components/ui/`. Reuse those classes/components.
 - Keep feature layout styles near the feature; do not move all styles into one global sheet.
 - Avoid magic colors/spacing. Hardcoded colors are already concentrated in `app/(worker)/verification.tsx`, `(auth)/login.tsx`, and `(tabs)/bookings.tsx`; do not copy them.
 - Preserve safe-area handling (`SafeAreaProvider`, `react-native-safe-area-context`), responsive web behavior, portrait/native assumptions, tablet support, and `Platform`/`.native`/`.web` implementations.
 - Preserve accessible contrast, labels, focus/keyboard behavior, touch targets, loading affordances, and reduced ambiguity in destructive actions.
-- For visual UI changes, use the repository-required Playwright workflow and existing mobile-web/admin projects; native visual verification remains a separate manual/simulator concern.
+- For visual UI changes, use the repository-required Playwright workflow and the existing mobile-web project; native visual verification remains a separate manual/simulator concern.
 
 ## 11. State-Management Constraints
 
@@ -211,7 +205,7 @@ Use the smallest appropriate state scope:
 | State kind         | Current mechanism                                                                             | Rule                                                                                                |
 | ------------------ | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Server state       | Service calls plus screen/hook local state; TanStack Query provider exists but is not adopted | Do not introduce a parallel cache strategy during a feature fix; adoption requires an explicit plan |
-| Authentication     | Mobile `useAuthStore`; Admin `AuthContext`                                                    | Never duplicate                                                                                     |
+| Authentication     | Mobile `useAuthStore`                                                                          | Never duplicate                                                                                     |
 | Global/flow state  | Mobile Zustand stores in `apps/mobile/store/`                                                 | Reuse only for cross-route state                                                                    |
 | Worker presence    | `WorkerPresenceContext`                                                                       | Keep subscription lifecycle here                                                                    |
 | Feature state      | Feature hooks or screen-local state                                                           | Keep scoped to the feature                                                                          |
@@ -237,7 +231,7 @@ Confirmed integrations are Supabase Edge Functions/Storage/Realtime, Gemini, Ope
 
 ## 13. TypeScript Constraints
 
-Root shared packages use strict TypeScript with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, and typed linting. Mobile has `strict: true` but extends Expo's base separately. Admin remains JavaScript/JSX.
+Root shared packages use strict TypeScript with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, and typed linting. Mobile has `strict: true` but extends Expo's base separately.
 
 - Do not weaken either TypeScript configuration or add suppressions to make a change compile.
 - Avoid `any`; use `unknown` for untrusted values and narrow it. Document the rare unavoidable `any` at the boundary.
@@ -283,7 +277,7 @@ For every feature change:
 9. Validate loading, error, empty, success, slow/offline, unauthorized, and session-expired behavior where applicable.
 10. Validate navigation, role separation, Realtime cleanup, Storage privacy, and back behavior.
 
-Cross-surface changes must preserve database contracts for both mobile and admin. A client-only workaround must not replace an authorization invariant.
+Cross-surface changes must preserve database contracts. A client-only workaround must not replace an authorization invariant.
 
 ## 16. Refactoring Constraints
 
@@ -336,9 +330,8 @@ Use only real scripts:
 | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | Development, all workspaces | `pnpm dev`                                                                                         |
 | Mobile Expo start           | `pnpm --dir apps/mobile dev`                                                                       |
-| Admin Vite start            | `pnpm --dir apps/admin dev`                                                                        |
 | Type checking               | `pnpm typecheck` (mobile-only: `pnpm --dir apps/mobile typecheck`)                                 |
-| Linting                     | `pnpm lint` (mobile-only: `pnpm --dir apps/mobile lint`; admin-only: `pnpm --dir apps/admin lint`) |
+| Linting                     | `pnpm lint` (mobile-only: `pnpm --dir apps/mobile lint`)                                           |
 | Unit/package tests          | `pnpm test` (mobile-only: `pnpm --dir apps/mobile test`)                                           |
 | Integration/E2E             | `pnpm test:e2e`                                                                                    |
 | Database reset/lint/tests   | `pnpm db:reset`, `pnpm db:lint`, `pnpm test:db`                                                    |
@@ -347,7 +340,6 @@ Use only real scripts:
 | Stack/security checks       | `pnpm verify:stack`                                                                                |
 | Production build/export     | `pnpm build`                                                                                       |
 | Mobile web export           | `pnpm --dir apps/mobile build:web`                                                                 |
-| Admin production build      | `pnpm --dir apps/admin build`                                                                      |
 | Android native run/build    | `pnpm --dir apps/mobile android`                                                                   |
 | iOS native run/build        | `pnpm --dir apps/mobile ios` (requires macOS/Xcode)                                                |
 | Full available gate         | `pnpm verify`                                                                                      |
@@ -434,24 +426,24 @@ For database or security changes, Definition of Done also requires migration saf
 
 | Finding                                         | Location/evidence                                                                                                                                                                                     | Risk                                  | Required rule                                                                                                       |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Large feature presentation/controller files     | Registration, request creation, and several Admin feature views remain large after route/page separation                                                                                              | Medium                                | Keep routes/adapters thin; extract cohesive view sections or controller responsibilities when those features change |
+| Large feature presentation/controller files     | Registration and request creation remain large after route separation                                                                                                                                | Medium                                | Keep routes/adapters thin; extract cohesive view sections or controller responsibilities when those features change |
 | Mobile compatibility service core               | `apps/mobile/services/api.ts` is a small compatibility facade; legacy implementations remain in `apiCore.ts` behind focused domain exports                                                            | Medium                                | Add callers and new operations to focused services; shrink the compatibility core through characterized migrations  |
 | Canonical request state                         | `apps/mobile/store/useRequestStore.ts` is the mounted request-flow source after context-consumer migration                                                                                            | Low                                   | Keep request workflow state in the typed Zustand store                                                              |
 | Canonical mobile UI primitives                  | `components/AppButton.tsx` and `AppInput.tsx` retain compatibility props for migrated callers                                                                                                         | Low                                   | Extend these primitives; add no parallel primitive family                                                           |
 | Competing token APIs and hardcoded styling      | Lowercase and PascalCase exports in `constants/theme.ts`; dozens of hardcoded colors in `(worker)/verification.tsx`, `(auth)/login.tsx`, `(tabs)/bookings.tsx`                                        | Medium                                | Keep `theme.ts` canonical, add no new palette, migrate touched magic values to existing tokens                      |
-| Route and page data boundaries                  | Expo routes and Admin route pages are thin adapters; repositories/services own Supabase and provider calls                                                                                            | Low                                   | Enforce the architecture-boundary tests and keep new data access out of presentation files                          |
+| Route and page data boundaries                  | Expo routes are thin adapters; repositories/services own Supabase and provider calls                                                                                                                 | Low                                   | Enforce the architecture-boundary tests and keep new data access out of presentation files                          |
 | Overlapping chat routes                         | `app/chat/[id].tsx` starts a conversation from provider/request state; `app/messages/chat.tsx` opens by conversation or booking; both use `useConversationChat`                                       | Medium                                | Add no third route; preserve parameter contracts and migrate callers before consolidation                           |
 | Invalid or unconfirmed route target             | `app/new-request/success.tsx` targets `/request/${requestId}`; no matching route file exists                                                                                                          | High                                  | Fix in a focused navigation task and add direct-navigation coverage; do not cast around typed-route errors          |
 | Repeated booking status presentation            | Separate `statusConfig` objects in `(worker)/index.tsx`, `(worker)/bookings.tsx`, and `(worker)/booking-request/[id].tsx`                                                                             | Medium                                | Centralize only after comparing semantics/variants and migrate all callers together                                 |
 | Repeated profile/provider representations       | `services/api.ts` exposes `fetchProviderById`, `fetchProviderProfile`, `fetchWorkerProfile`, and `fetchCustomerProfile`; `services/profile.ts` separately owns typed profile views and `getMyProfile` | Medium                                | Treat `profile.ts` as identity/profile authority; use adapters and remove duplicates only after caller migration    |
-| Multiple Supabase clients with mixed legitimacy | Canonical per-surface clients in mobile/admin; two Edge helper families use different package versions                                                                                                | Medium                                | Separate mobile/admin clients are intentional; reuse the existing Edge family and add no further client/helper      |
+| Multiple Supabase clients with mixed legitimacy | Canonical per-surface mobile client; two Edge helper families use different package versions                                                                                                          | Medium                                | Reuse the existing Edge family and add no further client/helper                                                      |
 | Weak route and response typing                  | Many `as any`/`as never` navigation calls and `any` response state across mobile screens; `useRequestStore` uses `Record<string, any>`                                                                | High                                  | Narrow external data, reuse generated/contracts types, and correct route contracts incrementally                    |
 | Empty error suppression                         | `apps/mobile/services/liveDispatch.ts` contains `catch {}`                                                                                                                                            | Medium                                | Do not copy it; preserve cleanup while logging/classifying actionable failures when touched                         |
 | Root global error suppression                   | `apps/mobile/app/_layout.tsx` globally suppresses network-error messages                                                                                                                              | High                                  | Treat as dangerous behavior; do not broaden it or use it instead of local error states                              |
-| Documentation/config drift                      | Mobile/Admin READMEs contain stale structures/versions; `.env.example` omits OpenRouter names used by Edge code and AI consent defaults differ between examples/code                                  | Medium                                | Prefer package/config/code evidence and reconcile one documented mismatch per focused task                          |
+| Documentation/config drift                      | Mobile README and `.env.example` drift; `.env.example` omits OpenRouter names used by Edge code and AI consent defaults differ between examples/code                                                | Medium                                | Prefer package/config/code evidence and reconcile one documented mismatch per focused task                          |
 | Migration/hosted history sensitivity            | Large append-only `supabase/migrations/`, archived manual rollbacks, SQL-editor installers, and documented hosted/local history divergence                                                            | High                                  | Never replay/force/squash casually; require explicit database plan, backup awareness, tests, and rollback           |
 | Generated database file is large by design      | `packages/supabase/src/database.generated.ts` (~7,201 lines)                                                                                                                                          | Low if generated; High if hand-edited | Regenerate with `pnpm db:types`; line threshold does not apply to generated output                                  |
-| Existing direct client-side RLS access          | Mobile/admin services use direct `.from()` for low-risk reads/updates while sensitive workflows use RPCs                                                                                              | High if boundary is changed           | Preserve the direct-RLS versus transactional-RPC distinction; do not move sensitive mutations client-side           |
+| Existing direct client-side RLS access          | Mobile services use direct `.from()` for low-risk reads/updates while sensitive workflows use RPCs                                                                                                   | High if boundary is changed           | Preserve the direct-RLS versus transactional-RPC distinction; do not move sensitive mutations client-side           |
 | No confirmed circular-import tooling/result     | No dedicated circular-dependency script was found                                                                                                                                                     | Unknown                               | Do not claim the graph is cycle-free; check imports for touched modules and propose tooling only with approval      |
 
 Dangerous files that must not be changed casually include `.env`, `pnpm-lock.yaml`, `packages/supabase/src/database.generated.ts`, `supabase/config.toml`, all applied migrations, `supabase/seed.sql`, `supabase/sql-editor-*.sql`, auth/session sources, root/mobile route layouts, and deployment/build configuration.
@@ -472,16 +464,7 @@ Expo Router route / layout guard
 
 Returned data flows back through the service and hook/coordinator to a screen, then into presentation components. Auth flows specifically through `services/auth.ts` -> `useAuthStore.ts` -> `app/_layout.tsx` guards. Worker presence flows through `services/liveDispatch.ts` -> `WorkerPresenceContext.tsx` -> worker routes.
 
-Preferred administrator flow:
-
-```text
-React Router route
-  -> ProtectedRoute + AdminLayout
-  -> admin page
-  -> adminData/profileData service
-  -> configured admin Supabase client
-  -> RLS/RPC/Edge Function
-```
+The administrator client flow moved to a separate repository. This repository keeps the Supabase RLS/RPC/Edge Function contracts and the admin bootstrap (`scripts/bootstrap-admin.ts`, `admin-invite-account`) those flows consume.
 
 Backend provider flow:
 
@@ -494,4 +477,4 @@ Authenticated client request
   -> Supabase persistence or typed client response
 ```
 
-Current exceptions—raw route queries, the monolithic mobile API service, dual request state, and direct Admin page access—must be reduced incrementally. They are not approved examples for new code.
+Current exceptions—raw route queries, the monolithic mobile API service, and dual request state—must be reduced incrementally. They are not approved examples for new code.
