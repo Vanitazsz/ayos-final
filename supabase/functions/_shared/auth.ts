@@ -31,9 +31,13 @@ export async function requireAccount(request: Request, role?: Account['role'], a
     error: userError,
   } = await client.auth.getUser(authorization.slice(7));
   if (userError || !user) throw new Error('UNAUTHENTICATED');
-  const { data: activeRole, error: roleError } = await client.rpc('current_role');
-  if (roleError || activeRole == null) throw new Error('FORBIDDEN');
-  if (role && activeRole !== role) throw new Error('FORBIDDEN');
+  let activeRole: Account['role'] | null = null;
+  if (role) {
+    const { data: roleValue, error: roleError } = await client.rpc('current_role');
+    if (roleError || roleValue == null) throw new Error('FORBIDDEN');
+    activeRole = roleValue as Account['role'];
+    if (activeRole !== role) throw new Error('FORBIDDEN');
+  }
   let mfa_enabled = false;
   if (aal2) {
     const { data, error } = await client
@@ -49,5 +53,5 @@ export async function requireAccount(request: Request, role?: Account['role'], a
       await client.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assuranceError || assurance?.currentLevel !== 'aal2') throw new Error('MFA_REQUIRED');
   }
-  return { client, account: { id: user.id, role: activeRole as Account['role'], status: 'ACTIVE', mfa_enabled }, user };
+  return { client, account: { id: user.id, role: activeRole, status: 'ACTIVE', mfa_enabled }, user };
 }

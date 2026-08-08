@@ -572,35 +572,32 @@ export async function runAnalysis(
 }
 
 export async function validateCatalogAndCosts(admin: SupabaseClient, result: AnalysisResult) {
-  const [{ data: categories }, { data: services }] = await Promise.all([
-    admin
-      .from('service_categories')
-      .select('id,minimum_price_minor,maximum_price_minor,is_safety_critical')
-      .in('id', result.suggestedCategoryIds),
-    admin
-      .from('services')
-      .select('id,minimum_price_minor,maximum_price_minor,is_safety_critical')
-      .in('id', result.suggestedServiceIds),
-  ]);
-  const categoryIds = new Set((categories ?? []).map((row) => row.id));
-  const serviceIds = new Set((services ?? []).map((row) => row.id));
+  const catalog = await getCatalog(admin);
+  const categoryIds = new Set(
+    catalog.categories.map((row) => (row as { id?: string }).id).filter(Boolean),
+  );
+  const serviceIds = new Set(
+    catalog.services.map((row) => (row as { id?: string }).id).filter(Boolean),
+  );
   result.suggestedCategoryIds = result.suggestedCategoryIds.filter((id) => categoryIds.has(id));
   result.suggestedServiceIds = result.suggestedServiceIds.filter((id) => serviceIds.has(id));
-  const bounds = [...(categories ?? []), ...(services ?? [])];
+  const bounds = [...catalog.categories, ...catalog.services];
   const minimum = Math.min(
     ...bounds
-      .map((row) => row.minimum_price_minor)
+      .map((row) => (row as { minimum_price_minor?: number }).minimum_price_minor)
       .filter((v): v is number => typeof v === 'number'),
   );
   const maximum = Math.max(
     ...bounds
-      .map((row) => row.maximum_price_minor)
+      .map((row) => (row as { maximum_price_minor?: number }).maximum_price_minor)
       .filter((v): v is number => typeof v === 'number'),
   );
   const costOutlier =
     Number.isFinite(minimum) &&
     Number.isFinite(maximum) &&
     (result.estimatedCostMinimumMinor < minimum || result.estimatedCostMaximumMinor > maximum);
-  result.safetyCritical = result.safetyCritical || bounds.some((row) => row.is_safety_critical);
+  result.safetyCritical =
+    result.safetyCritical ||
+    bounds.some((row) => Boolean((row as { is_safety_critical?: boolean }).is_safety_critical));
   return { result, costOutlier };
 }

@@ -139,7 +139,7 @@ Deno.serve(async (request) => {
     };
     const recordFailure = async (raw: QueueMessage, error: unknown) => {
       failed += 1;
-      if (raw.read_ct >= 5 || queue === 'provider_work') {
+      if (raw.read_ct >= 5) {
         const failure = await admin.from('job_failures').upsert(
           {
             queue_name: queue,
