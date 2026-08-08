@@ -65,11 +65,11 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 const LOCK_FILES = /(^|\/)(pnpm-lock\.yaml|package-lock\.json|deno\.lock)$/;
 const GENERATED_FILES =
-  /(^hosted-backups\/|database\.generated\.ts$|packages\/client\/src\/database\.types\.ts$)/;
+  /(^hosted-backups\/|database\.generated\.ts$)/;
 const TEST_FILES = /(^tests\/|\.(test|spec)\.[cm]?[jt]sx?$|supabase\/tests\/)/;
 const CONFIG_FILES =
   /(^|\/)(package\.json|tsconfig[^/]*\.json|[^/]*\.config\.[cm]?[jt]s|\.env\.example|app\.json|vercel\.json|config\.toml|\.oxlintrc\.json|\.prettierrc(?:\.json)?|\.gitignore|Dockerfile|docker-compose\.yml|pnpm-workspace\.yaml|turbo\.json)$/;
-const LEGACY_FILES = /^(backend\/|packages\/client\/)/;
+const LEGACY_FILES = /^backend\//;
 
 function matches(source: string, pattern: RegExp): number {
   return [...source.matchAll(pattern)].length;
@@ -110,7 +110,6 @@ function fileType(file: string): string {
   if (TEST_FILES.test(file)) return 'TEST';
   if (CONFIG_FILES.test(file)) return 'CONFIGURATION';
   if (/^apps\/mobile\/app\/.*\.(tsx|ts)$/.test(file)) return 'ROUTE';
-  if (/^apps\/admin\/src\/pages\//.test(file)) return 'PAGE';
   if (/\/components\//.test(file)) return 'COMPONENT';
   if (/\/hooks\//.test(file)) return 'HOOK';
   if (/\/context\//.test(file)) return 'CONTEXT/PROVIDER';
@@ -129,7 +128,6 @@ function fileType(file: string): string {
 function routeFeature(file: string): string {
   const normalized = file
     .replace(/^apps\/mobile\/app\//, '')
-    .replace(/^apps\/admin\/src\/pages\/(admin|auth)\//, '')
     .replace(/\.(tsx|ts|jsx|js)$/, '');
   const parts = normalized.split('/').filter((part) => !/^\(.*\)$/.test(part));
   const leaf = parts.at(-1)?.replace(/^\[|\]$/g, '') ?? 'shared';
@@ -165,7 +163,7 @@ function routeFeature(file: string): string {
 }
 
 function featureFor(file: string): string {
-  if (/^apps\/(mobile\/app|admin\/src\/pages)\//.test(file)) return routeFeature(file);
+  if (/^apps\/mobile\/app\//.test(file)) return routeFeature(file);
   if (/auth/i.test(file)) return 'auth';
   if (/booking|payment|wallet|review/i.test(file)) return 'bookings';
   if (/request|match|dispatch/i.test(file)) return 'requests';
@@ -173,7 +171,6 @@ function featureFor(file: string): string {
   if (/map|location|address|geocod|route/i.test(file)) return 'location';
   if (/worker|provider|industry|service-categor/i.test(file)) return 'worker';
   if (/profile|content|setting|support/i.test(file)) return 'account';
-  if (/^apps\/admin\//.test(file)) return 'admin';
   if (/^supabase\//.test(file)) return 'backend';
   if (/^packages\//.test(file)) return 'shared';
   if (/^tests\//.test(file)) return 'testing';
@@ -199,8 +196,6 @@ function batchFor(file: string, type: string, feature: string): number {
   if (type === 'ROUTE' && feature === 'worker') return 16;
   if (feature === 'worker' || /useWorkerBookingStore/.test(file)) return 17;
   if (/\b(ai|audio|media|upload|image)\b/i.test(file)) return 18;
-  if (/^apps\/admin\/src\/(components|context|hooks|layouts|lib|main|App)/.test(file)) return 19;
-  if (/^apps\/admin\/src\/(pages|services)\//.test(file)) return 20;
   if (type === 'EDGE FUNCTION') return 21;
   if (/^(packages|tests|scripts)\//.test(file) || type === 'TEST') return 22;
   if (LEGACY_FILES.test(file) || GENERATED_FILES.test(file)) return 23;
@@ -220,14 +215,12 @@ function duplicateRelationship(file: string): string {
     return 'Two chat routes with different entry contracts';
   if (/services\/(api|profile)\.ts/.test(file))
     return 'Competing profile representations across api.ts and profile.ts';
-  if (/packages\/client\//.test(file)) return 'Duplicates canonical mobile/Admin Supabase clients';
   return 'None confirmed';
 }
 
 function responsibility(type: string, feature: string): string {
   const descriptions: Record<string, string> = {
     ROUTE: `Route and current ${feature} screen coordination`,
-    PAGE: `Admin ${feature} page presentation and coordination`,
     COMPONENT: `Reusable or feature ${feature} presentation`,
     HOOK: `Reusable React coordination for ${feature}`,
     SERVICE: `${feature} data access or integration behavior`,
@@ -260,13 +253,8 @@ function targetFor(file: string, type: string, feature: string): string {
       .join('');
     return `${file} (thin wrapper) + apps/mobile/features/${feature}/screens/${screen || 'Index'}Screen.tsx`;
   }
-  if (type === 'PAGE') {
-    return `${file} (thin page) + apps/admin/src/features/${feature}/`;
-  }
   if (file === 'apps/mobile/services/api.ts')
     return 'apps/mobile/services/<domain>.ts compatibility split';
-  if (file === 'apps/admin/src/services/adminData.js')
-    return 'apps/admin/src/services/<domain>Data.js compatibility split';
   return file;
 }
 
@@ -293,10 +281,10 @@ export function buildInventoryRecord(file: string, content: string): InventoryRe
   ].includes(type);
   if (analysis.lineCount > 300 && isApplicationSource) problems.push('Oversized (>300 lines)');
   if (type === 'ROUTE' && analysis.hasDatabaseCall) problems.push('Raw database access in route');
-  if ((type === 'ROUTE' || type === 'PAGE' || type === 'COMPONENT') && analysis.hasDirectApiCall)
+  if ((type === 'ROUTE' || type === 'COMPONENT') && analysis.hasDirectApiCall)
     problems.push('Direct external/API invocation in presentation');
   if (type === 'ROUTE' && analysis.hasStyleSheet) problems.push('Route owns presentation styles');
-  if (analysis.hardcodedColorCount > 0 && ['ROUTE', 'PAGE', 'COMPONENT'].includes(type))
+  if (analysis.hardcodedColorCount > 0 && ['ROUTE', 'COMPONENT'].includes(type))
     problems.push(`${analysis.hardcodedColorCount} hardcoded color value(s)`);
   if (analysis.anyCount > 0 && CODE_EXTENSIONS.has(path.extname(file)))
     problems.push(`${analysis.anyCount} unsafe any occurrence(s)`);
@@ -317,7 +305,6 @@ export function buildInventoryRecord(file: string, content: string): InventoryRe
     analysis.hasDatabaseCall ||
     analysis.hasDirectApiCall ||
     type === 'ROUTE' ||
-    type === 'PAGE' ||
     type === 'STORE' ||
     type === 'CONTEXT/PROVIDER';
   const status = initialStatus(file, type);
@@ -524,7 +511,7 @@ function renderMetrics(
 | Total in-scope tracked files | ${records.length} | Tracked files excluding lockfile internals and generated caches/build output |
 | Total source files | ${source.length} | Tracked TS/TSX/JS/JSX/MJS/CJS/CSS/SQL/Prisma files |
 | Total routes | ${metric(records, (record) => record.type === 'ROUTE')} | Expo Router files under \`apps/mobile/app\` |
-| Total screens/pages | ${metric(records, (record) => record.type === 'PAGE' || /\/screens\//.test(record.file))} | Admin pages and explicit screen directories |
+| Total screens | ${metric(records, (record) => /\/screens\//.test(record.file))} | Explicit feature screen directories |
 | Total components | ${metric(records, (record) => record.type === 'COMPONENT')} | Component directories |
 | Total hooks | ${metric(records, (record) => record.type === 'HOOK')} | Hook directories |
 | Total services | ${metric(records, (record) => record.type === 'SERVICE')} | Service directories |

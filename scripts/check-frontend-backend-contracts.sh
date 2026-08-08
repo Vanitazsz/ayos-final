@@ -2,7 +2,6 @@
 set -euo pipefail
 
 frontend_paths=(
-  apps/admin/src
   apps/mobile/app
   apps/mobile/components
   apps/mobile/context

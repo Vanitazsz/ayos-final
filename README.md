@@ -1,6 +1,6 @@
 # A-YOS
 
-A-YOS is a local service-matching and booking platform with the approved Expo application for customer and worker accounts and the approved Vite/React administrator dashboard. Supabase provides PostgreSQL/PostGIS, Auth, Data APIs, Storage, Realtime, Queues, Cron, Vault, and Edge Functions. This working tree merges those frontends with backend commit `1c7f0e147a1b419d76091f32f72a0fc08632a3ab` from `Vanitazsz/ayos-try`.
+A-YOS is a local service-matching and booking platform with the approved Expo application for customer and worker accounts. Supabase provides PostgreSQL/PostGIS, Auth, Data APIs, Storage, Realtime, Queues, Cron, Vault, and Edge Functions. The administrator dashboard lives in a separate repository; this working tree owns the mobile/web client, shared packages, and the Supabase backend.
 
 ## Main features
 
@@ -20,7 +20,6 @@ A-YOS is a local service-matching and booking platform with the approved Expo ap
 | ---------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Languages              | TypeScript 5.9.3, JavaScript, Shell, PL/pgSQL                                                        | TypeScript is the application language; JavaScript is limited to ecosystem configuration; guarded Shell scripts orchestrate local/CI work; PL/pgSQL implements RLS helpers, triggers, queues, geospatial queries, and transactional RPCs. |
 | User/Worker frontend   | Expo 54, Expo Router 6, React 19.1, React Native 0.81, React Native Web 0.21                         | Android, iOS, and web route groups with Supabase sessions and separate customer/worker workspaces.                                                                                                                                        |
-| Administrator frontend | Vite 8, React 19.2, React Router 7, `@supabase/supabase-js` 2.110                                    | Client-rendered administrator dashboard with Supabase session, role, profile, and MFA checks.                                                                                                                                             |
 | Maps                   | MapLibre GL JS 5.24, MapLibre React Native 11.3, PostGIS                                             | Platform-specific map rendering, GeoJSON contracts, nearby-worker filtering, distance ordering, private live tracking, and provider-backed route/ETA requests.                                                                            |
 | Backend                | Supabase PostgreSQL 17/PostGIS, Auth, Data API, Storage, Realtime, Edge Functions, PGMQ, Cron, Vault | The sole backend and schema authority; no NestJS, Prisma, Redis, Socket.IO, MinIO, or custom token runtime is required.                                                                                                                   |
 | Client API             | `@supabase/supabase-js` 2.110, `@supabase/ssr` 0.8                                                   | Direct RLS-protected access, Auth, RPC, Storage, Realtime, and Edge Functions.                                                                                                                                                            |
@@ -48,9 +47,9 @@ pnpm dev
 
 Copy the local URL, publishable key, and secret key printed by `supabase start` into `.env`. Never place `SUPABASE_SECRET_KEY` in a `NEXT_PUBLIC_*`, `VITE_*`, or `EXPO_PUBLIC_*` variable.
 
-`pnpm admin:bootstrap` loads `.env.local` when present. It prepares a hashed, ten-minute, single-use database ticket, creates the Auth identity, provisions the protected Administrator account, removes the raw ticket from Auth metadata, and verifies the final records. Creating an Administrator directly in the Supabase Dashboard is intentionally rejected.
+`pnpm admin:bootstrap` loads `.env.local` when present. It prepares a hashed, ten-minute, single-use database ticket, creates the Auth identity, provisions the protected Administrator account, removes the raw ticket from Auth metadata, and verifies the final records. Creating an Administrator directly in the Supabase Dashboard is intentionally rejected. The Administrator account is consumed by the separate administrator dashboard repository.
 
-Local endpoints use Supabase API `http://127.0.0.1:54321`, database port `54332`, Studio `http://127.0.0.1:54323`, Mailpit `http://127.0.0.1:54324`, admin `http://localhost:5173`, and the Expo URL printed by its development server. Optional local Supabase analytics is disabled because it is not required by the application and its Docker-socket collector is incompatible with the configured Colima mount.
+Local endpoints use Supabase API `http://127.0.0.1:54321`, database port `54332`, Studio `http://127.0.0.1:54323`, Mailpit `http://127.0.0.1:54324`, and the Expo URL printed by its development server. Optional local Supabase analytics is disabled because it is not required by the application and its Docker-socket collector is incompatible with the configured Colima mount.
 
 The seed contains development-only legal content. Migrations `20260722000500` and `20260722000600` install and reconcile the production reference taxonomy of 10 industries and 50 skills idempotently across clean and hosted schemas; they do not create sample workers or business records. Replace all legal content before production.
 
@@ -71,13 +70,13 @@ pnpm test:e2e
 ```
 
 `db:reset`, database tests, type generation, and local Edge Function execution require the Supabase Docker stack.
-The imported Playwright suites describe the previous repository frontends and are not an acceptance gate for the approved layouts. Admin and Expo production builds, database tests, Edge Function checks, and package tests are the current merge gates. Authenticated lifecycle acceptance still requires dedicated User, Worker, and AAL2 Admin fixtures.
+The imported Playwright suites describe the previous repository frontends and are not an acceptance gate for the approved layouts. Expo production builds, database tests, Edge Function checks, and package tests are the current merge gates. Authenticated lifecycle acceptance still requires dedicated User and Worker fixtures.
 
 See [MERGE_REPORT.md](./MERGE_REPORT.md) for source provenance, conflict decisions, compatibility migrations, and verification evidence.
 
 ## Staging and production
 
-The Admin and Expo clients target hosted project `qsurouiyvisykjkgjqmz`. User credentials, account roles, profiles, and business records are stored in hosted Supabase rather than on a device. A user changing devices signs in again with the same verified identity; the account remains available even though the previous device's local session is not copied.
+The Expo client targets hosted project `qsurouiyvisykjkgjqmz`. User credentials, account roles, profiles, and business records are stored in hosted Supabase rather than on a device. A user changing devices signs in again with the same verified identity; the account remains available even though the previous device's local session is not copied.
 
 A restricted hosted schema/data/roles backup was captured on 2026-07-22. A linked comparison of the full canonical migration result against hosted `public` and Storage schemas returned an empty diff, so no duplicate migration replay or history repair was performed. Hosted/local migration version histories remain different but resolve to the same schema. Do not delete accounts or force the clean-cutover history into this project.
 

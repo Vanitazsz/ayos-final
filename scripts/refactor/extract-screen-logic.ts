@@ -15,7 +15,7 @@ function isLogicDependency(module: string): boolean {
     /^@\/services\//.test(module) ||
     module === '@/lib/supabase' ||
     /^expo-(location|image-picker|camera|audio)$/.test(module) ||
-    /(?:^|\/)services\/(adminData|profileData)$/.test(module)
+    /(?:^|\/)services\/profileData$/.test(module)
   );
 }
 
@@ -117,17 +117,10 @@ function filesRecursively(directory: string): string[] {
 }
 
 export function extractAllLogicGateways(root: string): string[] {
-  const roots = [
-    path.join(root, 'apps/mobile/features'),
-    path.join(root, 'apps/admin/src/features'),
-  ];
+  const roots = [path.join(root, 'apps/mobile/features')];
   const changed: string[] = [];
   for (const absolute of roots.flatMap(filesRecursively)) {
-    if (
-      !absolute.includes(`${path.sep}screens${path.sep}`) &&
-      !absolute.includes(`${path.sep}pages${path.sep}`)
-    )
-      continue;
+    if (!absolute.includes(`${path.sep}screens${path.sep}`)) continue;
     const relative = path.relative(root, absolute).split(path.sep).join('/');
     const extraction = extractLogicGateway(relative, readFileSync(absolute, 'utf8'));
     if (!extraction) continue;

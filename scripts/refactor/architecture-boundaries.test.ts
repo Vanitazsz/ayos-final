@@ -45,23 +45,6 @@ describe('logic and presentation boundaries', () => {
     expect(violations).toEqual([]);
   });
 
-  it('keeps Admin route pages as thin adapters without data access', () => {
-    const violations = tracked('apps/admin/src/pages/**/*.jsx')
-      .map((file) => ({ file, analysis: analyzeContent(source(file)) }))
-      .filter(
-        ({ analysis }) =>
-          analysis.lineCount > 50 || analysis.hasDatabaseCall || analysis.hasDirectApiCall,
-      )
-      .map(({ file, analysis }) => ({
-        file,
-        lines: analysis.lineCount,
-        database: analysis.hasDatabaseCall,
-        api: analysis.hasDirectApiCall,
-      }));
-
-    expect(violations).toEqual([]);
-  });
-
   it('keeps feature-screen styles in adjacent style modules', () => {
     const violations = tracked('apps/mobile/features')
       .filter((file) => /\/screens\/.*\.tsx$/.test(file))
@@ -70,7 +53,7 @@ describe('logic and presentation boundaries', () => {
     expect(violations).toEqual([]);
   });
 
-  it('keeps mobile screens and Admin pages as controller/view adapters', () => {
+  it('keeps mobile screens as controller/view adapters', () => {
     const mobileViolations = tracked('apps/mobile/features')
       .filter((file) => /\/screens\/.*Screen\.tsx$/.test(file))
       .filter(
@@ -78,22 +61,12 @@ describe('logic and presentation boundaries', () => {
           analyzeContent(source(file)).lineCount > 20 ||
           /\buse(?:State|Effect|Memo|Callback|Ref)\b/.test(source(file)),
       );
-    const adminViolations = tracked('apps/admin/src/features')
-      .filter((file) => /\/pages\/.*Page\.jsx$/.test(file))
-      .filter(
-        (file) =>
-          analyzeContent(source(file)).lineCount > 10 ||
-          /\buse(?:State|Effect|Memo|Callback|Ref)\b/.test(source(file)),
-      );
 
-    expect([...mobileViolations, ...adminViolations]).toEqual([]);
+    expect(mobileViolations).toEqual([]);
   });
 
   it('keeps data and integration modules out of presentation views', () => {
-    const views = [
-      ...tracked('apps/mobile/features').filter((file) => file.endsWith('.view.tsx')),
-      ...tracked('apps/admin/src/features').filter((file) => file.endsWith('.view.jsx')),
-    ];
+    const views = tracked('apps/mobile/features').filter((file) => file.endsWith('.view.tsx'));
     const violations = views.filter((file) =>
       /(?:@\/services\/|@\/repositories\/|@\/lib\/supabase|\/services\/|\/lib\/supabase)/.test(
         source(file),
@@ -119,10 +92,8 @@ describe('logic and presentation boundaries', () => {
     const violations = [
       ...tracked('apps/mobile/components/**/*.tsx'),
       ...tracked('apps/mobile/features/**/*.tsx'),
-      ...tracked('apps/admin/src/components/**/*.jsx'),
-      ...tracked('apps/admin/src/features/**/*.jsx'),
     ].filter((file) =>
-      /(?:lib\/supabase|authenticatedFunctions|services\/api|services\/adminData)/.test(
+      /(?:lib\/supabase|authenticatedFunctions|services\/api)/.test(
         source(file),
       ),
     );

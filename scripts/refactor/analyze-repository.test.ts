@@ -7,12 +7,9 @@ import {
 } from './analyze-repository.js';
 import { routeScreenTarget } from './extract-route-screens.js';
 import { extractStyleModule } from './extract-screen-styles.js';
-import { adminPageTarget, rewriteRelativeModuleSpecifiers } from './extract-admin-pages.js';
 import { extractLogicGateway } from './extract-screen-logic.js';
 import { migrateApiImports } from './migrate-mobile-api-imports.js';
-import { adminDomainForExport } from './split-admin-data.js';
 import { extractMobileScreenController } from './extract-mobile-screen-controllers.js';
-import { extractAdminPageController } from './extract-admin-page-controllers.js';
 
 describe('analyzeContent', () => {
   it('detects responsibility violations without counting harmless text', () => {
@@ -132,24 +129,6 @@ const styles = StyleSheet.create({ root: { gap: GAP } });
   });
 });
 
-describe('Admin page extraction', () => {
-  it('creates a feature page target and preserves relative dependency targets', () => {
-    const target = adminPageTarget('apps/admin/src/pages/admin/Users.jsx');
-    expect(target).toEqual({
-      feature: 'users',
-      importPath: '../../features/users/pages/UsersPage',
-      targetFile: 'apps/admin/src/features/users/pages/UsersPage.jsx',
-    });
-    expect(
-      rewriteRelativeModuleSpecifiers(
-        "import Button from '../../components/ui/Button';",
-        'apps/admin/src/pages/admin/Users.jsx',
-        target.targetFile,
-      ),
-    ).toBe("import Button from '../../../components/ui/Button';");
-  });
-});
-
 describe('extractLogicGateway', () => {
   it('moves service and provider dependencies behind a feature logic module', () => {
     const transformed = extractLogicGateway(
@@ -189,14 +168,6 @@ describe('migrateApiImports', () => {
   });
 });
 
-describe('adminDomainForExport', () => {
-  it('assigns Admin operations to focused data services', () => {
-    expect(adminDomainForExport('loadBookings')).toBe('bookings');
-    expect(adminDomainForExport('saveSubscriptionPlan')).toBe('subscriptions');
-    expect(() => adminDomainForExport('unknownOperation')).toThrow('No Admin domain mapping');
-  });
-});
-
 describe('extractMobileScreenController', () => {
   it('separates stateful coordination from a presentation view', () => {
     const result = extractMobileScreenController(
@@ -214,24 +185,5 @@ export default function DemoScreen() {
     expect(result?.controller).toContain('loadValue');
     expect(result?.view).not.toContain('../logic/DemoScreenLogic');
     expect(result?.screen).toContain('<DemoView model={model} />');
-  });
-});
-
-describe('extractAdminPageController', () => {
-  it('keeps data coordination out of the Admin page view', () => {
-    const result = extractAdminPageController(
-      'apps/admin/src/features/demo/pages/DemoPage.jsx',
-      `import React, { useState } from 'react';
-import { loadDemo } from '../logic/DemoPageLogic';
-const Demo = () => {
-  const [value, setValue] = useState('');
-  const save = () => loadDemo(value);
-  return <button onClick={save}>{value}</button>;
-};
-export default Demo;`,
-    );
-    expect(result?.controller).toContain('useDemoPageController');
-    expect(result?.view).not.toContain('DemoPageLogic');
-    expect(result?.page).toContain('<DemoView model={useDemoPageController()} />');
   });
 });

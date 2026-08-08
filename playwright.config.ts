@@ -17,27 +17,12 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'admin-chromium',
-      testMatch: '**/admin-e2e/*.spec.ts',
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5173' },
-    },
-    {
       name: 'mobile-web-chromium',
       testMatch: '**/mobile-e2e/*.spec.ts',
       use: { ...devices['Pixel 7'], baseURL: 'http://localhost:8081' },
     },
   ],
   webServer: [
-    {
-      command: 'pnpm --dir apps/admin dev -- --host 127.0.0.1 --port 5173',
-      url: 'http://localhost:5173/login',
-      env: {
-        VITE_SUPABASE_URL: localSupabaseUrl,
-        VITE_SUPABASE_PUBLISHABLE_KEY: localSupabaseKey,
-      },
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
     {
       command: 'pnpm --dir apps/mobile exec expo start --web --port 8081',
       url: 'http://localhost:8081/landing',

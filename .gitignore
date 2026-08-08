@@ -23,7 +23,3 @@ supabase/.env.local
 apps/mobile/android/app/debug.keystore
 /ios/
 
-
-# ignore admin source code to avoid pushing it
-apps/admin/
-
