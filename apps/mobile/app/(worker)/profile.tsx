@@ -41,7 +41,7 @@ import {
   type WorkerMatchingReadiness,
 } from '@/services/workerMatching';
 import { showAlert } from '@/components/AppAlert';
-import { styles } from '@/styles/(worker)/profile.styles';
+import { styles } from '@/styles/worker/profile.styles';
 
 const MENU_SECTIONS = [
   {

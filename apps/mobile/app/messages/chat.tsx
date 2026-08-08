@@ -23,7 +23,7 @@ import { theme } from '@/constants/theme';
 import { fetchConversationForBooking } from '@/services/api';
 import { useConversationChat } from '@/hooks/useConversationChat';
 import { showAlert } from '@/components/AppAlert';
-import { styles } from './_chat.styles';
+import { styles } from '@/styles/messages/_chat.styles';
 
 export default function ChatScreen() {
   const router = useRouter();

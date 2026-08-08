@@ -17,16 +17,16 @@ import {
 const RECENT_BOOKINGS_LIMIT = 5;
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'Awaiting Worker Acceptance', color: '#B78103', bg: '#FFF8E1' },
-  ACCEPTED: { label: 'Confirmed', color: '#0277BD', bg: '#E1F5FE' },
-  WORKER_PREPARING: { label: 'Confirmed · Preparing', color: '#0277BD', bg: '#E1F5FE' },
-  WORKER_EN_ROUTE: { label: 'En Route', color: '#1565C0', bg: '#E8EAF6' },
-  WORKER_ARRIVED: { label: 'Arrived', color: '#2E7D32', bg: '#E8F5E9' },
-  SERVICE_STARTED: { label: 'In Progress', color: '#2E7D32', bg: '#E8F5E9' },
-  IN_PROGRESS: { label: 'In Progress', color: '#2E7D32', bg: '#E8F5E9' },
-  PENDING_CONFIRMATION: { label: 'Awaiting Your Confirmation', color: '#B78103', bg: '#FFF8E1' },
-  COMPLETED: { label: 'Completed', color: '#2E7D32', bg: '#E8F5E9' },
-  CANCELLED: { label: 'Cancelled', color: '#C62828', bg: '#FFEBEE' },
+  PENDING: { label: 'Awaiting Worker Acceptance', ...theme.colors.status.pending },
+  ACCEPTED: { label: 'Confirmed', ...theme.colors.status.confirmed },
+  WORKER_PREPARING: { label: 'Confirmed · Preparing', ...theme.colors.status.confirmed },
+  WORKER_EN_ROUTE: { label: 'En Route', ...theme.colors.status.enRoute },
+  WORKER_ARRIVED: { label: 'Arrived', ...theme.colors.status.progress },
+  SERVICE_STARTED: { label: 'In Progress', ...theme.colors.status.progress },
+  IN_PROGRESS: { label: 'In Progress', ...theme.colors.status.progress },
+  PENDING_CONFIRMATION: { label: 'Awaiting Your Confirmation', ...theme.colors.status.pending },
+  COMPLETED: { label: 'Completed', ...theme.colors.status.progress },
+  CANCELLED: { label: 'Cancelled', ...theme.colors.status.cancelled },
 };
 
 export default function BookingsScreen() {
@@ -126,7 +126,7 @@ export default function BookingsScreen() {
         ) : (
           <>
           {visibleBookings.map((booking) => {
-            const badge = STATUS_MAP[booking.rawStatus] ?? { label: booking.rawStatus || 'Active', color: theme.colors.primary, bg: '#E3F2FD' };
+            const badge = STATUS_MAP[booking.rawStatus] ?? { label: booking.rawStatus || 'Active', color: theme.colors.primary, bg: theme.colors.infoBackground };
             return (
               <TouchableOpacity 
                 key={booking.id} 

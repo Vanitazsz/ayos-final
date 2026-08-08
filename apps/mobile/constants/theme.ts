@@ -23,6 +23,13 @@ export const colors = {
   warningBackground: '#fffbeb',
   info: '#3b82f6',
   infoBackground: '#eff6ff',
+  status: {
+    pending: { color: '#B78103', bg: '#FFF8E1' },
+    confirmed: { color: '#0277BD', bg: '#E1F5FE' },
+    enRoute: { color: '#1565C0', bg: '#E8EAF6' },
+    progress: { color: '#2E7D32', bg: '#E8F5E9' },
+    cancelled: { color: '#C62828', bg: '#FFEBEE' },
+  },
   overlay: 'rgba(0, 0, 0, 0.4)',
   transparent: 'transparent',
 } as const;
