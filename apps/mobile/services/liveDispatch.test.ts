@@ -29,6 +29,12 @@ vi.mock('react-native', () => ({
 }));
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { access_token: 'test' } },
+        error: null,
+      }),
+    },
     rpc: mocks.rpc,
     channel: vi.fn(() => ({
       subscribe: vi.fn(),
@@ -41,6 +47,10 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/services/workerMatching', () => ({
   getWorkerMatchingReadiness: mocks.readiness,
+}));
+
+vi.mock('@/lib/crypto', () => ({
+  randomUUID: () => 'test-uuid',
 }));
 
 import {
