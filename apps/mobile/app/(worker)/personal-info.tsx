@@ -13,7 +13,6 @@ import {
   Typography,
   theme,
 } from '@/constants/theme';
-import { fetchWorkerProfile } from '@/services/api';
 import {
   getMyProfile,
   updateMyProfile,
@@ -45,23 +44,20 @@ export default function PersonalInfoScreen() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const result = await fetchWorkerProfile();
-      let account: WorkerProfileView | null = null;
       try {
         const profile = await getMyProfile();
-        account = profile.role === 'WORKER' ? profile : null;
+        if (!active) return;
+        const account = profile.role === 'WORKER' ? profile : null;
+        setName(profile.displayName);
+        setEmail(profile.email);
+        setBio(profile.bio ?? '');
+        setAccountProfile(account);
+        setPhone(account?.mobile ?? '');
       } catch {
         // Account details are optional here and may be unavailable during migrations.
+      } finally {
+        if (active) setLoading(false);
       }
-      if (!active) return;
-      if (!result.error && result.data) {
-        setName(result.data.name);
-        setEmail(result.data.email);
-        setBio(result.data.bio ?? '');
-      }
-      setAccountProfile(account);
-      setPhone(account?.mobile ?? '');
-      setLoading(false);
     })();
     return () => {
       active = false;

@@ -52,6 +52,16 @@ export async function submitWorkerFeedback(
 export async function getWorkerFeedback(
   bookingId: string,
 ): Promise<WorkerFeedback | null> {
+  const batch = await getWorkerFeedbackBatch([bookingId]);
+  return batch[bookingId] ?? null;
+}
+
+export async function getWorkerFeedbackBatch(
+  bookingIds: string[],
+): Promise<Record<string, WorkerFeedback>> {
+  const result: Record<string, WorkerFeedback> = {};
+  if (bookingIds.length === 0) return result;
+
   try {
     const {
       data: { session },
@@ -59,30 +69,38 @@ export async function getWorkerFeedback(
     if (session) {
       const { data, error } = await supabase
         .from('worker_feedback')
-        .select('rating,comment,tags,created_at')
-        .eq('booking_id', bookingId)
-        .maybeSingle();
+        .select('booking_id,rating,comment,tags,created_at')
+        .in('booking_id', bookingIds);
       if (!error && data) {
-        return {
-          bookingId,
-          rating: data.rating,
-          comment: data.comment ?? '',
-          tags: Array.isArray(data.tags) ? data.tags : [],
-          submittedAt: data.created_at ?? new Date().toISOString(),
-        };
-      }
-      if (error) {
-        console.warn('Server feedback lookup failed, falling back to local:', error);
+        for (const row of data) {
+          result[row.booking_id] = {
+            bookingId: row.booking_id,
+            rating: row.rating,
+            comment: row.comment ?? '',
+            tags: Array.isArray(row.tags) ? row.tags : [],
+            submittedAt: row.created_at ?? new Date().toISOString(),
+          };
+        }
+      } else if (error) {
+        console.warn('Server feedback batch lookup failed:', error);
       }
     }
   } catch (err) {
-    console.warn('Server feedback lookup threw, falling back to local:', err);
+    console.warn('Server feedback batch lookup threw:', err);
   }
 
-  try {
-    const local = await AsyncStorage.getItem(`${STORAGE_PREFIX}${bookingId}`);
-    return local ? JSON.parse(local) : null;
-  } catch {
-    return null;
+  const missing = bookingIds.filter((id) => !result[id]);
+  const localKeys = missing.map((id) => `${STORAGE_PREFIX}${id}`);
+  const localEntries = await AsyncStorage.multiGet(localKeys);
+  for (const [key, value] of localEntries) {
+    if (value) {
+      const id = key.slice(STORAGE_PREFIX.length);
+      try {
+        result[id] = JSON.parse(value) as WorkerFeedback;
+      } catch {
+        // ignore corrupted local copy
+      }
+    }
   }
+  return result;
 }

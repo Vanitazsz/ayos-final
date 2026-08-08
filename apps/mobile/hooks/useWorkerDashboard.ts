@@ -16,6 +16,7 @@ import {
   type DispatchOffer,
   type WorkerLiveStatus,
 } from '@/services/liveDispatch';
+import { getMyWalletAccountId } from '@/services/wallet';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 
 export function useWorkerDashboard() {
@@ -62,10 +63,37 @@ export function useWorkerDashboard() {
         })
         .catch((e) => console.warn('[worker-dashboard] load failed:', e));
     load();
-    const stops = ['bookings', 'service_requests', 'wallet_transactions'].map(
-      (table) => subscribeToTable(table, load, undefined, undefined, ['INSERT', 'UPDATE']),
-    );
-    return () => stops.forEach((stop) => stop());
+    let stops: (() => void)[] = [];
+    void (async () => {
+      const accountId = await getMyWalletAccountId();
+      if (!accountId) return;
+      stops = [
+        subscribeToTable(
+          'bookings',
+          load,
+          `worker_account_id=eq.${accountId}`,
+          undefined,
+          ['INSERT', 'UPDATE'],
+        ),
+        subscribeToTable(
+          'service_requests',
+          load,
+          `selected_worker_id=eq.${accountId}`,
+          undefined,
+          ['INSERT', 'UPDATE'],
+        ),
+        subscribeToTable(
+          'wallet_transactions',
+          load,
+          `wallet_account_id=eq.${accountId}`,
+          undefined,
+          ['INSERT', 'UPDATE'],
+        ),
+      ];
+    })();
+    return () => {
+      stops.forEach((stop) => stop());
+    };
   }, []);
 
   useEffect(() => {

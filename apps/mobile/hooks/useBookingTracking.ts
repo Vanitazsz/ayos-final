@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   confirmJobCompletion,
   fetchBookingTracking,
@@ -16,6 +16,7 @@ export function useBookingTracking(bookingId: string | undefined) {
   const [liveLocation, setLiveLocation] = useState<LiveEnRouteLocation | null>(
     null,
   );
+  const statusRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!bookingId) return;
@@ -27,49 +28,72 @@ export function useBookingTracking(bookingId: string | undefined) {
     };
   }, [bookingId]);
 
-  const workerStatus = tracking?.booking?.status as string | undefined;
   useEffect(() => {
     if (!bookingId) return;
-    const load = () =>
+    let active = true;
+    const load = () => {
       void fetchBookingTracking(bookingId)
-        .then(setTracking)
-        .catch(() => setTracking(null));
+        .then((next) => {
+          if (!active) return;
+          statusRef.current = next?.booking?.status;
+          setTracking(next);
+        })
+        .catch(() => {
+          if (active) setTracking(null);
+        });
+    };
+    const channelStatuses = new Map<string, string>([
+      ['bookings', 'CONNECTING'],
+      ['booking_status_events', 'CONNECTING'],
+    ]);
+    let fallback: ReturnType<typeof setInterval> | null = null;
+    const syncFallback = () => {
+      const connected = [...channelStatuses.values()].every(
+        (status) => status === 'SUBSCRIBED',
+      );
+      if (connected && fallback) {
+        clearInterval(fallback);
+        fallback = null;
+      } else if (!connected && !fallback) {
+        fallback = setInterval(() => {
+          if (
+            !statusRef.current ||
+            !['COMPLETED', 'CANCELLED'].includes(statusRef.current)
+          )
+            load();
+        }, 20000);
+      }
+    };
+    const track = (table: string) => (status: string) => {
+      channelStatuses.set(table, status);
+      if (status === 'SUBSCRIBED') load();
+      syncFallback();
+    };
     load();
-    const stopLocation = subscribeToTable(
-      'location_updates',
-      load,
-      `booking_id=eq.${bookingId}`,
-      undefined,
-      ['INSERT', 'UPDATE'],
-    );
     const stopBooking = subscribeToTable(
       'bookings',
       load,
       `id=eq.${bookingId}`,
-      undefined,
+      track('bookings'),
       ['INSERT', 'UPDATE'],
     );
     const stopStatusEvents = subscribeToTable(
       'booking_status_events',
       load,
       `booking_id=eq.${bookingId}`,
-      undefined,
+      track('booking_status_events'),
       ['INSERT', 'UPDATE'],
     );
-    const poll = setInterval(() => {
-      if (
-        !tracking?.booking?.status ||
-        !['COMPLETED', 'CANCELLED'].includes(tracking.booking.status)
-      )
-        load();
-    }, 20000);
+    syncFallback();
     return () => {
-      stopLocation();
+      active = false;
       stopBooking();
       stopStatusEvents();
-      clearInterval(poll);
+      if (fallback) clearInterval(fallback);
     };
-  }, [bookingId, tracking?.booking?.status]);
+  }, [bookingId]);
+
+  const workerStatus = tracking?.booking?.status as string | undefined;
 
   const confirmCompletion = useCallback(async () => {
     if (!bookingId || isConfirming) return;

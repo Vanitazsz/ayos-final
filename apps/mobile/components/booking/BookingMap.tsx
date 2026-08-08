@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { MapSurface } from '@/components/maps/MapSurface';
-import { calculateRoute } from '@/services/api';
+import { useBookingRoute } from '@/hooks/useBookingRoute';
 interface Props {
   destinationLat: number;
   destinationLng: number;
@@ -25,34 +25,17 @@ export const BookingMap = React.memo(function BookingMap({
   startLng,
   bookingId,
 }: Props) {
-  const [route, setRoute] = useState<any>(null);
-  const [eta, setEta] = useState<number | null>(null);
   const routeLat = workerLat ?? startLat;
   const routeLng = workerLng ?? startLng;
-  useEffect(() => {
-    if (routeLat == null || routeLng == null) return;
-    let active = true;
-    calculateRoute(
-      [routeLng, routeLat],
-      [destinationLng, destinationLat],
-      bookingId,
-    )
-      .then((value) => {
-        if (active) {
-          setRoute(value.geojson);
-          setEta(value.durationSeconds ?? null);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setRoute(null);
-          setEta(null);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [bookingId, destinationLat, destinationLng, routeLat, routeLng]);
+  const routeResult = useBookingRoute({
+    startLat: routeLat,
+    startLng: routeLng,
+    destinationLat,
+    destinationLng,
+    bookingId,
+  });
+  const route = routeResult?.route ?? null;
+  const eta = routeResult?.etaSeconds ?? null;
   const current = {
     latitude: routeLat ?? destinationLat,
     longitude: routeLng ?? destinationLng,

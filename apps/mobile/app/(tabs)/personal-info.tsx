@@ -13,11 +13,9 @@ import {
   Typography,
   theme,
 } from '@/constants/theme';
-import { fetchCustomerProfile } from '@/services/api';
 import {
   getMyProfile,
   updateMyProfile,
-  type CustomerProfile,
 } from '@/services/profile';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -37,31 +35,24 @@ export default function PersonalInfoScreen() {
   const [address, setAddress] = useState('');
   const [bio, setBio] = useState('');
   const [email, setEmail] = useState('');
-  const [accountProfile, setAccountProfile] =
-    useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const result = await fetchCustomerProfile();
-      let account: CustomerProfile | null = null;
       try {
         const profile = await getMyProfile();
-        account = profile.role === 'USER' ? profile : null;
+        if (!active) return;
+        setName(profile.displayName);
+        setEmail(profile.email);
+        setPhone(profile.mobile ?? '');
+        setBio(profile.bio ?? '');
       } catch {
         // Account details are optional here and may be unavailable during migrations.
+      } finally {
+        if (active) setLoading(false);
       }
-      if (!active) return;
-      if (!result.error && result.data) {
-        setName(result.data.name);
-        setEmail(result.data.email);
-      }
-      setAccountProfile(account);
-      setPhone(account?.mobile ?? '');
-      setBio(account?.bio ?? '');
-      setLoading(false);
     })();
     return () => {
       active = false;

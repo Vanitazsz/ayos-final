@@ -36,6 +36,7 @@ export function useLiveMatching() {
     let stopRealtime = () => {};
     let poll: ReturnType<typeof setInterval> | null = null;
     let clock: ReturnType<typeof setInterval> | null = null;
+    let realtimeSubscribed = false;
 
     const refresh = async () => {
       try {
@@ -63,15 +64,26 @@ export function useLiveMatching() {
       }
     };
 
+    const syncPoll = (status?: string) => {
+      if (status) realtimeSubscribed = status === 'SUBSCRIBED';
+      if (realtimeSubscribed && poll) {
+        clearInterval(poll);
+        poll = null;
+      } else if (!realtimeSubscribed && !poll) {
+        poll = setInterval(
+          () => void refresh(),
+          LIVE_DISPATCH_REFRESH_INTERVAL_MS,
+        );
+      }
+    };
+
     void refresh();
     stopRealtime = subscribeToDispatch(
       () => void refresh(),
       `service_request_id=eq.${dispatchRequestId}`,
+      syncPoll,
     );
-    poll = setInterval(
-      () => void refresh(),
-      LIVE_DISPATCH_REFRESH_INTERVAL_MS,
-    );
+    syncPoll();
     clock = setInterval(() => setNow(Date.now()), 1000);
 
     return () => {

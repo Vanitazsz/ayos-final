@@ -169,7 +169,11 @@ export const respondToDispatch = (
     p_response: response,
   });
 
-export function subscribeToDispatch(onChange: () => void, filter?: string) {
+export function subscribeToDispatch(
+  onChange: () => void,
+  filter?: string,
+  onStatus?: (status: string) => void,
+) {
   const channel = supabase
     .channel(`live-dispatch:${filter ?? 'mine'}:${randomUUID()}`)
     .on(
@@ -182,7 +186,7 @@ export function subscribeToDispatch(onChange: () => void, filter?: string) {
       },
       onChange,
     )
-    .subscribe();
+    .subscribe((status) => onStatus?.(status));
   return () => {
     void supabase.removeChannel(channel);
   };

@@ -4,7 +4,7 @@ import {
   acceptJob,
   cancelBooking,
   fetchWorkerBookings,
-  getWorkerFeedback,
+  getWorkerFeedbackBatch,
   subscribeToBookingFeed,
   type WorkerBooking,
   type WorkerFeedback,
@@ -39,16 +39,9 @@ export function useWorkerBookings(initialFilter?: string) {
     const completedItems = (result.data ?? []).filter(
       (b) => b.status === 'completed',
     );
-    const feedbackPairs = await Promise.all(
-      completedItems.map(async (b) => {
-        const fb = await getWorkerFeedback(b.id);
-        return [b.id, fb] as const;
-      }),
+    const map = await getWorkerFeedbackBatch(
+      completedItems.map((b) => b.id),
     );
-    const map: Record<string, WorkerFeedback> = {};
-    for (const [id, fb] of feedbackPairs) {
-      if (fb) map[id] = fb;
-    }
     setFeedbackMap(map);
     setLoading(false);
   }, []);

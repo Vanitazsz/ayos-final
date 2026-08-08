@@ -9,6 +9,28 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const ttlCache = new Map<string, { data: unknown; expiresAt: number }>();
+
+function cachedResponse<T extends { error?: string | null }>(
+  key: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  const hit = ttlCache.get(key);
+  if (hit && hit.expiresAt > Date.now()) {
+    return Promise.resolve(hit.data as T);
+  }
+  return load().then((response) => {
+    if (response && !response.error) {
+      ttlCache.set(key, {
+        data: response,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+    }
+    return response;
+  });
+}
+
 export function useHomeData() {
   const user = useAuthStore((s: any) => s.user);
   const [categories, setCategories] = useState<any[]>([]);
@@ -19,8 +41,8 @@ export function useHomeData() {
 
   const load = useCallback(() => {
     void Promise.all([
-      fetchServiceCategories(),
-      fetchProviders(),
+      cachedResponse('home:categories', fetchServiceCategories),
+      cachedResponse('home:providers', fetchProviders),
       fetchCustomerProfile(),
       fetchBookings(),
     ]).then(([catalog, providers, account, bookingRows]) => {

@@ -52,8 +52,15 @@ export default function RootLayout() {
       }
     };
     void sync();
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      void sync();
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'SIGNED_OUT' ||
+        event === 'USER_UPDATED' ||
+        event === 'TOKEN_REFRESHED'
+      ) {
+        void sync();
+      }
     });
     return () => {
       mounted = false;
