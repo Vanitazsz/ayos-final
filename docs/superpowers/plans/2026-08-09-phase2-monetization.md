@@ -56,6 +56,7 @@ Expected: capture baseline results before changing the schema; do not proceed by
 ### Task 2: Add failing pgTAP tests for commission overrides
 
 **Files:**
+
 - Create: `supabase/tests/database/service_category_commission.test.sql`
 
 - [ ] **Step 1: Add tests for null inheritance and override selection**
@@ -91,6 +92,7 @@ Expected: FAIL because the column and RPC do not exist.
 ### Task 3: Implement the commission schema and effective-rate RPC
 
 **Files:**
+
 - Create: `supabase/migrations/20260809000000_service_category_commission_overrides.sql`
 
 - [ ] **Step 1: Generate the migration using the supported CLI command**
@@ -132,6 +134,7 @@ Expected: new commission tests pass or expose a fixture-specific failure to fix 
 ### Task 4: Update all commission payment paths
 
 **Files:**
+
 - Modify: `supabase/migrations/20260809000000_service_category_commission_overrides.sql`
 - Modify: `supabase/tests/database/service_category_commission.test.sql`
 
@@ -165,6 +168,7 @@ git commit -m "feat(db): support service category commission overrides"
 ### Task 5: Add the approved `/admin/settings` Edge contract
 
 **Files:**
+
 - Create: `supabase/functions/api/index.ts`
 - Modify: `supabase/config.toml`
 - Create: `supabase/functions/api/index.test.ts`
@@ -208,6 +212,7 @@ git commit -m "feat(api): expose admin commission settings contract"
 ### Task 6: Make mobile job acceptance commission-aware
 
 **Files:**
+
 - Modify: `apps/mobile/services/apiCore.ts`
 - Test: `apps/mobile/services/payments.test.ts`
 
@@ -241,6 +246,7 @@ git commit -m "fix(mobile): resolve commission rate before job acceptance"
 ### Task 7: Add private manual top-up upload and status read
 
 **Files:**
+
 - Modify: `apps/mobile/services/uploads.ts`
 - Modify: `apps/mobile/services/apiCore.ts`
 - Modify: `apps/mobile/hooks/useWalletData.ts`
