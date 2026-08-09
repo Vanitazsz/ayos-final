@@ -44,9 +44,19 @@ Add one new append-only migration after the current migration head. It will run 
 5. Drop `public.worker_availability` without `CASCADE` so unexpected live dependencies fail the migration rather than being silently removed.
 6. Reload the PostgREST schema cache.
 
-The migration will preserve security-definer settings, explicit search paths, revokes/grants, and existing error codes. `admin_set_worker_availability` remains because it changes the worker’s online `is_available` flag, not weekly hours.
+The migration will preserve security-definer settings, explicit search paths, authorization semantics, and existing error codes. Revokes and grants will be reapplied to the new `save_my_worker_matching_setup` signature and preserved unchanged for every other function. `admin_set_worker_availability` remains because it changes the worker’s online `is_available` flag, not weekly hours.
 
 Update `supabase/sql-editor-install.sql` to match the active schema: remove the worker-availability table, policies, grants, schedule predicates, and schedule writes while retaining online matching. This keeps the manual installer from recreating the deleted feature.
+
+### Database non-regression contract
+
+The migration may change only the schedule-specific objects and function bodies listed above. It must not alter unrelated tables, columns, indexes, enums, triggers, storage, queues, authentication/session behavior, RLS policies, grants, AAL2 checks, or RPC signatures. The sole intentional signature change is removing the schedule-bearing argument from `save_my_worker_matching_setup`; its authorization contract remains unchanged. The following contracts must remain available and behaviorally unchanged outside the removed schedule condition:
+
+- `service_requests.scheduled_at`, `create_service_request`, booking date/time presentation, rate-estimate input validation, and notification scheduling.
+- Worker `is_available`, `worker_presence`, service origin, service radius, live dispatch, radius diagnostics, and online matching.
+- Worker approval, skills, rates, account-role separation, booking acceptance authorization, address privacy, payments, reviews, chat, and account deletion.
+
+Each replacement function will be copied from the current active definition and changed only at the schedule-related branches. The migration will use a transaction and `DROP TABLE public.worker_availability` without `CASCADE`; any unexpected dependency must abort the migration. Existing non-schedule database tests will remain in the suite and must pass without weakening their assertions.
 
 ### Tests and generated contracts
 
@@ -63,6 +73,8 @@ The mobile service will continue to surface existing RPC errors and will not int
 
 The migration will be validated locally before any hosted application. A failure caused by an untraced dependency must stop the migration rather than use `CASCADE` or weaken authorization.
 
+Before applying the migration to a hosted database, take or verify a current backup and confirm that all deployed clients that can call the old six-argument `save_my_worker_matching_setup` RPC have been updated or retired. The repository cannot verify deployed-client versions. If old clients still need support, the hosted migration must wait for a separately approved compatibility rollout because retaining an old schedule-bearing RPC would conflict with the full-delete requirement.
+
 ## Validation
 
 Run the repository scripts proportional to the changed surfaces:
@@ -75,8 +87,9 @@ Run the repository scripts proportional to the changed surfaces:
 - `pnpm lint`
 - `pnpm test`
 - `pnpm test:e2e`
+- `pnpm verify`
 
-After migration and type generation, search active runtime source, generated contracts, and current non-migration SQL while excluding historical migrations, archives, backups, and unrelated customer/notification scheduling. Active runtime code and schema definitions must contain no `worker_availability` object, `WorkerScheduleDay`, `scheduleReady`, `p_schedule` argument, `scheduleFit`, `INVALID_WORKER_SCHEDULE`, `DUPLICATE_WORKER_SCHEDULE_DAY`, or `OUTSIDE_WORKING_HOURS`. The only expected `worker_availability` text is the forward migration’s deliberate drop/assertion coverage. The preserved `scheduled_at` references must remain.
+After migration and type generation, inspect the generated-type diff and confirm that only the expected schedule relation and RPC argument disappear; unrelated generated tables, functions, enums, and fields must be unchanged. Search active runtime source, generated contracts, and current non-migration SQL while excluding historical migrations, archives, backups, and unrelated customer/notification scheduling. Active runtime code and schema definitions must contain no `worker_availability` object, `WorkerScheduleDay`, `scheduleReady`, `p_schedule` argument, `scheduleFit`, `INVALID_WORKER_SCHEDULE`, `DUPLICATE_WORKER_SCHEDULE_DAY`, or `OUTSIDE_WORKING_HOURS`. The only expected `worker_availability` text is the forward migration’s deliberate drop/assertion coverage. The preserved `scheduled_at` references must remain.
 
 ## Out of scope
 
