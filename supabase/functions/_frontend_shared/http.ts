@@ -40,9 +40,16 @@ export function failure(
   code: string,
   message: string,
   errors?: Record<string, string[]>,
+  details?: Record<string, unknown>,
 ) {
   return Response.json(
-    { success: false, code, message, ...(errors ? { errors } : {}) },
+    {
+      success: false,
+      code,
+      message,
+      ...(errors ? { errors } : {}),
+      ...(details ? { details } : {}),
+    },
     { status, headers: corsHeaders },
   );
 }
@@ -62,13 +69,15 @@ export class HttpError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public details?: Record<string, unknown>,
   ) {
     super(message);
   }
 }
 
 export function handleError(error: unknown) {
-  if (error instanceof HttpError) return failure(error.status, error.code, error.message);
+  if (error instanceof HttpError)
+    return failure(error.status, error.code, error.message, undefined, error.details);
   const message = error instanceof Error ? error.message : 'Internal error';
   if (message === 'authentication_required')
     return failure(401, 'authentication_required', 'Authentication required');
