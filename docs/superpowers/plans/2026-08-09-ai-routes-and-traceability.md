@@ -28,6 +28,7 @@
 ### Task 1: Add failing Edge tests for transcription failure visibility
 
 **Files:**
+
 - Create/modify: `supabase/functions/_frontend_shared/ai.test.ts`
 - Modify: `supabase/functions/ai-assist-media/index.ts` response tests in `supabase/functions/_frontend_shared/ai.test.ts`
 
@@ -48,6 +49,7 @@ Expected: FAIL because the current AI helper logs and continues with an empty tr
 ### Task 2: Implement explicit voice failure handling
 
 **Files:**
+
 - Modify: `supabase/functions/_frontend_shared/ai.ts`
 - Modify: `supabase/functions/ai-assist-media/index.ts`
 - Modify: `supabase/functions/ai-analyze-request/index.ts` if it consumes the same helper
@@ -82,6 +84,7 @@ git commit -m "fix(ai): surface transcription failures"
 ### Task 3: Surface the stable failure in mobile voice UI
 
 **Files:**
+
 - Modify: `apps/mobile/services/apiCore.ts`, `apps/mobile/app/new-request/create.tsx`
 - Test: `apps/mobile/services/aiAssist.test.ts`
 
@@ -110,6 +113,7 @@ Expected: PASS.
 ### Task 4: Document environment and hosted prerequisites
 
 **Files:**
+
 - Modify: `.env.example`
 - Modify: `checkuat.md`
 - Modify: `REQUIREMENTS.md`
@@ -148,6 +152,7 @@ git commit -m "docs: add voice AI UAT and hosted prerequisites"
 ### Task 5: Audit orphan routes and run cross-cutting verification
 
 **Files:**
+
 - Inspect: `apps/mobile/app/payment-received.tsx`
 - Inspect: `apps/mobile/app/(worker)/leave-feedback/[id].tsx`
 - Modify only after caller evidence: corresponding route/consumer files and route tests
