@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Colors } from '@/constants/theme';
 import {
   fetchWallet,
@@ -8,6 +8,10 @@ import {
   type WalletTransaction,
 } from '@/services/api';
 import { getMyWalletAccountId } from '@/services/wallet';
+import {
+  fetchMyWalletTopups,
+  type ManualWalletTopup,
+} from '@/services/walletTopups';
 
 export type Period = 'week' | 'month' | 'all';
 export type TxFilter = 'all' | 'credit' | 'debit';
@@ -38,9 +42,10 @@ function normalizeWallet(value: unknown): WalletSummary {
 export function useWalletData(period: Period, txFilter: TxFilter) {
   const [wallet, setWallet] = useState<WalletSummary>(emptyWallet);
   const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+  const [manualTopups, setManualTopups] = useState<ManualWalletTopup[]>([]);
   const [selectedMethod, setSelectedMethod] = useState('');
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const [balance, transactions] = await Promise.all([
       fetchWallet(),
       fetchWalletTransactions(),
@@ -59,7 +64,12 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
     if (!transactions.error && Array.isArray(transactions.data)) {
       setWalletTransactions(transactions.data);
     }
-  };
+    try {
+      setManualTopups(await fetchMyWalletTopups());
+    } catch (error) {
+      console.warn('Manual top-up status refresh failed:', error);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -88,7 +98,19 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
       mounted = false;
       unsubscribe?.();
     };
-  }, []);
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!manualTopups.some((topup) =>
+      topup.status === 'PENDING' ||
+      topup.status === 'PROCESSING' ||
+      topup.status === 'REQUIRES_ACTION'
+    )) return;
+    const interval = setInterval(() => {
+      void refresh();
+    }, 15_000);
+    return () => clearInterval(interval);
+  }, [manualTopups, refresh]);
 
   const walletPayoutMethods = useMemo(
     () =>
@@ -148,6 +170,7 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
   return {
     wallet,
     walletTransactions,
+    manualTopups,
     walletPayoutMethods,
     stats,
     walletBarData,
@@ -158,5 +181,3 @@ export function useWalletData(period: Period, txFilter: TxFilter) {
     refresh,
   };
 }
-
-
