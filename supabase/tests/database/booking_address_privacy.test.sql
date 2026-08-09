@@ -59,13 +59,6 @@ values (
   3,
   100000
 );
-insert into public.worker_availability(worker_id, day_of_week, start_time, end_time)
-values (
-  '98000000-0000-0000-0000-000000000002',
-  extract(dow from now() + interval '1 day')::smallint,
-  '00:00',
-  '23:59'
-);
 insert into public.addresses(
   id,
   account_id,

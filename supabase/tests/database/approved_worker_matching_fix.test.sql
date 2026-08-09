@@ -5,7 +5,7 @@ select plan(24);
 select has_function(
   'public',
   'save_my_worker_matching_setup',
-  array['numeric','numeric','integer','text','jsonb','boolean'],
+  array['numeric','numeric','integer','text','boolean'],
   'worker matching setup RPC exists'
 );
 select has_function(
@@ -91,7 +91,6 @@ set local role authenticated;
 select throws_ok(
   $$select public.save_my_worker_matching_setup(
     14.28,120.88,20000,'Trece Martires City',
-    '[{"dayOfWeek":4,"startTime":"00:00","endTime":"01:00"}]'::jsonb,
     true
   )$$,
   '55000',
@@ -114,7 +113,6 @@ set local role authenticated;
 select throws_ok(
   $$select public.save_my_worker_matching_setup(
     14.28,120.88,20000,'Trece Martires City',
-    '[{"dayOfWeek":4,"startTime":"00:00","endTime":"01:00"}]'::jsonb,
     true
   )$$,
   '55000',
@@ -142,7 +140,6 @@ set local role authenticated;
 select lives_ok(
   $$select public.save_my_worker_matching_setup(
     14.28,120.88,20000,'Trece Martires City',
-    '[{"dayOfWeek":4,"startTime":"00:00","endTime":"01:00"}]'::jsonb,
     true
   )$$,
   'approved workers can save a complete matching setup'
@@ -153,9 +150,19 @@ select is(
   'complete online worker is reported as matchable'
 );
 select is(
-  (select count(*) from public.worker_availability where worker_id = auth.uid()),
-  1::bigint,
-  'worker schedule is persisted transactionally'
+  to_regclass('public.worker_availability'),
+  null::regclass,
+  'worker weekly schedule table is removed'
+);
+select is(
+  public.get_my_worker_matching_readiness()->>'scheduleReady',
+  null,
+  'worker readiness has no weekly schedule field'
+);
+select is(
+  public.get_my_worker_matching_readiness()->>'schedule',
+  null,
+  'worker readiness has no schedule payload'
 );
 
 reset role;
@@ -174,7 +181,7 @@ select is(
 select is(
   (select count(*) from public.generate_matches('98000000-0000-0000-0000-000000000004')),
   1::bigint,
-  'matching uses the Philippine-local schedule at a UTC day boundary'
+  'matching does not require a weekly schedule at a UTC day boundary'
 );
 select is(
   (select worker_id from public.match_candidates where service_request_id = '98000000-0000-0000-0000-000000000004'),
@@ -236,9 +243,6 @@ reset role;
 update public.worker_profiles
 set approval_status = 'APPROVED'
 where account_id = '98000000-0000-0000-0000-000000000002';
-update public.worker_availability
-set day_of_week = 5
-where worker_id = '98000000-0000-0000-0000-000000000002';
 select set_config(
   'request.jwt.claims',
   '{"sub":"98000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
@@ -248,12 +252,12 @@ set local role authenticated;
 select is(
   public.get_match_diagnostics('98000000-0000-0000-0000-000000000004')->>'reasonCode',
   'NO_MATCHES',
-  'diagnostics no longer gate on the worker schedule'
+  'diagnostics do not require a weekly schedule'
 );
 select is(
   (select count(*) from public.generate_matches('98000000-0000-0000-0000-000000000004')),
   1::bigint,
-  'matching no longer gates on the worker schedule'
+  'matching does not require a weekly schedule'
 );
 
 reset role;
@@ -304,25 +308,6 @@ select is(
   public.get_match_diagnostics('98000000-0000-0000-0000-000000000004')->>'reasonCode',
   'OUTSIDE_SERVICE_RADIUS',
   'stale presence falls back to the registered service origin'
-);
-
-reset role;
-select set_config(
-  'request.jwt.claims',
-  '{"sub":"98000000-0000-0000-0000-000000000002","role":"authenticated","aal":"aal1"}',
-  true
-);
-set local role authenticated;
-select lives_ok(
-  $$select public.save_my_worker_matching_setup(
-    14.28,120.88,20000,'Trece Martires City','[]'::jsonb,false
-  )$$,
-  'worker can save a matching setup with an empty schedule'
-);
-select is(
-  (select count(*) from public.worker_availability where worker_id = auth.uid()),
-  0::bigint,
-  'empty schedule clears availability rows'
 );
 
 reset role;

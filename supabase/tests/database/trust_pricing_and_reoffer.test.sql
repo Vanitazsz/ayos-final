@@ -119,13 +119,6 @@ values
     3,
     70000
   );
-insert into public.worker_availability(worker_id, day_of_week, start_time, end_time)
-select worker_id, extract(dow from now() + interval '1 day')::smallint, '00:00', '23:59'
-from (
-  values
-    ('92000000-0000-0000-0000-000000000001'::uuid),
-    ('92000000-0000-0000-0000-000000000002'::uuid)
-) workers(worker_id);
 insert into public.worker_presence(worker_id, location, accuracy_meters, online, last_seen_at)
 select
   worker_id,
