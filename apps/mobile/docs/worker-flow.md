@@ -37,13 +37,13 @@ Shared screens (accessible from both modes): Provider Detail, Booking, Payment, 
 | 7 | Provider Detail | `/provider/:id` | Stack | slide_from_right | Yes |
 | 8 | Schedule Booking | `/booking/:id` | Stack | slide_from_right | Yes |
 | 9 | Payment | `/payment` | Stack | modal | Yes |
-| 10 | Payment Received | `/payment-received` | Stack | modal | Yes |
+| 10 | Payment Success | `/payment/success?id=:bookingId` | Stack | modal | Yes |
 | 11 | Live Tracking | `/tracking/:id` | Stack | slide_from_right | Yes |
 | 12 | Rate & Review | `/review/:id` | Stack | modal | Yes |
 | 13 | Accept Worker | `/accept-worker/:id` | Stack | slide_from_right | Yes |
 | 14 | Chat | `/chat/:id` | Stack | slide_from_right | Yes |
 | 15 | Worker Match | `/match/:id` | Stack | slide_from_right | Yes |
-| 16 | Request Details | `/request/:id` | Stack | slide_from_right | Yes |
+| 16 | Request Matching | `/new-request/matching?requestId=:id` | Stack | slide_from_right | Yes |
 | 17 | Booking Success | `/new-request/success` | Stack | modal | Yes |
 | 18 | 404 | `+not-found` | Stack | default | Yes |
 
@@ -224,13 +224,13 @@ These screens are accessible from both User and Worker tabs via stack navigation
 |--------|-------|----------------|
 | Provider Detail | `/provider/:id` | View from Reviews tab |
 | Payment | `/payment` | Complete booking flow |
-| Payment Received | `/payment-received` | Success confirmation |
+| Payment Success | `/payment/success?id=:bookingId` | Success confirmation |
 | Live Tracking | `/tracking/:id` | View active job progress |
 | Rate & Review | `/review/:id` | Leave review for customer |
 | Accept Worker | `/accept-worker/:id` | Accept incoming job request |
 | Chat | `/chat/:id` | Message customer before hiring |
 | Worker Match | `/match/:id` | View matched workers |
-| Request Details | `/request/:id` | View request details and bidders |
+| Request Matching | `/new-request/matching?requestId=:id` | View live matching and bidders |
 | Booking Success | `/new-request/success` | Booking confirmation |
 
 ---
