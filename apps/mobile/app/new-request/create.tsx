@@ -210,6 +210,47 @@ export default function CreateRequestScreen() {
   const setDraft = useRequestStore((state) => state.setDraft);
   const selectedSavedAddressId = useRequestStore((state) => state.addressId);
 
+const applySavedAddress = useCallback(
+    (savedAddress: SavedAddress) => {
+      const label = formatSavedAddress(savedAddress);
+      const nextCoords = {
+        latitude: savedAddress.latitude,
+        longitude: savedAddress.longitude,
+      };
+      const details: AddressDetails = {
+        streetNumber: '',
+        street: savedAddress.line1,
+        district: savedAddress.barangay,
+        city: savedAddress.city,
+        region: savedAddress.province,
+        postalCode: savedAddress.postalCode,
+        providerId: savedAddress.providerId,
+        confidence: savedAddress.confidence,
+        providerPayload: savedAddress.providerPayload,
+      };
+      savedAddressSelectionRef.current = savedAddress.id;
+      setAddress(label);
+      setConfirmedAddressLabel(label);
+      setCoords(nextCoords);
+      setLocationSource('saved');
+      setAddressDetails(details);
+      setManualAddress({
+        barangay: savedAddress.barangay,
+        city: savedAddress.city,
+        province: savedAddress.province,
+        postalCode: savedAddress.postalCode,
+      });
+      setManualAddressMode(false);
+      setAddressResults([]);
+      setAddressSearchError('');
+      setLocationWarning('');
+      setErrors((current) => ({ ...current, address: '', location: '' }));
+      setDraft({ addressId: savedAddress.id, addressDetails: details });
+    },
+    [setDraft],
+  )
+
+
   const matchingSavedAddressId = useMemo(() => {
     return (
       savedAddresses.find((item) => formatSavedAddress(item) === address)?.id ??
@@ -673,46 +714,7 @@ export default function CreateRequestScreen() {
     }
   };
 
-const applySavedAddress = useCallback(
-    (savedAddress: SavedAddress) => {
-      const label = formatSavedAddress(savedAddress);
-      const nextCoords = {
-        latitude: savedAddress.latitude,
-        longitude: savedAddress.longitude,
-      };
-      const details: AddressDetails = {
-        streetNumber: '',
-        street: savedAddress.line1,
-        district: savedAddress.barangay,
-        city: savedAddress.city,
-        region: savedAddress.province,
-        postalCode: savedAddress.postalCode,
-        providerId: savedAddress.providerId,
-        confidence: savedAddress.confidence,
-        providerPayload: savedAddress.providerPayload,
-      };
-      savedAddressSelectionRef.current = savedAddress.id;
-      setAddress(label);
-      setConfirmedAddressLabel(label);
-      setCoords(nextCoords);
-      setLocationSource('saved');
-      setAddressDetails(details);
-      setManualAddress({
-        line1: savedAddress.line1,
-        barangay: savedAddress.barangay,
-        city: savedAddress.city,
-        province: savedAddress.province,
-        postalCode: savedAddress.postalCode,
-      });
-      setManualAddressMode(false);
-      setAddressResults([]);
-      setAddressSearchError('');
-      setLocationWarning('');
-      setErrors((current) => ({ ...current, address: '', location: '' }));
-      setDraft({ addressId: savedAddress.id, addressDetails: details });
-    },
-    [setDraft],
-  );
+;
 
   const selectAddress = (result: GeocodingResult) => {
     const nextCoords = {

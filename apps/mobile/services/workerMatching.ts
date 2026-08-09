@@ -1,11 +1,19 @@
 import { supabase } from '@/lib/supabase';
 
+export type WorkerScheduleDay = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  timezone?: string;
+};
+
 export type WorkerMatchingReadiness = {
   accountEligible: boolean;
   verificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_DOCUMENTS';
   skillsReady: boolean;
   rateReady: boolean;
   serviceAreaReady: boolean;
+  scheduleReady: boolean;
   online: boolean;
   setupComplete: boolean;
   matchable: boolean;
@@ -13,6 +21,7 @@ export type WorkerMatchingReadiness = {
   longitude: number | null;
   serviceArea: string | null;
   radiusMeters: number | null;
+  schedule: WorkerScheduleDay[];
 };
 
 export type MatchDiagnosticReason =
@@ -68,6 +77,7 @@ export async function saveWorkerMatchingSetup(input: {
   longitude: number;
   radiusMeters: number;
   serviceArea: string;
+  schedule: WorkerScheduleDay[];
   online: boolean;
 }) {
   const { data, error } = await supabase.rpc('save_my_worker_matching_setup', {
@@ -75,6 +85,7 @@ export async function saveWorkerMatchingSetup(input: {
     p_longitude: input.longitude,
     p_radius_meters: input.radiusMeters,
     p_service_area: input.serviceArea.trim(),
+    p_schedule: input.schedule,
     p_online: input.online,
   });
   if (error) throw new Error(matchingErrorMessage(error));

@@ -166,6 +166,7 @@ export default function WorkerProfileScreen() {
         longitude: matchingReadiness.longitude ?? 0,
         radiusMeters: matchingReadiness.radiusMeters ?? 0,
         serviceArea: matchingReadiness.serviceArea ?? '',
+        schedule: matchingReadiness.schedule ?? [],
         online: value,
       });
       setMatchingReadiness(result);
@@ -290,7 +291,6 @@ export default function WorkerProfileScreen() {
                 >
                   <Avatar
                     uri={workerProfile.avatarUri}
-                    name={workerProfile.name}
                     size={88}
                     style={{ marginBottom: theme.spacing.sm }}
                   />

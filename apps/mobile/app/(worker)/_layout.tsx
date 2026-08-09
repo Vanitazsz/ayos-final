@@ -124,7 +124,10 @@ export default function WorkerTabLayout() {
             state={{
               ...props.state,
               routes: props.state.routes.filter(
-                (route) => props.descriptors[route.key]?.options?.href !== null
+                (route) =>
+                  (props.descriptors[route.key]?.options as {
+                    href?: string;
+                  })?.href !== null
               ),
             }}
           />
