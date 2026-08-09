@@ -41,7 +41,7 @@
   },
   {
     "id": "FR-11",
-    "text": "The system shall evaluate workers using service category and skills, availability and preferred schedule, subdivision or service-area location and distance, ratings and reviews, and active recommendation-subscription priority without overriding suitability."
+    "text": "The system shall evaluate workers using service category and skills, online availability, subdivision or service-area location and distance, ratings and reviews, and active recommendation-subscription priority without overriding suitability."
   },
   {
     "id": "FR-12",

@@ -104,11 +104,6 @@ create table public.worker_verifications (
   reviewed_by uuid references public.accounts(id) on delete set null, reviewed_at timestamptz,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
-create table public.worker_availability (
-  id uuid primary key default gen_random_uuid(), worker_id uuid not null references public.worker_profiles(account_id) on delete cascade,
-  day_of_week smallint not null check (day_of_week between 0 and 6), start_time time not null, end_time time not null,
-  timezone text not null default 'Asia/Manila', unique(worker_id, day_of_week, start_time, end_time), check (start_time < end_time)
-);
 create table public.service_categories (
   id uuid primary key default gen_random_uuid(), name text not null unique check (length(name) between 2 and 120),
   description text check (length(description) <= 1000), is_active boolean not null default true,
@@ -437,7 +432,6 @@ begin
     from public.worker_profiles wp join public.worker_skills ws on ws.worker_id=wp.account_id
     left join public.reviews r on r.worker_account_id=wp.account_id
     where ws.category_id=request.category_id and wp.approval_status='APPROVED' and wp.is_available
-      and exists(select 1 from public.worker_availability wa where wa.worker_id=wp.account_id and wa.day_of_week=extract(dow from request.scheduled_at)::integer and request.scheduled_at::time between wa.start_time and wa.end_time)
     group by wp.account_id,ws.years,wp.recommendation_priority
   ) ranked where ranked.rank <= 5;
   get diagnostics matched_count=row_count;
@@ -617,7 +611,7 @@ grant execute on all functions in schema public to authenticated;
 -- RLS, direct-access grants, private Storage, Realtime, and background jobs.
 do $$ declare t text; begin
   foreach t in array array[
-    'accounts','user_profiles','worker_profiles','admin_profiles','worker_verifications','worker_availability','service_categories','worker_skills','addresses',
+    'accounts','user_profiles','worker_profiles','admin_profiles','worker_verifications','service_categories','worker_skills','addresses',
     'ai_analyses','service_requests','request_media','match_candidates','bookings','booking_status_events','cancellations','location_updates',
     'payments','cash_confirmations','receipts','refunds','reviews','review_media','conversations','conversation_participants','messages',
     'message_attachments','message_translations','notifications','support_tickets','content_pages','system_settings','trash_entries','audit_logs',
@@ -631,7 +625,7 @@ grant select on public.service_categories, public.content_pages to anon;
 grant select on all tables in schema public to authenticated;
 grant update(display_name,avatar_path,notification_preferences) on public.user_profiles to authenticated;
 grant update(display_name,avatar_path,bio,experience,service_area,latitude,longitude,is_available) on public.worker_profiles to authenticated;
-grant insert, update, delete on public.worker_availability, public.worker_skills, public.addresses, public.favorites to authenticated;
+grant insert, update, delete on public.worker_skills, public.addresses, public.favorites to authenticated;
 grant insert on public.worker_verifications to authenticated;
 grant update(identity_data,document_paths) on public.worker_verifications to authenticated;
 grant insert on public.messages, public.message_attachments, public.support_tickets to authenticated;
@@ -647,8 +641,6 @@ create policy admin_profile_self_or_admin on public.admin_profiles for select to
 create policy verification_owner_or_admin_read on public.worker_verifications for select to authenticated using(worker_id=auth.uid() or public.is_admin(false));
 create policy verification_owner_insert on public.worker_verifications for insert to authenticated with check(worker_id=auth.uid() and public.current_role()='WORKER' and status='PENDING');
 create policy verification_owner_pending_update on public.worker_verifications for update to authenticated using(worker_id=auth.uid() and status in ('PENDING','NEEDS_DOCUMENTS')) with check(worker_id=auth.uid() and status in ('PENDING','NEEDS_DOCUMENTS'));
-create policy availability_read on public.worker_availability for select to authenticated using(true);
-create policy availability_owner_write on public.worker_availability for all to authenticated using(worker_id=auth.uid()) with check(worker_id=auth.uid());
 create policy categories_public_read on public.service_categories for select to anon, authenticated using(is_active or public.is_admin(false));
 create policy skills_read on public.worker_skills for select to authenticated using(true);
 create policy skills_owner_write on public.worker_skills for all to authenticated using(worker_id=auth.uid()) with check(worker_id=auth.uid());
@@ -1105,12 +1097,6 @@ begin
       and wp.approval_status='APPROVED' and wp.is_available
       and wp.service_origin is not null and wp.service_radius_meters is not null
       and extensions.st_dwithin(wp.service_origin, request.service_location, wp.service_radius_meters)
-      and exists(
-        select 1 from public.worker_availability wa
-        where wa.worker_id=wp.account_id
-          and wa.day_of_week=extract(dow from request.scheduled_at)::integer
-          and request.scheduled_at::time between wa.start_time and wa.end_time
-      )
     group by wp.account_id,ws.years,wp.recommendation_priority,wp.service_origin,wp.service_radius_meters
   ), ranked as (
     select *, row_number() over(
@@ -3031,7 +3017,6 @@ begin
     from public.worker_profiles wp join public.worker_skills ws on ws.worker_id=wp.account_id
     left join public.reviews r on r.worker_account_id=wp.account_id
     where wp.account_id <> request.user_account_id and ws.category_id=request.category_id and wp.approval_status='APPROVED' and wp.is_available
-      and exists(select 1 from public.worker_availability wa where wa.worker_id=wp.account_id and wa.day_of_week=extract(dow from request.scheduled_at)::integer and request.scheduled_at::time between wa.start_time and wa.end_time)
     group by wp.account_id,ws.years,wp.recommendation_priority
   ) ranked where ranked.rank <= 5;
   get diagnostics matched_count=row_count;
@@ -6286,4 +6271,3 @@ end;
 $$;
 
 notify pgrst, 'reload schema';
-
