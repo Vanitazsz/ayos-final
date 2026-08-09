@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {View,
   Text,
   StyleSheet,
@@ -101,7 +101,7 @@ export default function ProfileScreen() {
   const [loadError, setLoadError] = useState('');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
-  const load = async () => {
+  const load = useCallback(async () => {
     const result = await fetchCustomerProfile();
     if (result.error) {
       setLoadError(result.error);
@@ -112,10 +112,10 @@ export default function ProfileScreen() {
     setName(result.data.name);
     setMobile(user?.phone ?? '');
     setLoadError('');
-  };
+  }, [user?.phone]);
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const chooseAvatar = async () => {
     try {

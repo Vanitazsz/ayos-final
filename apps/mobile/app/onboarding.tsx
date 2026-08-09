@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, StyleSheet, Dimensions, Pressable, FlatList, ViewToken } from 'react-native';
 import { router } from 'expo-router';
 import { Wrench, CalendarDays, Shield } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { Colors, Spacing, Typography } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 

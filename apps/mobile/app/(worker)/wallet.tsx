@@ -49,19 +49,14 @@ export default function WalletScreen() {
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('5000');
-  const [selectedTopUpMethod, setSelectedTopUpMethod] = useState('gcash');
   const [isTopUpLoading, setIsTopUpLoading] = useState(false);
 
   const {
     wallet,
-    walletTransactions,
-    walletPayoutMethods,
     stats,
     walletBarData,
     barMax,
     filteredTransactions,
-    selectedMethod,
-    setSelectedMethod,
     refresh,
   } = useWalletData(period, txFilter);
 

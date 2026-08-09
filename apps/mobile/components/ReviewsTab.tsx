@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, ListRenderItem, Pressable } from 'react-native';
+import { View, StyleSheet, FlatList, ListRenderItem, Pressable } from 'react-native';
 import { Star, ThumbsUp } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Elevation, theme } from '@/constants/theme';
+import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Avatar } from '@/components/Avatar';
 import { RatingStars } from '@/components/RatingStars';

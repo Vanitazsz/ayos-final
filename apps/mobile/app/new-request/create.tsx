@@ -18,12 +18,11 @@ import {
   Mic,
   Info,
   ChevronDown,
-  Search,
   MapPin,
   ShieldCheck,
   Check,
   Plus,
-} from 'lucide-react-native';
+ Fan, Monitor, Shovel, Sparkles } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import type { CameraCapturedPicture } from 'expo-camera';
@@ -49,7 +48,6 @@ import {
   type AddressDetails,
   type LocationPickerHandle,
 } from '@/components/LocationPicker';
-import { filterServiceCatalog } from '@/services/catalogSearch';
 import {
   fetchSavedAddresses,
   formatSavedAddress,
@@ -61,7 +59,6 @@ import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 import { showAlert } from '@/components/AppAlert';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Fan, Monitor, Shovel, Sparkles } from 'lucide-react-native';
 
 const getParentForCategory = (name: string) => {
   const lower = name.toLowerCase();
@@ -140,7 +137,6 @@ export default function CreateRequestScreen() {
       minimumPriceMinor: number | null;
     }[]
   >([]);
-  const [visibleServiceCount, setVisibleServiceCount] = useState(4);
   const [addressResults, setAddressResults] = useState<GeocodingResult[]>([]);
   const [addressSearchLoading, setAddressSearchLoading] = useState(false);
   const [addressSearchError, setAddressSearchError] = useState('');
@@ -153,7 +149,7 @@ export default function CreateRequestScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [submissionError, setSubmissionError] = useState('');
+  const [, setSubmissionError] = useState('');
   const [cameraPhoto, setCameraPhoto] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [customerProfile, setCustomerProfile] = useState<any>(null);
@@ -267,7 +263,7 @@ export default function CreateRequestScreen() {
       return () => {
         active = false;
       };
-    }, []),
+    }, [applySavedAddress]),
   );
 
   useFocusEffect(
@@ -677,42 +673,46 @@ export default function CreateRequestScreen() {
     }
   };
 
-  function applySavedAddress(savedAddress: SavedAddress) {
-    const label = formatSavedAddress(savedAddress);
-    const nextCoords = {
-      latitude: savedAddress.latitude,
-      longitude: savedAddress.longitude,
-    };
-    const details: AddressDetails = {
-      streetNumber: '',
-      street: savedAddress.line1,
-      district: savedAddress.barangay,
-      city: savedAddress.city,
-      region: savedAddress.province,
-      postalCode: savedAddress.postalCode,
-      providerId: savedAddress.providerId,
-      confidence: savedAddress.confidence,
-      providerPayload: savedAddress.providerPayload,
-    };
-    savedAddressSelectionRef.current = savedAddress.id;
-    setAddress(label);
-    setConfirmedAddressLabel(label);
-    setCoords(nextCoords);
-    setLocationSource('saved');
-    setAddressDetails(details);
-    setManualAddress({
-      barangay: savedAddress.barangay,
-      city: savedAddress.city,
-      province: savedAddress.province,
-      postalCode: savedAddress.postalCode,
-    });
-    setManualAddressMode(false);
-    setAddressResults([]);
-    setAddressSearchError('');
-    setLocationWarning('');
-    setErrors((current) => ({ ...current, address: '', location: '' }));
-    setDraft({ addressId: savedAddress.id, addressDetails: details });
-  }
+const applySavedAddress = useCallback(
+    (savedAddress: SavedAddress) => {
+      const label = formatSavedAddress(savedAddress);
+      const nextCoords = {
+        latitude: savedAddress.latitude,
+        longitude: savedAddress.longitude,
+      };
+      const details: AddressDetails = {
+        streetNumber: '',
+        street: savedAddress.line1,
+        district: savedAddress.barangay,
+        city: savedAddress.city,
+        region: savedAddress.province,
+        postalCode: savedAddress.postalCode,
+        providerId: savedAddress.providerId,
+        confidence: savedAddress.confidence,
+        providerPayload: savedAddress.providerPayload,
+      };
+      savedAddressSelectionRef.current = savedAddress.id;
+      setAddress(label);
+      setConfirmedAddressLabel(label);
+      setCoords(nextCoords);
+      setLocationSource('saved');
+      setAddressDetails(details);
+      setManualAddress({
+        line1: savedAddress.line1,
+        barangay: savedAddress.barangay,
+        city: savedAddress.city,
+        province: savedAddress.province,
+        postalCode: savedAddress.postalCode,
+      });
+      setManualAddressMode(false);
+      setAddressResults([]);
+      setAddressSearchError('');
+      setLocationWarning('');
+      setErrors((current) => ({ ...current, address: '', location: '' }));
+      setDraft({ addressId: savedAddress.id, addressDetails: details });
+    },
+    [setDraft],
+  );
 
   const selectAddress = (result: GeocodingResult) => {
     const nextCoords = {

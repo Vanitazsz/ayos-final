@@ -8,7 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
 
 export interface SelectOption {

@@ -11,7 +11,7 @@ import {
   AlertCircle,
   ArrowDownToLine,
 } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Elevation, Layout, Typography } from '@/constants/theme';
+import { Colors, Radius, Spacing, Elevation, Layout } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { fetchWalletTransactions, type WalletTransaction, type TransactionStatus } from '@/services/api';

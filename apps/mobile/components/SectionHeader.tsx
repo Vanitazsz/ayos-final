@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { AppText } from './AppText';
 
 interface SectionHeaderProps {

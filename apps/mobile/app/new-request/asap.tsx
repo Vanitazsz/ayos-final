@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
-import { MapPin, Edit3, Image as ImageIcon, Map as MapIcon, Check, Wallet, Banknote, CreditCard, ChevronLeft, Info } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -17,21 +17,14 @@ export default function ReviewRequestScreen() {
   const { request, updateRequest } = useRequest();
   const draft=useRequestStore();
   
-  const [location, setLocation] = useState(request.location);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(!request.location);
-  const [paymentMethod, setPaymentMethod] = useState('GCash');
-
-  const PAYMENT_METHODS = [
-    { id: 'GCash', icon: <Wallet size={24} color={Colors.textPrimary} strokeWidth={2} />, subtitle: '0917 •••• 1234' },
-    { id: 'Credit / Debit Card', icon: <CreditCard size={24} color={Colors.textPrimary} strokeWidth={2} />, subtitle: 'Visa ending in 4242' },
-    { id: 'Cash on Service', icon: <Banknote size={24} color={Colors.textPrimary} strokeWidth={2} />, subtitle: 'Pay directly to provider' }
-  ];
+  const [, setLocation] = useState(request.location);
+  const [, setIsLoadingLocation] = useState(!request.location);
 
   useEffect(() => {
     if (!request.location) {
       void (async()=>{try{const permission=await Location.requestForegroundPermissionsAsync();if(!permission.granted)throw new Error('Location permission is required');const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High});const details=await reverseGeocode(position.coords.latitude,position.coords.longitude);const value={latitude:position.coords.latitude,longitude:position.coords.longitude,address:details.displayLabel};setLocation(value);updateRequest({location:value});draft.setDraft({coords:{latitude:value.latitude,longitude:value.longitude},address:value.address,addressDetails:details});}finally{setIsLoadingLocation(false);}})();
     }
-  }, []);
+  }, [request.location, updateRequest, draft]);
 
   const handleBack = useGoBack('/(tabs)/home');
 

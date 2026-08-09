@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Pressable, Image } from 'react-native';
+import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
 import { MapPin, Clock } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from './AppText';

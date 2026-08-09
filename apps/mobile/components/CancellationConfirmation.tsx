@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, StyleSheet, Modal } from 'react-native';
 import { CheckCircle } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation, Layout } from '@/constants/theme';
 import { AppText } from '@/components/AppText';

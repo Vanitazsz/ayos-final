@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { CheckCircle2, Circle, Dot } from 'lucide-react-native';
+import { CheckCircle2, Circle } from 'lucide-react-native';
 import { Colors, Spacing } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 

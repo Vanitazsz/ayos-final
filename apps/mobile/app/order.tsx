@@ -1,8 +1,8 @@
 import React,{useEffect,useState}from'react';
-import { View, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
-import { ChevronLeft, Calendar, MapPin, Navigation, Tag, Wrench } from 'lucide-react-native';
+import { ChevronLeft, Calendar, Navigation, Tag, Wrench } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';

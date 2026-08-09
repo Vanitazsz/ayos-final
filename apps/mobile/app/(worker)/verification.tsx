@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import {View, Text, StyleSheet, ScrollView, Pressable} from 'react-native';
+import {View, StyleSheet, ScrollView, Pressable} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft, CheckCircle, Clock, AlertCircle, Upload,
   FileText, Camera, RefreshCw, Shield, BadgeCheck, Briefcase,
-  Wallet, HelpCircle, ChevronDown, Home, MapPin, User,
+  HelpCircle, ChevronDown,
 } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Elevation, Layout, Typography, theme } from '@/constants/theme';
+import { Colors, Radius, Spacing, Elevation, Layout, theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Pill } from '@/components/Pill';
 import { fetchWorkerVerification } from '@/services/api';

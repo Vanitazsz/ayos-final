@@ -32,7 +32,7 @@ export default function CancelServiceScreen() {
     return cancellationReasons.filter((r) =>
       r.jobStages.includes(selectedStage)
     );
-  }, [selectedStage]);
+  }, [selectedStage, cancellationReasons]);
 
   const groupedReasons = useMemo(() => {
     const groups: Record<string, CancellationReason[]> = {
@@ -66,7 +66,7 @@ export default function CancelServiceScreen() {
         r.label.toLowerCase().includes(lower) &&
         r.id !== selectedReason?.id
     ).slice(0, 5);
-  }, [customReason, selectedReason]);
+  }, [customReason, selectedReason, cancellationReasons]);
 
   const handleSelectReason = (reason: CancellationReason) => {
     setSelectedReason(reason);

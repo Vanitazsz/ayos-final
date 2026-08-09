@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Layout } from '@/constants/theme';
+import { Colors, Spacing, Layout } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 
 interface AccordionSectionProps {

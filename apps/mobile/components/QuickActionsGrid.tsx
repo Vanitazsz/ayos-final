@@ -1,16 +1,14 @@
 import React from 'react';
 import {View, StyleSheet, Pressable, Dimensions} from 'react-native';
 import { Calendar, DollarSign, Star, Shield } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Elevation, IconSize } from '@/constants/theme';
+import { Colors, Radius, Spacing, Elevation, IconSize, Layout } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { router } from 'expo-router';
+import { showAlert } from '@/components/AppAlert';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_GAP = Spacing['3'];
 const CARD_WIDTH = (screenWidth - Layout.screenPadding * 2 - CARD_GAP) / 2;
-
-import { Layout } from '@/constants/theme';
-import { showAlert } from '@/components/AppAlert';
 
 const quickActions = [
   { id: 'schedule', icon: Calendar, label: 'My Bookings', color: Colors.cta, bg: Colors.primarySurface, route: '/(worker)/bookings' as const },

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import { TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Redirect, Tabs, useRouter } from 'expo-router';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { theme } from '@/constants/theme';

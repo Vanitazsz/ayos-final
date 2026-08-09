@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Modal } from 'react-native';
 import { MoreVertical, Flag, XCircle } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Elevation, IconSize, Layout } from '@/constants/theme';
+import { Colors, Radius, Spacing, Elevation, IconSize } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 
 interface ThreeDotMenuProps {

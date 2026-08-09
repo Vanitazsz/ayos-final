@@ -114,7 +114,7 @@ export default function IssueSummaryScreen() {
 
   useEffect(() => {
     void start();
-  }, []);
+  }, [start]);
 
   const result = draft.aiResult;
 
@@ -330,7 +330,7 @@ export default function IssueSummaryScreen() {
                 <Text style={styles.rateNote}>
                   Based on {rateEstimate.workerCount} currently eligible{' '}
                   {rateEstimate.workerCount === 1 ? 'worker' : 'workers'}.
-                  The selected worker's saved rate is the booking price.
+                  The selected worker&apos;s saved rate is the booking price.
                 </Text>
               ) : <View style={{ marginBottom: theme.spacing.md }} />}
 

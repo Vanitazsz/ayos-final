@@ -78,11 +78,6 @@ export const AppAlertHost = React.memo(function AppAlertHost() {
     return () => registerHost(null);
   }, [handle]);
 
-  const close = useCallback(() => {
-    setDialog(null);
-    dialog?.options?.onDismiss?.();
-  }, [dialog]);
-
   const pressButton = useCallback(
     (button: AlertButton) => {
       const { onPress } = button;

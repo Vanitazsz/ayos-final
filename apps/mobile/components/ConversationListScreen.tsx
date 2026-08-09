@@ -39,7 +39,7 @@ export function ConversationListScreen({
           if (Array.isArray(parsed)) {
             setDeletedIds(new Set(parsed));
           }
-        } catch (e) {}
+        } catch {}
       }
     });
   }, []);

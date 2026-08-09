@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Pressable, PressableProps } from 'react-native';
+import { StyleSheet, ViewStyle, Pressable, PressableProps } from 'react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 
@@ -23,7 +23,6 @@ export const Chip = React.memo(function Chip({
   color = Colors.cta,
   ...props
 }: ChipProps) {
-  const fontSize = size === 'sm' ? 12 : 14;
   const paddingH = size === 'sm' ? Spacing['3'] : Spacing['4'];
 
   return (

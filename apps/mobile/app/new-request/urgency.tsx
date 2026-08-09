@@ -6,7 +6,6 @@ import { Colors, Layout, Spacing } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { useRequest, UrgencyLevel } from '@/context/RequestContext';
-import { useRequestStore } from '@/store/useRequestStore';
 
 const URGENCY_OPTIONS: { id: UrgencyLevel; title: string; subtitle: string; icon: any; color: string; bg: string }[] = [
   {

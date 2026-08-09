@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp, DimensionValue } from 'react-native';
+import { StyleSheet, ViewStyle, StyleProp, DimensionValue } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -28,7 +28,7 @@ export function Skeleton({ style, width, height, borderRadius = 4 }: SkeletonPro
       -1,
       true
     );
-  }, []);
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

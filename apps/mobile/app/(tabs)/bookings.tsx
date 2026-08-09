@@ -3,7 +3,6 @@ import { AppState, View, Text, StyleSheet, TouchableOpacity, ScrollView } from '
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapPin, Calendar as CalendarIcon, Clock, ChevronRight } from 'lucide-react-native';
 
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -32,7 +31,6 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 export default function BookingsScreen() {
   const router = useRouter();
   const { filter } = useLocalSearchParams<{ filter?: string | string[] }>();
-  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState(() =>
     getInitialCustomerBookingTab(filter),
   );

@@ -21,7 +21,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
-import type { PresenceState } from '@/services/liveDispatch';
 import type { LucideIcon } from 'lucide-react-native';
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 60;
@@ -73,17 +72,6 @@ const PRESENCE_BANNER: Record<string, PresenceBannerConfig> = {
     icon: TriangleAlert,
     text: 'Location heartbeat error',
   },
-};
-
-const PRESENCE_TEXT_FALLBACK: Record<PresenceState, string> = {
-  starting: 'Starting location sharing…',
-  online: 'Online and receiving requests',
-  paused: 'Presence paused',
-  offline: 'Offline',
-  permission_denied: 'Location permission required',
-  not_ready:
-    'Complete Service Availability and switch Available for matching on.',
-  error: 'Location heartbeat error',
 };
 
 export default function WorkerTabLayout() {

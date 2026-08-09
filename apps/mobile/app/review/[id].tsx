@@ -13,7 +13,6 @@ import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
 import { ArrowLeft, Star, UploadCloud, X } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { randomUUID } from '@/lib/crypto';
 import { createReview, fetchBookingDetail } from '@/services/api';
 import { supabase } from '@/lib/supabase';
@@ -22,7 +21,6 @@ import { showAlert } from '@/components/AppAlert';
 export default function ReviewScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [recommend, setRecommend] = useState(true);
@@ -93,7 +91,7 @@ export default function ReviewScreen() {
       if (!createdReview?.id) {
         throw new Error('The review could not be confirmed. Please try again.');
       }
-    } catch (error) {
+    } catch {
       // Navigate home regardless of success or failure
     } finally {
       setLoading(false);

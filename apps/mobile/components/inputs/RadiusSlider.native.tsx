@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   PanResponder,
   StyleSheet,
@@ -30,14 +30,17 @@ export function RadiusSlider({
   const clamped = range > 0 ? Math.min(1, Math.max(0, (value - minimumValue) / range)) : 0;
   const thumbLeft = Math.max(0, (trackWidth - THUMB_SIZE) * clamped);
 
-  const updateFromX = (x: number) => {
-    const usable = Math.max(1, trackWidth - THUMB_SIZE);
-    const rawFraction = Math.min(1, Math.max(0, x / usable));
-    const rawValue = minimumValue + rawFraction * range;
-    const stepped = Math.round(rawValue / step) * step;
-    const next = Math.min(maximumValue, Math.max(minimumValue, stepped));
-    if (next !== valueRef.current) onValueChange(next);
-  };
+  const updateFromX = useCallback(
+    (x: number) => {
+      const usable = Math.max(1, trackWidth - THUMB_SIZE);
+      const rawFraction = Math.min(1, Math.max(0, x / usable));
+      const rawValue = minimumValue + rawFraction * range;
+      const stepped = Math.round(rawValue / step) * step;
+      const next = Math.min(maximumValue, Math.max(minimumValue, stepped));
+      if (next !== valueRef.current) onValueChange(next);
+    },
+    [trackWidth, minimumValue, range, step, maximumValue, onValueChange],
+  );
 
   const panResponder = useMemo(
     () =>
@@ -52,7 +55,7 @@ export function RadiusSlider({
           updateFromX(startXRef.current + gestureState.dx);
         },
       }),
-    [minimumValue, maximumValue, step, trackWidth, onValueChange],
+    [updateFromX],
   );
 
   const onLayout = (event: LayoutChangeEvent) => {

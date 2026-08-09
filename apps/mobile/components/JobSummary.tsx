@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Edit3, Image as ImageIcon, MapPin, Calendar, Clock, Wrench } from 'lucide-react-native';
-import { Colors, Layout, Spacing, Radius } from '@/constants/theme';
+import { Edit3, Image as ImageIcon, MapPin, Calendar, Wrench } from 'lucide-react-native';
+import { Colors, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { RequestState } from '@/context/RequestContext';

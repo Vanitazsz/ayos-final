@@ -7,7 +7,6 @@ import {
   Banknote,
   Check,
   Info,
-  Calendar,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -15,8 +14,6 @@ import {
   Colors,
   Radius,
   Spacing,
-  Elevation,
-  Typography,
   Layout,
 } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -51,15 +48,6 @@ export default function PaymentScreen() {
     router.dismissAll();
     router.replace(`/tracking/${draft.bookingId}`);
   }, [draft.bookingId]);
-
-  // Using a more generalized icon getter that maps to the new visuals
-  const getMethodIcon = (type: string) => {
-    if (type === 'Apple Pay' || type.toLowerCase().includes('gcash'))
-      return <Wallet size={24} color={Colors.textPrimary} strokeWidth={2} />;
-    if (type.toLowerCase().includes('cash'))
-      return <Banknote size={24} color={Colors.textPrimary} strokeWidth={2} />;
-    return <CreditCard size={24} color={Colors.textPrimary} strokeWidth={2} />;
-  };
 
   return (
     <View style={styles.container}>

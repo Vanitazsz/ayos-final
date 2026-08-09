@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   Image,
-  Dimensions,
   Share as NativeShare,
 } from 'react-native';
 import {
@@ -18,7 +17,6 @@ import {
   Mail,
   Globe,
   ShieldCheck,
-  Award,
   CheckCircle2,
   Star,
 } from 'lucide-react-native';
@@ -32,8 +30,6 @@ import { Badge } from '@/components/Badge';
 import { RatingStars } from '@/components/RatingStars';
 import { SectionHeader } from '@/components/SectionHeader';
 import { fetchProviderProfile } from '@/services/api';
-
-const { width } = Dimensions.get('window');
 
 export default function ProviderProfileScreen() {
   const { id, isApplicant } = useLocalSearchParams<{
