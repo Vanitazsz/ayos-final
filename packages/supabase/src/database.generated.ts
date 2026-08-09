@@ -2948,6 +2948,7 @@ export type Database = {
       }
       service_categories: {
         Row: {
+          commission_rate_percent: number | null
           created_at: string
           description: string | null
           id: string
@@ -2961,6 +2962,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          commission_rate_percent?: number | null
           created_at?: string
           description?: string | null
           id?: string
@@ -2974,6 +2976,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          commission_rate_percent?: number | null
           created_at?: string
           description?: string | null
           id?: string
@@ -3937,35 +3940,58 @@ export type Database = {
           },
         ]
       }
-      worker_availability: {
+      worker_feedback: {
         Row: {
-          day_of_week: number
-          end_time: string
+          booking_id: string
+          comment: string
+          created_at: string
           id: string
-          start_time: string
-          timezone: string
-          worker_id: string
+          rating: number
+          tags: Json
+          updated_at: string
+          user_account_id: string
+          worker_account_id: string
         }
         Insert: {
-          day_of_week: number
-          end_time: string
+          booking_id: string
+          comment?: string
+          created_at?: string
           id?: string
-          start_time: string
-          timezone?: string
-          worker_id: string
+          rating: number
+          tags?: Json
+          updated_at?: string
+          user_account_id: string
+          worker_account_id: string
         }
         Update: {
-          day_of_week?: number
-          end_time?: string
+          booking_id?: string
+          comment?: string
+          created_at?: string
           id?: string
-          start_time?: string
-          timezone?: string
-          worker_id?: string
+          rating?: number
+          tags?: Json
+          updated_at?: string
+          user_account_id?: string
+          worker_account_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "worker_availability_worker_id_fkey"
-            columns: ["worker_id"]
+            foreignKeyName: "worker_feedback_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_feedback_user_account_id_fkey"
+            columns: ["user_account_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "worker_feedback_worker_account_id_fkey"
+            columns: ["worker_account_id"]
             isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["account_id"]
@@ -4050,98 +4076,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["account_id"]
-          },
-        ]
-      }
-      worker_portfolio_items: {
-        Row: {
-          category_id: string | null
-          completed_on: string | null
-          created_at: string
-          description: string
-          id: string
-          is_published: boolean
-          sort_order: number
-          title: string
-          updated_at: string
-          worker_id: string
-        }
-        Insert: {
-          category_id?: string | null
-          completed_on?: string | null
-          created_at?: string
-          description: string
-          id?: string
-          is_published?: boolean
-          sort_order?: number
-          title: string
-          updated_at?: string
-          worker_id: string
-        }
-        Update: {
-          category_id?: string | null
-          completed_on?: string | null
-          created_at?: string
-          description?: string
-          id?: string
-          is_published?: boolean
-          sort_order?: number
-          title?: string
-          updated_at?: string
-          worker_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "worker_portfolio_items_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "service_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "worker_portfolio_items_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "worker_profiles"
-            referencedColumns: ["account_id"]
-          },
-        ]
-      }
-      worker_portfolio_media: {
-        Row: {
-          byte_size: number
-          content_type: string
-          created_at: string
-          id: string
-          portfolio_item_id: string
-          sort_order: number
-          storage_path: string
-        }
-        Insert: {
-          byte_size: number
-          content_type: string
-          created_at?: string
-          id?: string
-          portfolio_item_id: string
-          sort_order?: number
-          storage_path: string
-        }
-        Update: {
-          byte_size?: number
-          content_type?: string
-          created_at?: string
-          id?: string
-          portfolio_item_id?: string
-          sort_order?: number
-          storage_path?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "worker_portfolio_media_portfolio_item_id_fkey"
-            columns: ["portfolio_item_id"]
-            isOneToOne: false
-            referencedRelation: "worker_portfolio_items"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -5005,6 +4939,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_set_service_category_commission_rate: {
+        Args: { p_category_id: string; p_rate_percent: number }
+        Returns: {
+          commission_rate_percent: number | null
+          created_at: string
+          description: string | null
+          id: string
+          industry_id: string | null
+          is_active: boolean
+          is_safety_critical: boolean
+          maximum_price_minor: number | null
+          minimum_price_minor: number | null
+          name: string
+          slug: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_categories"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_set_setting: {
         Args: { setting_key: string; setting_value: Json }
         Returns: {
@@ -5157,6 +5114,7 @@ export type Database = {
       admin_upsert_category: {
         Args: { p_id: string; p_is_active: boolean; p_name: string }
         Returns: {
+          commission_rate_percent: number | null
           created_at: string
           description: string | null
           id: string
@@ -5280,6 +5238,7 @@ export type Database = {
           p_name: string
         }
         Returns: {
+          commission_rate_percent: number | null
           created_at: string
           description: string | null
           id: string
@@ -5395,29 +5354,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "booking_proof_media"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      attach_portfolio_media: {
-        Args: {
-          p_byte_size: number
-          p_content_type: string
-          p_portfolio_item_id: string
-          p_storage_path: string
-        }
-        Returns: {
-          byte_size: number
-          content_type: string
-          created_at: string
-          id: string
-          portfolio_item_id: string
-          sort_order: number
-          storage_path: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "worker_portfolio_media"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5555,11 +5491,11 @@ export type Database = {
       cancel_booking: {
         Args: {
           p_booking_id: string
-          p_details: string
-          p_expected_version: number
-          p_policy_version: string
-          p_reason_code: string
-          p_stage: string
+          p_details?: string
+          p_expected_version?: number
+          p_policy_version?: string
+          p_reason_code?: string
+          p_stage?: string
         }
         Returns: {
           accepted_at: string | null
@@ -5635,6 +5571,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      confirm_customer_arrival: {
+        Args: { p_booking_id: string }
+        Returns: Json
+      }
+      confirm_customer_completion: {
+        Args: { p_booking_id: string }
+        Returns: Json
       }
       create_review: {
         Args: {
@@ -5764,10 +5708,37 @@ export type Database = {
       decline_assigned_booking: {
         Args: {
           p_booking_id: string
-          p_expected_version: number
-          p_reason: string
+          p_expected_version?: number
+          p_reason?: string
         }
         Returns: Json
+      }
+      deduct_booking_commission: {
+        Args: { p_booking_id: string; p_payment_method?: string }
+        Returns: Json
+      }
+      delete_booking_proof: {
+        Args: { p_booking_id: string; p_storage_path: string }
+        Returns: undefined
+      }
+      delete_closed_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          booking_id: string | null
+          created_at: string
+          id: string
+          service_request_id: string | null
+          updated_at: string
+          worker_account_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       empty_trash: { Args: { p_confirmation: string }; Returns: number }
       expire_booking_request: {
@@ -5828,6 +5799,10 @@ export type Database = {
         Args: { p_conversation_id: string }
         Returns: string
       }
+      get_effective_commission_rate: {
+        Args: { p_category_id: string }
+        Returns: number
+      }
       get_live_dispatch_snapshot: {
         Args: { p_service_request_id: string }
         Returns: Json
@@ -5838,6 +5813,41 @@ export type Database = {
       }
       get_my_dispatch_offers: { Args: never; Returns: Json }
       get_my_profile: { Args: never; Returns: Json }
+      get_my_wallet_topups: {
+        Args: never
+        Returns: {
+          amount_centavos: number
+          channel: string | null
+          completed_at: string | null
+          created_at: string
+          currency: string
+          expires_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          proof_path: string | null
+          provider: string
+          provider_intent_id: string | null
+          provider_payment_id: string | null
+          provider_payment_method_id: string | null
+          redirect_url: string | null
+          reference_number: string | null
+          return_url: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          wallet_account_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "wallet_topups"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_my_worker_live_status: { Args: never; Returns: Json }
       get_my_worker_matching_readiness: { Args: never; Returns: Json }
       get_my_worker_skills: { Args: never; Returns: Json }
@@ -5865,6 +5875,14 @@ export type Database = {
       is_conversation_participant: {
         Args: { target_conversation: string }
         Returns: boolean
+      }
+      list_expired_booking_proofs: {
+        Args: { p_cancelled_days: number; p_completed_days: number }
+        Returns: {
+          byte_size: number
+          id: string
+          storage_path: string
+        }[]
       }
       mark_conversation_read: {
         Args: { p_conversation_id: string }
@@ -6327,7 +6345,6 @@ export type Database = {
           p_longitude: number
           p_online?: boolean
           p_radius_meters: number
-          p_schedule?: Json
           p_service_area: string
         }
         Returns: Json
@@ -6569,6 +6586,36 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      simulate_gcash_booking_payment: {
+        Args: { p_booking_id: string; p_reference_number: string }
+        Returns: {
+          booking_id: string
+          commission_amount: number
+          commission_rate: number
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          homeowner_platform_charge: number
+          id: string
+          idempotency_key: string
+          method: Database["public"]["Enums"]["payment_method"]
+          paid_at: string | null
+          provider: string | null
+          provider_payment_id: string | null
+          service_amount: number
+          status: Database["public"]["Enums"]["payment_status"]
+          successful_at: string | null
+          updated_at: string
+          worker_net_amount: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      simulate_wallet_topup: { Args: { p_amount: number }; Returns: Json }
       start_live_dispatch: {
         Args: { p_search_radius_meters: number; p_service_request_id: string }
         Returns: Json
@@ -6710,6 +6757,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      submit_worker_feedback: {
+        Args: {
+          p_booking_id: string
+          p_comment: string
+          p_rating: number
+          p_tags: Json
+        }
+        Returns: {
+          booking_id: string
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          tags: Json
+          updated_at: string
+          user_account_id: string
+          worker_account_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "worker_feedback"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_worker_onboarding_identity: {
         Args: { p_document_paths: string[]; p_identity_data: Json }
         Returns: {
@@ -6735,7 +6807,7 @@ export type Database = {
       transition_booking: {
         Args: {
           p_booking_id: string
-          p_expected_version: number
+          p_expected_version?: number
           p_reason?: string
           p_target_status: Database["public"]["Enums"]["booking_status"]
         }
@@ -6942,34 +7014,6 @@ export type Database = {
               isSetofReturn: false
             }
           }
-      upsert_portfolio_item: {
-        Args: {
-          p_category_id: string
-          p_completed_on: string
-          p_description: string
-          p_id: string
-          p_is_published: boolean
-          p_title: string
-        }
-        Returns: {
-          category_id: string | null
-          completed_on: string | null
-          created_at: string
-          description: string
-          id: string
-          is_published: boolean
-          sort_order: number
-          title: string
-          updated_at: string
-          worker_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "worker_portfolio_items"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       validate_and_confirm_worker_arrival: {
         Args: {
           p_booking_id: string
