@@ -1,6 +1,18 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { HttpError } from './http.ts';
 
+export const TRANSCRIPTION_FAILED_CODE = 'TRANSCRIPTION_FAILED';
+
+export class TranscriptionFailedError extends Error {
+  readonly code = TRANSCRIPTION_FAILED_CODE;
+  readonly retryable = true;
+
+  constructor() {
+    super(TRANSCRIPTION_FAILED_CODE);
+    this.name = 'TranscriptionFailedError';
+  }
+}
+
 export type MediaInput = {
   bucket: string;
   path: string;
@@ -273,7 +285,9 @@ async function transcribeGemini(item: Awaited<ReturnType<typeof loadMedia>>[numb
     const text = body?.candidates?.[0]?.content?.parts
       ?.map((part: Record<string, unknown>) => part.text ?? '')
       .join('');
-    return String(text ?? '');
+    const transcript = String(text ?? '').trim();
+    if (!transcript) throw Object.assign(new Error('EMPTY_TRANSCRIPT'), { retryable: true });
+    return transcript;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError')
       throw Object.assign(new Error('PROVIDER_TIMEOUT'), { status: 408, retryable: true });
@@ -305,15 +319,27 @@ async function transcribeOpenAI(item: Awaited<ReturnType<typeof loadMedia>>[numb
       status: response.status,
       retryable: retryableStatus(response.status),
     });
-  return String(body.text ?? '');
+  const transcript = String(body.text ?? '').trim();
+  if (!transcript) throw Object.assign(new Error('EMPTY_TRANSCRIPT'), { retryable: true });
+  return transcript;
 }
 
-async function transcribeAudio(item: Awaited<ReturnType<typeof loadMedia>>[number]) {
+export async function transcribeAudio(item: Awaited<ReturnType<typeof loadMedia>>[number]) {
+  let lastError: unknown;
   try {
     return await transcribeGemini(item);
-  } catch {
-    return await transcribeOpenAI(item);
+  } catch (error) {
+    lastError = error;
   }
+  try {
+    return await transcribeOpenAI(item);
+  } catch (error) {
+    lastError = error;
+  }
+  console.warn('audio transcription providers failed', {
+    cause: lastError instanceof Error ? lastError.message : 'unknown',
+  });
+  throw new TranscriptionFailedError();
 }
 
 async function callOpenRouter(
@@ -326,13 +352,7 @@ async function callOpenRouter(
   if (!key) throw Object.assign(new Error('OPENROUTER_NOT_CONFIGURED'), { retryable: true });
   const audio = media.find((item) => item.contentType.startsWith('audio/'));
   let transcript = '';
-  if (audio) {
-    try {
-      transcript = await transcribeAudio(audio);
-    } catch (e) {
-      console.error('transcription failed, proceeding without transcript:', e);
-    }
-  }
+  if (audio) transcript = await transcribeAudio(audio);
   const content: Record<string, unknown>[] = [
     {
       type: 'text',
@@ -413,13 +433,7 @@ async function callGemini(
   if (!key || !model) throw Object.assign(new Error('GEMINI_NOT_CONFIGURED'), { retryable: true });
   const audio = media.find((item) => item.contentType.startsWith('audio/'));
   let transcript = '';
-  if (audio) {
-    try {
-      transcript = await transcribeGemini(audio);
-    } catch (e) {
-      console.error('gemini transcription failed, proceeding without transcript:', e);
-    }
-  }
+  if (audio) transcript = await transcribeAudio(audio);
   const parts: Record<string, unknown>[] = [
     {
       text: `${prompt(description, catalog.categories, catalog.services)}${transcript ? `\nAudio transcript: ${transcript}` : ''}`,
@@ -518,7 +532,11 @@ export async function runAnalysis(
       return { ...output, provider: 'OPENROUTER' as const, attempts, media };
     } catch (error) {
       lastError = error;
-      const value = error as Error & { retryable?: boolean; status?: number };
+      const value = error as Error & {
+        code?: string;
+        retryable?: boolean;
+        status?: number;
+      };
       attempts.push({
         provider: 'OPENROUTER',
         model: Deno.env.get('OPENROUTER_MODEL') ?? 'google/gemma-4-26b-a4b-it:free',
@@ -528,7 +546,8 @@ export async function runAnalysis(
         error_code: value.message,
         http_status: value.status,
       });
-      if (!value.retryable) throw Object.assign(error as object, { attempts });
+      if (!value.retryable || value.code === TRANSCRIPTION_FAILED_CODE)
+        throw Object.assign(error as object, { attempts });
     }
   }
 
@@ -549,7 +568,11 @@ export async function runAnalysis(
       return { ...output, provider: 'GEMINI' as const, attempts, media };
     } catch (error) {
       lastError = error;
-      const value = error as Error & { retryable?: boolean; status?: number };
+      const value = error as Error & {
+        code?: string;
+        retryable?: boolean;
+        status?: number;
+      };
       attempts.push({
         provider: 'GEMINI',
         model: Deno.env.get('GEMINI_MODEL') ?? 'unconfigured',
@@ -559,7 +582,8 @@ export async function runAnalysis(
         error_code: value.message,
         http_status: value.status,
       });
-      if (!value.retryable) throw Object.assign(error as object, { attempts });
+      if (!value.retryable || value.code === TRANSCRIPTION_FAILED_CODE)
+        throw Object.assign(error as object, { attempts });
     }
   }
 
