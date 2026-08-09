@@ -31,12 +31,14 @@
 ### Task 1: Add tested shared password and profile-readiness primitives
 
 **Files:**
+
 - Create: `apps/mobile/components/PasswordRequirements.tsx`
 - Create: `apps/mobile/components/ProfileReadinessBanner.tsx`
 - Create: `apps/mobile/components/PasswordRequirements.test.tsx`
 - Create: `apps/mobile/components/ProfileReadinessBanner.test.tsx`
 
 **Interfaces:**
+
 - Produce `getPasswordRequirementState(password: string, confirmation?: string)` returning `{ minLength, uppercase, number, symbol, matches }`.
 - Produce `PasswordRequirements({ password, confirmation, showMatch })`.
 - Produce `ProfileReadinessBanner({ complete, missing, onCompleteProfile })`.
@@ -106,12 +108,14 @@ git commit -m "feat(mobile): add shared password and profile readiness UI"
 ### Task 2: Add review lookup and safe review submission
 
 **Files:**
+
 - Modify: `apps/mobile/services/apiCore.ts`
 - Modify: `apps/mobile/app/payment/success.tsx`
 - Modify: `apps/mobile/app/review/[id].tsx`
 - Test: `apps/mobile/services/reviewRatings.test.ts`
 
 **Interfaces:**
+
 - Produce `fetchReviewForBooking(bookingId: string): Promise<{ id: string } | null>`.
 - Consume the existing `createReview` and `fetchBookingDetail` services.
 
@@ -163,11 +167,13 @@ git commit -m "fix(mobile): make post-payment reviews duplicate-safe"
 ### Task 3: Gate tracking proof photos by booking status
 
 **Files:**
+
 - Modify: `apps/mobile/hooks/useBookingTracking.ts`
 - Modify: `apps/mobile/app/tracking/[id].tsx`
 - Test: `apps/mobile/services/bookingStatus.test.ts` or a new `apps/mobile/hooks/useBookingTracking.test.ts`
 
 **Interfaces:**
+
 - Consume `fetchBookingProofPhotos(bookingId)`.
 - Produce `proofPhotos` and `isLoadingProofPhotos` from `useBookingTracking`.
 
@@ -207,12 +213,14 @@ git commit -m "feat(mobile): show proof photos at completion"
 ### Task 4: Remove incompatible worker skills before save
 
 **Files:**
+
 - Modify: `apps/mobile/features/worker/hooks/useWorkerSkills.ts`
 - Modify: `apps/mobile/services/apiCore.ts`
 - Test: `apps/mobile/features/worker/hooks/useWorkerSkills.test.ts`
 - Test: `apps/mobile/services/workerSelection.test.ts`
 
 **Interfaces:**
+
 - Produce a pure `filterSkillsForIndustries(skillIds, rates, catalog, industryIds)` helper.
 - Consume `save_my_worker_skills({ p_industry_ids, p_skills })` only.
 
@@ -255,6 +263,7 @@ git commit -m "fix(mobile): drop skills outside selected industries"
 ### Task 5: Wire live password feedback into both registration flows
 
 **Files:**
+
 - Modify: `apps/mobile/app/(auth)/register.tsx`
 - Modify: `apps/mobile/app/register-worker.tsx`
 - Test: existing component/registration tests plus `apps/mobile/components/PasswordRequirements.test.tsx`
@@ -291,6 +300,7 @@ git commit -m "feat(mobile): add live registration password feedback"
 ### Task 6: Add profile-readiness prompts
 
 **Files:**
+
 - Modify: `apps/mobile/app/(worker)/verification.tsx`
 - Modify: `apps/mobile/app/register-worker.tsx`
 - Test: `apps/mobile/components/ProfileReadinessBanner.test.tsx`
@@ -331,6 +341,7 @@ git commit -m "feat(mobile): prompt workers to complete profiles"
 ### Task 7: Repair the new-request success route and run Phase 1 verification
 
 **Files:**
+
 - Modify: `apps/mobile/app/new-request/success.tsx`
 - Test: `apps/mobile/utils/tabRouteStructure.test.ts` or a focused route test
 
