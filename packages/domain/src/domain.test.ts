@@ -36,7 +36,7 @@ describe('booking lifecycle', () => {
 });
 
 describe('matching', () => {
-  it('never lets priority make an unsuitable worker eligible', () => {
+  it('does not require a weekly schedule for eligibility', () => {
     const matches = rankWorkers(
       [
         {
@@ -47,7 +47,6 @@ describe('matching', () => {
           distanceKm: 5,
           rating: 5,
           reviewCount: 100,
-          scheduleFit: false,
           recommendationPriority: true,
         },
         {
@@ -58,14 +57,16 @@ describe('matching', () => {
           distanceKm: 10,
           rating: 4,
           reviewCount: 20,
-          scheduleFit: true,
           recommendationPriority: false,
         },
       ],
       'plumbing',
     );
 
-    expect(matches.map((match) => match.workerId)).toEqual(['suitable']);
+    expect(matches.map((match) => match.workerId)).toEqual([
+      'unsuitable-priority',
+      'suitable',
+    ]);
   });
 });
 

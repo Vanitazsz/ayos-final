@@ -6,7 +6,6 @@ export interface MatchableWorker {
   distanceKm: number;
   rating: number;
   reviewCount: number;
-  scheduleFit: boolean;
   recommendationPriority: boolean;
 }
 
@@ -16,7 +15,6 @@ export interface WorkerMatch {
   score: number;
   factors: {
     skill: number;
-    schedule: number;
     distance: number;
     reputation: number;
     priority: number;
@@ -31,7 +29,6 @@ export function rankWorkers(
   return workers
     .map((worker): WorkerMatch => {
       const skill = worker.categoryIds.includes(categoryId) ? 40 : 0;
-      const schedule = worker.scheduleFit ? 25 : 0;
       const distance = Math.max(0, 20 * (1 - worker.distanceKm / maximumDistanceKm));
       const reputation = Math.min(
         10,
@@ -42,16 +39,15 @@ export function rankWorkers(
         worker.approved &&
         worker.available &&
         skill > 0 &&
-        schedule > 0 &&
         worker.distanceKm <= maximumDistanceKm;
 
       return {
         workerId: worker.id,
         eligible,
         score: eligible
-          ? Math.round((skill + schedule + distance + reputation + priority) * 100) / 100
+          ? Math.round((skill + distance + reputation + priority) * 100) / 100
           : 0,
-        factors: { skill, schedule, distance, reputation, priority },
+        factors: { skill, distance, reputation, priority },
       };
     })
     .filter((match) => match.eligible)
