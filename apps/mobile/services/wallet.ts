@@ -13,9 +13,7 @@ export {
   fetchWalletTransactions,
   requestPayout,
   simulateTopUp,
-  PLATFORM_COMMISSION_RATE,
   type TransactionStatus,
   type WalletSummary,
   type WalletTransaction,
 } from './apiCore';
-

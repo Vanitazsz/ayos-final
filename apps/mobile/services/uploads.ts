@@ -118,6 +118,39 @@ export async function uploadBookingProof(uri: string) {
   return { path, contentType, byteSize: bytes.byteLength };
 }
 
+export async function uploadWalletTopupProof(uri: string) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user)
+    throw userError ?? new Error('Authentication required');
+
+  const sourceUri = await compressProofImage(uri);
+  const response = await fetch(sourceUri);
+  if (!response.ok)
+    throw new Error('The selected top-up proof photo could not be read.');
+  const blob = await response.blob();
+  const contentType = normalizeContentType(blob.type, 'image/jpeg');
+  if (!contentType.startsWith('image/'))
+    throw new Error('Top-up proof must be an image.');
+  if (blob.size > 10 * 1024 * 1024)
+    throw new Error('Top-up proof photos must be 10 MB or smaller.');
+
+  const path = `${user.id}/${randomUUID()}.${extensionFor(contentType)}`;
+  const bytes = await blobToArrayBuffer(blob);
+  const { error } = await supabase.storage
+    .from('topup-proofs')
+    .upload(path, bytes, { contentType, upsert: false });
+  if (error) throw error;
+  return { path, contentType, byteSize: bytes.byteLength };
+}
+
+export async function deleteWalletTopupProof(path: string) {
+  const { error } = await supabase.storage.from('topup-proofs').remove([path]);
+  if (error) throw error;
+}
+
 async function compressProofImage(uri: string): Promise<string> {
   try {
     const imageRef = await ImageManipulator.manipulate(uri)
