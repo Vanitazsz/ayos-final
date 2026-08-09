@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {View,
   StyleSheet,
   ScrollView,
@@ -38,7 +38,6 @@ import { CompleteJobModal } from '@/components/booking/CompleteJobModal';
 import * as Location from 'expo-location';
 import {
   acceptJob,
-  arriveAtJob,
   confirmCashPayment,
   confirmPaymentWithCommission,
   confirmWorkerArrival,
@@ -57,7 +56,6 @@ import {
 } from '@/services/liveDispatch';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
-import { shouldTransitionToArrivedAfterProximityCheck } from '@/utils/arrivalTransition';
 import type { WorkerBooking } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
 
@@ -117,7 +115,10 @@ export default function BookingRequestScreen() {
   const [routeDetails, setRouteDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('UNCONFIRMED');
+  const [commissionRatePercent, setCommissionRatePercent] = useState<number | null>(null);
+  const [commissionAmount, setCommissionAmount] = useState<number | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [locationPublisherError, setLocationPublisherError] = useState<string | null>(null);
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
 
@@ -141,6 +142,16 @@ export default function BookingRequestScreen() {
             ? row.payments[0]
             : row.payments;
           setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
+          const storedRate = Number(payment?.commission_rate);
+          setCommissionRatePercent(
+            Number.isFinite(storedRate)
+              ? storedRate <= 1
+                ? storedRate * 100
+                : storedRate
+              : null,
+          );
+          const storedCommission = Number(payment?.commission_amount);
+          setCommissionAmount(Number.isFinite(storedCommission) ? storedCommission : null);
           const earningsAmount = resolveWorkerEarningsAmount(
             row.agreed_service_amount,
             payment,
@@ -222,14 +233,29 @@ export default function BookingRequestScreen() {
     return unsub;
   }, [id, setStoreStatus]);
 
+  const beginLocationPublisher = useCallback((bookingId: string) => {
+    setLocationPublisherError(null);
+    void startEnRouteLocationPublisher(bookingId, {
+      onState: (state, message) => {
+        if (state === 'active' || state === 'starting') {
+          setLocationPublisherError(null);
+        } else if (message) {
+          setLocationPublisherError(message);
+        }
+      },
+      onError: setLocationPublisherError,
+    });
+  }, []);
+
   useEffect(() => {
     if (backendStatus === 'WORKER_EN_ROUTE' && booking.id) {
-      void startEnRouteLocationPublisher(booking.id);
+      beginLocationPublisher(booking.id);
       return () => {
         stopEnRouteLocationPublisher();
       };
     }
-  }, [backendStatus, booking.id]);
+    setLocationPublisherError(null);
+  }, [backendStatus, beginLocationPublisher, booking.id]);
 
   const handleDecline = async () => {
     try {
@@ -252,7 +278,6 @@ export default function BookingRequestScreen() {
       console.log('[handleConfirmDetails] booking.id:', booking.id);
       await prepareJob(booking.id);
       await departForJob(booking.id);
-      void startEnRouteLocationPublisher(booking.id);
       setBackendStatus('WORKER_EN_ROUTE');
       setBooking((b) => ({ ...b, status: 'en_route' }));
     } catch (error: any) {
@@ -281,12 +306,15 @@ export default function BookingRequestScreen() {
           loc.coords.latitude,
           loc.coords.longitude,
         );
-        if (!proximity.error) {
-          withinProximity = proximity.data?.within_proximity === true;
+        if (proximity.error || !proximity.data) {
+          showAlert(
+            'Arrival denied',
+            proximity.error || 'The server could not validate your arrival location.',
+          );
+          return;
         }
+        withinProximity = proximity.data.within_proximity === true;
         if (
-          !proximity.error &&
-          proximity.data &&
           !proximity.data.within_proximity
         ) {
           showAlert(
@@ -296,11 +324,15 @@ export default function BookingRequestScreen() {
           );
           return;
         }
+      } else {
+        showAlert(
+          'Location required',
+          'Your current location could not be read. Enable location access and retry before confirming arrival.',
+        );
+        return;
       }
       stopEnRouteLocationPublisher();
-      if (shouldTransitionToArrivedAfterProximityCheck(locationWasAvailable, withinProximity)) {
-        await arriveAtJob(booking.id);
-      }
+      if (!locationWasAvailable || !withinProximity) return;
       await startJob(booking.id);
       await markJobInProgress(booking.id);
       setBackendStatus('IN_PROGRESS');
@@ -336,7 +368,7 @@ export default function BookingRequestScreen() {
       showAlert(
         'Payment & Commission Recorded',
         `Payment method: ${method === 'ONLINE_SIMULATED' ? 'Online Payment (Simulated)' : 'Cash'}\n` +
-        `10% platform commission deduction has been successfully applied to your wallet.`,
+        'The server-calculated platform commission deduction has been successfully applied to your wallet.',
       );
     } catch (error) {
       showAlert(
@@ -639,6 +671,22 @@ export default function BookingRequestScreen() {
 
           {booking.status === 'en_route' && (
             <View style={{ gap: 12 }}>
+              {locationPublisherError && (
+                <View style={styles.locationErrorCard}>
+                  <AppText variant="bodySm" weight="semiBold" color={Colors.error}>
+                    Route sharing unavailable
+                  </AppText>
+                  <AppText variant="caption" color={Colors.textSecondary}>
+                    {locationPublisherError}
+                  </AppText>
+                  <AppButton
+                    label="Retry Location"
+                    variant="outline"
+                    size="sm"
+                    onPress={() => beginLocationPublisher(booking.id)}
+                  />
+                </View>
+              )}
               <View style={styles.contactRow}>
                 <Pressable
                   style={styles.contactBtn}
@@ -743,6 +791,8 @@ export default function BookingRequestScreen() {
                 duration={duration}
                 earnings={booking.price}
                 paymentStatus={paymentStatus}
+                commissionRatePercent={commissionRatePercent}
+                commissionAmount={commissionAmount}
                 onConfirmCash={handleConfirmCash}
               />
             </View>
@@ -878,6 +928,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     ...Elevation.sm,
+  },
+  locationErrorCard: {
+    backgroundColor: Colors.errorBg,
+    borderRadius: Radius.xl,
+    padding: Spacing['4'],
+    gap: Spacing['2'],
+    borderWidth: 1,
+    borderColor: Colors.error,
   },
 
   // Accepted chat

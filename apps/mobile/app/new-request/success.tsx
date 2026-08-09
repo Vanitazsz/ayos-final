@@ -11,11 +11,10 @@ import { useRequestStore } from '@/store/useRequestStore';
 export default function RequestSuccessScreen() {
   const router = useRouter();
   const { resetRequest } = useRequest();
-  const requestId = useRequestStore((state) => state.requestId);
   const resetDraft = useRequestStore((state) => state.reset);
 
   const handleViewRequest = () => {
-    if (requestId) router.replace(`/request/${requestId}` as any);
+    router.replace('/new-request/matching');
   };
 
   const handleBackToHome = () => {

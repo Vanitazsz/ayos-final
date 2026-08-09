@@ -5,17 +5,60 @@ import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
 import { CheckCircle2 } from 'lucide-react-native';
+import { showAlert } from '@/components/AppAlert';
+import { fetchReviewForBooking } from '@/services/reviews';
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
-  const { bookingId } = useLocalSearchParams<{ bookingId?: string }>();
+  const { bookingId: bookingIdParam, id } = useLocalSearchParams<{
+    bookingId?: string;
+    id?: string;
+  }>();
+  const bookingId = bookingIdParam ?? id;
+  const [reviewState, setReviewState] = React.useState<
+    'checking' | 'available' | 'submitted' | 'unavailable'
+  >(bookingId ? 'checking' : 'unavailable');
+
+  React.useEffect(() => {
+    if (!bookingId) return;
+    let active = true;
+    void fetchReviewForBooking(bookingId)
+      .then((review) => {
+        if (active) setReviewState(review ? 'submitted' : 'available');
+      })
+      .catch(() => {
+        if (active) setReviewState('unavailable');
+      });
+    return () => {
+      active = false;
+    };
+  }, [bookingId]);
 
   const handleViewBooking = () => {
     if (bookingId) {
-      router.replace(`/booking/${bookingId}`);
+      router.replace(`/booking-summary/${bookingId}`);
     } else {
       router.replace('/(tabs)/home');
     }
+  };
+
+  const handleReview = () => {
+    if (!bookingId) {
+      showAlert('Review unavailable', 'The booking reference is missing.');
+      return;
+    }
+    if (reviewState === 'submitted') {
+      showAlert('Review already submitted', 'You have already rated this booking.');
+      return;
+    }
+    if (reviewState !== 'available') {
+      showAlert(
+        'Review unavailable',
+        'We could not verify the review status. Please try again from your booking details.',
+      );
+      return;
+    }
+    router.push(`/review/${bookingId}`);
   };
 
   const handleHome = () => {
@@ -35,6 +78,15 @@ export default function PaymentSuccessScreen() {
         </Text>
 
         <View style={styles.actions}>
+          {reviewState !== 'submitted' && (
+            <Button
+              title="Rate your experience"
+              variant="outlined"
+              onPress={handleReview}
+              disabled={reviewState === 'checking'}
+              fullWidth
+            />
+          )}
           <Button
             title="View Booking Details"
             onPress={handleViewBooking}

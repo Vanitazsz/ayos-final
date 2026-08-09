@@ -3,6 +3,7 @@ import {View,
   Text,
   TouchableOpacity,
   ScrollView,
+  Image,
   Linking,} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -17,12 +18,16 @@ import {
   Clock,
   MapPin,
   Wrench,
+  Image as ImageIcon,
+  Phone,
+  ShieldAlert,
 } from 'lucide-react-native';
 import { buildProviderReportEmail } from '@/services/support';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { styles } from '@/styles/tracking/_tracking.styles';
 import { useBookingTracking } from '@/hooks/useBookingTracking';
+import { showAlert } from '@/components/AppAlert';
 
 
 const STATUS_STEP_MAP: Record<string, number> = {
@@ -120,6 +125,12 @@ export default function TrackingScreen() {
     isConfirming,
     liveLocation,
     workerStatus,
+    proofPhotos,
+    isLoadingProofPhotos,
+    proofPhotosError,
+    isConfirmingArrival,
+    trackingActionError,
+    confirmArrival,
     confirmCompletion,
   } = useBookingTracking(bookingId);
 
@@ -130,7 +141,7 @@ export default function TrackingScreen() {
   }, [workerStatus]);
 
   const handlePayment = () => {
-    router.push(`/payment/${id}`);
+    router.push(`/payment/${bookingId}`);
   };
 
   const address = tracking?.booking?.service_requests?.addresses;
@@ -143,11 +154,54 @@ export default function TrackingScreen() {
   const StatusIcon = statusInfo.icon;
   const isCompleted = workerStatus === 'COMPLETED';
   const isPendingConfirmation = workerStatus === 'PENDING_CONFIRMATION';
+  const isEnRoute = workerStatus === 'WORKER_EN_ROUTE';
   const isCancelled = workerStatus === 'CANCELLED';
   const isActive = !isCompleted && !isCancelled;
   const workerAccountId = tracking?.booking?.worker_account_id as
     | string
     | undefined;
+  const workerMobile = tracking?.booking?.worker_profiles?.accounts?.mobile as
+    | string
+    | undefined;
+
+  const callNumber = async (number: string | undefined, label: string) => {
+    if (!number) {
+      showAlert(label, 'No phone number is available for this booking.');
+      return;
+    }
+    const sanitized = number.replace(/[^0-9+#*]/g, '');
+    if (!sanitized) {
+      showAlert(label, 'The phone number is unavailable.');
+      return;
+    }
+    const url = `tel:${sanitized}`;
+    try {
+      if (!(await Linking.canOpenURL(url))) {
+        throw new Error('This device cannot place phone calls.');
+      }
+      await Linking.openURL(url);
+    } catch (error) {
+      showAlert(
+        label,
+        error instanceof Error ? error.message : 'Unable to place the call.',
+      );
+    }
+  };
+
+  const handleEmergency = () => {
+    showAlert(
+      'Call Emergency Services?',
+      'Call 911 only if someone is in immediate danger.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call 911',
+          style: 'destructive',
+          onPress: () => void callNumber('911', 'Emergency call failed'),
+        },
+      ],
+    );
+  };
 
   const reportWorker = () => {
     const { to, subject, body } = buildProviderReportEmail({
@@ -295,6 +349,44 @@ export default function TrackingScreen() {
           </View>
         </View>
 
+        {(isPendingConfirmation || isCompleted) && (
+          <View style={styles.proofCard}>
+            <View style={styles.proofHeader}>
+              <ImageIcon size={16} color={theme.colors.primary} />
+              <Text style={styles.proofTitle}>Proof of Work</Text>
+            </View>
+            {isLoadingProofPhotos ? (
+              <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>Loading proof photos…</Text>
+            ) : proofPhotosError ? (
+              <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>Proof photos are temporarily unavailable.</Text>
+            ) : proofPhotos.length === 0 ? (
+              <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>No proof photos were attached for this booking.</Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.proofScroll}>
+                {proofPhotos.map((photo, index) =>
+                  photo.signedUrl ? (
+                    <Image
+                      key={photo.id ?? index}
+                      source={{ uri: photo.signedUrl }}
+                      style={styles.proofImage}
+                      resizeMode="cover"
+                      accessibilityLabel={`Proof photo ${index + 1}`}
+                    />
+                  ) : (
+                    <View
+                      key={photo.id ?? index}
+                      style={styles.proofPlaceholder}
+                      accessibilityLabel={`Proof photo ${index + 1} unavailable`}
+                    >
+                      <ImageIcon size={28} color={theme.colors.textTertiary} />
+                    </View>
+                  ),
+                )}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
         {/* Route Summary - show when accepted/preparing/en_route */}
         {['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(
           workerStatus ?? '',
@@ -343,6 +435,29 @@ export default function TrackingScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        <View style={styles.contactActions}>
+          <TouchableOpacity
+            style={styles.contactAction}
+            onPress={() => void callNumber(workerMobile, 'Call provider')}
+          >
+            <Phone color={theme.colors.primary} size={18} />
+            <Text style={styles.contactActionText}>Call</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.emergencyAction}
+            onPress={handleEmergency}
+          >
+            <ShieldAlert color={theme.colors.error} size={18} />
+            <Text style={styles.emergencyActionText}>Emergency</Text>
+          </TouchableOpacity>
+        </View>
+
+        {trackingActionError && (
+          <View style={styles.actionErrorCard}>
+            <Text style={styles.actionErrorText}>{trackingActionError}</Text>
+          </View>
+        )}
 
         <View style={styles.divider} />
 
@@ -445,7 +560,14 @@ export default function TrackingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        {isPendingConfirmation ? (
+        {isEnRoute ? (
+          <Button
+            title={isConfirmingArrival ? 'Confirming Arrival...' : 'Confirm Arrival'}
+            onPress={() => void confirmArrival()}
+            disabled={isConfirmingArrival}
+            fullWidth
+          />
+        ) : isPendingConfirmation ? (
           <Button
             title={isConfirming ? 'Confirming...' : 'Confirm Job Completion'}
             onPress={() => void confirmCompletion()}

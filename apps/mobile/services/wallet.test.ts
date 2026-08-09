@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PLATFORM_COMMISSION_RATE } from './wallet';
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
@@ -29,10 +28,6 @@ describe('Wallet Top-Up and Commission Demonstration Logic', () => {
     });
   });
 
-  it('defines PLATFORM_COMMISSION_RATE as 0.10 (10%)', () => {
-    expect(PLATFORM_COMMISSION_RATE).toBe(0.10);
-  });
-
   it('simulates wallet top-up and increases balance', async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: {
@@ -60,7 +55,7 @@ describe('Wallet Top-Up and Commission Demonstration Logic', () => {
     });
   });
 
-  it('deducts 10% platform commission on booking payment confirmation', async () => {
+  it('uses the server commission settlement contract on booking payment confirmation', async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: {
         bookingId: 'booking-789',
@@ -88,5 +83,29 @@ describe('Wallet Top-Up and Commission Demonstration Logic', () => {
       p_booking_id: 'booking-789',
       p_payment_method: 'CASH',
     });
+  });
+
+  it('does not fall back to client-side writes when the legacy simulation is unavailable', async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'MANUAL_TOPUP_REQUIRED', code: '0A000' },
+    });
+
+    const { simulateTopUp } = await import('./wallet');
+    await expect(simulateTopUp(500)).rejects.toThrow('MANUAL_TOPUP_REQUIRED');
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('propagates commission RPC errors without client-side writes', async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'SERVICE_CATEGORY_NOT_FOUND', code: '22023' },
+    });
+
+    const { confirmPaymentWithCommission } = await import('./payments');
+    await expect(
+      confirmPaymentWithCommission('booking-789', 'CASH'),
+    ).rejects.toThrow('SERVICE_CATEGORY_NOT_FOUND');
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

@@ -40,6 +40,11 @@ import { LegalContentModal } from '@/components/LegalContentModal';
 import { fetchIndustriesAndSkills } from '@/services/api';
 import { submitWorkerApplication } from '@/services/workerApplication';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
+import { PasswordRequirements } from '@/components/PasswordRequirements';
+import {
+  getWorkerRegistrationReadiness,
+} from '@/utils/profileReadiness';
+import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
 
 const GENDERS: SelectOption[] = [
   { label: 'Male', value: 'male' },
@@ -280,6 +285,26 @@ export default function RegisterWorkerScreen() {
       setErrors({});
     } else {
       goBack();
+    }
+  };
+
+  const profileReadiness = getWorkerRegistrationReadiness({
+    firstName,
+    lastName,
+    email,
+    phone,
+    birthday,
+    industryValue,
+    selectedSkills,
+    street,
+    city,
+    region,
+  });
+
+  const handleCompleteProfile = () => {
+    if (profileReadiness.firstIncompleteStep) {
+      setStep(profileReadiness.firstIncompleteStep);
+      setErrors({});
     }
   };
 
@@ -526,7 +551,6 @@ export default function RegisterWorkerScreen() {
         value={password}
         onChangeText={setPassword}
         error={errors.password}
-        helperText="Use 8+ characters with uppercase, number, and symbol"
         secureTextEntry={!showPassword}
         rightIcon={
           showPassword ? (
@@ -544,6 +568,11 @@ export default function RegisterWorkerScreen() {
         onChangeText={setConfirmPassword}
         error={errors.confirmPassword}
         secureTextEntry={!showPassword}
+      />
+      <PasswordRequirements
+        password={password}
+        confirmation={confirmPassword}
+        showMatch
       />
     </View>
   );
@@ -827,6 +856,12 @@ export default function RegisterWorkerScreen() {
       />
 
       <View style={styles.divider} />
+
+      <ProfileReadinessBanner
+        complete={profileReadiness.complete}
+        missing={profileReadiness.missing}
+        onCompleteProfile={handleCompleteProfile}
+      />
 
       <AppText
         variant="h4"

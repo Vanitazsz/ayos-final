@@ -22,6 +22,7 @@ import {
 import { signUpCustomer } from '@/services/auth';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
 import { showAlert } from '@/components/AppAlert';
+import { PasswordRequirements } from '@/components/PasswordRequirements';
 
 type RoleChoice = 'USER' | 'WORKER' | null;
 
@@ -52,6 +53,7 @@ export default function RegisterScreen() {
   });
 
   const password = watch('password');
+  const confirmPassword = watch('confirmPassword');
 
   const onSubmit = async (data: any) => {
     if (!acceptedTerms) {
@@ -287,7 +289,6 @@ export default function RegisterScreen() {
                     onChangeText={onChange}
                     value={value}
                     error={errors.password?.message}
-                    helperText="Use 8+ characters with uppercase, number, and symbol"
                   />
                 )}
                 name="password"
@@ -313,6 +314,12 @@ export default function RegisterScreen() {
                   />
                 )}
                 name="confirmPassword"
+              />
+
+              <PasswordRequirements
+                password={password}
+                confirmation={confirmPassword}
+                showMatch
               />
 
               <View style={styles.termsContainer}>

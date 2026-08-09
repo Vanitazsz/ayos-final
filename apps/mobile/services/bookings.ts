@@ -5,6 +5,8 @@ export {
   cancelBooking,
   completeJob,
   confirmJobCompletion,
+  confirmCustomerArrival,
+  confirmCustomerCompletion,
   declineAssignedBooking,
   departForJob,
   fetchBookingByRequestId,
@@ -22,4 +24,5 @@ export {
   deleteBookingProof,
   type BookingProofPhoto,
   type WorkerBooking,
+  type CustomerTrackingActionResult,
 } from './apiCore';

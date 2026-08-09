@@ -3998,6 +3998,64 @@ export type Database = {
           },
         ]
       }
+      worker_feedback: {
+        Row: {
+          booking_id: string
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          tags: Json
+          updated_at: string
+          user_account_id: string
+          worker_account_id: string
+        }
+        Insert: {
+          booking_id: string
+          comment?: string
+          created_at?: string
+          id?: string
+          rating: number
+          tags?: Json
+          updated_at?: string
+          user_account_id: string
+          worker_account_id: string
+        }
+        Update: {
+          booking_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          tags?: Json
+          updated_at?: string
+          user_account_id?: string
+          worker_account_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_feedback_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_feedback_user_account_id_fkey"
+            columns: ["user_account_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "worker_feedback_worker_account_id_fkey"
+            columns: ["worker_account_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       worker_industries: {
         Row: {
           created_at: string

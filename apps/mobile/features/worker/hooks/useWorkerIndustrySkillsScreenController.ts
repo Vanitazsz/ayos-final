@@ -82,6 +82,7 @@ export function useWorkerIndustrySkillsScreenController() {
       const result = await updateMyWorkerSkillsAndIndustry({
         selectedIndustryIds,
         selectedSkillIds,
+        industries,
         yearsExperience,
         rateBySkillId,
       });

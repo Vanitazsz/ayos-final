@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -19,14 +19,18 @@ import {
   ArrowUpFromLine,
   ChevronRight,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Badge } from '@/components/Badge';
 import { Chip } from '@/components/Chip';
-import { type TransactionStatus, simulateTopUp } from '@/services/api';
+import { ImageUploadCard } from '@/components/ImageUploadCard';
+import { type TransactionStatus } from '@/services/api';
+import { randomUUID } from '@/lib/crypto';
+import { uploadWalletTopupProof } from '@/services/uploads';
+import { submitManualWalletTopup } from '@/services/walletTopups';
 import { showAlert } from '@/components/AppAlert';
 import { styles } from '@/features/worker/screens/WorkerWallet.styles';
 import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
@@ -49,6 +53,8 @@ export default function WalletScreen() {
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('5000');
+  const [topUpReference, setTopUpReference] = useState('');
+  const [topUpProofUri, setTopUpProofUri] = useState<string | null>(null);
   const [isTopUpLoading, setIsTopUpLoading] = useState(false);
 
   const {
@@ -57,29 +63,48 @@ export default function WalletScreen() {
     walletBarData,
     barMax,
     filteredTransactions,
+    manualTopups,
     refresh,
   } = useWalletData(period, txFilter);
 
-  const handleSimulateTopUp = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
+  const handleSubmitTopUp = async () => {
     const numAmount = Number(topUpAmount.replace(/[^0-9.]/g, ''));
-    if (isNaN(numAmount) || numAmount <= 0) {
-      showAlert('Invalid Amount', 'Please select or enter a valid top-up amount.');
+    if (isNaN(numAmount) || numAmount < 100) {
+      showAlert('Invalid Amount', 'Enter a GCash top-up amount of at least ₱100.');
+      return;
+    }
+    if (topUpReference.trim().length < 4) {
+      showAlert('Reference Required', 'Enter the GCash reference number from your receipt.');
+      return;
+    }
+    if (!topUpProofUri) {
+      showAlert('Screenshot Required', 'Upload a screenshot of the GCash payment receipt.');
       return;
     }
     try {
       setIsTopUpLoading(true);
-      const result = await simulateTopUp(numAmount);
+      const proof = await uploadWalletTopupProof(topUpProofUri);
+      const result = await submitManualWalletTopup({
+        amountCentavos: Math.round(numAmount * 100),
+        channel: 'GCASH',
+        referenceNumber: topUpReference.trim(),
+        proofPath: proof.path,
+        idempotencyKey: randomUUID(),
+      });
       setShowTopUp(false);
       await refresh();
       showAlert(
-        'Simulated Top-Up Successful',
-        `Worker selects: ₱${numAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n` +
-        `Simulated payment status: ${result.status}\n` +
-        `Previous wallet balance: ₱${Number(result.previousBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n` +
-        `New wallet balance: ₱${Number(result.newBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+        'Top-Up Submitted',
+        `₱${numAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} is now ${result.status.toLowerCase()}. An administrator will review the GCash screenshot before the wallet is credited.`,
       );
     } catch (err: any) {
-      showAlert('Top-Up Failed', err?.message ?? 'Failed to process simulated top-up.');
+      showAlert('Top-Up Failed', err?.message ?? 'Failed to submit the GCash top-up.');
     } finally {
       setIsTopUpLoading(false);
     }
@@ -108,12 +133,14 @@ export default function WalletScreen() {
           </View>
           <View style={styles.balanceActions}>
             <AppButton
-              label="Simulate Top-Up"
+              label="Add GCash Top-Up"
               variant="outline"
               size="sm"
               leftIcon={<ArrowUpFromLine size={14} color={Colors.cta} />}
               onPress={() => {
                 setTopUpAmount('500');
+                setTopUpReference('');
+                setTopUpProofUri(null);
                 setShowTopUp(true);
               }}
               style={styles.balanceBtn}
@@ -129,6 +156,38 @@ export default function WalletScreen() {
             />
           </View>
         </View>
+
+        {manualTopups.length > 0 && (() => {
+          const latestTopUp = manualTopups[0];
+          const statusColor = latestTopUp.status === 'SUCCESSFUL'
+            ? Colors.verified
+            : latestTopUp.status === 'FAILED' || latestTopUp.status === 'CANCELLED'
+              ? Colors.error
+              : Colors.warning;
+          return (
+            <View style={styles.topupStatusCard}>
+              <View style={styles.topupStatusHeader}>
+                <AppText variant="body" weight="bold">Latest GCash top-up</AppText>
+                <Badge
+                  label={latestTopUp.status}
+                  variant={latestTopUp.status === 'SUCCESSFUL' ? 'success' : latestTopUp.status === 'PENDING' ? 'warning' : 'info'}
+                  size="sm"
+                />
+              </View>
+              <AppText variant="bodySm" color={statusColor} weight="bold">
+                ₱{(latestTopUp.amountCentavos / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              </AppText>
+              <AppText variant="caption" color={Colors.textTertiary}>
+                {latestTopUp.referenceNumber ?? 'No reference'} · {new Date(latestTopUp.createdAt).toLocaleDateString('en-PH')}
+              </AppText>
+              {latestTopUp.status === 'PENDING' && (
+                <AppText variant="caption" color={Colors.textSecondary}>
+                  Waiting for administrator approval. Return to this screen to refresh the status.
+                </AppText>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Bar Chart */}
         <View style={styles.chartCard}>
@@ -276,7 +335,7 @@ export default function WalletScreen() {
         <Pressable style={styles.overlay} onPress={() => { Keyboard.dismiss(); setShowTopUp(false); }}>
           <Pressable style={styles.sheet} onPress={() => Keyboard.dismiss()}>
             <View style={styles.sheetHandle} />
-            <AppText variant="h4" weight="bold">Simulate Top-Up</AppText>
+            <AppText variant="h4" weight="bold">Manual GCash Top-Up</AppText>
             <AppText variant="caption" color={Colors.textSecondary}>
               Available balance: <AppText weight="bold" color={Colors.textPrimary}>{wallet.available}</AppText>
             </AppText>
@@ -291,6 +350,23 @@ export default function WalletScreen() {
                 placeholderTextColor={Colors.textTertiary}
               />
             </View>
+
+            <AppText variant="label" weight="medium">GCash Reference Number</AppText>
+            <TextInput
+              style={[styles.referenceInput, { color: Colors.textPrimary }]}
+              value={topUpReference}
+              onChangeText={setTopUpReference}
+              placeholder="e.g. 1234567890"
+              placeholderTextColor={Colors.textTertiary}
+              autoCapitalize="characters"
+            />
+
+            <ImageUploadCard
+              key={showTopUp ? 'topup-open' : 'topup-closed'}
+              label="GCash payment screenshot"
+              description="Upload JPG, PNG, or WEBP up to 10 MB"
+              onImageSelected={setTopUpProofUri}
+            />
 
             <AppText variant="caption" weight="bold" color={Colors.textTertiary} style={{ textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12 }}>
               Preset Amounts
@@ -319,19 +395,19 @@ export default function WalletScreen() {
             <View style={styles.payoutNote}>
               <AlertCircle size={14} color={Colors.warning} />
               <AppText variant="caption" color={Colors.textSecondary} style={{ flex: 1 }}>
-                This is a simulated top-up for demonstration purposes. No actual payment will be processed.
+                Your screenshot and reference number are sent to an administrator for approval. The wallet is credited only after approval.
               </AppText>
             </View>
 
             <View style={styles.sheetActions}>
               <AppButton label="Cancel" variant="outline" onPress={() => setShowTopUp(false)} style={{ flex: 1 }} />
               <AppButton
-                label="Simulate Top-Up"
+                label="Submit for Review"
                 variant="primary"
                 leftIcon={<ArrowUpFromLine size={14} color={Colors.white} />}
                 loading={isTopUpLoading}
                 disabled={isTopUpLoading}
-                onPress={handleSimulateTopUp}
+                onPress={handleSubmitTopUp}
                 style={{ flex: 1 }}
               />
             </View>
@@ -342,4 +418,3 @@ export default function WalletScreen() {
     </View>
   );
 }
-

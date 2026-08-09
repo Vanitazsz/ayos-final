@@ -14,12 +14,12 @@ import { useRequestStore } from '@/store/useRequestStore';
 
 type State = 'configuring' | 'starting' | 'live' | 'expired' | 'error';
 
-export function useLiveMatching() {
+export function useLiveMatching(initialRequestId?: string) {
   const draft = useRequestStore();
   const [state, setState] = useState<State>('configuring');
   const [radiusKm, setRadiusKm] = useState(draft.searchRadiusKm);
   const [dispatchRequestId, setDispatchRequestId] = useState<string | null>(
-    null,
+    initialRequestId ?? draft.requestId,
   );
   const [snapshot, setSnapshot] = useState<DispatchSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -29,6 +29,11 @@ export function useLiveMatching() {
   );
   const selectionGate = useRef(createWorkerSelectionGate());
   const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (initialRequestId && draft.requestId !== initialRequestId)
+      draft.setDraft({ requestId: initialRequestId });
+  }, [draft.requestId, initialRequestId]);
 
   useEffect(() => {
     if (!dispatchRequestId) return;
