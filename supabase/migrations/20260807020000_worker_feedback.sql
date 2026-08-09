@@ -33,7 +33,7 @@ grant select on public.worker_feedback to authenticated;
 create policy worker_feedback_owner_or_admin_read
   on public.worker_feedback
   for select to authenticated
-  using (worker_account_id = auth.uid() or public.is_admin(false));
+  using (worker_account_id = (select auth.uid()) or public.is_admin(false));
 
 create or replace function public.submit_worker_feedback(
   p_booking_id uuid,

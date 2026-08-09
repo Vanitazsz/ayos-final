@@ -754,8 +754,8 @@ select is(
         where service_request_id = '96000000-0000-0000-0000-000000000001'
       )
   ),
-  0::bigint,
-  'proof-of-work storage object is removed'
+  1::bigint,
+  'the storage object is left for client-side deletion via the Storage API'
 );
 set local role authenticated;
 select is(

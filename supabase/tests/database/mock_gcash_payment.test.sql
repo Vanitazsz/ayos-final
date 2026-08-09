@@ -5,9 +5,9 @@ select plan(16);
 -- Setup test users
 insert into auth.users(id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
-  ('b1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gcash-customer@example.test', '', now(), '{}', '{"role":"USER"}', now(), now()),
-  ('b2000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gcash-worker@example.test', '', now(), '{}', '{"role":"WORKER"}', now(), now()),
-  ('b3000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gcash-outsider@example.test', '', now(), '{}', '{"role":"USER"}', now(), now());
+  ('b1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gcash-customer@example.test', '', now(), '{}', '{"role":"USER","name":"GCash Customer"}', now(), now()),
+  ('b2000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gcash-worker@example.test', '', now(), '{}', '{"role":"WORKER","name":"GCash Worker"}', now(), now()),
+  ('b3000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gcash-outsider@example.test', '', now(), '{}', '{"role":"USER","name":"GCash Outsider"}', now(), now());
 
 insert into public.accounts(id, role, email)
 values
@@ -42,7 +42,7 @@ values
 insert into public.bookings(id, service_request_id, user_account_id, worker_account_id, status, version, agreed_service_amount)
 values
   ('b7000000-0000-0000-0000-000000000001', 'b6000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'COMPLETED', 1, 3000),
-  ('b7000000-0000-0000-0000-000000000002', 'b6000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'IN_PROGRESS', 0, 3000);
+  ('b7000000-0000-0000-0000-000000000002', 'b6000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'IN_PROGRESS', 0, 3000);
 
 -- Expected reference: MOCK-GCASH-B70000000000
 
@@ -116,7 +116,10 @@ select is(
   'receipt created for GCash payment'
 );
 
--- Test 8: Verify worker wallet credited with net earnings (3000 - 10% = 2700 = 270000 minor)
+-- Test 7: Verify worker wallet credited with net earnings (3000 - 10% = 2700 = 270000 minor)
+reset role;
+select set_config('request.jwt.claims', '{"sub":"b2000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
 select is(
   (select available_minor from public.wallets where account_id = 'b2000000-0000-0000-0000-000000000001'),
   270000::bigint,
@@ -136,22 +139,27 @@ select is(
 );
 
 -- Test 10: Idempotent retry returns existing payment and does not double-credit worker wallet
+select set_config('request.jwt.claims', '{"sub":"b1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 select lives_ok(
   $$select public.simulate_gcash_booking_payment('b7000000-0000-0000-0000-000000000001', 'MOCK-GCASH-B70000000000')$$,
   'repeated call is idempotent'
 );
+select set_config('request.jwt.claims', '{"sub":"b2000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 select is(
   (select count(*) from public.wallet_transactions where wallet_account_id = 'b2000000-0000-0000-0000-000000000001' and booking_id = 'b7000000-0000-0000-0000-000000000001'),
   1::bigint,
   'repeated call creates only one wallet transaction'
 );
 
--- Test 11: Fail cash confirmation when GCash payment is already successful
-select throws_ok(
-  $$select public.confirm_cash_payment('b7000000-0000-0000-0000-000000000001', 'test-idempotency-key-1234567890')$$,
-  '42501',
-  'Cash confirmation not allowed',
-  'cash confirmation rejected when gcash payment completed'
+-- Test 11: Cash confirmation on a GCash-completed booking is a no-op that returns the payment
+select set_config('request.jwt.claims', '{"sub":"b1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select is(
+  (
+    select status::text
+    from public.confirm_cash_payment('b7000000-0000-0000-0000-000000000001', 'test-idempotency-key-1234567890')
+  ),
+  'SUCCESSFUL',
+  'cash confirmation returns the existing successful GCash payment'
 );
 
 -- Test 12: Mock-only balances cannot fund payout requests

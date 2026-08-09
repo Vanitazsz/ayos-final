@@ -80,7 +80,7 @@ select throws_ok(
 );
 
 select is(
-  (select count(*) from public.accounts where mobile = '+639171234567'),
+  (select count(*)::int from public.accounts where mobile = '+639171234567'),
   1,
   'the duplicate registration leaves no second account behind'
 );
