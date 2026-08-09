@@ -16,10 +16,7 @@ import {
 } from '@/services/profile';
 import { averageRating } from '@/services/reviewRatings';
 import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
-import {
-  calculateCommissionAmount,
-  normalizeCommissionRatePercent,
-} from '@/utils/commission';
+import { normalizeCommissionRatePercent } from '@/utils/commission';
 import { recordWorkerLocation as recordWorkerLocationRpc } from './bookingLocation';
 
 // The current RPC schema still requires a positive request budget. Using the
@@ -773,44 +770,6 @@ export async function simulateTopUp(amount: number) {
 }
 
 export async function acceptJob(bookingId: string) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('agreed_service_amount,service_requests(category_id)')
-    .eq('id', bookingId)
-    .maybeSingle();
-  if (bookingError) throw bookingError;
-  if (!booking) throw new Error('Booking not found');
-
-  const categoryId = firstRelation(booking.service_requests)?.category_id;
-  if (!categoryId) {
-    throw new Error('Booking service category is unavailable');
-  }
-
-  const { data: ratePercent, error: rateError } = await supabase.rpc(
-    'get_effective_commission_rate',
-    { p_category_id: categoryId },
-  );
-  if (rateError) throw rateError;
-
-  const serviceAmount = Number(booking.agreed_service_amount);
-  const normalizedRatePercent = normalizeCommissionRatePercent(ratePercent);
-  const requiredCommission = calculateCommissionAmount(
-    serviceAmount,
-    normalizedRatePercent,
-  );
-
-  const walletSummary = await fetchWallet();
-  if (walletSummary.error) throw new Error(walletSummary.error);
-  const availableBalance = Number(
-    (walletSummary.data?.available ?? '0').replace(/[^0-9.]/g, ''),
-  );
-
-  if (availableBalance < requiredCommission) {
-    throw new Error(
-      `Insufficient wallet balance. You need at least ₱${requiredCommission.toLocaleString()} in your wallet balance to accept this booking. Please top up your wallet.`,
-    );
-  }
-
   return transition(bookingId, 'ACCEPTED');
 }
 

@@ -155,10 +155,43 @@ describe('selectWorker', () => {
   });
 });
 
+describe('worker booking acceptance', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mocks.from.mockReset();
+    mocks.rpc.mockReset();
+  });
+
+  it('delegates acceptance to the server without a client wallet precheck', async () => {
+    mocks.from.mockImplementation(() => {
+      throw new Error('acceptJob should not read wallet before transition');
+    });
+    mocks.rpc.mockResolvedValue({
+      data: { id: 'booking-id', status: 'ACCEPTED' },
+      error: null,
+    });
+    const { acceptJob } = await import('./api');
+
+    await expect(acceptJob('booking-id')).resolves.toEqual({
+      data: { id: 'booking-id', status: 'ACCEPTED' },
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith('transition_booking', {
+      p_booking_id: 'booking-id',
+      p_target_status: 'ACCEPTED',
+      p_expected_version: null,
+      p_reason: null,
+    });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+});
+
 describe('booking completion', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    mocks.from.mockReset();
     mocks.rpc.mockResolvedValue({
       data: { id: 'booking-id', status: 'PENDING_CONFIRMATION', version: 8 },
       error: null,
