@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { randomUUID } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
 import { getWorkerMatchingReadiness } from '@/services/workerMatching';
+import { recordWorkerLocation } from '@/services/bookingLocation';
 
 export const WORKER_PRESENCE_HEARTBEAT_INTERVAL_MS = 30_000;
 export const LIVE_DISPATCH_REFRESH_INTERVAL_MS = 60_000;
@@ -464,47 +465,120 @@ export type LiveEnRouteLocation = {
   timestamp: number;
 };
 
+export type EnRouteLocationPublisherState =
+  | 'starting'
+  | 'active'
+  | 'permission_denied'
+  | 'error';
+
+export type EnRouteLocationPublisherCallbacks = {
+  onLocationUpdate?: (loc: LiveEnRouteLocation) => void;
+  onError?: (message: string) => void;
+  onState?: (state: EnRouteLocationPublisherState, message?: string) => void;
+};
+
 let activeEnRouteSubscription: Location.LocationSubscription | null = null;
 let activeEnRouteChannel: ReturnType<typeof supabase.channel> | null = null;
 
 export async function startEnRouteLocationPublisher(
   bookingId: string,
-  onLocationUpdate?: (loc: LiveEnRouteLocation) => void,
+  callback?: ((loc: LiveEnRouteLocation) => void) | EnRouteLocationPublisherCallbacks,
 ) {
+  const callbacks: EnRouteLocationPublisherCallbacks =
+    typeof callback === 'function' ? { onLocationUpdate: callback } : (callback ?? {});
+  callbacks.onState?.('starting');
   stopEnRouteLocationPublisher();
   const channel = supabase.channel(`booking-location:${bookingId}`);
-  await channel.subscribe();
+  try {
+    await channel.subscribe();
+  } catch (error) {
+    const message = normalizeSupabaseError(
+      error,
+      'Live route sharing could not be started.',
+    ).message;
+    callbacks.onError?.(message);
+    callbacks.onState?.('error', message);
+    return stopEnRouteLocationPublisher;
+  }
   activeEnRouteChannel = channel;
 
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== 'granted') return stopEnRouteLocationPublisher;
+  let permission: { status: string };
+  try {
+    permission = await Location.requestForegroundPermissionsAsync();
+  } catch (error) {
+    const message = normalizeSupabaseError(
+      error,
+      'Location permission could not be checked.',
+    ).message;
+    callbacks.onError?.(message);
+    callbacks.onState?.('error', message);
+    stopEnRouteLocationPublisher();
+    return stopEnRouteLocationPublisher;
+  }
+  if (permission.status !== 'granted') {
+    const message =
+      'Location permission is required to share your route with the customer.';
+    callbacks.onError?.(message);
+    callbacks.onState?.('permission_denied', message);
+    stopEnRouteLocationPublisher();
+    return stopEnRouteLocationPublisher;
+  }
 
-  activeEnRouteSubscription = await Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.High,
-      timeInterval: EN_ROUTE_LOCATION_INTERVAL_MS,
-      distanceInterval: MIN_LOCATION_MOVEMENT_METERS,
-    },
-    (position) => {
-      const payload: LiveEnRouteLocation = {
-        bookingId,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        heading: position.coords.heading ?? null,
-        speed: position.coords.speed ?? null,
-        accuracy: position.coords.accuracy ?? null,
-        timestamp: position.timestamp,
-      };
-      if (activeEnRouteChannel) {
-        void activeEnRouteChannel.send({
-          type: 'broadcast',
-          event: 'location-update',
-          payload,
-        });
-      }
-      onLocationUpdate?.(payload);
-    },
-  );
+  try {
+    activeEnRouteSubscription = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: EN_ROUTE_LOCATION_INTERVAL_MS,
+        distanceInterval: MIN_LOCATION_MOVEMENT_METERS,
+      },
+      (position) => {
+        const payload: LiveEnRouteLocation = {
+          bookingId,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          heading: position.coords.heading ?? null,
+          speed: position.coords.speed ?? null,
+          accuracy: position.coords.accuracy ?? null,
+          timestamp: position.timestamp,
+        };
+        void (async () => {
+          try {
+            await recordWorkerLocation(
+              bookingId,
+              payload.latitude,
+              payload.longitude,
+            );
+            callbacks.onState?.('active');
+          } catch (error) {
+            const persistenceError = normalizeSupabaseError(
+              error,
+              'Route location could not be saved.',
+            ).message;
+            callbacks.onError?.(persistenceError);
+            callbacks.onState?.('error', persistenceError);
+          } finally {
+            if (activeEnRouteChannel) {
+              void activeEnRouteChannel.send({
+                type: 'broadcast',
+                event: 'location-update',
+                payload,
+              });
+            }
+            callbacks.onLocationUpdate?.(payload);
+          }
+        })();
+      },
+    );
+  } catch (error) {
+    const message = normalizeSupabaseError(
+      error,
+      'Live route sharing could not be started.',
+    ).message;
+    callbacks.onError?.(message);
+    callbacks.onState?.('error', message);
+    stopEnRouteLocationPublisher();
+    return stopEnRouteLocationPublisher;
+  }
 
   return stopEnRouteLocationPublisher;
 }

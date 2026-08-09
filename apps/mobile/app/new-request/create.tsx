@@ -59,6 +59,10 @@ import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 import { showAlert } from '@/components/AppAlert';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import {
+  aiMediaErrorMessage,
+  isTranscriptionFailure,
+} from '@/utils/aiMedia';
 
 const getParentForCategory = (name: string) => {
   const lower = name.toLowerCase();
@@ -162,6 +166,7 @@ export default function CreateRequestScreen() {
   const [voiceStatus, setVoiceStatus] = useState<MediaStatus>('idle');
   const [photoError, setPhotoError] = useState('');
   const [voiceError, setVoiceError] = useState('');
+  const [voiceNeedsManualText, setVoiceNeedsManualText] = useState(false);
   const [manualAddressMode, setManualAddressMode] = useState(false);
   const [manualAddress, setManualAddress] = useState({
     barangay: '',
@@ -443,6 +448,7 @@ const applySavedAddress = useCallback(
       }
       setMediaStatus(kind, 'processing');
       setMediaError(kind, '');
+      if (kind === 'voice') setVoiceNeedsManualText(false);
       try {
         const result = await assistRequestMedia({
           media,
@@ -466,12 +472,8 @@ const applySavedAddress = useCallback(
       } catch (error) {
         if (mediaGenerationRef.current[kind] !== generation) return;
         setMediaStatus(kind, 'failed');
-        setMediaError(
-          kind,
-          error instanceof Error
-            ? error.message
-            : 'AI assistance is temporarily unavailable.',
-        );
+        setMediaError(kind, aiMediaErrorMessage(error));
+        if (kind === 'voice') setVoiceNeedsManualText(isTranscriptionFailure(error));
       }
     },
     [description],
@@ -548,6 +550,7 @@ const applySavedAddress = useCallback(
     setUploadedMedia(kind, null);
     setMediaStatus(kind, 'idle');
     setMediaError(kind, '');
+    if (kind === 'voice') setVoiceNeedsManualText(false);
     removeGeneratedDescription(kind);
     if (kind === 'photo') setCameraPhoto(null);
     else {
@@ -576,6 +579,11 @@ const applySavedAddress = useCallback(
             : undefined,
         );
     }
+  };
+
+  const useWrittenDescription = () => {
+    removeMedia('voice');
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   };
 
   const validateRequest = (useAi: boolean, media: MediaInput[]) => {
@@ -1213,9 +1221,16 @@ const applySavedAddress = useCallback(
                       : voiceError}
             </Text>
             {voiceStatus === 'failed' ? (
-              <TouchableOpacity onPress={() => retryMediaAssist('voice')}>
-                <Text style={styles.mediaRetryText}>Retry</Text>
-              </TouchableOpacity>
+              <View style={styles.mediaRecoveryActions}>
+                <TouchableOpacity onPress={() => retryMediaAssist('voice')}>
+                  <Text style={styles.mediaRetryText}>Retry</Text>
+                </TouchableOpacity>
+                {voiceNeedsManualText ? (
+                  <TouchableOpacity onPress={useWrittenDescription}>
+                    <Text style={styles.mediaRetryText}>Use written description</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             ) : null}
           </View>
         ) : null}
@@ -1793,6 +1808,10 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     color: theme.colors.primary,
     fontWeight: '700',
+  },
+  mediaRecoveryActions: {
+    alignItems: 'flex-end',
+    gap: theme.spacing.xs,
   },
 
   textArea: {

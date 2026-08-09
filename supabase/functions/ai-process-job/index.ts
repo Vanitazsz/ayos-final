@@ -9,6 +9,7 @@ import {
 import { requestContext } from '../_frontend_shared/supabase.ts';
 import {
   runAnalysis,
+  TRANSCRIPTION_FAILED_CODE,
   validateCatalogAndCosts,
   type MediaInput,
   type ProviderAttempt,
@@ -105,7 +106,11 @@ Deno.serve(async (request) => {
       if (completeError) throw completeError;
       return success(complete, 'AI analysis completed');
     } catch (providerError) {
-      const value = providerError as Error & { attempts?: ProviderAttempt[]; retryable?: boolean };
+      const value = providerError as Error & {
+        code?: string;
+        attempts?: ProviderAttempt[];
+        retryable?: boolean;
+      };
       if (value.attempts?.length)
         await admin.from('ai_analysis_attempts').insert(
           value.attempts.map((attempt) => ({
@@ -127,13 +132,20 @@ Deno.serve(async (request) => {
         .from('ai_analysis_jobs')
         .update({
           status: 'FAILED',
-          error_code: value.message,
+          error_code: value.code ?? value.message,
           error_message:
             'AI providers could not complete this request. You can retry or continue manually.',
           retryable: Boolean(value.retryable),
           completed_at: new Date().toISOString(),
         })
         .eq('id', job.id);
+      if (value.code === TRANSCRIPTION_FAILED_CODE)
+        throw new HttpError(
+          503,
+          'transcription_failed',
+          'Voice transcription failed. Retry or continue with written text.',
+          { recovery: 'RETRY_OR_MANUAL_TEXT' },
+        );
       throw new HttpError(
         value.retryable ? 503 : 422,
         'ai_processing_failed',

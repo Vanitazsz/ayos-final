@@ -1,9 +1,9 @@
 # A-YOS UAT Verification Report
 
-- **Source template:** `checkuat.md` (dated August 7, 2026) — left untouched as the UAT template.
+- **Source template:** `checkuat.md` (original baseline dated August 7, 2026; UAT#30 follow-up added August 9, 2026).
 - **Date:** August 7, 2026
 - **Method:** Static, read-only verification of every UAT scenario against the codebase (mobile app, Supabase Edge Functions/migrations, tests). No live execution, on-device testing, or UI automation was run for this report.
-- **Scope:** All 29 UAT modules, 131 scenarios.
+- **Scope:** Original 29 UAT modules plus the UAT#30 Voice & AI follow-up module. The original static findings below remain a dated baseline; the implementation addendum supersedes changed items.
 
 ## Legend
 
@@ -15,6 +15,15 @@
 | `NVR` | Not verifiable in this repo — no UI/app source present (admin modules)                      |
 
 ## System-wide critical findings
+
+## August 9 implementation addendum
+
+- Manual GCash wallet top-up is now wired in the mobile worker wallet: amount, reference, private screenshot upload, owner-scoped pending-status reads, and refresh/polling are implemented. Administrator approval remains in the separate admin application.
+- Tracking now has customer arrival/completion controls, persisted worker location updates, Call and confirmation-gated Emergency actions, proof-of-work visibility, and retryable worker location-denial/write-failure feedback.
+- The payment success route now accepts the existing `?id=` navigation parameter, pre-checks the unique review, exposes “Rate your experience,” and links booking details to `/booking-summary/:id`.
+- Voice transcription failures now return a stable `transcription_failed` response with a retry/manual-text recovery path; image-only AI analysis remains supported.
+- The active `/request/:id` navigation targets were redirected to the existing matching flow. The two unreferenced legacy screens (`payment-received.tsx` and `(worker)/leave-feedback/[id].tsx`) were audited and intentionally left preserved without new callers.
+- Hosted Supabase values still requiring operator verification: `ai.enabled`, provider keys/models, Auth “Confirm email,” and OTP template settings.
 
 1. **No admin application exists in this repo.** `apps/` contains only `apps/mobile/`. `.gitignore:27-28` intentionally excludes the admin source: `# ignore admin source code to avoid pushing it` / `apps/admin/`. Every admin module (UAT#17–28) therefore has **no UI** here. `playwright.config.ts:32-33` boots `pnpm --dir apps/admin dev` (port 5173) and the `tests/admin-e2e/` specs target `http://localhost:5173`; neither can run from this repo. `infra/admin.Dockerfile` copies `apps/admin/dist`, which does not exist here.
 2. **Backend/DB support exists for most admin functionality** via the Edge Function `supabase/functions/api/index.ts:19` (`GET /admin/{users,workers,bookings,payments,reviews,support,audit,settings,reports,ai-jobs}` and `/admin/dashboard`) and many admin RPCs in `supabase/migrations/`. This is server-side only; nothing is exposed through a UI in this repo.

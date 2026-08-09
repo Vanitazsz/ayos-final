@@ -37,14 +37,14 @@ Shared screens (accessible from both modes): Provider Detail, Booking, Payment, 
 | 6 | Provider Detail | `/provider/:id` | Stack | slide_from_right |
 | 7 | Schedule Booking | `/booking/:id` | Stack | slide_from_right |
 | 8 | Payment | `/payment` | Stack | modal |
-| 9 | Payment Received | `/payment-received` | Stack | modal |
+| 9 | Payment Success | `/payment/success?id=:bookingId` | Stack | modal |
 | 10 | Live Tracking | `/tracking/:id` | Stack | slide_from_right |
 | 11 | Rate & Review | `/review/:id` | Stack | modal |
 | 12 | New Request | `/new-request/create` | Stack | slide_from_right |
 | 13 | Accept Worker | `/accept-worker/:id` | Stack | slide_from_right |
 | 14 | Chat | `/chat/:id` | Stack | slide_from_right |
 | 15 | Worker Match | `/match/:id` | Stack | slide_from_right |
-| 16 | Request Details | `/request/:id` | Stack | slide_from_right |
+| 16 | Request Matching | `/new-request/matching?requestId=:id` | Stack | slide_from_right |
 | 17 | Booking Success | `/new-request/success` | Stack | modal |
 | 18 | 404 | `+not-found` | Stack | default |
 

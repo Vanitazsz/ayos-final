@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.admin-invite-account]
 verify_jwt = true
+
+[functions.api]
+verify_jwt = true

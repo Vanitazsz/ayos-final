@@ -15,6 +15,12 @@ import {
   resolveProfileAvatar,
 } from '@/services/profile';
 import { averageRating } from '@/services/reviewRatings';
+import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
+import {
+  calculateCommissionAmount,
+  normalizeCommissionRatePercent,
+} from '@/utils/commission';
+import { recordWorkerLocation as recordWorkerLocationRpc } from './bookingLocation';
 
 // The current RPC schema still requires a positive request budget. Using the
 // maximum storable value removes customer-side price filtering; select_worker
@@ -751,75 +757,50 @@ async function transition(
   if (error) throw error;
   return { data };
 }
-export const PLATFORM_COMMISSION_RATE = 0.10;
-
 export async function simulateTopUp(amount: number) {
-  const user = await requireUser();
   const { data, error } = await supabase.rpc('simulate_wallet_topup', {
     p_amount: amount,
   });
-  if (!error && data) {
-    return data as {
-      previousBalance: number;
-      newBalance: number;
-      amount: number;
-      status: string;
-      transactionId: string;
-    };
-  }
-
-  let { data: wallet } = await supabase
-    .from('wallet_accounts')
-    .select('id,wallet_transactions(amount,status)')
-    .eq('account_id', user.id)
-    .maybeSingle();
-
-  if (!wallet) {
-    const { data: newWallet } = await supabase
-      .from('wallet_accounts')
-      .insert({ account_id: user.id })
-      .select('id,wallet_transactions(amount,status)')
-      .single();
-    wallet = newWallet;
-  }
-
-  const prevTrans = wallet?.wallet_transactions ?? [];
-  const previousBalance = prevTrans
-    .filter((row: any) => ['AVAILABLE', 'COMPLETED'].includes(row.status))
-    .reduce((sum: number, row: any) => sum + Number(row.amount), 0);
-
-  if (wallet?.id) {
-    await supabase.from('wallet_transactions').insert({
-      wallet_account_id: wallet.id,
-      kind: 'TOP_UP',
-      status: 'AVAILABLE',
-      amount: amount,
-      source_type: 'SIMULATED_TOP_UP',
-      source_id: randomUUID(),
-      description: 'Simulated wallet top-up',
-    });
-  }
-
-  const newBalance = previousBalance + amount;
-  return {
-    previousBalance,
-    newBalance,
-    amount,
-    status: 'Successful',
+  if (error) throw error;
+  if (!data) throw new Error('Simulated top-up returned no result.');
+  return data as {
+    previousBalance: number;
+    newBalance: number;
+    amount: number;
+    status: string;
+    transactionId: string;
   };
 }
 
 export async function acceptJob(bookingId: string) {
-  const { data: booking } = await supabase
+  const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select('agreed_service_amount')
+    .select('agreed_service_amount,service_requests(category_id)')
     .eq('id', bookingId)
     .maybeSingle();
+  if (bookingError) throw bookingError;
+  if (!booking) throw new Error('Booking not found');
 
-  const serviceAmount = Number(booking?.agreed_service_amount ?? 1000);
-  const requiredCommission = Math.round(serviceAmount * PLATFORM_COMMISSION_RATE);
+  const categoryId = firstRelation(booking.service_requests)?.category_id;
+  if (!categoryId) {
+    throw new Error('Booking service category is unavailable');
+  }
+
+  const { data: ratePercent, error: rateError } = await supabase.rpc(
+    'get_effective_commission_rate',
+    { p_category_id: categoryId },
+  );
+  if (rateError) throw rateError;
+
+  const serviceAmount = Number(booking.agreed_service_amount);
+  const normalizedRatePercent = normalizeCommissionRatePercent(ratePercent);
+  const requiredCommission = calculateCommissionAmount(
+    serviceAmount,
+    normalizedRatePercent,
+  );
 
   const walletSummary = await fetchWallet();
+  if (walletSummary.error) throw new Error(walletSummary.error);
   const availableBalance = Number(
     (walletSummary.data?.available ?? '0').replace(/[^0-9.]/g, ''),
   );
@@ -842,75 +823,9 @@ export async function confirmPaymentWithCommission(
     p_payment_method: paymentMethod === 'ONLINE_SIMULATED' ? 'ONLINE_SIMULATED' : 'CASH',
   });
 
-  if (!error && data) {
-    return data;
-  }
-
-  const { data: booking } = await supabase
-    .from('bookings')
-    .select('worker_account_id,agreed_service_amount')
-    .eq('id', bookingId)
-    .single();
-
-  if (!booking) throw new Error('Booking not found');
-
-  const serviceAmount = Number(booking.agreed_service_amount ?? 1000);
-  const commissionAmount = Math.round(serviceAmount * PLATFORM_COMMISSION_RATE);
-
-  let { data: wallet } = await supabase
-    .from('wallet_accounts')
-    .select('id')
-    .eq('account_id', booking.worker_account_id)
-    .maybeSingle();
-
-  if (!wallet) {
-    const { data: newWallet } = await supabase
-      .from('wallet_accounts')
-      .insert({ account_id: booking.worker_account_id })
-      .select('id')
-      .single();
-    wallet = newWallet;
-  }
-
-  if (wallet?.id) {
-    const { data: existing } = await supabase
-      .from('wallet_transactions')
-      .select('id')
-      .eq('wallet_account_id', wallet.id)
-      .eq('source_type', 'BOOKING_COMMISSION')
-      .eq('source_id', bookingId)
-      .maybeSingle();
-
-    if (!existing) {
-      await supabase.from('wallet_transactions').insert({
-        wallet_account_id: wallet.id,
-        kind: 'COMMISSION',
-        status: 'AVAILABLE',
-        amount: -commissionAmount,
-        source_type: 'BOOKING_COMMISSION',
-        source_id: bookingId,
-        description: 'Platform commission deduction (10%)',
-      });
-    }
-
-    await supabase
-      .from('payments')
-      .upsert(
-        {
-          booking_id: bookingId,
-          method: paymentMethod === 'ONLINE_SIMULATED' ? 'ONLINE_SIMULATED' : 'CASH',
-          status: 'SUCCESSFUL',
-          service_amount: serviceAmount,
-          commission_rate: 0.10,
-          commission_amount: commissionAmount,
-          worker_net_amount: serviceAmount - commissionAmount,
-          idempotency_key: `comm-${bookingId}`,
-        },
-        { onConflict: 'booking_id' },
-      );
-  }
-
-  return { status: 'COMPLETED' };
+  if (error) throw error;
+  if (!data) throw new Error('Commission settlement returned no result');
+  return data;
 }
 
 export async function prepareJob(bookingId: string) {
@@ -1170,7 +1085,7 @@ export async function fetchBookingTracking(id: string) {
     supabase
       .from('bookings')
       .select(
-        '*,service_requests(*,addresses(*)),worker_profiles:worker_account_id(*),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
+        '*,service_requests(*,addresses(*)),worker_profiles:worker_account_id(*,accounts:account_id(mobile)),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
       )
       .eq('id', id)
       .single(),
@@ -1229,51 +1144,20 @@ export async function simulateMockGcashPayment(
   bookingId: string,
   referenceNumber: string,
 ) {
-  try {
-    const { data, error } = await supabase.rpc('simulate_gcash_booking_payment', {
-      p_booking_id: bookingId,
-      p_reference_number: referenceNumber,
-    });
-    if (error) throw error;
-    if (
-      !data ||
-      data.method !== 'GCASH' ||
-      data.provider !== 'MOCK_GCASH' ||
-      data.status !== 'SUCCESSFUL'
-    ) {
-      throw new Error('Invalid GCash simulation response');
-    }
-    return data;
-  } catch (cause: any) {
-    if (
-      cause?.code === 'PGRST202' ||
-      cause?.message?.includes('schema cache') ||
-      cause?.message?.includes('Could not find the function')
-    ) {
-      console.warn(
-        '[simulateMockGcashPayment] Backend RPC missing from schema cache, using mock fallback:',
-        cause,
-      );
-      return {
-        id: `mock-payment-${bookingId}`,
-        booking_id: bookingId,
-        method: 'GCASH',
-        provider: 'MOCK_GCASH',
-        status: 'SUCCESSFUL',
-        service_amount: 1000,
-        commission_rate: 0.1,
-        commission_amount: 100,
-        worker_net_amount: 900,
-        homeowner_platform_charge: 0,
-        idempotency_key: `mock-gcash-${bookingId}`,
-        provider_payment_id: referenceNumber,
-        successful_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-    }
-    throw cause;
+  const { data, error } = await supabase.rpc('simulate_gcash_booking_payment', {
+    p_booking_id: bookingId,
+    p_reference_number: referenceNumber,
+  });
+  if (error) throw error;
+  if (
+    !data ||
+    data.method !== 'GCASH' ||
+    data.provider !== 'MOCK_GCASH' ||
+    data.status !== 'SUCCESSFUL'
+  ) {
+    throw new Error('Invalid GCash simulation response');
   }
+  return data;
 }
 export async function fetchPaymentForBooking(bookingId: string) {
   return wrap(async () => {
@@ -1290,9 +1174,19 @@ export async function fetchPlatformFeeSettings() {
   return wrap(async () => {
     const { data, error } = await supabase.rpc('get_platform_fee_settings');
     if (error) throw error;
+    const payload = data as {
+      commissionRate?: unknown;
+      homeownerCharge?: unknown;
+      serviceCategoryOverrides?: Array<{
+        id: string;
+        name: string;
+        commissionRatePercent: number | null;
+      }>;
+    } | null;
     return {
-      commissionRate: Number((data as any)?.commissionRate ?? 10),
-      homeownerCharge: Number((data as any)?.homeownerCharge ?? 0),
+      commissionRate: normalizeCommissionRatePercent(payload?.commissionRate),
+      homeownerCharge: Number(payload?.homeownerCharge ?? 0),
+      serviceCategoryOverrides: payload?.serviceCategoryOverrides ?? [],
     };
   });
 }
@@ -2166,17 +2060,23 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
         ),
       ),
     );
-    const selectedSkillIds = savedSkills.map((skill) => skill.categoryId);
+    const compatibleSkills = filterWorkerSkillsForIndustries(
+      savedSkills.map((skill) => skill.categoryId),
+      Object.fromEntries(
+        savedSkills.map((skill) => [
+          skill.categoryId,
+          skill.rateMinor == null ? null : Number(skill.rateMinor),
+        ]),
+      ),
+      industries,
+      selectedIndustryIds,
+    );
+    const selectedSkillIds = compatibleSkills.skillIds;
     const yearsExperience = Math.max(
       ...savedSkills.map((skill) => skill.years ?? 0),
       1,
     );
-    const rateBySkillId = Object.fromEntries(
-      savedSkills.map((skill) => [
-        skill.categoryId,
-        skill.rateMinor == null ? null : Number(skill.rateMinor),
-      ]),
-    );
+    const rateBySkillId = compatibleSkills.rates;
 
     return {
       industries,
@@ -2192,28 +2092,27 @@ export async function fetchMyWorkerSkillsAndIndustry(): Promise<
 export async function updateMyWorkerSkillsAndIndustry(input: {
   selectedIndustryIds: string[];
   selectedSkillIds: string[];
+  industries: IndustryWithSkills[];
   yearsExperience?: number;
   rateBySkillId: Record<string, number | null>;
 }): Promise<ApiResponse<boolean>> {
   return wrap(async () => {
-    const skills = input.selectedSkillIds.map((categoryId) => ({
+    const compatible = filterWorkerSkillsForIndustries(
+      input.selectedSkillIds,
+      input.rateBySkillId,
+      input.industries,
+      input.selectedIndustryIds,
+    );
+    const skills = compatible.skillIds.map((categoryId) => ({
       categoryId,
       years: input.yearsExperience ?? 1,
-      rateMinor: input.rateBySkillId[categoryId] ?? null,
+      rateMinor: compatible.rates[categoryId] ?? null,
     }));
     const saveResult = await supabase.rpc('save_my_worker_skills', {
       p_industry_ids: input.selectedIndustryIds,
       p_skills: skills,
     });
 
-    if (saveResult.error && input.selectedIndustryIds.length === 1) {
-      const legacyResult = await supabase.rpc('save_my_worker_skills', {
-        p_primary_industry_id: input.selectedIndustryIds[0],
-        p_skills: skills,
-      });
-      if (!legacyResult.error) return true;
-      throw saveResult.error;
-    }
     if (saveResult.error) throw saveResult.error;
     return true;
   });
@@ -2227,6 +2126,37 @@ export type ProximityArrivalResult = {
   status: string;
   message?: string;
 };
+
+export type CustomerTrackingActionResult = {
+  success: boolean;
+  status: string;
+  alreadyConfirmed?: boolean;
+  distanceMeters?: number;
+};
+
+export async function confirmCustomerArrival(
+  bookingId: string,
+): Promise<CustomerTrackingActionResult> {
+  const { data, error } = await supabase.rpc('confirm_customer_arrival', {
+    p_booking_id: bookingId,
+  });
+  if (error) throw error;
+  if (!data) throw new Error('Customer arrival confirmation returned no result.');
+  return data as CustomerTrackingActionResult;
+}
+
+export async function confirmCustomerCompletion(
+  bookingId: string,
+): Promise<CustomerTrackingActionResult> {
+  const { data, error } = await supabase.rpc('confirm_customer_completion', {
+    p_booking_id: bookingId,
+  });
+  if (error) throw error;
+  if (!data) throw new Error('Customer completion confirmation returned no result.');
+  return data as CustomerTrackingActionResult;
+}
+
+export { recordWorkerLocationRpc as recordWorkerLocation };
 
 export async function confirmWorkerArrival(
   bookingId: string,

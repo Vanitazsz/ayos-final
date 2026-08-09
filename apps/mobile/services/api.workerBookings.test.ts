@@ -217,3 +217,38 @@ describe('booking completion', () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('customer tracking actions', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it('calls the customer arrival RPC without optimistic state changes', async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: { success: true, status: 'WORKER_ARRIVED' },
+      error: null,
+    });
+    const { confirmCustomerArrival } = await import('./api');
+
+    await expect(confirmCustomerArrival('booking-id')).resolves.toEqual({
+      success: true,
+      status: 'WORKER_ARRIVED',
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith('confirm_customer_arrival', {
+      p_booking_id: 'booking-id',
+    });
+  });
+
+  it('preserves server denial for customer completion', async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'P0001', message: 'CUSTOMER_COMPLETION_NOT_AVAILABLE' },
+    });
+    const { confirmCustomerCompletion } = await import('./api');
+
+    await expect(confirmCustomerCompletion('booking-id')).rejects.toEqual(
+      expect.objectContaining({ message: 'CUSTOMER_COMPLETION_NOT_AVAILABLE' }),
+    );
+  });
+});

@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   AlertCircle,
   ArrowLeft,
@@ -49,6 +49,7 @@ function diagnosticMessage(
 
 export default function MatchingScreen() {
   const router = useRouter();
+  const { requestId } = useLocalSearchParams<{ requestId?: string }>();
   const {
     state,
     center,
@@ -64,7 +65,7 @@ export default function MatchingScreen() {
     startMatching,
     choose,
     reset,
-  } = useLiveMatching();
+  } = useLiveMatching(requestId);
 
   return (
     <Screen safeArea>

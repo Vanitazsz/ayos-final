@@ -22,6 +22,8 @@ interface CompletedSummaryProps {
   duration: string;
   earnings: string;
   paymentStatus: string;
+  commissionRatePercent?: number | null;
+  commissionAmount?: number | null;
   onConfirmCash: (method?: 'CASH' | 'ONLINE_SIMULATED') => void;
 }
 
@@ -30,6 +32,8 @@ export const CompletedSummary = React.memo(function CompletedSummary({
   duration,
   earnings,
   paymentStatus,
+  commissionRatePercent,
+  commissionAmount,
   onConfirmCash,
 }: CompletedSummaryProps) {
   const paymentConfirmed = paymentStatus === 'SUCCESSFUL';
@@ -94,8 +98,8 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         style={styles.subtitle}
       >
         {paymentConfirmed
-          ? 'Payment and 10% platform commission deduction have been recorded.'
-          : 'Mark customer payment as received to complete 10% commission deduction.'}
+          ? 'Payment and platform commission deduction have been recorded.'
+          : 'Mark customer payment as received to complete the server-calculated commission deduction.'}
       </AppText>
 
       <View style={styles.summaryCard}>
@@ -134,12 +138,14 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
           <AppText variant="body" color={Colors.textTertiary}>
-            Platform Commission (10%)
+            {commissionRatePercent == null
+              ? 'Platform Commission'
+              : `Platform Commission (${commissionRatePercent.toFixed(2)}%)`}
           </AppText>
           <AppText variant="body" weight="bold" color={Colors.error}>
-            -₱{(
-              (Number(earnings.replace(/[^0-9.]/g, '')) || 1000) * 0.10
-            ).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            {commissionAmount == null
+              ? 'Calculated by server'
+              : `-₱${commissionAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
           </AppText>
         </View>
         {(feedback || proofPhotos.length > 0) && (

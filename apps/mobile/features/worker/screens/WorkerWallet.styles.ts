@@ -19,6 +19,14 @@ export const styles = StyleSheet.create({
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing['1'], marginTop: Spacing['1'] },
   balanceActions: { flexDirection: 'row', gap: Spacing['3'] },
   balanceBtn: { flex: 1 },
+  topupStatusCard: {
+    backgroundColor: Colors.white, borderRadius: Radius.xl,
+    padding: Spacing['4'], gap: Spacing['2'], ...Elevation.sm,
+    marginBottom: theme.spacing.xl,
+  },
+  topupStatusHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
 
   // Period toggle
   periodToggle: { flexDirection: 'row', justifyContent: 'center', gap: Spacing['2'], marginBottom: theme.spacing.md },
@@ -107,6 +115,11 @@ export const styles = StyleSheet.create({
   amountInput: {
     flex: 1, fontSize: Typography['5xl'], fontWeight: '800', color: Colors.textPrimary,
     paddingVertical: 0,
+  },
+  referenceInput: {
+    backgroundColor: Colors.surfaceLight, borderRadius: Radius.xl,
+    paddingHorizontal: Spacing['4'], paddingVertical: Spacing['3'],
+    fontSize: Typography.lg, fontWeight: '600',
   },
   quickAmounts: { flexDirection: 'row', gap: Spacing['2'] },
   quickAmt: {

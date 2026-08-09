@@ -241,7 +241,20 @@
   },
   {
     "id": "FR-61",
-    "text": "The system shall provide Call, Chat, and Emergency contact options during an active booking."
+    "text": "The system shall provide Call, Chat, and Emergency contact options during an active booking.",
+    "traceability": {
+      "sources": [
+        "apps/mobile/app/tracking/[id].tsx",
+        "apps/mobile/hooks/useBookingTracking.ts",
+        "apps/mobile/services/liveDispatch.ts"
+      ],
+      "tests": [
+        "apps/mobile/services/liveDispatch.test.ts",
+        "apps/mobile/services/api.workerBookings.test.ts"
+      ],
+      "uat": "UAT#9",
+      "status": "repository_verified_device_uat_pending"
+    }
   },
   {
     "id": "FR-62",
@@ -289,7 +302,16 @@
   },
   {
     "id": "FR-73",
-    "text": "The system shall record payment details, payment status, the related booking reference, required cash confirmations, configured cash commission (default 10%), worker net amount, and homeowner platform charge (default PHP 0)."
+    "text": "The system shall record payment details, payment status, the related booking reference, required cash confirmations, configured cash commission (default 10%), worker net amount, and homeowner platform charge (default PHP 0).",
+    "traceability": {
+      "sources": [
+        "supabase/migrations/20260809071026_service_category_commission_overrides.sql",
+        "supabase/functions/api/index.ts"
+      ],
+      "tests": ["supabase/tests/database/service_category_commission.test.sql"],
+      "uat": "UAT#11, UAT#16, UAT#21",
+      "status": "repository_verified_admin_ui_external"
+    }
   },
   {
     "id": "FR-74",
@@ -349,7 +371,17 @@
   },
   {
     "id": "FR-88",
-    "text": "The system shall provide a post-payment Rate & Review modal that displays the customer?s submitted rating and review for the related completed, paid booking. The worker shall view this feedback only and shall not submit a rating or review through the modal. Customer feedback remains subject to administrator moderation before publication."
+    "text": "The system shall provide a post-payment Rate & Review modal that displays the customer?s submitted rating and review for the related completed, paid booking. The worker shall view this feedback only and shall not submit a rating or review through the modal. Customer feedback remains subject to administrator moderation before publication.",
+    "traceability": {
+      "sources": [
+        "apps/mobile/app/payment/success.tsx",
+        "apps/mobile/app/review/[id].tsx",
+        "apps/mobile/services/reviewQueries.ts"
+      ],
+      "tests": ["apps/mobile/services/reviewQueries.test.ts"],
+      "uat": "UAT#12",
+      "status": "repository_verified_hosted_moderation_uat_pending"
+    }
   },
   {
     "id": "FR-89",
@@ -365,23 +397,71 @@
   },
   {
     "id": "FR-92",
-    "text": "The system shall provide an optional AI Home Assistant that a user can open when preparing a service request."
+    "text": "The system shall provide an optional AI Home Assistant that a user can open when preparing a service request.",
+    "traceability": {
+      "sources": [
+        "apps/mobile/app/new-request/create.tsx",
+        "supabase/functions/ai-assist-media/index.ts"
+      ],
+      "tests": [
+        "supabase/functions/_frontend_shared/ai.test.ts",
+        "apps/mobile/utils/aiMedia.test.ts"
+      ],
+      "uat": "UAT#30",
+      "status": "repository_verified_hosted_ai_prerequisites_pending"
+    }
   },
   {
     "id": "FR-93",
-    "text": "The system shall let a user submit an issue photo or a spoken issue description for AI analysis, and shall convert supported spoken input to text."
+    "text": "The system shall let a user submit an issue photo or a spoken issue description for AI analysis, and shall convert supported spoken input to text.",
+    "traceability": {
+      "sources": [
+        "supabase/functions/_frontend_shared/ai.ts",
+        "apps/mobile/app/new-request/create.tsx"
+      ],
+      "tests": [
+        "supabase/functions/_frontend_shared/ai.test.ts",
+        "apps/mobile/utils/aiMedia.test.ts"
+      ],
+      "uat": "UAT#30",
+      "status": "repository_verified_hosted_provider_uat_pending"
+    }
   },
   {
     "id": "FR-94",
-    "text": "The system shall analyze the submitted issue and return a detected issue type and severity."
+    "text": "The system shall analyze the submitted issue and return a detected issue type and severity.",
+    "traceability": {
+      "sources": [
+        "supabase/functions/_frontend_shared/ai.ts",
+        "supabase/functions/ai-assist-media/index.ts"
+      ],
+      "tests": ["supabase/functions/_frontend_shared/ai.test.ts"],
+      "uat": "UAT#30",
+      "status": "repository_verified_hosted_provider_uat_pending"
+    }
   },
   {
     "id": "FR-95",
-    "text": "The system shall show the AI’s possible cause, suggested service category, estimated cost range, and safety advice."
+    "text": "The system shall show the AI’s possible cause, suggested service category, estimated cost range, and safety advice.",
+    "traceability": {
+      "sources": [
+        "supabase/functions/_frontend_shared/ai.ts",
+        "apps/mobile/app/new-request/create.tsx"
+      ],
+      "tests": ["supabase/functions/_frontend_shared/ai.test.ts"],
+      "uat": "UAT#30",
+      "status": "repository_verified_hosted_provider_uat_pending"
+    }
   },
   {
     "id": "FR-96",
-    "text": "The system shall create an editable service-request draft from available AI analysis details; the user shall review or change the draft before sending the booking request."
+    "text": "The system shall create an editable service-request draft from available AI analysis details; the user shall review or change the draft before sending the booking request.",
+    "traceability": {
+      "sources": ["apps/mobile/app/new-request/create.tsx", "apps/mobile/services/apiCore.ts"],
+      "tests": ["apps/mobile/utils/aiMedia.test.ts"],
+      "uat": "UAT#30",
+      "status": "repository_verified_hosted_ai_prerequisites_pending"
+    }
   },
   {
     "id": "FR-97",

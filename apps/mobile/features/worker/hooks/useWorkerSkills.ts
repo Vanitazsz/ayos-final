@@ -4,6 +4,7 @@ import {
   fetchMyWorkerSkillsAndIndustry,
   type IndustryWithSkills,
 } from '@/services/api';
+import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
 
 export interface WorkerSkillsSnapshot {
   industries: string;
@@ -40,31 +41,24 @@ export function useWorkerSkills() {
             res.data.industries.find((item) => item.id === industryId),
           )
           .filter((item): item is IndustryWithSkills => item != null);
-        const industrySkillIds = new Set(
-          selectedIndustries.flatMap((item) =>
-            item.skills.map((skill) => skill.id),
-          ),
-        );
-        const compatibleSkillIds = res.data.selectedSkillIds.filter((skillId) =>
-          industrySkillIds.has(skillId),
-        );
-        const nextRateBySkillId = Object.fromEntries(
-          Object.entries(res.data.rateBySkillId).filter(([skillId]) =>
-            compatibleSkillIds.includes(skillId),
-          ),
+        const compatible = filterWorkerSkillsForIndustries(
+          res.data.selectedSkillIds,
+          res.data.rateBySkillId,
+          res.data.industries,
+          selectedIndustries.map((item) => item.id),
         );
         const nextYearsExperience = res.data.yearsExperience || 3;
         setSelectedIndustryIds(selectedIndustries.map((item) => item.id));
-        setSelectedSkillIds(compatibleSkillIds);
+        setSelectedSkillIds(compatible.skillIds);
         setYearsExperience(nextYearsExperience);
-        setRateBySkillId(nextRateBySkillId);
+        setRateBySkillId(compatible.rates);
         setInitialSnapshot({
           industries: JSON.stringify(
             selectedIndustries.map((item) => item.id).sort(),
           ),
-          skills: JSON.stringify([...compatibleSkillIds].sort()),
+          skills: JSON.stringify([...compatible.skillIds].sort()),
           years: nextYearsExperience,
-          rates: JSON.stringify(Object.entries(nextRateBySkillId).sort()),
+          rates: JSON.stringify(Object.entries(compatible.rates).sort()),
         });
       })
       .catch((err) => {
@@ -81,13 +75,23 @@ export function useWorkerSkills() {
     }, [load]),
   );
 
-  const toggleIndustry = useCallback((industryId: string) => {
-    setSelectedIndustryIds((current) =>
-      current.includes(industryId)
-        ? current.filter((id) => id !== industryId)
-        : [...current, industryId],
-    );
-  }, []);
+  const toggleIndustry = useCallback(
+    (industryId: string) => {
+      const nextIndustryIds = selectedIndustryIds.includes(industryId)
+        ? selectedIndustryIds.filter((id) => id !== industryId)
+        : [...selectedIndustryIds, industryId];
+      const compatible = filterWorkerSkillsForIndustries(
+        selectedSkillIds,
+        rateBySkillId,
+        industries,
+        nextIndustryIds,
+      );
+      setSelectedIndustryIds(nextIndustryIds);
+      setSelectedSkillIds(compatible.skillIds);
+      setRateBySkillId(compatible.rates);
+    },
+    [industries, rateBySkillId, selectedIndustryIds, selectedSkillIds],
+  );
 
   return {
     industries,

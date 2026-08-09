@@ -14,7 +14,11 @@ import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
 import { ArrowLeft, Star, UploadCloud, X } from 'lucide-react-native';
 import { randomUUID } from '@/lib/crypto';
-import { createReview, fetchBookingDetail } from '@/services/api';
+import {
+  createReview,
+  fetchBookingDetail,
+  fetchReviewForBooking,
+} from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import { showAlert } from '@/components/AppAlert';
 
@@ -26,6 +30,9 @@ export default function ReviewScreen() {
   const [recommend, setRecommend] = useState(true);
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [reviewCheck, setReviewCheck] = useState<
+    'checking' | 'ready' | 'submitted' | 'unavailable'
+  >('checking');
   const submittingRef = useRef(false);
 
   const bookingId = Array.isArray(id) ? id[0] : id;
@@ -35,6 +42,23 @@ export default function ReviewScreen() {
       void fetchBookingDetail(bookingId).then((result) => {
         if (!result.error) setBooking(result.data);
       });
+  }, [bookingId]);
+  useEffect(() => {
+    if (!bookingId) {
+      setReviewCheck('unavailable');
+      return;
+    }
+    let active = true;
+    void fetchReviewForBooking(bookingId)
+      .then((existingReview) => {
+        if (active) setReviewCheck(existingReview ? 'submitted' : 'ready');
+      })
+      .catch(() => {
+        if (active) setReviewCheck('unavailable');
+      });
+    return () => {
+      active = false;
+    };
   }, [bookingId]);
   const handleSubmit = async () => {
     if (submittingRef.current) return;
@@ -46,6 +70,17 @@ export default function ReviewScreen() {
       showAlert(
         'Review unavailable',
         'This review is missing its booking reference. Please return to your completed bookings and try again.',
+      );
+      return;
+    }
+    if (reviewCheck === 'submitted') {
+      showAlert('Review already submitted', 'You have already rated this booking.');
+      return;
+    }
+    if (reviewCheck !== 'ready') {
+      showAlert(
+        'Review unavailable',
+        'We could not verify this booking review. Please try again later.',
       );
       return;
     }
@@ -91,11 +126,16 @@ export default function ReviewScreen() {
       if (!createdReview?.id) {
         throw new Error('The review could not be confirmed. Please try again.');
       }
-    } catch {
-      // Navigate home regardless of success or failure
+      setReviewCheck('submitted');
+      router.replace('/(tabs)/home');
+    } catch (error) {
+      showAlert(
+        'Review could not be submitted',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
     } finally {
       setLoading(false);
-      router.replace('/(tabs)/home');
+      submittingRef.current = false;
     }
   };
 
@@ -147,6 +187,8 @@ export default function ReviewScreen() {
       </View>
 
       <View style={styles.content}>
+        {reviewCheck === 'ready' ? (
+          <>
         <View style={styles.workerInfo}>
           <View style={styles.avatarPlaceholder} />
           <Text
@@ -249,16 +291,44 @@ export default function ReviewScreen() {
             thumbColor={theme.colors.surface}
           />
         </View>
+          </>
+        ) : (
+          <View style={styles.submittedState}>
+            <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>
+              {reviewCheck === 'checking'
+                ? 'Checking review status…'
+                : reviewCheck === 'submitted'
+                  ? 'Review already submitted'
+                  : 'Review unavailable'}
+            </Text>
+            <Text style={[theme.typography.body2, styles.submittedText]}>
+              {reviewCheck === 'submitted'
+                ? 'Thank you for sharing your experience with this booking.'
+                : reviewCheck === 'checking'
+                  ? 'Please wait while we check this booking.'
+                  : 'We could not verify this booking review. Return to the booking details and try again.'}
+            </Text>
+            {reviewCheck === 'submitted' && bookingId && (
+              <Button
+                title="View Booking Details"
+                onPress={() => router.replace(`/booking-summary/${bookingId}`)}
+                fullWidth
+              />
+            )}
+          </View>
+        )}
       </View>
 
-      <View style={styles.footer}>
-        <Button
-          title="Submit Review"
-          onPress={handleSubmit}
-          loading={loading}
-          fullWidth
-        />
-      </View>
+      {reviewCheck === 'ready' && (
+        <View style={styles.footer}>
+          <Button
+            title="Submit Review"
+            onPress={handleSubmit}
+            loading={loading}
+            fullWidth
+          />
+        </View>
+      )}
     </Screen>
   );
 }
@@ -277,6 +347,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   content: { flex: 1, paddingVertical: theme.spacing.lg },
+  submittedState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xxxl,
+    gap: theme.spacing.md,
+  },
+  submittedText: { color: theme.colors.textSecondary, textAlign: 'center' },
   workerInfo: { alignItems: 'center', marginBottom: theme.spacing.xxxl },
   avatarPlaceholder: {
     width: 80,

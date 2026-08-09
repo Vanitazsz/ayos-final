@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requestPermission: vi.fn(),
@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   appStateListeners: [] as Array<(state: string) => void>,
   rpc: vi.fn(),
   readiness: vi.fn(),
+  channelSend: vi.fn(),
+  channelSubscribe: vi.fn(),
 }));
 
 vi.mock('expo-location', () => ({
@@ -37,8 +39,8 @@ vi.mock('@/lib/supabase', () => ({
     },
     rpc: mocks.rpc,
     channel: vi.fn(() => ({
-      subscribe: vi.fn(),
-      send: vi.fn(),
+      subscribe: mocks.channelSubscribe,
+      send: mocks.channelSend,
       on: vi.fn().mockReturnThis(),
     })),
     removeChannel: vi.fn(),
@@ -65,6 +67,10 @@ import {
   stopEnRouteLocationPublisher,
 } from './liveDispatch';
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.channelSubscribe.mockResolvedValue(undefined);
+});
 
 describe('normalizeSupabaseError', () => {
   it('preserves PostgREST messages and codes', () => {
@@ -221,5 +227,136 @@ describe('startForegroundWorkerPresence', () => {
 
     stop();
     expect(mocks.removeWatch).toHaveBeenCalled();
+  });
+
+  it('persists accepted coordinates and still broadcasts the live update', async () => {
+    const position = {
+      coords: {
+        latitude: 14.4179,
+        longitude: 120.9795,
+        accuracy: 12,
+        heading: 90,
+        speed: 4,
+      },
+      timestamp: 123,
+    };
+    let listener: ((value: typeof position) => void) | undefined;
+    mocks.requestPermission.mockResolvedValue({ status: 'granted' });
+    mocks.rpc.mockResolvedValue({ data: { id: 'location-1' }, error: null });
+    mocks.watchPosition.mockImplementation(async (_options, next) => {
+      listener = next;
+      return { remove: mocks.removeWatch };
+    });
+
+    const stop = await startEnRouteLocationPublisher('test-booking-123');
+    listener?.(position);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mocks.rpc).toHaveBeenCalledWith('record_worker_location', {
+      booking_id: 'test-booking-123',
+      latitude: 14.4179,
+      longitude: 120.9795,
+    });
+    expect(mocks.channelSend).toHaveBeenCalledWith({
+      type: 'broadcast',
+      event: 'location-update',
+      payload: expect.objectContaining({
+        bookingId: 'test-booking-123',
+        latitude: 14.4179,
+        longitude: 120.9795,
+      }),
+    });
+    stop();
+  });
+
+  it('surfaces persistence failure while retaining the broadcast', async () => {
+    const position = {
+      coords: {
+        latitude: 14.4179,
+        longitude: 120.9795,
+        accuracy: 12,
+        heading: null,
+        speed: null,
+      },
+      timestamp: 123,
+    };
+    let listener: ((value: typeof position) => void) | undefined;
+    const onError = vi.fn();
+    const onState = vi.fn();
+    mocks.requestPermission.mockResolvedValue({ status: 'granted' });
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { message: 'LOCATION_WRITE_FAILED', code: 'P0001' },
+    });
+    mocks.watchPosition.mockImplementation(async (_options, next) => {
+      listener = next;
+      return { remove: mocks.removeWatch };
+    });
+
+    const stop = await startEnRouteLocationPublisher('test-booking-123', {
+      onError,
+      onState,
+    });
+    listener?.(position);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onError).toHaveBeenCalledWith('LOCATION_WRITE_FAILED');
+    expect(onState).toHaveBeenCalledWith('error', 'LOCATION_WRITE_FAILED');
+    expect(mocks.channelSend).toHaveBeenCalled();
+    stop();
+  });
+
+  it('reports foreground permission denial without starting a watcher', async () => {
+    const onError = vi.fn();
+    const onState = vi.fn();
+    mocks.requestPermission.mockResolvedValue({ status: 'denied' });
+
+    const stop = await startEnRouteLocationPublisher('test-booking-123', {
+      onError,
+      onState,
+    });
+
+    expect(mocks.watchPosition).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(
+      'Location permission is required to share your route with the customer.',
+    );
+    expect(onState).toHaveBeenCalledWith(
+      'permission_denied',
+      'Location permission is required to share your route with the customer.',
+    );
+    stop();
+  });
+
+  it('surfaces channel startup failures to the worker', async () => {
+    const onError = vi.fn();
+    const onState = vi.fn();
+    mocks.channelSubscribe.mockRejectedValueOnce(new Error('CHANNEL_FAILED'));
+
+    const stop = await startEnRouteLocationPublisher('test-booking-123', {
+      onError,
+      onState,
+    });
+
+    expect(onError).toHaveBeenCalledWith('CHANNEL_FAILED');
+    expect(onState).toHaveBeenCalledWith('error', 'CHANNEL_FAILED');
+    stop();
+  });
+
+  it('surfaces watcher startup failures to the worker', async () => {
+    const onError = vi.fn();
+    const onState = vi.fn();
+    mocks.requestPermission.mockResolvedValue({ status: 'granted' });
+    mocks.watchPosition.mockRejectedValueOnce(new Error('WATCH_FAILED'));
+
+    const stop = await startEnRouteLocationPublisher('test-booking-123', {
+      onError,
+      onState,
+    });
+
+    expect(onError).toHaveBeenCalledWith('WATCH_FAILED');
+    expect(onState).toHaveBeenCalledWith('error', 'WATCH_FAILED');
+    stop();
   });
 });
