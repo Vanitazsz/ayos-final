@@ -19,7 +19,6 @@ const initialReadiness = {
   skillsReady: true,
   rateReady: true,
   serviceAreaReady: true,
-  scheduleReady: true,
   online: false,
   setupComplete: true,
   matchable: false,
@@ -27,14 +26,6 @@ const initialReadiness = {
   longitude: 120.88,
   serviceArea: 'Trece Martires City, Cavite',
   radiusMeters: 20_000,
-  schedule: [
-    {
-      dayOfWeek: 1,
-      startTime: '08:00',
-      endTime: '17:00',
-      timezone: 'Asia/Manila',
-    },
-  ],
 };
 
 async function useWorkerFixture(page: Page, readiness = initialReadiness) {
@@ -117,6 +108,7 @@ test('approved worker can complete setup and go online', async ({ page }) => {
   });
 
   await page.goto('/service-setup');
+  await expect(page.getByText('Working schedule', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Service Availability', { exact: true })).toBeVisible();
   await expect(page.getByText('Admin verification approved')).toBeVisible();
   await expect(page.getByText('Service rate set in Industry & Skills')).toHaveCSS(
@@ -135,6 +127,7 @@ test('approved worker can complete setup and go online', async ({ page }) => {
     p_radius_meters: 20_000,
     p_online: true,
   });
+  expect(savedPayload).not.toHaveProperty('p_schedule');
 });
 
 test('worker without a service rate cannot enable matching', async ({ page }) => {

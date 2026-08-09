@@ -96,7 +96,6 @@ async function useWorkerFixture(
         skillsReady: true,
         rateReady: getRateReady(),
         serviceAreaReady: true,
-        scheduleReady: true,
         online: false,
         setupComplete: true,
         matchable: false,

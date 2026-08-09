@@ -166,7 +166,6 @@ export default function WorkerProfileScreen() {
         longitude: matchingReadiness.longitude ?? 0,
         radiusMeters: matchingReadiness.radiusMeters ?? 0,
         serviceArea: matchingReadiness.serviceArea ?? '',
-        schedule: matchingReadiness.schedule ?? [],
         online: value,
       });
       setMatchingReadiness(result);

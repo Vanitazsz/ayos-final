@@ -39,7 +39,6 @@ export type DispatchDiagnostics = {
     | 'NO_FRESH_PRESENCE'
     | 'OUTSIDE_SERVICE_RADIUS'
     | 'OUTSIDE_SEARCH_RADIUS'
-    | 'OUTSIDE_WORKING_HOURS'
     | 'WAITING_FOR_RESPONSE';
   counts: {
     active: number;
