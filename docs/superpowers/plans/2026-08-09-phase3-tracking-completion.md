@@ -29,6 +29,7 @@
 ### Task 1: Add failing database tests for customer lifecycle actions
 
 **Files:**
+
 - Create: `supabase/tests/database/customer_tracking_confirmations.test.sql`
 
 - [ ] **Step 1: Add ownership and status tests**
@@ -48,6 +49,7 @@ Expected: FAIL because the customer RPCs do not exist.
 ### Task 2: Implement customer arrival/completion RPCs
 
 **Files:**
+
 - Create: `supabase/migrations/20260809010000_customer_tracking_confirmations.sql`
 
 - [ ] **Step 1: Add the customer arrival RPC**
@@ -74,6 +76,7 @@ git commit -m "feat(db): add customer tracking confirmations"
 ### Task 3: Persist en-route locations and report denial
 
 **Files:**
+
 - Modify: `apps/mobile/services/apiCore.ts`
 - Modify: `apps/mobile/services/liveEnRouteLocation.ts`
 - Modify: worker booking-request screen/component using `startEnRouteLocationPublisher`
@@ -113,6 +116,7 @@ git commit -m "feat(mobile): persist en-route worker locations"
 ### Task 4: Wire customer controls and contact actions
 
 **Files:**
+
 - Modify: `apps/mobile/services/apiCore.ts`
 - Modify: `apps/mobile/hooks/useBookingTracking.ts`
 - Modify: `apps/mobile/app/tracking/[id].tsx`
