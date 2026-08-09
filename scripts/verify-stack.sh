@@ -24,8 +24,14 @@ for pattern in "${required_patterns[@]}"; do
   fi
 done
 
+source_paths=()
+while IFS= read -r -d '' source_path; do
+  source_paths+=("$source_path")
+done < <(git ls-files --cached --others --exclude-standard -z)
+
 if node scripts/search.mjs --pattern \
-  '(sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,})' --paths .; then
+  '(sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,})' \
+  --quiet --paths "${source_paths[@]}"; then
   echo "A potential provider or Supabase secret is present in tracked source." >&2
   exit 1
 fi
