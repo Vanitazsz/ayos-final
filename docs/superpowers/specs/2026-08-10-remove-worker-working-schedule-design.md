@@ -13,7 +13,7 @@ The feature is currently split across these surfaces:
 - Mobile matching contract: `apps/mobile/services/workerMatching.ts` contains `WorkerScheduleDay`, `scheduleReady`, `schedule`, and the `p_schedule` RPC argument.
 - Worker screens: `apps/mobile/app/(worker)/service-setup.tsx` retains hidden schedule state and schedule validation, and renders the “Working schedule” readiness row. `apps/mobile/app/(worker)/profile.tsx` forwards the persisted schedule when toggling online status.
 - Shared matching logic: `packages/domain/src/matching.ts` uses `scheduleFit` as a score factor and eligibility gate. `apps/mobile/services/liveDispatch.ts` retains the `OUTSIDE_WORKING_HOURS` diagnostic value.
-- Database schema and functions: `public.worker_availability` is created in the platform migration. The active function chain still contains schedule references in `public.generate_matches_weighted_core`, `private.require_worker_ready_for_booking_acceptance`, `public.admin_activate_verified_worker`, and `public.save_my_worker_matching_setup`.
+- Database schema and functions: `public.worker_availability` is created in the platform migration. The active function chain still contains schedule references in `public.generate_matches_weighted_core`, `public.admin_activate_verified_worker`, and `public.save_my_worker_matching_setup`. The current booking-acceptance trigger already delegates to the latest schedule-free eligibility function and will remain unchanged.
 - Tests and contracts: database fixtures insert schedule rows; mobile E2E fixtures return `scheduleReady`; domain tests exercise `scheduleFit`; generated Supabase types expose the table and `p_schedule`.
 - Operational installer and requirements: `supabase/sql-editor-install.sql`, `REQUIREMENTS.md`, and `requirements/catalog.json` still describe or create the worker schedule.
 
@@ -38,11 +38,10 @@ The customer-request appointment time remains available to request creation, boo
 Add one new append-only migration after the current migration head. It will run transactionally and, in dependency-safe order:
 
 1. Replace `public.generate_matches_weighted_core(uuid)` with the existing weighted matching behavior minus the worker-availability predicate and schedule/availability score weight. The existing `public.generate_matches(uuid)` wrapper remains available.
-2. Replace `private.require_worker_ready_for_booking_acceptance()` without the worker-availability existence check, preserving its remaining account, approval, skills, rate, and authorization checks.
-3. Replace `public.admin_activate_verified_worker(uuid)` without inserting seven default weekly rows, preserving its admin authorization, account activation, skill provisioning, and worker-profile updates.
-4. Replace `public.save_my_worker_matching_setup` with the five-argument contract `(numeric, numeric, integer, text, boolean)`, removing JSON schedule validation and all availability-row writes while preserving worker-role validation, input validation, readiness checks, profile updates, grants, and the readiness return value.
-5. Drop `public.worker_availability` without `CASCADE` so unexpected live dependencies fail the migration rather than being silently removed.
-6. Reload the PostgREST schema cache.
+2. Replace `public.admin_activate_verified_worker(uuid)` without inserting seven default weekly rows, preserving its admin authorization, account activation, skill provisioning, and worker-profile updates.
+3. Replace `public.save_my_worker_matching_setup` with the five-argument contract `(numeric, numeric, integer, text, boolean)`, removing JSON schedule validation and all availability-row writes while preserving worker-role validation, input validation, readiness checks, profile updates, grants, and the readiness return value.
+4. Drop `public.worker_availability` without `CASCADE` so unexpected live dependencies fail the migration rather than being silently removed.
+5. Reload the PostgREST schema cache.
 
 The migration will preserve security-definer settings, explicit search paths, authorization semantics, and existing error codes. Revokes and grants will be reapplied to the new `save_my_worker_matching_setup` signature and preserved unchanged for every other function. `admin_set_worker_availability` remains because it changes the worker’s online `is_available` flag, not weekly hours.
 
@@ -56,7 +55,7 @@ The migration may change only the schedule-specific objects and function bodies 
 - Worker `is_available`, `worker_presence`, service origin, service radius, live dispatch, radius diagnostics, and online matching.
 - Worker approval, skills, rates, account-role separation, booking acceptance authorization, address privacy, payments, reviews, chat, and account deletion.
 
-Each replacement function will be copied from the current active definition and changed only at the schedule-related branches. The migration will use a transaction and `DROP TABLE public.worker_availability` without `CASCADE`; any unexpected dependency must abort the migration. Existing non-schedule database tests will remain in the suite and must pass without weakening their assertions.
+Each replacement function will be copied from the current active definition and changed only at the schedule-related branches. The existing `private.require_worker_ready_for_booking_acceptance()` trigger/function will not be rewritten; its delegated eligibility contract will be verified by the database suite. The migration will use a transaction and `DROP TABLE public.worker_availability` without `CASCADE`; any unexpected dependency must abort the migration. Existing non-schedule database tests will remain in the suite and must pass without weakening their assertions.
 
 ### Tests and generated contracts
 
