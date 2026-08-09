@@ -1044,7 +1044,7 @@ export async function fetchBookingTracking(id: string) {
     supabase
       .from('bookings')
       .select(
-        '*,service_requests(*,addresses(*)),worker_profiles:worker_account_id(*,accounts:account_id(mobile)),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
+        '*,service_requests(*,addresses(*)),worker_profiles:worker_account_id(*,accounts:accounts!worker_profiles_account_id_fkey(mobile)),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
       )
       .eq('id', id)
       .single(),

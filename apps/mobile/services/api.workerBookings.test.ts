@@ -285,3 +285,41 @@ describe('customer tracking actions', () => {
     );
   });
 });
+
+describe('customer booking tracking', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mocks.from.mockReset();
+    mocks.rpc.mockReset();
+  });
+
+  it('disambiguates the worker account relationship when loading progress', async () => {
+    const bookingQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      single: vi.fn(),
+    };
+    bookingQuery.select.mockReturnValue(bookingQuery);
+    bookingQuery.eq.mockReturnValue(bookingQuery);
+    bookingQuery.single.mockResolvedValue({
+      data: { id: 'booking-id', status: 'PENDING_CONFIRMATION' },
+      error: null,
+    });
+    mocks.from.mockReturnValue(bookingQuery);
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
+
+    const { fetchBookingTracking } = await import('./api');
+
+    await expect(fetchBookingTracking('booking-id')).resolves.toEqual({
+      booking: { id: 'booking-id', status: 'PENDING_CONFIRMATION' },
+      updates: [],
+    });
+
+    expect(bookingQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'accounts:accounts!worker_profiles_account_id_fkey(mobile)',
+      ),
+    );
+  });
+});
