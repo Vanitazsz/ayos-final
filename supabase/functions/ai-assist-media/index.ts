@@ -10,6 +10,7 @@ import {
 import { requestContext } from '../_frontend_shared/supabase.ts';
 import {
   runAnalysis,
+  TRANSCRIPTION_FAILED_CODE,
   validateCatalogAndCosts,
   type MediaInput,
   type ProviderAttempt,
@@ -165,6 +166,7 @@ Deno.serve(async (request) => {
       );
     } catch (providerError) {
       const value = providerError as Error & {
+        code?: string;
         attempts?: ProviderAttempt[];
         retryable?: boolean;
       };
@@ -175,6 +177,13 @@ Deno.serve(async (request) => {
         correlationId,
         value.attempts ?? [],
       );
+      if (value.code === TRANSCRIPTION_FAILED_CODE)
+        throw new HttpError(
+          503,
+          'transcription_failed',
+          'Voice transcription failed. Retry or continue with written text.',
+          { recovery: 'RETRY_OR_MANUAL_TEXT' },
+        );
       throw new HttpError(
         value.retryable ? 503 : 422,
         value.retryable ? 'ai_provider_unavailable' : 'ai_media_rejected',
