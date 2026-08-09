@@ -63,10 +63,7 @@ describe('matching', () => {
       'plumbing',
     );
 
-    expect(matches.map((match) => match.workerId)).toEqual([
-      'unsuitable-priority',
-      'suitable',
-    ]);
+    expect(matches.map((match) => match.workerId)).toEqual(['unsuitable-priority', 'suitable']);
   });
 });
 

@@ -36,17 +36,12 @@ export function rankWorkers(
       );
       const priority = worker.recommendationPriority ? 5 : 0;
       const eligible =
-        worker.approved &&
-        worker.available &&
-        skill > 0 &&
-        worker.distanceKm <= maximumDistanceKm;
+        worker.approved && worker.available && skill > 0 && worker.distanceKm <= maximumDistanceKm;
 
       return {
         workerId: worker.id,
         eligible,
-        score: eligible
-          ? Math.round((skill + distance + reputation + priority) * 100) / 100
-          : 0,
+        score: eligible ? Math.round((skill + distance + reputation + priority) * 100) / 100 : 0,
         factors: { skill, distance, reputation, priority },
       };
     })
