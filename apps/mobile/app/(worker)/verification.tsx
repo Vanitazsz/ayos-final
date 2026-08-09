@@ -10,6 +10,8 @@ import { Colors, Radius, Spacing, Elevation, Layout, theme } from '@/constants/t
 import { AppText } from '@/components/AppText';
 import { Pill } from '@/components/Pill';
 import { fetchWorkerVerification } from '@/services/api';
+import { getMyProfile } from '@/services/profile';
+import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
 import { showAlert } from '@/components/AppAlert';
@@ -259,7 +261,66 @@ export default function VerificationScreen() {
   };
   const [tab, setTab] = useState<'status' | 'documents' | 'faq'>('status');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
-  const[verification,setVerification]=useState<any>(null);useEffect(()=>{void fetchWorkerVerification().then(result=>{if(!result.error)setVerification(result.data)});},[]);const status=verification?.status??'PENDING';const submitted=verification?.created_at?new Date(verification.created_at).toLocaleDateString():'Not submitted';const documents:Document[]=(verification?.document_paths??[]).map((path:string,index:number)=>({id:path,label:`Submitted document ${index+1}`,sub:path.split('/').pop()??'Private file',status:status==='APPROVED'?'verified':status==='REJECTED'?'rejected':'uploaded',date:submitted}));const steps:VerificationStep[]=[{id:'register',label:'Registration',desc:'Account created and profile information submitted',status:'done'},{id:'documents',label:'Document Upload',desc:`${documents.length} private document(s) submitted`,status:documents.length?'done':'pending'},{id:'review',label:'Administrator Review',desc:verification?.requested_notes??'Application review status',status:status==='APPROVED'?'done':status==='REJECTED'?'rejected':'active',note:status},{id:'activate',label:'Profile Activated',desc:'Visible to eligible customers after approval',status:status==='APPROVED'?'done':'pending'}];
+  const [verification, setVerification] = useState<any>(null);
+  const [profileComplete, setProfileComplete] = useState(false);
+  useEffect(() => {
+    void Promise.all([fetchWorkerVerification(), getMyProfile()]).then(
+      ([verificationResult, profileResult]) => {
+        if (!verificationResult.error) setVerification(verificationResult.data);
+        setProfileComplete(profileResult.profileComplete);
+      },
+    );
+  }, []);
+  const status = verification?.status ?? 'PENDING';
+  const submitted = verification?.created_at
+    ? new Date(verification.created_at).toLocaleDateString()
+    : 'Not submitted';
+  const documents: Document[] = (verification?.document_paths ?? []).map(
+    (path: string, index: number) => ({
+      id: path,
+      label: `Submitted document ${index + 1}`,
+      sub: path.split('/').pop() ?? 'Private file',
+      status:
+        status === 'APPROVED'
+          ? 'verified'
+          : status === 'REJECTED'
+            ? 'rejected'
+            : 'uploaded',
+      date: submitted,
+    }),
+  );
+  const steps: VerificationStep[] = [
+    {
+      id: 'register',
+      label: 'Registration',
+      desc: 'Account created and profile information submitted',
+      status: 'done',
+    },
+    {
+      id: 'documents',
+      label: 'Document Upload',
+      desc: `${documents.length} private document(s) submitted`,
+      status: documents.length ? 'done' : 'pending',
+    },
+    {
+      id: 'review',
+      label: 'Administrator Review',
+      desc: verification?.requested_notes ?? 'Application review status',
+      status:
+        status === 'APPROVED'
+          ? 'done'
+          : status === 'REJECTED'
+            ? 'rejected'
+            : 'active',
+      note: status,
+    },
+    {
+      id: 'activate',
+      label: 'Profile Activated',
+      desc: 'Visible to eligible customers after approval',
+      status: status === 'APPROVED' ? 'done' : 'pending',
+    },
+  ];
 
   return (
     <View style={styles.container}>
@@ -303,6 +364,11 @@ export default function VerificationScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {tab === 'status' && (
           <>
+            <ProfileReadinessBanner
+              complete={profileComplete}
+              missing={profileComplete ? [] : ['saved profile details']}
+              onCompleteProfile={() => router.push('/(worker)/personal-info')}
+            />
             <StepTracker steps={steps}/>
 
             <AlertCard

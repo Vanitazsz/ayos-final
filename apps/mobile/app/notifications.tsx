@@ -97,7 +97,13 @@ export default function NotificationsScreen() {
                           router.push(`/booking-summary/${notif.payload.booking_id}` as any);
                         }
                       } else if (notif.payload?.request_id) {
-                        router.push(`/request/${notif.payload.request_id}` as any);
+                        if (role === 'WORKER') {
+                          router.push('/(worker)/bookings' as any);
+                        } else {
+                          router.push(
+                            `/new-request/matching?requestId=${encodeURIComponent(notif.payload.request_id)}` as any,
+                          );
+                        }
                       }
                     }
                   }} 
@@ -151,4 +157,3 @@ export default function NotificationsScreen() {
     </Screen>
   );
 }
-
