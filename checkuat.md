@@ -3,6 +3,14 @@ AYOS SYSTEM
 Date: August 7, 2026
 Company Name: StartupLab - Business Center & AI Consultant
 Legend: P - Passed; F – Failed
+
+Hosted prerequisites (operator verification required before UAT):
+
+- Confirm the Supabase `system_settings` value for `ai.enabled` and the configured AI consent version.
+- Confirm server-only OpenAI, Gemini, and OpenRouter keys/models are configured for the deployed Edge Functions.
+- Confirm Supabase Auth “Confirm email” behavior and the production OTP email template/redirect settings.
+- These hosted values are not verifiable from this repository and must not be marked passed from static inspection alone.
+
 UAT#1: Login
 Objective: To verify that users can securely access A-YOS using valid credentials, and that invalid access attempts are properly handled before any other module can be used.
 Preconditions: User has a registered account (Homeowner, Worker, or Administrator) and the application is reachable.
@@ -93,6 +101,9 @@ No. Module Scenario Status Comments
 2 Live Tracking View the worker's location and ETA on the map
 3 Live Tracking Verify location access denial is explained with a retry option
 4 Live Tracking Verify Call, Chat, and Emergency options are available during an active booking
+5 Live Tracking Confirm Arrival is enabled only after the worker location is persisted within the service radius
+6 Live Tracking Confirm Completion changes the booking to Completed without silently charging the customer
+7 Live Tracking View proof-of-work photos at Pending Confirmation and Completed
 
 UAT#10: Messaging Module
 Objective: To verify that homeowners and workers can communicate through chat with attachments and location sharing.
@@ -110,7 +121,8 @@ No. Module Scenario Status Comments
 1 Cash Payment Open the payment screen for a completed booking
 2 Cash Payment Confirm cash payment as the homeowner and verify status is awaiting worker confirmation
 3 Cash Payment Confirm payment received as the worker and verify payment becomes successful
-5 Cash Payment Verify the receipt shows the service amount, commission (10%), worker net amount, and homeowner charge (PHP 0)
+5 Cash Payment Verify the receipt shows the service amount, effective category commission, worker net amount, and homeowner charge (PHP 0)
+6 Cash Payment Repeat with simulated GCash and verify the same effective commission is used
 
 UAT#12: Reviews Module
 Objective: To verify that homeowners can rate and review completed, paid bookings and that worker can view the feedback.
@@ -156,7 +168,7 @@ Objective: To verify that workers can view their balance, request top-ups and pa
 Preconditions: Worker has a wallet and at least one completed, paid booking.
 No. Module Scenario Status Comments
 1 Wallet Open the Wallet and view the current balance and recent activity
-2 Wallet Submit a wallet top-up with payment proof and verify it is pending review
+2 Wallet Submit a manual GCash top-up with amount, reference, and screenshot proof and verify it is pending review
 3 Wallet Add a payout destination
 4 Wallet Request a payout and verify it is pending
 5 Wallet Verify the balance updates after administrator approval of a top-up or payout
@@ -206,7 +218,7 @@ Preconditions: Administrator is logged in and payment records exist.
 No. Module Scenario Status Comments
 1 Financial Management Open the payment records and view amount, status, customer, booking, and refunds
 2 Financial Management Filter payments by status and view the payment summary
-3 Financial Management View and update platform settings including the worker commission (default 10%) and the worker activation fee
+3 Financial Management View and update platform settings including the global worker commission, per-service-category overrides, and the worker activation fee contract
 
 UAT#22: Services & Catalog Management
 Objective: To verify that administrators can manage service categories and services.
@@ -278,6 +290,19 @@ No. Module Scenario Status Comments
 2 Logout Verify the active session is cleared
 3 Logout Verify the user is redirected to the Login page
 4 Logout Verify accessing protected pages after logout redirects back to Login
+
+UAT#30: Voice & AI Assistant
+Objective: To verify that optional AI assistance is consent-gated, produces editable results when configured, and exposes safe recovery when AI or transcription is unavailable.
+Preconditions: The mobile app is reachable; the operator has verified the hosted AI/Auth prerequisites above; a customer account and a sample photo/audio recording are available.
+No. Module Scenario Status Comments
+1 Voice & AI Open service-request creation, open AI assistance, and verify the consent notice is shown before media processing
+2 Voice & AI Record a supported voice issue and verify the transcript and editable request draft appear when a provider is enabled
+3 Voice & AI Force or simulate transcription-provider failure and verify a stable visible error offers Retry and Use written description without marking the request successful
+4 Voice & AI Submit an image without audio and verify image-only analysis still returns an editable issue explanation
+5 Voice & AI Disable `ai.enabled` in hosted Supabase and verify the app shows a clear manual-entry path
+6 Voice & AI Remove or invalidate the provider key in a controlled environment and verify no key or raw provider payload is shown to the user
+7 Voice & AI Reject or change the consent version and verify processing is blocked until the current consent is accepted
+8 Voice & AI Edit the AI-generated description/category details and verify the user can review the draft before sending the request
 
 Overall UAT Results
 Objective: To confirm that the full UAT scope has been executed and to record the final readiness decision.
