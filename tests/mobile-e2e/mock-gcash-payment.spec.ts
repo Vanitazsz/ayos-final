@@ -87,7 +87,9 @@ async function useCustomerFixture(page: Page) {
   );
 }
 
-test('GCash details, 2.5s delay, processing, paid state, and success navigation', async ({ page }) => {
+test('GCash details, 2.5s delay, processing, paid state, and success navigation', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await useCustomerFixture(page);
 

@@ -92,11 +92,7 @@ describe('logic and presentation boundaries', () => {
     const violations = [
       ...tracked('apps/mobile/components/**/*.tsx'),
       ...tracked('apps/mobile/features/**/*.tsx'),
-    ].filter((file) =>
-      /(?:lib\/supabase|authenticatedFunctions|services\/api)/.test(
-        source(file),
-      ),
-    );
+    ].filter((file) => /(?:lib\/supabase|authenticatedFunctions|services\/api)/.test(source(file)));
 
     expect(violations).toEqual([]);
   });

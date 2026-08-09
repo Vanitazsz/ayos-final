@@ -213,19 +213,17 @@ async function getCatalog(admin: SupabaseClient) {
   const now = Date.now();
   if (catalogCache && catalogCache.expiresAt > now)
     return { categories: catalogCache.categories, services: catalogCache.services };
-  const [
-    { data: categories, error: categoryError },
-    { data: services, error: serviceError },
-  ] = await Promise.all([
-    admin
-      .from('service_categories')
-      .select('id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
-      .eq('is_active', true),
-    admin
-      .from('services')
-      .select('id,category_id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
-      .eq('is_active', true),
-  ]);
+  const [{ data: categories, error: categoryError }, { data: services, error: serviceError }] =
+    await Promise.all([
+      admin
+        .from('service_categories')
+        .select('id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
+        .eq('is_active', true),
+      admin
+        .from('services')
+        .select('id,category_id,name,minimum_price_minor,maximum_price_minor,is_safety_critical')
+        .eq('is_active', true),
+    ]);
   if (categoryError || serviceError) throw new Error('CATALOG_UNAVAILABLE');
   catalogCache = {
     categories: categories ?? [],

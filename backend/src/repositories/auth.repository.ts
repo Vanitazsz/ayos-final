@@ -1,5 +1,5 @@
-import type { Prisma } from "../generated/prisma/client.js";
-import { prisma } from "../config/database.js";
+import type { Prisma } from '../generated/prisma/client.js';
+import { prisma } from '../config/database.js';
 
 const authenticationInclude = {
   profile: true,
@@ -8,11 +8,11 @@ const authenticationInclude = {
     include: {
       role: {
         include: {
-          permissions: { include: { permission: true } }
-        }
-      }
-    }
-  }
+          permissions: { include: { permission: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserInclude;
 
 export class AuthRepository {
@@ -29,7 +29,10 @@ export class AuthRepository {
   }
 
   findSessionByTokenHash(tokenHash: string) {
-    return prisma.session.findUnique({ where: { tokenHash }, include: { user: { include: authenticationInclude } } });
+    return prisma.session.findUnique({
+      where: { tokenHash },
+      include: { user: { include: authenticationInclude } },
+    });
   }
 
   createSession(data: Prisma.SessionUncheckedCreateInput) {
@@ -39,18 +42,24 @@ export class AuthRepository {
   revokeSession(id: string, replacedBySessionId?: string) {
     return prisma.session.update({
       where: { id },
-      data: { revokedAt: new Date(), ...(replacedBySessionId ? { replacedBySessionId } : {}) }
+      data: { revokedAt: new Date(), ...(replacedBySessionId ? { replacedBySessionId } : {}) },
     });
   }
 
   revokeFamily(familyId: string) {
-    return prisma.session.updateMany({ where: { familyId, revokedAt: null }, data: { revokedAt: new Date() } });
+    return prisma.session.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   revokeUserSessions(userId: string) {
-    return prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    return prisma.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 }
 
-export type AuthUser = NonNullable<Awaited<ReturnType<AuthRepository["findAuthUser"]>>>;
+export type AuthUser = NonNullable<Awaited<ReturnType<AuthRepository['findAuthUser']>>>;
 export const authRepository = new AuthRepository();

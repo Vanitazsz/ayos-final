@@ -1,4 +1,4 @@
-import type { AuthContext } from "./security.js";
+import type { AuthContext } from './security.js';
 
 declare global {
   namespace Express {

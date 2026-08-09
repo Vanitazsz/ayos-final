@@ -64,8 +64,7 @@ const TEXT_EXTENSIONS = new Set([
   '.d.ts',
 ]);
 const LOCK_FILES = /(^|\/)(pnpm-lock\.yaml|package-lock\.json|deno\.lock)$/;
-const GENERATED_FILES =
-  /(^hosted-backups\/|database\.generated\.ts$)/;
+const GENERATED_FILES = /(^hosted-backups\/|database\.generated\.ts$)/;
 const TEST_FILES = /(^tests\/|\.(test|spec)\.[cm]?[jt]sx?$|supabase\/tests\/)/;
 const CONFIG_FILES =
   /(^|\/)(package\.json|tsconfig[^/]*\.json|[^/]*\.config\.[cm]?[jt]s|\.env\.example|app\.json|vercel\.json|config\.toml|\.oxlintrc\.json|\.prettierrc(?:\.json)?|\.gitignore|Dockerfile|docker-compose\.yml|pnpm-workspace\.yaml|turbo\.json)$/;
@@ -126,9 +125,7 @@ function fileType(file: string): string {
 }
 
 function routeFeature(file: string): string {
-  const normalized = file
-    .replace(/^apps\/mobile\/app\//, '')
-    .replace(/\.(tsx|ts|jsx|js)$/, '');
+  const normalized = file.replace(/^apps\/mobile\/app\//, '').replace(/\.(tsx|ts|jsx|js)$/, '');
   const parts = normalized.split('/').filter((part) => !/^\(.*\)$/.test(part));
   const leaf = parts.at(-1)?.replace(/^\[|\]$/g, '') ?? 'shared';
   const first = parts[0] ?? leaf;

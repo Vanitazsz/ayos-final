@@ -181,19 +181,14 @@ test.beforeEach(async ({ page }, testInfo) => {
         },
       ],
     };
-    const responseBody = detail
-      ? row
-      : conversationArchived || conversationDeleted
-        ? []
-        : [row];
+    const responseBody = detail ? row : conversationArchived || conversationDeleted ? [] : [row];
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: detail
         ? {}
         : {
-            'content-range':
-              conversationArchived || conversationDeleted ? '*/0' : '0-0/1',
+            'content-range': conversationArchived || conversationDeleted ? '*/0' : '0-0/1',
           },
       body: JSON.stringify(responseBody),
     });
@@ -281,9 +276,7 @@ test('closed conversation can be permanently deleted from the swipe actions', as
     name: 'Delete conversation with Matched Worker',
   });
   await expect(deleteAction).toBeVisible();
-  await deleteAction.evaluate((element) =>
-    (element as HTMLElement).click(),
-  );
+  await deleteAction.evaluate((element) => (element as HTMLElement).click());
 
   await expect(page.getByText('Delete Conversation')).toBeVisible();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();

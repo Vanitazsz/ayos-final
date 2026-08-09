@@ -1,6 +1,6 @@
-import type { RequestHandler } from "express";
-import type { ZodType } from "zod";
-import { ValidationError } from "../utils/errors.js";
+import type { RequestHandler } from 'express';
+import type { ZodType } from 'zod';
+import { ValidationError } from '../utils/errors.js';
 
 type RequestSchemas = {
   body?: ZodType;
@@ -11,7 +11,7 @@ type RequestSchemas = {
 function fieldErrors(error: any): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   for (const issue of error.issues ?? []) {
-    const key = issue.path.length ? issue.path.join(".") : "request";
+    const key = issue.path.length ? issue.path.join('.') : 'request';
     result[key] ??= [];
     result[key].push(issue.message);
   }
@@ -34,7 +34,12 @@ export function validate(schemas: RequestSchemas): RequestHandler {
       if (schemas.query) {
         const parsed = schemas.query.safeParse(request.query);
         if (!parsed.success) throw new ValidationError(fieldErrors(parsed.error));
-        Object.defineProperty(request, "query", { value: parsed.data, writable: true, configurable: true, enumerable: true });
+        Object.defineProperty(request, 'query', {
+          value: parsed.data,
+          writable: true,
+          configurable: true,
+          enumerable: true,
+        });
       }
       next();
     } catch (error) {

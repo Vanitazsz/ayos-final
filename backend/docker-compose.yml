@@ -6,11 +6,11 @@ services:
       POSTGRES_USER: ayos
       POSTGRES_PASSWORD: ayos_development_only
     ports:
-      - "5433:5432"
+      - '5433:5432'
     volumes:
       - ayos_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ayos -d ayos"]
+      test: ['CMD-SHELL', 'pg_isready -U ayos -d ayos']
       interval: 5s
       timeout: 5s
       retries: 12
@@ -18,7 +18,7 @@ services:
     build: .
     env_file: .env
     ports:
-      - "4000:4000"
+      - '4000:4000'
     depends_on:
       postgres:
         condition: service_healthy

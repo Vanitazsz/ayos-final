@@ -1,6 +1,6 @@
-import type { Request } from "express";
-import { prisma } from "../config/database.js";
-import { AuditOutcome } from "../generated/prisma/client.js";
+import type { Request } from 'express';
+import { prisma } from '../config/database.js';
+import { AuditOutcome } from '../generated/prisma/client.js';
 
 type AuditInput = {
   action: string;
@@ -23,8 +23,8 @@ export async function writeAudit(request: Request, input: AuditInput): Promise<v
       targetType: input.targetType,
       targetId: input.targetId,
       ipAddress: request.ip,
-      userAgent: request.get("user-agent")?.slice(0, 500),
-      metadata: input.metadata as any
-    }
+      userAgent: request.get('user-agent')?.slice(0, 500),
+      metadata: input.metadata as any,
+    },
   });
 }

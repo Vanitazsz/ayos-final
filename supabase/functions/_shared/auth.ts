@@ -53,5 +53,9 @@ export async function requireAccount(request: Request, role?: Account['role'], a
       await client.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assuranceError || assurance?.currentLevel !== 'aal2') throw new Error('MFA_REQUIRED');
   }
-  return { client, account: { id: user.id, role: activeRole, status: 'ACTIVE', mfa_enabled }, user };
+  return {
+    client,
+    account: { id: user.id, role: activeRole, status: 'ACTIVE', mfa_enabled },
+    user,
+  };
 }
