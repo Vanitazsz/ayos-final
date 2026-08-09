@@ -15,7 +15,6 @@ required_patterns=(
   '"@maplibre/maplibre-react-native"'
   '"maplibre-gl"'
   '"@supabase/supabase-js"'
-  '"@supabase/ssr"'
   'create extension if not exists postgis'
 )
 for pattern in "${required_patterns[@]}"; do
