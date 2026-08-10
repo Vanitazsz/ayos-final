@@ -190,6 +190,10 @@ export default function CreateRequestScreen() {
 
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceDurationSeconds, setVoiceDurationSeconds] = useState(0);
+  const recordingStartTimeRef = useRef<number | null>(null);
+  const voiceDurationSecondsRef = useRef(0);
+  const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
   const recordingRef = useRef(false);
@@ -554,6 +558,13 @@ const applySavedAddress = useCallback(
     removeGeneratedDescription(kind);
     if (kind === 'photo') setCameraPhoto(null);
     else {
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
+        durationIntervalRef.current = null;
+      }
+      recordingStartTimeRef.current = null;
+      voiceDurationSecondsRef.current = 0;
+      setVoiceDurationSeconds(0);
       queuedVoiceUriRef.current = '';
       setVoiceRecord(null);
     }
@@ -575,7 +586,7 @@ const applySavedAddress = useCallback(
               ? 'audio/webm'
               : 'audio/m4a',
           kind === 'voice'
-            ? Math.ceil(recorderState.durationMillis / 1000)
+            ? Math.max(1, voiceDurationSecondsRef.current)
             : undefined,
         );
     }
@@ -847,6 +858,17 @@ const applySavedAddress = useCallback(
     setVoiceBusy(true);
     if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
     autoStopTimerRef.current = null;
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    const finalDuration = recordingStartTimeRef.current
+      ? Math.max(1, Math.ceil((Date.now() - recordingStartTimeRef.current) / 1000))
+      : Math.max(1, voiceDurationSecondsRef.current);
+    recordingStartTimeRef.current = null;
+    voiceDurationSecondsRef.current = finalDuration;
+    setVoiceDurationSeconds(finalDuration);
+
     try {
       await recorder.stop();
       recordingRef.current = false;
@@ -858,7 +880,7 @@ const applySavedAddress = useCallback(
           'voice',
           recorder.uri,
           Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a',
-          Math.max(1, Math.ceil(recorderState.durationMillis / 1000)),
+          finalDuration,
         );
       }
     } catch (error) {
@@ -874,7 +896,7 @@ const applySavedAddress = useCallback(
       recordingActionRef.current = false;
       setVoiceBusy(false);
     }
-  }, [queueCapturedMedia, recorder, recorderState.durationMillis]);
+  }, [queueCapturedMedia, recorder]);
 
   const handleVoiceClick = async () => {
     if (recordingActionRef.current) return;
@@ -919,6 +941,18 @@ const applySavedAddress = useCallback(
       });
       await recorder.prepareToRecordAsync();
       recorder.record();
+      recordingStartTimeRef.current = Date.now();
+      setVoiceDurationSeconds(1);
+      voiceDurationSecondsRef.current = 1;
+      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = setInterval(() => {
+        if (recordingStartTimeRef.current) {
+          const elapsed = Math.max(1, Math.ceil((Date.now() - recordingStartTimeRef.current) / 1000));
+          setVoiceDurationSeconds(elapsed);
+          voiceDurationSecondsRef.current = elapsed;
+        }
+      }, 500);
+
       recordingRef.current = true;
       setVoiceRecording(true);
       autoStopTimerRef.current = setTimeout(() => {
@@ -943,22 +977,21 @@ const applySavedAddress = useCallback(
     if (
       !recorderState.isRecording &&
       recorder.uri &&
-      recorderState.durationMillis > 0 &&
       recorder.uri !== queuedVoiceUriRef.current
     ) {
+      const durationSec = Math.max(1, voiceDurationSecondsRef.current);
       queuedVoiceUriRef.current = recorder.uri;
       setVoiceRecord(recorder.uri);
       queueCapturedMedia(
         'voice',
         recorder.uri,
         Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a',
-        Math.max(1, Math.ceil(recorderState.durationMillis / 1000)),
+        durationSec,
       );
     }
   }, [
     queueCapturedMedia,
     recorder.uri,
-    recorderState.durationMillis,
     recorderState.isRecording,
   ]);
 
@@ -1195,8 +1228,7 @@ const applySavedAddress = useCallback(
             />
             <View style={styles.voiceLabelOverlay}>
               <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                Voice Content:{' '}
-                {Math.max(1, Math.ceil(recorderState.durationMillis / 1000))}s
+                Voice Content: {Math.max(1, voiceDurationSeconds)}s
               </Text>
             </View>
             <TouchableOpacity
@@ -1222,7 +1254,7 @@ const applySavedAddress = useCallback(
               {voiceBusy
                 ? 'Please wait…'
                 : voiceRecording
-                  ? `Stop (${Math.floor(recorderState.durationMillis / 1000)}s)`
+                  ? `Stop (${voiceDurationSeconds}s)`
                   : 'Record Voice'}
             </Text>
           </TouchableOpacity>
