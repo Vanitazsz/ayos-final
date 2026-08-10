@@ -38,6 +38,7 @@ import { CompleteJobModal } from '@/components/booking/CompleteJobModal';
 import * as Location from 'expo-location';
 import {
   acceptJob,
+  arriveAtJob,
   confirmCashPayment,
   confirmPaymentWithCommission,
   confirmWorkerArrival,
@@ -55,6 +56,7 @@ import {
   stopEnRouteLocationPublisher,
 } from '@/services/liveDispatch';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
+import { useBookingTracking } from '@/hooks/useBookingTracking';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import type { WorkerBooking } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
@@ -121,6 +123,7 @@ export default function BookingRequestScreen() {
   const [locationPublisherError, setLocationPublisherError] = useState<string | null>(null);
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
+  const { liveLocation, tracking } = useBookingTracking(booking.id);
 
   useEffect(() => {
     if (!id) return;
@@ -287,6 +290,34 @@ export default function BookingRequestScreen() {
     }
   };
 
+  const proceedWithArrival = async () => {
+    try {
+      setIsArriving(true);
+      stopEnRouteLocationPublisher();
+      const current = backendStatus ?? 'WORKER_EN_ROUTE';
+      if (current === 'ACCEPTED' || current === 'WORKER_PREPARING') {
+        await departForJob(booking.id).catch(() => null);
+      }
+      if (['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(current)) {
+        await arriveAtJob(booking.id).catch(() => null);
+      }
+      if (['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE', 'WORKER_ARRIVED'].includes(current)) {
+        await startJob(booking.id).catch(() => null);
+      }
+      await markJobInProgress(booking.id).catch(() => null);
+
+      setBackendStatus('IN_PROGRESS');
+      setBooking((b) => ({ ...b, status: 'in_progress' }));
+      router.replace('/(worker)/bookings?filter=In%20Progress');
+    } catch (error: any) {
+      const msg = error?.message ?? error?.code ?? String(error);
+      console.error('proceedWithArrival error:', msg, error);
+      showAlert('Arrived failed', msg);
+    } finally {
+      setIsArriving(false);
+    }
+  };
+
   const handleArrived = async () => {
     if (isArriving) return;
     setIsArriving(true);
@@ -310,6 +341,15 @@ export default function BookingRequestScreen() {
           showAlert(
             'Arrival denied',
             proximity.error || 'The server could not validate your arrival location.',
+            [
+              {
+                text: 'Continue Anyways',
+                onPress: () => {
+                  void proceedWithArrival();
+                },
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ],
           );
           return;
         }
@@ -320,7 +360,16 @@ export default function BookingRequestScreen() {
           showAlert(
             'Outside Arrival Radius',
             proximity.data.message ||
-              `You are ${proximity.data.distance_meters}m away. Please get within 50 meters of the customer address.`,
+              `You are ${proximity.data.distance_meters}m away. Please get within 50 meters of the destination.`,
+            [
+              {
+                text: 'Continue Anyways',
+                onPress: () => {
+                  void proceedWithArrival();
+                },
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ],
           );
           return;
         }
@@ -328,6 +377,15 @@ export default function BookingRequestScreen() {
         showAlert(
           'Location required',
           'Your current location could not be read. Enable location access and retry before confirming arrival.',
+          [
+            {
+              text: 'Continue Anyways',
+              onPress: () => {
+                void proceedWithArrival();
+              },
+            },
+            { text: 'Cancel', style: 'cancel' },
+          ],
         );
         return;
       }
@@ -361,7 +419,11 @@ export default function BookingRequestScreen() {
   const handleConfirmCash = async (method: 'CASH' | 'ONLINE_SIMULATED' = 'CASH') => {
     try {
       if (method === 'CASH') {
-        await confirmCashPayment(booking.id);
+        try {
+          await confirmCashPayment(booking.id);
+        } catch (e) {
+          console.warn('confirmCashPayment non-fatal note:', e);
+        }
       }
       await confirmPaymentWithCommission(booking.id, method);
       setPaymentStatus('SUCCESSFUL');
@@ -370,11 +432,12 @@ export default function BookingRequestScreen() {
         `Payment method: ${method === 'ONLINE_SIMULATED' ? 'Online Payment (Simulated)' : 'Cash'}\n` +
         'The server-calculated platform commission deduction has been successfully applied to your wallet.',
       );
-    } catch (error) {
-      showAlert(
-        'Confirmation failed',
-        error instanceof Error ? error.message : 'Please try again.',
-      );
+    } catch (error: any) {
+      const message =
+        error?.message ||
+        error?.details ||
+        (error instanceof Error ? error.message : 'Please try again.');
+      showAlert('Confirmation failed', message);
     }
   };
 
@@ -565,27 +628,63 @@ export default function BookingRequestScreen() {
           {isActive &&
             routeDetails &&
             routeDetails.destinationLat != null &&
-            routeDetails.destinationLng != null && (
-              <View style={{ gap: 12 }}>
-                <BookingMap
-                  bookingId={booking.id}
-                  startLat={routeDetails.startLat}
-                  startLng={routeDetails.startLng}
-                  destinationLat={routeDetails.destinationLat}
-                  destinationLng={routeDetails.destinationLng}
-                  destinationAddress={routeDetails.address}
-                />
-                <RouteSummaryCard
-                  bookingId={booking.id}
-                  startLat={routeDetails.startLat}
-                  startLng={routeDetails.startLng}
-                  destinationLat={routeDetails.destinationLat}
-                  destinationLng={routeDetails.destinationLng}
-                  destinationAddress={routeDetails.address}
-                  workerView
-                />
-              </View>
-            )}
+            routeDetails.destinationLng != null && (() => {
+              const destLat = Number(routeDetails.destinationLat);
+              const destLng = Number(routeDetails.destinationLng);
+              const fallbackWorkerLat = destLat + 0.012;
+              const fallbackWorkerLng = destLng + 0.012;
+              const latestUpdate = tracking?.updates?.[0];
+
+              const workerStartLat =
+                routeDetails.startLat != null
+                  ? Number(routeDetails.startLat)
+                  : fallbackWorkerLat;
+
+              const workerStartLng =
+                routeDetails.startLng != null
+                  ? Number(routeDetails.startLng)
+                  : fallbackWorkerLng;
+
+              const isArrivedOrLater = [
+                'WORKER_ARRIVED',
+                'SERVICE_STARTED',
+                'IN_PROGRESS',
+                'PENDING_CONFIRMATION',
+                'COMPLETED',
+              ].includes(backendStatus ?? '');
+
+              const workerCurrentLat = isArrivedOrLater
+                ? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat)
+                : (liveLocation?.latitude ?? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat));
+
+              const workerCurrentLng = isArrivedOrLater
+                ? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng)
+                : (liveLocation?.longitude ?? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng));
+
+              return (
+                <View style={{ gap: 12 }}>
+                  <BookingMap
+                    bookingId={booking.id}
+                    startLat={workerStartLat}
+                    startLng={workerStartLng}
+                    destinationLat={destLat}
+                    destinationLng={destLng}
+                    destinationAddress={routeDetails.address}
+                    workerLat={workerCurrentLat}
+                    workerLng={workerCurrentLng}
+                  />
+                  <RouteSummaryCard
+                    bookingId={booking.id}
+                    startLat={workerStartLat}
+                    startLng={workerStartLng}
+                    destinationLat={destLat}
+                    destinationLng={destLng}
+                    destinationAddress={routeDetails.address}
+                    workerView
+                  />
+                </View>
+              );
+            })()}
 
           {/* ─── State-Specific Content ─── */}
           {booking.status === 'hired' && (
