@@ -28,6 +28,32 @@ function cacheKey(
   ].join(':');
 }
 
+function computeHaversineEta(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): { distanceMeters: number; etaSeconds: number } {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371; // Earth's radius in km
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const directKm = R * c;
+  const roadKm = directKm * 1.3; // 1.3x road circuity factor
+  const avgSpeedKmH = 25; // 25 km/h urban travel speed
+  const etaHours = roadKm / avgSpeedKmH;
+  const etaSeconds = Math.max(60, Math.round(etaHours * 3600));
+  const distanceMeters = Math.round(roadKm * 1000);
+  return { distanceMeters, etaSeconds };
+}
+
 export function useBookingRoute(options: {
   startLat?: number | null;
   startLng?: number | null;
@@ -67,6 +93,14 @@ export function useBookingRoute(options: {
         active = false;
       };
     }
+
+    const mathFallback = computeHaversineEta(
+      startLat,
+      startLng,
+      destinationLat,
+      destinationLng,
+    );
+
     void Promise.all([
       reverseGeocode(startLat, startLng).catch(() => null),
       calculateRoute(
@@ -77,8 +111,8 @@ export function useBookingRoute(options: {
     ]).then(([geocode, route]) => {
       const value: BookingRouteResult = {
         route: route?.geojson ?? null,
-        etaSeconds: route?.durationSeconds ?? null,
-        distanceMeters: route?.distanceMeters ?? null,
+        etaSeconds: route?.durationSeconds ?? mathFallback.etaSeconds,
+        distanceMeters: route?.distanceMeters ?? mathFallback.distanceMeters,
         startAddress:
           geocode?.displayLabel ?? 'Worker starting location',
       };
