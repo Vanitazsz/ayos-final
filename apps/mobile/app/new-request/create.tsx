@@ -885,9 +885,32 @@ const applySavedAddress = useCallback(
     recordingActionRef.current = true;
     setVoiceBusy(true);
     try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
+          showAlert(
+            'Microphone access unavailable',
+            'Microphone recording requires a secure connection (HTTPS or localhost) and a supported browser.',
+          );
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (err: any) {
+          showAlert(
+            'Microphone permission required',
+            'Microphone access was denied or blocked by your browser. Please click the permissions icon (padlock/tune icon) next to the URL in your browser address bar and change Microphone to "Allow".',
+          );
+          return;
+        }
+      }
+
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        showAlert('Microphone permission required');
+        showAlert(
+          'Microphone permission required',
+          'Microphone access is required to record voice notes. Please allow microphone permissions in your browser or device settings.',
+        );
         return;
       }
       await setAudioModeAsync({
@@ -908,7 +931,7 @@ const applySavedAddress = useCallback(
         'Voice recording unavailable',
         error instanceof Error
           ? error.message
-          : 'Unable to start the recording.',
+          : 'Unable to start recording. Please check microphone permissions in your browser or device settings.',
       );
     } finally {
       recordingActionRef.current = false;
