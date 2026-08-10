@@ -6,12 +6,16 @@ import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
 import { MockGCashPayment } from '@/components/payment/MockGCashPayment';
+import { ImageUploadCard } from '@/components/ImageUploadCard';
+import { uploadBookingProof } from '@/services/uploads';
 import {
   ArrowLeft,
   CreditCard,
   Banknote,
   Smartphone,
 } from 'lucide-react-native';
+import { UserReviewWorkModal } from '@/components/booking/UserReviewWorkModal';
+import { fetchReviewForBooking } from '@/services/reviews';
 import {
   confirmCashPayment,
   fetchBookingDetail,
@@ -52,6 +56,7 @@ const PAYMENT_METHODS = [
 export default function PaymentScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>('cash');
   const [showGcashSim, setShowGcashSim] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,6 +65,20 @@ export default function PaymentScreen() {
   const [error, setError] = useState('');
   const bookingId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/(tabs)/bookings');
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [providerName, setProviderName] = useState('Provider');
+  const [serviceName, setServiceName] = useState('Service');
+
+  useEffect(() => {
+    if (bookingId) {
+      void fetchReviewForBooking(bookingId).then((existing) => {
+        if (!existing) {
+          setShowReviewModal(true);
+        }
+      });
+    }
+  }, [bookingId]);
+
   useEffect(() => {
     if (bookingId)
       void Promise.all([
@@ -68,7 +87,10 @@ export default function PaymentScreen() {
       ]).then(([result, fees]) => {
         if (result.error) setError(result.error);
         else {
-          const agreedAmount = result.data?.agreed_service_amount;
+          const b = result.data;
+          if (b?.worker_profiles?.display_name) setProviderName(b.worker_profiles.display_name);
+          if (b?.service_requests?.service_categories?.name) setServiceName(b.service_requests.service_categories.name);
+          const agreedAmount = b?.agreed_service_amount;
           if (agreedAmount == null || Number(agreedAmount) <= 0) {
             setError('A worker price must be agreed before payment.');
             setAmount(null);
@@ -83,12 +105,23 @@ export default function PaymentScreen() {
 
   const handlePayment = async () => {
     if (!selectedMethod || !bookingId) return;
+    setLoading(true);
+    setError('');
+
+    if (receiptUri) {
+      try {
+        await uploadBookingProof(receiptUri);
+      } catch (uploadError) {
+        console.warn('Optional receipt proof upload note:', uploadError);
+      }
+    }
+
     if (selectedMethod === 'gcash') {
+      setLoading(false);
       setShowGcashSim(true);
       return;
     }
-    setLoading(true);
-    setError('');
+
     try {
       const payment = await confirmCashPayment(bookingId);
       if (payment.status === 'SUCCESSFUL') {
@@ -115,6 +148,7 @@ export default function PaymentScreen() {
         <MockGCashPayment
           bookingId={bookingId}
           totalAmount={total}
+          hasReceipt={Boolean(receiptUri)}
           onSuccess={() => router.push(`/payment/success?id=${bookingId}`)}
           onCancel={() => setShowGcashSim(false)}
         />
@@ -286,6 +320,34 @@ export default function PaymentScreen() {
             </TouchableOpacity>
           );
         })}
+
+        <View style={styles.receiptSection}>
+          <Text
+            style={[
+              theme.typography.h4,
+              { color: theme.colors.textPrimary, marginBottom: 4 },
+            ]}
+          >
+            Proof of Payment / Receipt (Optional for PROD)
+          </Text>
+          <Text
+            style={[
+              theme.typography.caption,
+              {
+                color: theme.colors.textSecondary,
+                marginBottom: theme.spacing.sm,
+              },
+            ]}
+          >
+            Take a photo with camera or submit a picture of the receipt for real production verification.
+          </Text>
+
+          <ImageUploadCard
+            label="Attach Receipt / Payment Slip"
+            description="Supports Camera photo, JPG or PNG up to 10MB (Optional)"
+            onImageSelected={(uri) => setReceiptUri(uri)}
+          />
+        </View>
       </View>
 
       <View style={styles.footer}>
@@ -311,6 +373,17 @@ export default function PaymentScreen() {
           fullWidth
         />
       </View>
+
+      {bookingId && (
+        <UserReviewWorkModal
+          visible={showReviewModal}
+          bookingId={bookingId}
+          providerName={providerName}
+          serviceName={serviceName}
+          onClose={() => setShowReviewModal(false)}
+          onSubmitted={() => setShowReviewModal(false)}
+        />
+      )}
     </Screen>
   );
 }
@@ -381,6 +454,13 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderRadius: theme.radius.md,
     marginBottom: theme.spacing.md,
+  },
+  receiptSection: {
+    marginTop: theme.spacing.lg,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    ...theme.shadows.sm,
   },
   footer: { paddingVertical: theme.spacing.md },
 });

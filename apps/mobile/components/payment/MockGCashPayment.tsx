@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'rea
 import { theme } from '@/constants/theme';
 import { Button } from '@/components/buttons/Button';
 import { simulateMockGcashPayment } from '@/services/payments';
-import { ShieldAlert, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react-native';
+import { ShieldAlert, CheckCircle2, AlertTriangle, ArrowLeft, Camera } from 'lucide-react-native';
 
 interface MockGCashPaymentProps {
   bookingId: string;
   totalAmount: number;
+  hasReceipt?: boolean;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -17,6 +18,7 @@ type PaymentStep = 'countdown' | 'processing' | 'paid' | 'error';
 export const MockGCashPayment: React.FC<MockGCashPaymentProps> = ({
   bookingId,
   totalAmount,
+  hasReceipt,
   onSuccess,
   onCancel,
 }) => {
@@ -114,6 +116,13 @@ export const MockGCashPayment: React.FC<MockGCashPaymentProps> = ({
             ₱ {totalAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
           </Text>
         </View>
+
+        {hasReceipt && (
+          <View style={styles.receiptBadge}>
+            <Camera color={theme.colors.success} size={16} style={{ marginRight: 6 }} />
+            <Text style={styles.receiptBadgeText}>Proof of Payment / Receipt Attached</Text>
+          </View>
+        )}
       </View>
 
       {/* Warning Banner */}
@@ -289,5 +298,21 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     textAlign: 'center',
     marginTop: theme.spacing.xs,
+  },
+  receiptBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    marginTop: theme.spacing.sm,
+  },
+  receiptBadgeText: {
+    ...theme.typography.caption,
+    color: theme.colors.success,
+    fontWeight: '600',
   },
 });
