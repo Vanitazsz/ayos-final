@@ -12,7 +12,7 @@ import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
-import { ArrowLeft, Star, UploadCloud, X } from 'lucide-react-native';
+import { ArrowLeft, Camera, Star, UploadCloud, X } from 'lucide-react-native';
 import { randomUUID } from '@/lib/crypto';
 import {
   createReview,
@@ -84,6 +84,13 @@ export default function ReviewScreen() {
       );
       return;
     }
+    if (photos.length === 0) {
+      showAlert(
+        'Proof Photo Required',
+        'Please attach at least 1 picture as proof of work before proceeding to payment.',
+      );
+      return;
+    }
     const commentText = review.trim();
     if (commentText.length < 3) {
       showAlert(
@@ -127,7 +134,7 @@ export default function ReviewScreen() {
         throw new Error('The review could not be confirmed. Please try again.');
       }
       setReviewCheck('submitted');
-      router.replace('/(tabs)/home');
+      router.replace(`/payment/${bookingId}`);
     } catch (error) {
       showAlert(
         'Review could not be submitted',
@@ -147,6 +154,20 @@ export default function ReviewScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+    if (!result.canceled) setPhotos([...photos, result.assets[0].uri]);
+  };
+
+  const handleCameraUpload = async () => {
+    if (photos.length >= 3) return;
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      showAlert('Permission required', 'Camera access is required.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       quality: 0.85,
     });
@@ -252,9 +273,17 @@ export default function ReviewScreen() {
           style={styles.photoScroll}
         >
           {photos.length < 3 && (
-            <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
-              <UploadCloud color={theme.colors.primary} size={32} />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.uploadBtn}
+                onPress={() => void handleCameraUpload()}
+              >
+                <Camera color={theme.colors.primary} size={32} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload}>
+                <UploadCloud color={theme.colors.primary} size={32} />
+              </TouchableOpacity>
+            </>
           )}
           {photos.map((photo, index) => (
             <View key={index} style={styles.photoPreview}>
