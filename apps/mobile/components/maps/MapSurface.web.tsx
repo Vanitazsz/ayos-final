@@ -35,6 +35,7 @@ export function MapSurface({
   const initialMapOptionsRef = useRef({ center: mapCenter, interactive });
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRefs = useRef<maplibregl.Marker[]>([]);
+  const popupRefs = useRef<maplibregl.Popup[]>([]);
   const animationFrameRef = useRef<number | null>(null);
   const lastFitBoundsRef = useRef<string | undefined>(undefined);
   const displayedRadiusRef = useRef<number | undefined>(undefined);
@@ -76,6 +77,7 @@ export function MapSurface({
     return () => {
       observer.disconnect();
       if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
+      popupRefs.current.forEach((popup) => popup.remove());
       markerRefs.current.forEach((marker) => marker.remove());
       mapRef.current?.remove();
       mapRef.current = null;
@@ -87,12 +89,38 @@ export function MapSurface({
     if (!map || !isMapLoaded) return;
 
     map.setCenter([mapCenter.longitude, mapCenter.latitude]);
+    popupRefs.current.forEach((popup) => popup.remove());
+    popupRefs.current = [];
     markerRefs.current.forEach((marker) => marker.remove());
-    markerRefs.current = points.map((point) =>
-      new maplibregl.Marker({ color: point.color ?? '#1e3a8a' })
+    markerRefs.current = points.map((point) => {
+      const marker = new maplibregl.Marker({ color: point.color ?? '#1e3a8a' })
         .setLngLat([point.longitude, point.latitude])
-        .addTo(map),
-    );
+        .addTo(map);
+
+      const labelText =
+        point.label ??
+        (point.id === 'worker'
+          ? 'Worker'
+          : point.id === 'destination'
+            ? 'User'
+            : point.id === 'start'
+              ? 'Start'
+              : undefined);
+
+      if (labelText) {
+        const popup = new maplibregl.Popup({
+          offset: 25,
+          closeButton: false,
+          closeOnClick: false,
+          focusAfterOpen: false,
+        })
+          .setLngLat([point.longitude, point.latitude])
+          .setHTML(`<div style="font-size: 11px; font-weight: 700; color: #0f172a; padding: 2px 5px; font-family: sans-serif;">${labelText}</div>`)
+          .addTo(map);
+        popupRefs.current.push(popup);
+      }
+      return marker;
+    });
 
     const routeSource = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
     if (route) {

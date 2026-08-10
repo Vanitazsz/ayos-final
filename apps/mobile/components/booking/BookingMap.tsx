@@ -44,24 +44,7 @@ export const BookingMap = React.memo(function BookingMap({
   const safeLng = (v: number) => (Number.isFinite(v) ? v : destinationLng);
   const centerLat = safeLat((current.latitude + destinationLat) / 2);
   const centerLng = safeLng((current.longitude + destinationLng) / 2);
-  const isDifferentStart =
-    startLat != null &&
-    startLng != null &&
-    Number.isFinite(startLat) &&
-    Number.isFinite(startLng) &&
-    (startLat !== workerLat || startLng !== workerLng);
-
   const points = [
-    ...(isDifferentStart
-      ? [
-          {
-            id: 'start',
-            latitude: startLat!,
-            longitude: startLng!,
-            color: '#7C3AED',
-          },
-        ]
-      : []),
     ...(workerLat != null && workerLng != null && Number.isFinite(workerLat) && Number.isFinite(workerLng)
       ? [
           {
@@ -69,6 +52,7 @@ export const BookingMap = React.memo(function BookingMap({
             latitude: workerLat,
             longitude: workerLng,
             color: Colors.cta,
+            label: 'Worker',
           },
         ]
       : []),
@@ -77,6 +61,7 @@ export const BookingMap = React.memo(function BookingMap({
       latitude: destinationLat,
       longitude: destinationLng,
       color: Colors.error,
+      label: 'User',
     },
   ];
   if (
@@ -94,9 +79,15 @@ export const BookingMap = React.memo(function BookingMap({
         points={points}
         route={route ?? undefined}
       />
-      <View style={styles.startBadge}>
-        <View style={styles.startDot} />
-        <AppText variant="caption">Starting from</AppText>
+      <View style={styles.legendBadge}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: Colors.error }]} />
+          <AppText variant="caption" weight="semiBold" color={Colors.textPrimary}>User</AppText>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: Colors.cta }]} />
+          <AppText variant="caption" weight="semiBold" color={Colors.textPrimary}>Worker</AppText>
+        </View>
       </View>
       <View style={styles.etaBadge}>
         <AppText variant="h4" color={Colors.cta}>
@@ -127,24 +118,28 @@ const styles = StyleSheet.create({
     position: 'relative',
     ...Elevation.sm,
   },
-  startBadge: {
+  legendBadge: {
     position: 'absolute',
     top: Spacing['2'],
     left: Spacing['2'],
-    backgroundColor: Colors.white,
-    paddingHorizontal: Spacing['2'],
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 10,
     paddingVertical: Spacing['1'],
     borderRadius: Radius.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
     ...Elevation.sm,
   },
-  startDot: {
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#7C3AED',
   },
   etaBadge: {
     position: 'absolute',

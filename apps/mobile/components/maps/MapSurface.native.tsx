@@ -7,7 +7,7 @@ import { isWorldCoordinates } from '@/lib/coordinates';
 
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
 
-export type MapPoint = { id: string; latitude: number; longitude: number; color?: string };
+export type MapPoint = { id: string; latitude: number; longitude: number; color?: string; label?: string };
 
 type MapSurfaceProps = {
   center: { latitude: number; longitude: number };
