@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { randomUUID } from '@/lib/crypto';
 
 interface AiAnalysisRow {
   status?: string;
@@ -14,7 +15,7 @@ export function subscribeToAiAnalysisJob(
   },
 ): () => void {
   const channel = supabase
-    .channel(`ai-job-${jobId}`)
+    .channel(`ai-job-${jobId}-${randomUUID()}`)
     .on(
       'postgres_changes',
       {

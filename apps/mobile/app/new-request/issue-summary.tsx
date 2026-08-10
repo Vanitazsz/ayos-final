@@ -27,7 +27,7 @@ import {
   queueAiAnalysis,
   type WorkerRateEstimate,
 } from '@/services/api';
-import { supabase } from '@/lib/supabase';
+import { subscribeToAiAnalysisJob } from '@/services/aiAnalysisSubscription';
 import { useRequestStore } from '@/store/useRequestStore';
 import { randomUUID } from '@/lib/crypto';
 
@@ -48,6 +48,7 @@ export default function IssueSummaryScreen() {
   const start = useCallback(async () => {
     setStatus('loading');
     setError('');
+    let unsub: (() => void) | null = null;
     try {
       let jobId = draft.aiJobId;
       if (!jobId) {
@@ -68,40 +69,24 @@ export default function IssueSummaryScreen() {
       if (!jobId) throw new Error('AI job was not created');
       const activeJobId = jobId;
 
-      const channel = supabase
-        .channel(`ai-job-${activeJobId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'ai_analysis_jobs',
-            filter: `id=eq.${activeJobId}`,
-          },
-          (payload) => {
-            const row = payload.new as any;
-            if (row.status === 'SUCCEEDED') {
-              draft.setDraft({ aiResult: row.result });
-              setStatus('success');
-              void supabase.removeChannel(channel);
-            } else if (row.status === 'FAILED') {
-              setError(row.error_message ?? 'AI processing failed.');
-              setStatus('error');
-              void supabase.removeChannel(channel);
-            }
-          },
-        )
-        .subscribe();
+      unsub = subscribeToAiAnalysisJob(activeJobId, {
+        onSucceeded: (res) => {
+          draft.setDraft({ aiResult: res });
+          setStatus('success');
+        },
+        onFailed: (msg) => {
+          setError(msg);
+          setStatus('error');
+        },
+      });
 
       const completed = await processAiJob(activeJobId);
       if (completed.status === 'SUCCEEDED') {
         draft.setDraft({ aiResult: completed.result });
         setStatus('success');
-        void supabase.removeChannel(channel);
       } else if (completed.status === 'FAILED') {
         setError(completed.error_message ?? 'AI processing failed.');
         setStatus('error');
-        void supabase.removeChannel(channel);
       }
     } catch (reason) {
       console.error('[issue-summary] AI analysis failed:', reason);
@@ -109,8 +94,10 @@ export default function IssueSummaryScreen() {
         reason instanceof Error ? reason.message : 'AI processing failed.',
       );
       setStatus('error');
+    } finally {
+      if (unsub) unsub();
     }
-  }, [draft]);
+  }, [draft.aiJobId, draft.description, draft.media, draft.setDraft]);
 
   useEffect(() => {
     void start();
