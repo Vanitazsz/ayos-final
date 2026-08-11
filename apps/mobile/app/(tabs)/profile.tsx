@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {View,
+import {
+  View,
   Text,
   StyleSheet,
-  TouchableOpacity,} from 'react-native';
+  TouchableOpacity,
+} from 'react-native';
 import { Screen } from '@/components/layout/Screen';
-import { Button } from '@/components/buttons/Button';
 import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -19,6 +20,9 @@ import {
   MapPin,
   Fingerprint,
   Languages,
+  Info,
+  Save,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { fetchCustomerProfile } from '@/services/api';
@@ -101,6 +105,8 @@ export default function ProfileScreen() {
   const [loadError, setLoadError] = useState('');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
   const load = useCallback(async () => {
     const result = await fetchCustomerProfile();
     if (result.error) {
@@ -109,10 +115,11 @@ export default function ProfileScreen() {
       return;
     }
     setProfile(result.data);
-    setName(result.data.name);
+    setName(result.data.name ?? '');
     setMobile(user?.phone ?? '');
     setLoadError('');
   }, [user?.phone]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -143,13 +150,19 @@ export default function ProfileScreen() {
       );
     }
   };
+
   const saveProfile = async () => {
+    if (!name.trim()) {
+      showAlert('Full Name Required', 'Please enter your full name before saving.');
+      return;
+    }
     try {
-      const normalizedMobile = mobile.startsWith('0')
-        ? `+63${mobile.slice(1)}`
-        : mobile;
+      setIsSaving(true);
+      const normalizedMobile = mobile.trim().startsWith('0')
+        ? `+63${mobile.trim().slice(1)}`
+        : mobile.trim();
       const updated = await updateMyProfile({
-        displayName: name,
+        displayName: name.trim(),
         mobile: normalizedMobile || null,
         complete: true,
       });
@@ -158,12 +171,29 @@ export default function ProfileScreen() {
         name: updated.displayName,
         profileComplete: updated.profileComplete,
       }));
+      showAlert(
+        'Profile Saved Successfully!',
+        'Your profile details have been saved. You can now freely navigate to all app pages.',
+      );
     } catch (error) {
       showAlert(
-        'Profile update',
-        error instanceof Error ? error.message : 'Unable to update profile',
+        'Profile Update Failed',
+        error instanceof Error ? error.message : 'Unable to update profile details',
       );
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleSettingPress = (route: string) => {
+    if (profile && !profile.profileComplete) {
+      showAlert(
+        'Save Required First',
+        'Please save your profile details first by tapping the highlighted "SAVE PROFILE DETAILS" button above.',
+      );
+      return;
+    }
+    router.push(route as any);
   };
 
   const handleLogout = () => {
@@ -214,7 +244,7 @@ export default function ProfileScreen() {
                   contentFit="cover"
                 />
               </TouchableOpacity>
-              <Text style={theme.typography.h3}>{profile.name}</Text>
+              <Text style={theme.typography.h3}>{profile.name || 'New Customer'}</Text>
               <Text
                 style={[
                   theme.typography.body2,
@@ -249,61 +279,64 @@ export default function ProfileScreen() {
                     : 'Email verification pending'}
                 </Text>
               </View>
-              <View
-                style={[
-                  styles.verifiedBadge,
-                  {
-                    backgroundColor:
-                      profile.verificationStatus === 'verified'
-                        ? `${theme.colors.success}15`
-                        : profile.verificationStatus === 'rejected'
-                          ? `${theme.colors.error}15`
-                          : theme.colors.warningBackground,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    {
-                      color:
-                        profile.verificationStatus === 'verified'
-                          ? theme.colors.success
-                          : profile.verificationStatus === 'rejected'
-                            ? theme.colors.error
-                            : theme.colors.warning,
-                    },
-                  ]}
-                >
-                  {profile.verificationStatus === 'verified'
-                    ? '✓ Identity verified'
-                    : profile.verificationStatus === 'pending'
-                      ? 'Identity review pending'
-                      : profile.verificationStatus === 'rejected'
-                        ? 'Identity verification rejected'
-                        : 'Identity not verified'}
-                </Text>
-              </View>
             </View>
 
+            {/* New Account Instruction Banner */}
             {!profile.profileComplete && (
-              <View style={styles.editCard}>
-                <Text style={theme.typography.h4}>
-                  Complete your profile
+              <View style={styles.guidanceCard}>
+                <View style={styles.guidanceHeader}>
+                  <Info size={20} color="#1E40AF" />
+                  <Text style={styles.guidanceTitle}>
+                    📍 Important Instruction for New Accounts
+                  </Text>
+                </View>
+                <Text style={styles.guidanceText}>
+                  Welcome! Please enter your Full Name and Mobile Number below, then tap the highlighted <Text style={{ fontWeight: '800', color: theme.colors.primary }}>SAVE PROFILE DETAILS</Text> button first before navigating to other pages.
                 </Text>
+              </View>
+            )}
+
+            {/* Complete Profile Card with Highlighted Save Button */}
+            {!profile.profileComplete && (
+              <View style={styles.editCardHighlight}>
+                <Text style={[theme.typography.h4, { marginBottom: theme.spacing.sm }]}>
+                  Complete Your Profile Details
+                </Text>
+
+                <Text style={styles.fieldLabel}>FULL NAME *</Text>
                 <TextInput
                   value={name}
                   onChangeText={setName}
-                  placeholder="Full name"
+                  placeholder="Enter your full name"
+                  style={styles.inputStyle}
                 />
+
+                <Text style={[styles.fieldLabel, { marginTop: theme.spacing.sm }]}>
+                  MOBILE NUMBER (+63...) *
+                </Text>
                 <TextInput
                   value={mobile}
                   onChangeText={setMobile}
-                  placeholder="Mobile number"
+                  placeholder="e.g. 09171234567 or +639171234567"
                   keyboardType="phone-pad"
+                  style={styles.inputStyle}
                 />
-                <View style={styles.editActions}>
-                  <Button title="Save" onPress={saveProfile} />
+
+                <View style={styles.highlightedSaveContainer}>
+                  <TouchableOpacity
+                    style={styles.highlightedSaveBtn}
+                    onPress={saveProfile}
+                    activeOpacity={0.85}
+                    disabled={isSaving}
+                  >
+                    <Save size={20} color="#FFFFFF" />
+                    <Text style={styles.highlightedSaveBtnText}>
+                      {isSaving ? 'SAVING DETAILS…' : 'SAVE PROFILE DETAILS'}
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={styles.saveNoticeText}>
+                    👇 Tap the button above to save before viewing other pages
+                  </Text>
                 </View>
               </View>
             )}
@@ -324,7 +357,7 @@ export default function ProfileScreen() {
                           styles.settingItem,
                           !isLast && styles.borderBottom,
                         ]}
-                        onPress={() => router.push(item.route as any)}
+                        onPress={() => handleSettingPress(item.route)}
                       >
                         <View
                           style={[
@@ -339,6 +372,11 @@ export default function ProfileScreen() {
                         >
                           {item.title}
                         </Text>
+                        {!profile.profileComplete && (
+                          <View style={styles.badgeSaveFirst}>
+                            <Text style={styles.badgeSaveFirstText}>Save First</Text>
+                          </View>
+                        )}
                         <ChevronRight
                           color={theme.colors.textTertiary}
                           size={20}
@@ -437,17 +475,96 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     marginTop: theme.spacing.md,
   },
-  editCard: {
+  guidanceCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: theme.radius.xl,
+    borderWidth: 1.5,
+    borderColor: '#93C5FD',
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.sm,
+  },
+  guidanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+  },
+  guidanceTitle: {
+    ...theme.typography.body1,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  guidanceText: {
+    ...theme.typography.body2,
+    color: '#1E3A8A',
+    lineHeight: 20,
+  },
+  editCardHighlight: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.xl,
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
     ...theme.shadows.md,
   },
-  editActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.sm,
+  fieldLabel: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  inputStyle: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+  },
+  highlightedSaveContainer: {
     marginTop: theme.spacing.md,
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  highlightedSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.radius.lg,
+    width: '100%',
+    ...theme.shadows.md,
+  },
+  highlightedSaveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  saveNoticeText: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  badgeSaveFirst: {
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: theme.radius.sm,
+    marginRight: theme.spacing.xs,
+  },
+  badgeSaveFirstText: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: '#D97706',
   },
 });

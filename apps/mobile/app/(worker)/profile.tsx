@@ -387,6 +387,30 @@ export default function WorkerProfileScreen() {
               <Text style={[theme.typography.h4, styles.infoSectionTitle]}>
                 Availability
               </Text>
+
+              {/* Service Area Setup Guidance Banner */}
+              {(!matchingReadiness?.setupComplete || !matchingReadiness?.matchable) && (
+                <TouchableOpacity
+                  style={styles.guidanceBanner}
+                  onPress={() => handleItemPress('areas')}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.guidanceBannerHeader}>
+                    <MapPin size={20} color={theme.colors.info} />
+                    <Text style={styles.guidanceBannerTitle}>
+                      📍 Setup Required to Enable Matching
+                    </Text>
+                  </View>
+                  <Text style={styles.guidanceBannerText}>
+                    To enable matching availability and start receiving service requests, please go to <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Service Areas</Text> page under Account to set up your work location and radius.
+                  </Text>
+                  <View style={styles.guidanceBannerBtn}>
+                    <Text style={styles.guidanceBannerBtnText}>Go to Service Areas</Text>
+                    <ChevronRight size={14} color="#1E40AF" />
+                  </View>
+                </TouchableOpacity>
+              )}
+
               <View style={styles.matchingCard}>
                 <View style={styles.matchingRow}>
                   <View style={styles.matchingCopy}>
@@ -420,9 +444,26 @@ export default function WorkerProfileScreen() {
                       },
                     ]}
                   >
-                    Your profile is eligible for matching.
+                    ✓ Your profile is eligible for matching.
                   </Text>
-                ) : null}
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleItemPress('areas')}
+                    style={{ marginTop: theme.spacing.xs }}
+                  >
+                    <Text
+                      style={[
+                        theme.typography.caption,
+                        {
+                          color: theme.colors.error,
+                          fontWeight: '600',
+                        },
+                      ]}
+                    >
+                      ⚠️ Matching disabled: Tap here to configure Service Area & Radius.
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -569,6 +610,11 @@ export default function WorkerProfileScreen() {
                         >
                           {item.title}
                         </Text>
+                        {item.id === 'areas' && !matchingReadiness?.setupComplete && (
+                          <View style={styles.badgeRequired}>
+                            <Text style={styles.badgeRequiredText}>Setup Needed</Text>
+                          </View>
+                        )}
                         <ChevronRight
                           color={theme.colors.textTertiary}
                           size={20}

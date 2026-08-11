@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { normalizePhilippinePhone, signupErrorMessage } from '@/lib/workerRegistration';
+import { verifyEmailDeliverability } from '@/lib/emailVerification';
 import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 import { invalidateUserCache } from '@/services/apiCore';
 
@@ -97,19 +98,46 @@ export async function signUpCustomer(input: {
   name: string;
   mobile: string;
 }) {
+  const verifiedEmail = await verifyEmailDeliverability(input.email);
   const mobile = normalizePhilippinePhone(input.mobile);
+
+  // Check if email or mobile is already registered
+  try {
+    const { data: existing } = await supabase
+      .from('accounts')
+      .select('email, mobile')
+      .or(`email.eq.${verifiedEmail.trim().toLowerCase()},mobile.eq.${mobile}`)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.email?.toLowerCase() === verifiedEmail.trim().toLowerCase()) {
+        throw new Error(`An account already exists for ${verifiedEmail.trim().toLowerCase()}. Please sign in instead.`);
+      }
+      if (existing.mobile === mobile) {
+        throw new Error(`This mobile number (${input.mobile}) is already registered. Sign in or use a different number.`);
+      }
+    }
+  } catch (checkErr: any) {
+    if (checkErr instanceof Error && checkErr.message.includes('already')) {
+      throw checkErr;
+    }
+  }
+
   let authResult;
   try {
     authResult = await supabase.auth.signUp({
-      email: input.email.trim().toLowerCase(),
+      email: verifiedEmail.trim().toLowerCase(),
       password: input.password,
       options: {
         data: { role: 'USER', name: input.name.trim(), mobile },
         emailRedirectTo: Linking.createURL('/auth/callback'),
       },
     });
-  } catch (fetchError) {
+  } catch (fetchError: any) {
     console.error('[auth] signUpCustomer network error:', fetchError);
+    if (fetchError instanceof Error && fetchError.message) {
+      throw fetchError;
+    }
     throw new Error(
       'Unable to connect. Check your internet connection and try again.',
     );

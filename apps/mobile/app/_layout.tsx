@@ -117,19 +117,13 @@ function SessionBoundary() {
   if (isAuthenticated && user?.role === 'USER' && root === '(worker)')
     return <Redirect href="/(tabs)/home" />;
   if (isAuthenticated && !user?.profileComplete) {
-    if (user?.role === 'WORKER' && root === 'register-worker')
-      return (
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: theme.colors.background },
-          }}
-        />
-      );
-    if (user?.role === 'WORKER' && pathname !== '/profile')
+    if (user?.role === 'WORKER' && root === 'register-worker') {
+      // Allow register-worker page to render normally
+    } else if (user?.role === 'WORKER' && root !== '(worker)' && !pathname.includes('profile')) {
       return <Redirect href="/(worker)/profile" />;
-    if (user?.role === 'USER' && pathname !== '/profile')
+    } else if (user?.role === 'USER' && root !== '(tabs)' && !pathname.includes('profile')) {
       return <Redirect href="/(tabs)/profile" />;
+    }
   }
 
   return (
@@ -142,6 +136,8 @@ function SessionBoundary() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(worker)" />
+      <Stack.Screen name="register-worker" />
     </Stack>
   );
 }
