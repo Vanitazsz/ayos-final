@@ -174,8 +174,8 @@ export default function BookingRequestScreen() {
           }
           setBackendStatus(row.status);
           setRouteDetails({
-            startLat: row.worker_start_lat,
-            startLng: row.worker_start_lng,
+            startLat: row.worker_start_lat ?? row.worker_profiles?.latitude,
+            startLng: row.worker_start_lng ?? row.worker_profiles?.longitude,
             destinationLat: address?.latitude,
             destinationLng: address?.longitude,
             address: [address?.line1, address?.barangay, address?.city]
@@ -638,12 +638,16 @@ export default function BookingRequestScreen() {
               const workerStartLat =
                 routeDetails.startLat != null
                   ? Number(routeDetails.startLat)
-                  : fallbackWorkerLat;
+                  : tracking?.booking?.worker_profiles?.latitude != null
+                    ? Number(tracking.booking.worker_profiles.latitude)
+                    : fallbackWorkerLat;
 
               const workerStartLng =
                 routeDetails.startLng != null
                   ? Number(routeDetails.startLng)
-                  : fallbackWorkerLng;
+                  : tracking?.booking?.worker_profiles?.longitude != null
+                    ? Number(tracking.booking.worker_profiles.longitude)
+                    : fallbackWorkerLng;
 
               const isArrivedOrLater = [
                 'WORKER_ARRIVED',
@@ -653,13 +657,19 @@ export default function BookingRequestScreen() {
                 'COMPLETED',
               ].includes(backendStatus ?? '');
 
+              const isEnRoute = backendStatus === 'WORKER_EN_ROUTE';
+
               const workerCurrentLat = isArrivedOrLater
                 ? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat)
-                : (liveLocation?.latitude ?? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat));
+                : (isEnRoute && liveLocation?.latitude != null
+                    ? Number(liveLocation.latitude)
+                    : (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat));
 
               const workerCurrentLng = isArrivedOrLater
                 ? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng)
-                : (liveLocation?.longitude ?? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng));
+                : (isEnRoute && liveLocation?.longitude != null
+                    ? Number(liveLocation.longitude)
+                    : (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng));
 
               return (
                 <View style={{ gap: 12 }}>
