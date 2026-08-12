@@ -11,13 +11,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { theme } from '@/constants/theme';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { loadCurrentUser } from '@/services/auth';
 import {
   hasPendingPasswordRecovery,
   markPasswordRecoveryPending,
   PASSWORD_RECOVERY_ROUTE,
+  shouldStartPasswordRecoveryForRoute,
 } from '@/services/passwordRecovery';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WorkerPresenceProvider } from '@/context/WorkerPresenceContext';
@@ -46,6 +47,7 @@ if (typeof globalThis !== 'undefined' && (globalThis as any).ErrorUtils) {
 
 export default function RootLayout() {
   const [authBootstrapReady, setAuthBootstrapReady] = useState(false);
+  const recoveryRouteStarted = useRef(false);
   const setSessionUser = useAuthStore((state) => state.setSessionUser);
   const setLoading = useAuthStore((state) => state.setLoading);
   const startPasswordRecovery = useAuthStore(
@@ -60,7 +62,17 @@ export default function RootLayout() {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    if (isPasswordRecoveryRoute) startPasswordRecovery();
+    if (!isPasswordRecoveryRoute) {
+      recoveryRouteStarted.current = false;
+    } else if (
+      shouldStartPasswordRecoveryForRoute(
+        isPasswordRecoveryRoute,
+        recoveryRouteStarted.current,
+      )
+    ) {
+      recoveryRouteStarted.current = true;
+      startPasswordRecovery();
+    }
 
     const sync = async () => {
       if (isAuthTransitionRoute || isPasswordRecovery) {

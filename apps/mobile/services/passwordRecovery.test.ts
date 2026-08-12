@@ -142,4 +142,14 @@ describe('password recovery flow', () => {
       'Your password has been changed successfully. Please sign in with your new password.',
     );
   });
+
+  it('starts recovery for a reset route only once per route lifecycle', async () => {
+    const { shouldStartPasswordRecoveryForRoute } = await import(
+      './passwordRecovery'
+    );
+
+    expect(shouldStartPasswordRecoveryForRoute(true, false)).toBe(true);
+    expect(shouldStartPasswordRecoveryForRoute(true, true)).toBe(false);
+    expect(shouldStartPasswordRecoveryForRoute(false, false)).toBe(false);
+  });
 });
