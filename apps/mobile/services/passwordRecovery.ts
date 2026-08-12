@@ -7,6 +7,9 @@ export const PASSWORD_RECOVERY_FLOW = 'recovery';
 export const PASSWORD_RECOVERY_LOCK_KEY = 'password_recovery_pending';
 export const PASSWORD_RECOVERY_ERROR =
   'This password reset link is invalid or has expired. Request a new one.';
+export const PASSWORD_RECOVERY_REQUEST_COOLDOWN_MS = 60_000;
+export const PASSWORD_RECOVERY_REQUEST_COOLDOWN_ERROR =
+  'A reset link was already requested recently. Use the newest email before requesting another one.';
 
 export function createPasswordRecoveryRedirect() {
   return Linking.createURL(PASSWORD_RECOVERY_ROUTE, {

@@ -96,4 +96,26 @@ describe('requestPasswordReset', () => {
       { redirectTo: 'ayos://auth/reset-password?flow=recovery' },
     );
   });
+
+  it('coalesces duplicate reset requests and blocks another request during the cooldown', async () => {
+    let resolveRequest!: (value: { error: null }) => void;
+    mocks.resetPasswordForEmail.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+    const { requestPasswordReset } = await import('./auth');
+
+    const firstRequest = requestPasswordReset(' User@example.com ');
+    const duplicateRequest = requestPasswordReset('user@example.com');
+
+    expect(mocks.resetPasswordForEmail).toHaveBeenCalledTimes(1);
+    resolveRequest({ error: null });
+    await Promise.all([firstRequest, duplicateRequest]);
+
+    await expect(requestPasswordReset('user@example.com')).rejects.toThrow(
+      'A reset link was already requested recently. Use the newest email before requesting another one.',
+    );
+    expect(mocks.resetPasswordForEmail).toHaveBeenCalledTimes(1);
+  });
 });

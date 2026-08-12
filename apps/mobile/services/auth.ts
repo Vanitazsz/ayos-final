@@ -6,9 +6,16 @@ import { normalizePhilippinePhone, signupErrorMessage } from '@/lib/workerRegist
 import { verifyEmailDeliverability } from '@/lib/emailVerification';
 import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 import { invalidateUserCache } from '@/services/apiCore';
-import { createPasswordRecoveryRedirect } from '@/services/passwordRecovery';
+import {
+  createPasswordRecoveryRedirect,
+  PASSWORD_RECOVERY_REQUEST_COOLDOWN_ERROR,
+  PASSWORD_RECOVERY_REQUEST_COOLDOWN_MS,
+} from '@/services/passwordRecovery';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const passwordRecoveryRequests = new Map<string, Promise<void>>();
+const passwordRecoveryCooldowns = new Map<string, number>();
 
 function extractRawErrorMessage(error: unknown): string {
   if (typeof error === 'string') return error;
@@ -174,12 +181,36 @@ export async function resendEmailOtp(email: string) {
   if (error) throw error;
 }
 
-export async function requestPasswordReset(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    email.trim().toLowerCase(),
-    { redirectTo: createPasswordRecoveryRedirect() },
-  );
-  if (error) throw error;
+export function requestPasswordReset(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const inFlightRequest = passwordRecoveryRequests.get(normalizedEmail);
+  if (inFlightRequest) return inFlightRequest;
+
+  const cooldownUntil = passwordRecoveryCooldowns.get(normalizedEmail) ?? 0;
+  if (cooldownUntil > Date.now()) {
+    return Promise.reject(new Error(PASSWORD_RECOVERY_REQUEST_COOLDOWN_ERROR));
+  }
+
+  const request = (async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      normalizedEmail,
+      { redirectTo: createPasswordRecoveryRedirect() },
+    );
+    if (error) throw error;
+    passwordRecoveryCooldowns.set(
+      normalizedEmail,
+      Date.now() + PASSWORD_RECOVERY_REQUEST_COOLDOWN_MS,
+    );
+  })();
+
+  passwordRecoveryRequests.set(normalizedEmail, request);
+  const clearInFlightRequest = () => {
+    if (passwordRecoveryRequests.get(normalizedEmail) === request) {
+      passwordRecoveryRequests.delete(normalizedEmail);
+    }
+  };
+  void request.then(clearInFlightRequest, clearInFlightRequest);
+  return request;
 }
 
 export async function signInWithGoogle() {
