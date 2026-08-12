@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, ArrowLeft } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
+import { showAlert } from '@/components/AppAlert';
 import { AppInput } from '@/components/AppInput';
 import { AppText } from '@/components/AppText';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
@@ -15,6 +16,8 @@ import {
   loadPasswordRecoverySession,
   markPasswordRecoveryPending,
   PASSWORD_RECOVERY_ERROR,
+  PASSWORD_RECOVERY_SUCCESS_MESSAGE,
+  PASSWORD_RECOVERY_SUCCESS_TITLE,
   verifyPasswordRecoveryToken,
 } from '@/services/passwordRecovery';
 import { getPasswordRequirementState } from '@/utils/passwordRequirements';
@@ -145,7 +148,12 @@ export default function ResetPasswordScreen() {
       await closePasswordRecoverySession();
       clearPasswordRecovery();
       setSessionUser(null);
-      router.replace('/(auth)/login');
+      showAlert(
+        PASSWORD_RECOVERY_SUCCESS_TITLE,
+        PASSWORD_RECOVERY_SUCCESS_MESSAGE,
+        [{ text: 'Sign in', onPress: () => router.replace('/(auth)/login') }],
+        { cancelable: false },
+      );
     } catch (error) {
       setStatus('ready');
       setErrorMessage(

@@ -130,4 +130,16 @@ describe('password recovery flow', () => {
       'true',
     );
   });
+
+  it('provides confirmation copy after a password reset completes', async () => {
+    const {
+      PASSWORD_RECOVERY_SUCCESS_MESSAGE,
+      PASSWORD_RECOVERY_SUCCESS_TITLE,
+    } = await import('./passwordRecovery');
+
+    expect(PASSWORD_RECOVERY_SUCCESS_TITLE).toBe('Password changed');
+    expect(PASSWORD_RECOVERY_SUCCESS_MESSAGE).toBe(
+      'Your password has been changed successfully. Please sign in with your new password.',
+    );
+  });
 });

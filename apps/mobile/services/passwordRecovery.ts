@@ -10,6 +10,9 @@ export const PASSWORD_RECOVERY_ERROR =
 export const PASSWORD_RECOVERY_REQUEST_COOLDOWN_MS = 60_000;
 export const PASSWORD_RECOVERY_REQUEST_COOLDOWN_ERROR =
   'A reset link was already requested recently. Use the newest email before requesting another one.';
+export const PASSWORD_RECOVERY_SUCCESS_TITLE = 'Password changed';
+export const PASSWORD_RECOVERY_SUCCESS_MESSAGE =
+  'Your password has been changed successfully. Please sign in with your new password.';
 
 export function createPasswordRecoveryRedirect() {
   return Linking.createURL(PASSWORD_RECOVERY_ROUTE, {
