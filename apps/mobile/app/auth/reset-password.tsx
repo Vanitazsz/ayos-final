@@ -15,11 +15,18 @@ import {
   loadPasswordRecoverySession,
   markPasswordRecoveryPending,
   PASSWORD_RECOVERY_ERROR,
+  verifyPasswordRecoveryToken,
 } from '@/services/passwordRecovery';
 import { getPasswordRequirementState } from '@/utils/passwordRequirements';
 import { useAuthStore } from '@/store/useAuthStore';
 
-type ResetStatus = 'loading' | 'ready' | 'submitting' | 'invalid';
+type ResetStatus =
+  | 'loading'
+  | 'awaiting_confirmation'
+  | 'verifying'
+  | 'ready'
+  | 'submitting'
+  | 'invalid';
 
 function parameter(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -27,7 +34,12 @@ function parameter(value: string | string[] | undefined) {
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ code?: string; flow?: string }>();
+  const params = useLocalSearchParams<{
+    code?: string;
+    flow?: string;
+    token_hash?: string;
+    type?: string;
+  }>();
   const startPasswordRecovery = useAuthStore(
     (state) => state.startPasswordRecovery,
   );
@@ -44,6 +56,8 @@ export default function ResetPasswordScreen() {
 
   const code = parameter(params.code);
   const flow = parameter(params.flow);
+  const tokenHash = parameter(params.token_hash);
+  const tokenType = parameter(params.type);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +74,19 @@ export default function ResetPasswordScreen() {
           setErrorMessage(PASSWORD_RECOVERY_ERROR);
           setStatus('invalid');
         }
+        return;
+      }
+
+      if (tokenType && !isPasswordRecoveryFlow(tokenType)) {
+        if (!cancelled) {
+          setErrorMessage(PASSWORD_RECOVERY_ERROR);
+          setStatus('invalid');
+        }
+        return;
+      }
+
+      if (tokenHash) {
+        if (!cancelled) setStatus('awaiting_confirmation');
         return;
       }
 
@@ -80,7 +107,22 @@ export default function ResetPasswordScreen() {
     return () => {
       cancelled = true;
     };
-  }, [code, flow, startPasswordRecovery]);
+  }, [code, flow, startPasswordRecovery, tokenHash, tokenType]);
+
+  const verifyToken = async () => {
+    if (!tokenHash) return;
+    setErrorMessage('');
+    setStatus('verifying');
+    try {
+      await verifyPasswordRecoveryToken(tokenHash);
+      setStatus('ready');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : PASSWORD_RECOVERY_ERROR,
+      );
+      setStatus('awaiting_confirmation');
+    }
+  };
 
   const requirements = getPasswordRequirementState(password, confirmation);
   const passwordIsValid =
@@ -130,7 +172,10 @@ export default function ResetPasswordScreen() {
     }
   };
 
-  const isBusy = status === 'loading' || status === 'submitting';
+  const isBusy =
+    status === 'loading' ||
+    status === 'verifying' ||
+    status === 'submitting';
 
   return (
     <Screen scrollable safeArea backgroundColor={theme.colors.background}>
@@ -154,72 +199,101 @@ export default function ResetPasswordScreen() {
             </AppText>
           </View>
         ) : status === 'loading' ? null : (
-          <View style={styles.form}>
-            {errorMessage ? (
-              <AppText color={theme.colors.error} align="center" accessibilityRole="alert">
-                {errorMessage}
-              </AppText>
-            ) : null}
-            <AppInput
-              label="New password"
-              placeholder="Enter a new password"
-              value={password}
-              onChangeText={(value) => {
-                setPassword(value);
-                setErrorMessage('');
-              }}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isBusy}
-              leftIcon={<Lock color={theme.colors.textSecondary} size={20} />}
-              rightIcon={
-                showPassword ? (
-                  <EyeOff color={theme.colors.textSecondary} size={20} />
-                ) : (
-                  <Eye color={theme.colors.textSecondary} size={20} />
-                )
-              }
-              onRightIconPress={() => setShowPassword((visible) => !visible)}
-            />
-            <PasswordRequirements
-              password={password}
-              confirmation={confirmation}
-              showMatch
-            />
-            <AppInput
-              label="Confirm new password"
-              placeholder="Re-enter your new password"
-              value={confirmation}
-              onChangeText={(value) => {
-                setConfirmation(value);
-                setErrorMessage('');
-              }}
-              secureTextEntry={!showConfirmation}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isBusy}
-              leftIcon={<Lock color={theme.colors.textSecondary} size={20} />}
-              rightIcon={
-                showConfirmation ? (
-                  <EyeOff color={theme.colors.textSecondary} size={20} />
-                ) : (
-                  <Eye color={theme.colors.textSecondary} size={20} />
-                )
-              }
-              onRightIconPress={() =>
-                setShowConfirmation((visible) => !visible)
-              }
-            />
-            <AppButton
-              label="Set new password"
-              onPress={submit}
-              loading={status === 'submitting'}
-              disabled={isBusy}
-              fullWidth
-              style={styles.submit}
-            />
-          </View>
+          status === 'awaiting_confirmation' || status === 'verifying' ? (
+            <View style={styles.form}>
+              {errorMessage ? (
+                <AppText
+                  color={theme.colors.error}
+                  align="center"
+                  accessibilityRole="alert"
+                >
+                  {errorMessage}
+                </AppText>
+              ) : (
+                <AppText color={theme.colors.textSecondary} align="center">
+                  Tap continue to verify this reset request.
+                </AppText>
+              )}
+              <AppButton
+                label="Continue to reset password"
+                onPress={() => void verifyToken()}
+                loading={status === 'verifying'}
+                disabled={isBusy}
+                fullWidth
+              />
+            </View>
+          ) : (
+            <View style={styles.form}>
+              {errorMessage ? (
+                <AppText
+                  color={theme.colors.error}
+                  align="center"
+                  accessibilityRole="alert"
+                >
+                  {errorMessage}
+                </AppText>
+              ) : null}
+              <AppInput
+                label="New password"
+                placeholder="Enter a new password"
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setErrorMessage('');
+                }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isBusy}
+                leftIcon={<Lock color={theme.colors.textSecondary} size={20} />}
+                rightIcon={
+                  showPassword ? (
+                    <EyeOff color={theme.colors.textSecondary} size={20} />
+                  ) : (
+                    <Eye color={theme.colors.textSecondary} size={20} />
+                  )
+                }
+                onRightIconPress={() => setShowPassword((visible) => !visible)}
+              />
+              <PasswordRequirements
+                password={password}
+                confirmation={confirmation}
+                showMatch
+              />
+              <AppInput
+                label="Confirm new password"
+                placeholder="Re-enter your new password"
+                value={confirmation}
+                onChangeText={(value) => {
+                  setConfirmation(value);
+                  setErrorMessage('');
+                }}
+                secureTextEntry={!showConfirmation}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isBusy}
+                leftIcon={<Lock color={theme.colors.textSecondary} size={20} />}
+                rightIcon={
+                  showConfirmation ? (
+                    <EyeOff color={theme.colors.textSecondary} size={20} />
+                  ) : (
+                    <Eye color={theme.colors.textSecondary} size={20} />
+                  )
+                }
+                onRightIconPress={() =>
+                  setShowConfirmation((visible) => !visible)
+                }
+              />
+              <AppButton
+                label="Set new password"
+                onPress={submit}
+                loading={status === 'submitting'}
+                disabled={isBusy}
+                fullWidth
+                style={styles.submit}
+              />
+            </View>
+          )
         )}
 
         {status !== 'loading' ? (

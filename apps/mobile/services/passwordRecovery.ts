@@ -47,6 +47,19 @@ export async function loadPasswordRecoverySession(code?: string) {
   return sessionData.session;
 }
 
+export async function verifyPasswordRecoveryToken(tokenHash: string) {
+  const normalizedTokenHash = tokenHash.trim();
+  if (!normalizedTokenHash) throw new Error(PASSWORD_RECOVERY_ERROR);
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: normalizedTokenHash,
+    type: 'recovery',
+  });
+  if (error) throw error;
+  if (!data.session) throw new Error(PASSWORD_RECOVERY_ERROR);
+  return data.session;
+}
+
 export async function closePasswordRecoverySession() {
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) throw error;

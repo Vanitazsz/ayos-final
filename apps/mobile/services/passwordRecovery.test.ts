@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   createURL: vi.fn(),
   getSession: vi.fn(),
   exchangeCodeForSession: vi.fn(),
+  verifyOtp: vi.fn(),
   signOut: vi.fn(),
   storage: {
     getItem: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       getSession: mocks.getSession,
       exchangeCodeForSession: mocks.exchangeCodeForSession,
+      verifyOtp: mocks.verifyOtp,
       signOut: mocks.signOut,
     },
   },
@@ -72,6 +74,23 @@ describe('password recovery flow', () => {
     await expect(loadPasswordRecoverySession()).rejects.toThrow(
       'This password reset link is invalid or has expired. Request a new one.',
     );
+  });
+
+  it('verifies a token-hash recovery link only when the reset screen asks for it', async () => {
+    const session = { access_token: 'recovery-token' };
+    mocks.verifyOtp.mockResolvedValue({
+      data: { session },
+      error: null,
+    });
+    const { verifyPasswordRecoveryToken } = await import('./passwordRecovery');
+
+    await expect(
+      verifyPasswordRecoveryToken('token-hash-from-email'),
+    ).resolves.toBe(session);
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({
+      token_hash: 'token-hash-from-email',
+      type: 'recovery',
+    });
   });
 
   it('closes only the local recovery session after a password change', async () => {
