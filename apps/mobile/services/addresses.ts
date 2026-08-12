@@ -86,7 +86,7 @@ export async function saveSavedAddress(
   }
   const { data, error } = await supabase.rpc('upsert_my_address', {
     p_id: input.id ?? null,
-    p_label: input.label.trim(),
+    p_label: input.label.trim() || 'Main House',
     p_line1: input.line1.trim(),
     p_line2: input.line2?.trim() || null,
     p_barangay: input.barangay.trim(),
@@ -95,7 +95,7 @@ export async function saveSavedAddress(
     p_postal_code: input.postalCode?.trim() || null,
     p_latitude: input.latitude,
     p_longitude: input.longitude,
-    p_is_default: input.isDefault,
+    p_is_default: true,
   });
   if (error) throw error;
   return mapAddress(data);

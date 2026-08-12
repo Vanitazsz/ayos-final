@@ -1344,10 +1344,10 @@ const applySavedAddress = useCallback(
         {savedAddresses.length ? (
           <View style={styles.savedAddressSection}>
             <View style={styles.savedAddressHeader}>
-              <Text style={styles.savedAddressTitle}>Saved addresses</Text>
+              <Text style={styles.savedAddressTitle}>Main house address</Text>
               <TouchableOpacity
                 accessibilityRole="button"
-                accessibilityLabel="Manage saved addresses"
+                accessibilityLabel="Manage main house address"
                 onPress={() => router.push('/settings/addresses')}
                 style={styles.manageButton}
               >
