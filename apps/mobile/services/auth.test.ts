@@ -1,0 +1,75 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  signUp: vi.fn(),
+  createURL: vi.fn(() => 'ayos://auth/callback'),
+  maybeCompleteAuthSession: vi.fn(),
+}));
+
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      signUp: mocks.signUp,
+    },
+  },
+}));
+
+vi.mock('@/lib/workerRegistration', () => ({
+  normalizePhilippinePhone: vi.fn(() => '+639171234567'),
+  signupErrorMessage: (error: unknown) =>
+    error instanceof Error ? error.message : 'Unable to create your account.',
+}));
+
+vi.mock('expo-linking', () => ({
+  createURL: mocks.createURL,
+}));
+
+vi.mock('expo-web-browser', () => ({
+  maybeCompleteAuthSession: mocks.maybeCompleteAuthSession,
+}));
+
+vi.mock('react-native', () => ({
+  Platform: { OS: 'web' },
+}));
+
+vi.mock('@/services/authenticatedFunctions', () => ({
+  invokeAuthenticatedFunction: vi.fn(),
+}));
+
+vi.mock('@/services/apiCore', () => ({
+  invalidateUserCache: vi.fn(),
+}));
+
+describe('signUpCustomer', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it('rejects an existing confirmed account instead of sending it to OTP verification', async () => {
+    mocks.signUp.mockResolvedValue({
+      data: {
+        session: null,
+        user: {
+          email: 'existing@example.com',
+          email_confirmed_at: '2026-07-22T05:43:44.855Z',
+          identities: [],
+        },
+      },
+      error: null,
+    });
+
+    const { signUpCustomer } = await import('./auth');
+
+    await expect(
+      signUpCustomer({
+        email: 'existing@example.com',
+        password: 'Password1!',
+        name: 'Example User',
+        mobile: '+639171234567',
+      }),
+    ).rejects.toThrow(
+      'An account with this email already exists. Sign in to continue.',
+    );
+  });
+});
