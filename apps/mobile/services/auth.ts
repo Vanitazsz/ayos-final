@@ -6,6 +6,7 @@ import { normalizePhilippinePhone, signupErrorMessage } from '@/lib/workerRegist
 import { verifyEmailDeliverability } from '@/lib/emailVerification';
 import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 import { invalidateUserCache } from '@/services/apiCore';
+import { createPasswordRecoveryRedirect } from '@/services/passwordRecovery';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -176,7 +177,7 @@ export async function resendEmailOtp(email: string) {
 export async function requestPasswordReset(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(
     email.trim().toLowerCase(),
-    { redirectTo: Linking.createURL('/auth/callback') },
+    { redirectTo: createPasswordRecoveryRedirect() },
   );
   if (error) throw error;
 }

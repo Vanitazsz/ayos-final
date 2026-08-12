@@ -1,13 +1,24 @@
-import { Redirect, Stack, usePathname, useSegments } from 'expo-router';
+import {
+  Redirect,
+  Stack,
+  usePathname,
+  useSegments,
+  type Href,
+} from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { theme } from '@/constants/theme';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { loadCurrentUser } from '@/services/auth';
+import {
+  hasPendingPasswordRecovery,
+  markPasswordRecoveryPending,
+  PASSWORD_RECOVERY_ROUTE,
+} from '@/services/passwordRecovery';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WorkerPresenceProvider } from '@/context/WorkerPresenceContext';
 import { AppAlertHost } from '@/components/AppAlert';
@@ -34,25 +45,83 @@ if (typeof globalThis !== 'undefined' && (globalThis as any).ErrorUtils) {
 }
 
 export default function RootLayout() {
+  const [authBootstrapReady, setAuthBootstrapReady] = useState(false);
   const setSessionUser = useAuthStore((state) => state.setSessionUser);
   const setLoading = useAuthStore((state) => state.setLoading);
-  const { user, isAuthenticated } = useAuthStore();
+  const startPasswordRecovery = useAuthStore(
+    (state) => state.startPasswordRecovery,
+  );
+  const { user, isAuthenticated, isPasswordRecovery } = useAuthStore();
+  const pathname = usePathname();
+  const isPasswordRecoveryRoute = pathname === PASSWORD_RECOVERY_ROUTE;
+  const isAuthTransitionRoute =
+    isPasswordRecoveryRoute || pathname === '/auth/callback';
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
+    if (isPasswordRecoveryRoute) startPasswordRecovery();
+
     const sync = async () => {
+      if (isAuthTransitionRoute || isPasswordRecovery) {
+        if (mounted) {
+          setSessionUser(null);
+          setAuthBootstrapReady(true);
+        }
+        await SplashScreen.hideAsync();
+        return;
+      }
+      let pendingRecovery = false;
+      try {
+        pendingRecovery = await hasPendingPasswordRecovery();
+      } catch (error) {
+        console.error('[auth] Could not verify password recovery lock:', error);
+        if (mounted) {
+          setSessionUser(null);
+          setAuthBootstrapReady(true);
+        }
+        await SplashScreen.hideAsync();
+        return;
+      }
+      if (pendingRecovery) {
+        if (mounted) {
+          startPasswordRecovery();
+          setSessionUser(null);
+          setAuthBootstrapReady(true);
+        }
+        await SplashScreen.hideAsync();
+        return;
+      }
       try {
         const user = await loadCurrentUser();
-        if (mounted) setSessionUser(user);
+        if (mounted) {
+          setSessionUser(user);
+          setAuthBootstrapReady(true);
+        }
       } catch {
-        if (mounted) setSessionUser(null);
+        if (mounted) {
+          setSessionUser(null);
+          setAuthBootstrapReady(true);
+        }
       } finally {
-        SplashScreen.hideAsync();
+        await SplashScreen.hideAsync();
       }
     };
     void sync();
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        void markPasswordRecoveryPending().finally(() => {
+          if (mounted) {
+            startPasswordRecovery();
+            setSessionUser(null);
+          }
+        });
+        return;
+      }
+      if (isAuthTransitionRoute || isPasswordRecovery) {
+        if (mounted) setSessionUser(null);
+        return;
+      }
       if (
         event === 'SIGNED_IN' ||
         event === 'SIGNED_OUT' ||
@@ -66,7 +135,14 @@ export default function RootLayout() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [setLoading, setSessionUser]);
+  }, [
+    isAuthTransitionRoute,
+    isPasswordRecovery,
+    isPasswordRecoveryRoute,
+    setLoading,
+    setSessionUser,
+    startPasswordRecovery,
+  ]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -76,7 +152,7 @@ export default function RootLayout() {
           <WorkerPresenceProvider
             enabled={isAuthenticated && user?.role === 'WORKER'}
           >
-            <SessionBoundary />
+            <SessionBoundary authBootstrapReady={authBootstrapReady} />
             <AppAlertHost />
           </WorkerPresenceProvider>
         </SafeAreaProvider>
@@ -85,8 +161,9 @@ export default function RootLayout() {
   );
 }
 
-function SessionBoundary() {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
+function SessionBoundary({ authBootstrapReady }: { authBootstrapReady: boolean }) {
+  const { user, isAuthenticated, isLoading, isPasswordRecovery } =
+    useAuthStore();
   const segments = useSegments();
   const pathname = usePathname();
 
@@ -99,6 +176,11 @@ function SessionBoundary() {
     root === 'register-worker' ||
     root === '+not-found';
 
+  if (!authBootstrapReady) return null;
+  if (isPasswordRecovery && pathname !== PASSWORD_RECOVERY_ROUTE)
+    return (
+      <Redirect href={'/auth/reset-password?flow=recovery' as Href} />
+    );
   if (!isLoading && !isAuthenticated && !isPublic)
     return <Redirect href="/(auth)/login" />;
   if (
