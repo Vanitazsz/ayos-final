@@ -24,6 +24,13 @@ export function isPasswordRecoveryFlow(value: unknown) {
   return value === PASSWORD_RECOVERY_FLOW;
 }
 
+export function shouldStartPasswordRecoveryForRoute(
+  isPasswordRecoveryRoute: boolean,
+  startedForCurrentRoute: boolean,
+) {
+  return isPasswordRecoveryRoute && !startedForCurrentRoute;
+}
+
 export async function markPasswordRecoveryPending() {
   await AsyncStorage.setItem(PASSWORD_RECOVERY_LOCK_KEY, 'true');
 }
