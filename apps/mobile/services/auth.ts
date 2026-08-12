@@ -118,6 +118,11 @@ export async function signUpCustomer(input: {
     console.error('[auth] signUpCustomer error:', authResult.error);
     throw new Error(signupErrorMessage(authResult.error));
   }
+  if (authResult.data.user?.identities?.length === 0) {
+    throw new Error(
+      'An account with this email already exists. Sign in to continue.',
+    );
+  }
   return authResult.data;
 }
 
