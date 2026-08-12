@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
   createURL: vi.fn(() => 'ayos://auth/callback'),
   maybeCompleteAuthSession: vi.fn(),
 }));
@@ -10,6 +11,7 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       signUp: mocks.signUp,
+      resetPasswordForEmail: mocks.resetPasswordForEmail,
     },
   },
 }));
@@ -70,6 +72,28 @@ describe('signUpCustomer', () => {
       }),
     ).rejects.toThrow(
       'An account with this email already exists. Sign in to continue.',
+    );
+  });
+});
+
+describe('requestPasswordReset', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it('uses the recovery-only screen as the Supabase redirect', async () => {
+    mocks.createURL.mockReturnValue(
+      'ayos://auth/reset-password?flow=recovery',
+    );
+    mocks.resetPasswordForEmail.mockResolvedValue({ error: null });
+    const { requestPasswordReset } = await import('./auth');
+
+    await requestPasswordReset(' User@example.com ');
+
+    expect(mocks.resetPasswordForEmail).toHaveBeenCalledWith(
+      'user@example.com',
+      { redirectTo: 'ayos://auth/reset-password?flow=recovery' },
     );
   });
 });
