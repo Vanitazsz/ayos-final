@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const isWeb = Platform.OS === 'web';
 
 if (!url || !key)
   throw new Error(
@@ -13,11 +14,13 @@ if (!url || !key)
 
 export const supabase = createClient(url, key, {
   auth: {
-    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
+    storage: isWeb ? undefined : AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: Platform.OS === 'web',
-    flowType: 'pkce',
+    // The web client is a client-only SPA, so implicit callbacks do not depend
+    // on a verifier being present in the browser that opens an email link.
+    detectSessionInUrl: isWeb,
+    flowType: isWeb ? 'implicit' : 'pkce',
   },
 });
 
