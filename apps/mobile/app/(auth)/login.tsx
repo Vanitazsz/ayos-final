@@ -34,6 +34,7 @@ export default function LoginScreen() {
   const sessionNotice = useAuthStore((state) => state.sessionNotice);
   const clearSessionNotice = useAuthStore((state) => state.clearSessionNotice);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -119,22 +120,26 @@ export default function LoginScreen() {
     }
   };
   const onForgotPassword = async () => {
+    if (resetLoading) return;
     const email = getValues('email');
     if (!email) {
       showAlert('Email required', 'Enter your email address first.');
       return;
     }
+    setResetLoading(true);
     try {
       await requestPasswordReset(email);
       showAlert(
         'Check your email',
-        'A secure password reset link has been sent.',
+        'A secure password reset link has been sent. Only the newest link is valid, so use the latest email.',
       );
     } catch (error) {
       showAlert(
         'Reset failed',
         error instanceof Error ? error.message : 'Unable to send reset email',
       );
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -275,8 +280,12 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={styles.forgotPassword}
                 onPress={onForgotPassword}
+                disabled={loading || resetLoading}
+                accessibilityState={{ disabled: loading || resetLoading }}
               >
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                <Text style={styles.forgotPasswordText}>
+                  {resetLoading ? 'Sending reset link...' : 'Forgot password?'}
+                </Text>
               </TouchableOpacity>
             </View>
 
