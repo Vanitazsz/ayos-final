@@ -4,8 +4,9 @@ import {
   normalizePhilippinePhone,
   workerRegistrationErrorMessage,
 } from '@/lib/workerRegistration';
+import { verifyEmailDeliverability } from '@/lib/emailVerification';
 
-type WorkerApplicationInput = {
+export type WorkerApplicationInput = {
   email: string;
   password: string;
   displayName: string;
@@ -16,12 +17,26 @@ type WorkerApplicationInput = {
   identityData: Record<string, unknown>;
 };
 
-type WorkerApplicationProgress =
+export type WorkerApplicationProgress =
   | 'Creating your worker account…'
   | 'Checking your worker profile…'
   | 'Uploading the front of your ID…'
   | 'Uploading the back of your ID…'
   | 'Submitting your worker verification…';
+
+let pendingWorkerApplicationBuffer: WorkerApplicationInput | null = null;
+
+export function savePendingWorkerApplication(input: WorkerApplicationInput) {
+  pendingWorkerApplicationBuffer = input;
+}
+
+export function getPendingWorkerApplication(): WorkerApplicationInput | null {
+  return pendingWorkerApplicationBuffer;
+}
+
+export function clearPendingWorkerApplication() {
+  pendingWorkerApplicationBuffer = null;
+}
 
 async function uploadDocument(userId: string, uri: string) {
   const response = await fetch(uri);
@@ -43,7 +58,7 @@ export async function submitWorkerApplication(
   input: WorkerApplicationInput,
   onProgress?: (message: WorkerApplicationProgress) => void,
 ) {
-  const email = input.email.trim().toLowerCase();
+  const email = await verifyEmailDeliverability(input.email);
   const displayName = input.displayName.trim();
   const paths: string[] = [];
 
@@ -68,7 +83,10 @@ export async function submitWorkerApplication(
       });
       if (error) throw error;
       session = data.session;
-      if (!session) return { requiresEmailVerification: true as const };
+      if (!session) {
+        savePendingWorkerApplication(input);
+        return { requiresEmailVerification: true as const };
+      }
     }
 
     if (session.user.email?.toLowerCase() !== email) {
@@ -102,10 +120,24 @@ export async function submitWorkerApplication(
       p_experience: input.experience,
     });
     if (error) throw error;
+    clearPendingWorkerApplication();
     return { requiresEmailVerification: false as const, data };
   } catch (error) {
     if (paths.length)
       await supabase.storage.from('verification-documents').remove(paths);
     throw new Error(workerRegistrationErrorMessage(error));
   }
+}
+
+/**
+ * Automatically resumes pending worker application submission after OTP verification completes.
+ */
+export async function completePendingWorkerApplication(
+  onProgress?: (message: WorkerApplicationProgress) => void,
+) {
+  const pending = getPendingWorkerApplication();
+  if (!pending) return { completed: false };
+  const res = await submitWorkerApplication(pending, onProgress);
+  clearPendingWorkerApplication();
+  return { completed: true, data: res };
 }

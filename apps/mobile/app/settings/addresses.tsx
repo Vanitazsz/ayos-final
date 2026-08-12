@@ -191,13 +191,13 @@ export default function SavedAddressesScreen() {
         >
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
-        <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Saved Addresses</Text>
+        <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Main House Address</Text>
         <View style={styles.backButton} />
       </View>
 
       <View style={styles.content}>
         <Text style={[theme.typography.body2, styles.helpText]}>
-          Save an address once, then select it when booking a service.
+          Your main house address is used as the primary location for your bookings and administrator verification.
         </Text>
 
         {error ? (
@@ -220,43 +220,29 @@ export default function SavedAddressesScreen() {
             {addresses.length === 0 ? (
               <View style={styles.emptyState}>
                 <MapPin color={theme.colors.primary} size={36} />
-                <Text style={theme.typography.h4}>No saved addresses</Text>
+                <Text style={theme.typography.h4}>No main house address set</Text>
                 <Text style={[theme.typography.body2, styles.emptyText]}>
-                  Add your home or another service location.
+                  Add your primary home location for services and admin records.
                 </Text>
               </View>
             ) : (
-              addresses.map((address) => (
+              addresses.slice(0, 1).map((address) => (
                 <View key={address.id} style={styles.addressCard}>
                   <View style={styles.addressHeader}>
                     <View style={styles.addressTitleRow}>
                       <MapPin color={theme.colors.primary} size={20} />
-                      <Text style={theme.typography.h4}>{address.label}</Text>
+                      <Text style={theme.typography.h4}>{address.label || 'Main House'}</Text>
                     </View>
-                    {address.isDefault ? (
-                      <View style={styles.defaultBadge}>
-                        <Check color={theme.colors.success} size={13} />
-                        <Text style={styles.defaultBadgeText}>Default</Text>
-                      </View>
-                    ) : null}
+                    <View style={styles.defaultBadge}>
+                      <Check color={theme.colors.success} size={13} />
+                      <Text style={styles.defaultBadgeText}>Main House</Text>
+                    </View>
                   </View>
                   <Text style={[theme.typography.body2, styles.addressText]}>
                     {formatSavedAddress(address)}
                   </Text>
                   <View style={styles.divider} />
                   <View style={styles.cardActions}>
-                    {!address.isDefault ? (
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel={`Make ${address.label} default`}
-                        onPress={() => void makeDefault(address)}
-                        disabled={saving}
-                        style={styles.iconAction}
-                      >
-                        <Check color={theme.colors.primary} size={14} />
-                        <Text style={styles.actionText}>Make default</Text>
-                      </TouchableOpacity>
-                    ) : null}
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel={`Edit ${address.label}`}
@@ -264,7 +250,7 @@ export default function SavedAddressesScreen() {
                       style={styles.iconAction}
                     >
                       <Edit3 color={theme.colors.primary} size={14} />
-                      <Text style={styles.actionText}>Edit</Text>
+                      <Text style={styles.actionText}>Edit Main House</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
@@ -281,7 +267,7 @@ export default function SavedAddressesScreen() {
                       <View style={styles.confirmTextRow}>
                         <AlertCircle color={theme.colors.error} size={20} />
                         <Text style={[theme.typography.body2, { flex: 1, color: theme.colors.textPrimary }]}>
-                          Are you sure you want to remove this address?
+                          Are you sure you want to remove your main house address?
                         </Text>
                       </View>
                       <View style={styles.confirmActions}>
@@ -304,7 +290,9 @@ export default function SavedAddressesScreen() {
                 </View>
               ))
             )}
-            <Button title="Add Address" icon={Plus} onPress={openNew} fullWidth />
+            {addresses.length === 0 ? (
+              <Button title="Set Main House Address" icon={Plus} onPress={openNew} fullWidth />
+            ) : null}
           </>
         ) : null}
 
@@ -312,10 +300,10 @@ export default function SavedAddressesScreen() {
           <View style={styles.formCard}>
             <View style={styles.formHeader}>
               <Text style={theme.typography.h3}>
-                {form.id ? 'Edit Address' : 'Add Address'}
+                {form.id ? 'Edit Main House Address' : 'Set Main House Address'}
               </Text>
               <Text style={styles.helpText}>
-                {form.id ? 'Update the details of your saved address.' : 'Provide details for your new address.'}
+                {form.id ? 'Update the details of your main house address.' : 'Provide details for your main house address.'}
               </Text>
             </View>
 
@@ -323,7 +311,7 @@ export default function SavedAddressesScreen() {
               <Text style={styles.inputLabel}>Address Label</Text>
               <TextInput
                 accessibilityLabel="Address label"
-                placeholder="e.g. Home, Office"
+                placeholder="Main House"
                 value={form.label}
                 onChangeText={(value) => updateField('label', value)}
               />
@@ -409,18 +397,6 @@ export default function SavedAddressesScreen() {
                 <Text style={styles.warningText}>{locationWarning}</Text>
               ) : null}
             </View>
-            <TouchableOpacity
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: form.isDefault }}
-              accessibilityLabel="Use as default address"
-              style={styles.defaultRow}
-              onPress={() => updateField('isDefault', !form.isDefault)}
-            >
-              <View style={[styles.checkbox, form.isDefault && styles.checkboxChecked]}>
-                {form.isDefault ? <Check color={theme.colors.surface} size={14} /> : null}
-              </View>
-              <Text style={theme.typography.body2}>Use as my default address</Text>
-            </TouchableOpacity>
             <View style={styles.formActions}>
               <Button title="Cancel" variant="outlined" onPress={closeForm} style={styles.flexButton} />
               <Button

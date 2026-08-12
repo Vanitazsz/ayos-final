@@ -154,7 +154,10 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={subcat.id}
                   style={styles.subcatItem}
-                  onPress={() => router.push(`/category/${subcat.label.toLowerCase()}` as any)}
+                  onPress={() => {
+                    setServiceQuery('');
+                    router.push({ pathname: '/new-request/create', params: { categoryId: subcat.id } });
+                  }}
                 >
                   <Text style={theme.typography.body1}>{subcat.label}</Text>
                   <ChevronRight color={theme.colors.textTertiary} size={20} />

@@ -158,7 +158,10 @@ export default function TrackingScreen() {
     }
   };
 
-  const address = tracking?.booking?.service_requests?.addresses;
+  const rawAddress = tracking?.booking?.service_requests?.addresses;
+  const address = Array.isArray(rawAddress) ? rawAddress[0] : rawAddress;
+  const rawWorkerProf = tracking?.booking?.worker_profiles;
+  const workerProf = Array.isArray(rawWorkerProf) ? rawWorkerProf[0] : rawWorkerProf;
   const latest = tracking?.updates?.[0];
   const statusInfo = STATUS_INFO[workerStatus ?? ''] ?? {
     title: workerStatus?.replaceAll('_', ' ') ?? 'Loading...',
@@ -174,7 +177,7 @@ export default function TrackingScreen() {
   const workerAccountId = tracking?.booking?.worker_account_id as
     | string
     | undefined;
-  const workerMobile = tracking?.booking?.worker_profiles?.accounts?.mobile as
+  const workerMobile = workerProf?.accounts?.mobile as
     | string
     | undefined;
 
@@ -272,15 +275,15 @@ export default function TrackingScreen() {
                 startLat={
                   tracking?.booking?.worker_start_lat != null
                     ? Number(tracking.booking.worker_start_lat)
-                    : tracking?.booking?.worker_profiles?.latitude != null
-                      ? Number(tracking.booking.worker_profiles.latitude)
+                    : workerProf?.latitude != null
+                      ? Number(workerProf.latitude)
                       : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined)
                 }
                 startLng={
                   tracking?.booking?.worker_start_lng != null
                     ? Number(tracking.booking.worker_start_lng)
-                    : tracking?.booking?.worker_profiles?.longitude != null
-                      ? Number(tracking.booking.worker_profiles.longitude)
+                    : workerProf?.longitude != null
+                      ? Number(workerProf.longitude)
                       : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined)
                 }
                 workerLat={
@@ -289,17 +292,18 @@ export default function TrackingScreen() {
                         ? Number(latest.latitude)
                         : (tracking?.booking?.worker_start_lat != null
                             ? Number(tracking.booking.worker_start_lat)
-                            : (tracking?.booking?.worker_profiles?.latitude != null
-                                ? Number(tracking.booking.worker_profiles.latitude)
+                            : (workerProf?.latitude != null
+                                ? Number(workerProf.latitude)
                                 : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined))))
-                    : (liveLocation?.latitude ??
-                        (latest
-                          ? Number(latest.latitude)
-                          : (tracking?.booking?.worker_start_lat != null
-                              ? Number(tracking.booking.worker_start_lat)
-                              : (tracking?.booking?.worker_profiles?.latitude != null
-                                  ? Number(tracking.booking.worker_profiles.latitude)
-                                  : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined)))))
+                    : (isEnRoute && liveLocation?.latitude != null
+                        ? Number(liveLocation.latitude)
+                        : (latest
+                            ? Number(latest.latitude)
+                            : (tracking?.booking?.worker_start_lat != null
+                                ? Number(tracking.booking.worker_start_lat)
+                                : (workerProf?.latitude != null
+                                    ? Number(workerProf.latitude)
+                                    : (address?.latitude != null ? Number(address.latitude) + 0.012 : undefined)))))
                 }
                 workerLng={
                   ['WORKER_ARRIVED', 'SERVICE_STARTED', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED'].includes(workerStatus ?? '')
@@ -307,17 +311,18 @@ export default function TrackingScreen() {
                         ? Number(latest.longitude)
                         : (tracking?.booking?.worker_start_lng != null
                             ? Number(tracking.booking.worker_start_lng)
-                            : (tracking?.booking?.worker_profiles?.longitude != null
-                                ? Number(tracking.booking.worker_profiles.longitude)
+                            : (workerProf?.longitude != null
+                                ? Number(workerProf.longitude)
                                 : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined))))
-                    : (liveLocation?.longitude ??
-                        (latest
-                          ? Number(latest.longitude)
-                          : (tracking?.booking?.worker_start_lng != null
-                              ? Number(tracking.booking.worker_start_lng)
-                              : (tracking?.booking?.worker_profiles?.longitude != null
-                                  ? Number(tracking.booking.worker_profiles.longitude)
-                                  : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined)))))
+                    : (isEnRoute && liveLocation?.longitude != null
+                        ? Number(liveLocation.longitude)
+                        : (latest
+                            ? Number(latest.longitude)
+                            : (tracking?.booking?.worker_start_lng != null
+                                ? Number(tracking.booking.worker_start_lng)
+                                : (workerProf?.longitude != null
+                                    ? Number(workerProf.longitude)
+                                    : (address?.longitude != null ? Number(address.longitude) + 0.012 : undefined)))))
                 }
               />
             </View>

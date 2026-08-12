@@ -1,10 +1,12 @@
 const EMPTY_ERROR_MESSAGES = new Set(['{}', '[]', '[object Object]']);
 
 export function normalizePhilippinePhone(value: string): string {
-  const compact = value.trim().replace(/\s+/g, '');
+  const compact = value.trim().replace(/[\s\-\(\)]/g, '');
   if (/^09\d{9}$/.test(compact)) return `+63${compact.slice(1)}`;
+  if (/^9\d{9}$/.test(compact)) return `+63${compact}`;
+  if (/^639\d{9}$/.test(compact)) return `+${compact}`;
   if (/^\+639\d{9}$/.test(compact)) return compact;
-  throw new Error('Enter a valid Philippine mobile number.');
+  throw new Error('Enter a valid Philippine mobile number (e.g. 09171234567 or +639171234567).');
 }
 
 export function isValidPhilippinePhone(value: string): boolean {
@@ -97,17 +99,25 @@ export function signupErrorMessage(error: unknown): string {
   )
     return mobileAlreadyRegisteredMessage();
   if (/INVALID_MOBILE_NUMBER|accounts_mobile_check/i.test(diagnostic))
-    return 'Enter a valid Philippine mobile number.';
+    return 'Enter a valid Philippine mobile number (e.g. 09171234567).';
   if (/user_already_exists|already registered|already exists/i.test(diagnostic))
-    return 'An account already exists for this email. Sign in to continue.';
+    return 'An account already exists for this email address. Please sign in instead.';
   if (
     /over_email_send_rate_limit|rate.?limit|too many requests/i.test(diagnostic)
   )
-    return 'Too many registration attempts. Wait a few minutes and try again.';
-  if (/unexpected_failure|database error saving new user/i.test(diagnostic))
-    return 'Your account could not be created. Check your details and try again.';
+    return 'Too many registration attempts. Please wait a few minutes and try again.';
+  if (/password|weak_password/i.test(diagnostic))
+    return 'Password must be at least 8 characters with an uppercase letter, number, and special symbol.';
 
-  return readableErrorValue(error) || 'Unable to create your account. Please try again.';
+  const readable = readableErrorValue(error);
+  if (readable && readable !== '{}' && readable !== '[]' && !readable.includes('unexpected_failure')) {
+    return readable;
+  }
+
+  if (/unexpected_failure|database error saving new user/i.test(diagnostic))
+    return 'An account with this email or mobile number already exists. Please sign in instead.';
+
+  return readable || 'Registration failed. Please check your details and try again.';
 }
 
 function readableErrorValue(error: unknown): string {

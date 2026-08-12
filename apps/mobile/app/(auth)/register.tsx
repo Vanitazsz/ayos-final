@@ -18,6 +18,8 @@ import {
   Square,
   Briefcase,
   Wrench,
+  Info,
+  AlertCircle,
 } from 'lucide-react-native';
 import { signUpCustomer } from '@/services/auth';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
@@ -32,6 +34,8 @@ export default function RegisterScreen() {
   const { role } = useLocalSearchParams<{ role?: string }>();
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState('');
+  const [formError, setFormError] = useState('');
   const [legalModal, setLegalModal] = useState<'TERMS' | 'PRIVACY' | null>(null);
   const [selectedRole, setSelectedRole] = useState<RoleChoice>(
     role === 'USER' ? 'USER' : null,
@@ -57,19 +61,20 @@ export default function RegisterScreen() {
 
   const onSubmit = async (data: any) => {
     if (!acceptedTerms) {
-      alert('Please accept the terms and conditions.');
+      setTermsError('You must accept the Terms and Conditions and Privacy Policy to proceed.');
       return;
     }
+    setTermsError('');
+    setFormError('');
 
     setLoading(true);
     try {
       await signUpCustomer(data);
       router.push({ pathname: '/(auth)/otp', params: { email: data.email } });
-    } catch (error) {
-      showAlert(
-        'Registration failed',
-        error instanceof Error ? error.message : 'Unable to register',
-      );
+    } catch (error: any) {
+      const msg = error instanceof Error ? error.message : 'Registration failed. Check your details and try again.';
+      setFormError(msg);
+      showAlert('Registration failed', msg);
     } finally {
       setLoading(false);
     }
@@ -205,6 +210,30 @@ export default function RegisterScreen() {
 
         {selectedRole === 'USER' && (
           <>
+            {/* Form Error Banner */}
+            {formError ? (
+              <View style={styles.errorCalloutBanner}>
+                <AlertCircle size={20} color={theme.colors.error} style={{ marginRight: theme.spacing.sm, marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.errorCalloutTitle}>Registration Issue</Text>
+                  <Text style={styles.errorCalloutText}>{formError}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Instruction Banner */}
+            <View style={styles.instructionBanner}>
+              <Info size={20} color={theme.colors.primary} style={styles.instructionIcon} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.instructionTitle}>Registration Instructions</Text>
+                <Text style={styles.instructionBody}>
+                  • Fill out all required fields below (Name, Mobile Number +63, Email, and Password).{'\n'}
+                  • Any missing or invalid field will be <Text style={{ color: theme.colors.error, fontWeight: '700' }}>highlighted in red</Text>.{'\n'}
+                  • Check and accept the Terms & Conditions before submitting.
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.form}>
               <Controller
                 control={control}
@@ -229,12 +258,13 @@ export default function RegisterScreen() {
                   required: 'Mobile number is required',
                   validate: (value) =>
                     isValidPhilippinePhone(value) ||
-                    'Enter a mobile number with country code, for example +639171234567.',
+                    'Enter a valid PH mobile number, e.g. 09171234567 or +639171234567.',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    accessibilityLabel="Mobile number (+63…)"
-                    placeholder="Mobile number (+63…)"
+                    accessibilityLabel="Mobile number (e.g. 09171234567 or +639171234567)"
+                    placeholder="Mobile number (e.g. 09171234567 or +63...)"
+                    helperText="Example: 09171234567 or +639171234567 (11 digits starting with 09)"
                     leftIcon={Phone}
                     keyboardType="phone-pad"
                     onBlur={onBlur}
@@ -252,7 +282,7 @@ export default function RegisterScreen() {
                   required: 'Email is required',
                   pattern: {
                     value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: 'Invalid email',
+                    message: 'Invalid email address format',
                   },
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
@@ -322,10 +352,16 @@ export default function RegisterScreen() {
                 showMatch
               />
 
-              <View style={styles.termsContainer}>
+              <View style={[
+                styles.termsContainer,
+                !!termsError && styles.termsContainerError,
+              ]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  onPress={() => {
+                    setAcceptedTerms(!acceptedTerms);
+                    if (!acceptedTerms) setTermsError('');
+                  }}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: acceptedTerms }}
                   style={styles.checkboxTouchable}
@@ -333,11 +369,14 @@ export default function RegisterScreen() {
                   {acceptedTerms ? (
                     <CheckSquare color={theme.colors.primary} size={20} />
                   ) : (
-                    <Square color={theme.colors.textSecondary} size={20} />
+                    <Square color={termsError ? theme.colors.error : theme.colors.textSecondary} size={20} />
                   )}
                 </TouchableOpacity>
                 <Text style={[theme.typography.body2, styles.termsText]}>
-                  <Text onPress={() => setAcceptedTerms(!acceptedTerms)}>
+                  <Text onPress={() => {
+                    setAcceptedTerms(!acceptedTerms);
+                    if (!acceptedTerms) setTermsError('');
+                  }}>
                     I accept the{' '}
                   </Text>
                   <Text
@@ -346,7 +385,10 @@ export default function RegisterScreen() {
                   >
                     Terms and Conditions
                   </Text>
-                  <Text onPress={() => setAcceptedTerms(!acceptedTerms)}>
+                  <Text onPress={() => {
+                    setAcceptedTerms(!acceptedTerms);
+                    if (!acceptedTerms) setTermsError('');
+                  }}>
                     {' '}and{' '}
                   </Text>
                   <Text
@@ -357,6 +399,11 @@ export default function RegisterScreen() {
                   </Text>
                 </Text>
               </View>
+              {!!termsError && (
+                <Text style={styles.termsErrorText}>
+                  ⚠️ {termsError}
+                </Text>
+              )}
             </View>
 
             <Button
@@ -459,11 +506,72 @@ const styles = StyleSheet.create({
   roleCardDescSelected: {
     color: theme.colors.primary,
   },
+  errorCalloutBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  errorCalloutTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#991B1B',
+    marginBottom: 2,
+  },
+  errorCalloutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B91C1C',
+    lineHeight: 18,
+  },
+  instructionBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0F7FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  instructionIcon: {
+    marginRight: theme.spacing.sm,
+    marginTop: 2,
+  },
+  instructionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  instructionBody: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+  },
   form: { marginBottom: theme.spacing.xl },
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginTop: theme.spacing.sm,
+    padding: theme.spacing.xs,
+    borderRadius: theme.radius.sm,
+  },
+  termsContainerError: {
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: '#FFF5F5',
+  },
+  termsErrorText: {
+    fontSize: 12,
+    color: theme.colors.error,
+    fontWeight: '600',
+    marginTop: theme.spacing.xs,
+    marginLeft: theme.spacing.xs,
   },
   checkboxTouchable: {
     paddingTop: 2,

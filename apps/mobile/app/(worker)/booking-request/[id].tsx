@@ -159,7 +159,12 @@ export default function BookingRequestScreen() {
             row.agreed_service_amount,
             payment,
           );
-          const address = request?.addresses;
+          const address = Array.isArray(request?.addresses)
+            ? request.addresses[0]
+            : request?.addresses;
+          const workerProf = Array.isArray(row.worker_profiles)
+            ? row.worker_profiles[0]
+            : row.worker_profiles;
           const status = viewStatus(row.status);
           if (row.accepted_at && row.completed_at) {
             const minutes = Math.max(
@@ -174,8 +179,8 @@ export default function BookingRequestScreen() {
           }
           setBackendStatus(row.status);
           setRouteDetails({
-            startLat: row.worker_start_lat,
-            startLng: row.worker_start_lng,
+            startLat: row.worker_start_lat ?? workerProf?.latitude,
+            startLng: row.worker_start_lng ?? workerProf?.longitude,
             destinationLat: address?.latitude,
             destinationLng: address?.longitude,
             address: [address?.line1, address?.barangay, address?.city]
@@ -634,16 +639,23 @@ export default function BookingRequestScreen() {
               const fallbackWorkerLat = destLat + 0.012;
               const fallbackWorkerLng = destLng + 0.012;
               const latestUpdate = tracking?.updates?.[0];
+              const workerProf = Array.isArray(tracking?.booking?.worker_profiles)
+                ? tracking.booking.worker_profiles[0]
+                : tracking?.booking?.worker_profiles;
 
               const workerStartLat =
                 routeDetails.startLat != null
                   ? Number(routeDetails.startLat)
-                  : fallbackWorkerLat;
+                  : workerProf?.latitude != null
+                    ? Number(workerProf.latitude)
+                    : fallbackWorkerLat;
 
               const workerStartLng =
                 routeDetails.startLng != null
                   ? Number(routeDetails.startLng)
-                  : fallbackWorkerLng;
+                  : workerProf?.longitude != null
+                    ? Number(workerProf.longitude)
+                    : fallbackWorkerLng;
 
               const isArrivedOrLater = [
                 'WORKER_ARRIVED',
@@ -653,13 +665,19 @@ export default function BookingRequestScreen() {
                 'COMPLETED',
               ].includes(backendStatus ?? '');
 
+              const isEnRoute = backendStatus === 'WORKER_EN_ROUTE';
+
               const workerCurrentLat = isArrivedOrLater
                 ? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat)
-                : (liveLocation?.latitude ?? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat));
+                : (isEnRoute && liveLocation?.latitude != null
+                    ? Number(liveLocation.latitude)
+                    : (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat));
 
               const workerCurrentLng = isArrivedOrLater
                 ? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng)
-                : (liveLocation?.longitude ?? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng));
+                : (isEnRoute && liveLocation?.longitude != null
+                    ? Number(liveLocation.longitude)
+                    : (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng));
 
               return (
                 <View style={{ gap: 12 }}>

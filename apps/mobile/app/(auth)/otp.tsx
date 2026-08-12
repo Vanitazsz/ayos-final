@@ -18,6 +18,7 @@ import {
   resendEmailOtp,
   verifyEmailOtp,
 } from '@/services/auth';
+import { completePendingWorkerApplication } from '@/services/workerApplication';
 
 const OTP_LENGTH = 6;
 
@@ -75,16 +76,20 @@ export default function OTPScreen() {
     setLoading(true);
     try {
       await verifyEmailOtp(email ?? '', otpValue);
+      try {
+        await completePendingWorkerApplication();
+      } catch (completeErr) {
+        console.warn('Pending worker application submission failed:', completeErr);
+      }
       const user = await loadCurrentUser();
       setSessionUser(user);
       if (returnTo === 'worker-registration' && user?.role === 'WORKER') {
-        if (router.canGoBack()) router.back();
-        else router.replace('/register-worker');
+        router.replace({ pathname: '/register-worker', params: { submitted: 'true' } });
         return;
       }
       router.replace(
         user?.role === 'WORKER'
-          ? '/register-worker'
+          ? { pathname: '/register-worker', params: { submitted: 'true' } }
           : '/(auth)/verify-identity',
       );
     } catch (verifyError) {

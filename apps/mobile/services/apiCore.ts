@@ -1177,34 +1177,146 @@ export async function createReview(
   }
   return data;
 }
+const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
+  {
+    id: 'cleaning',
+    slug: 'cleaning',
+    name: 'Cleaning',
+    skills: [
+      { id: 'cleaning-1', slug: 'cleaning', name: 'Cleaning' },
+      { id: 'cleaning-2', slug: 'deep-cleaning', name: 'Deep Cleaning' },
+      { id: 'cleaning-3', slug: 'move-in-move-out-cleaning', name: 'Move-In/Move-Out Cleaning' },
+      { id: 'cleaning-4', slug: 'post-construction-cleaning', name: 'Post-Construction Cleaning' },
+      { id: 'cleaning-5', slug: 'carpet-upholstery-cleaning', name: 'Carpet & Upholstery Cleaning' },
+    ],
+  },
+  {
+    id: 'electrical',
+    slug: 'electrical',
+    name: 'Electrical',
+    skills: [
+      { id: 'electrical-1', slug: 'electrical', name: 'Electrical' },
+      { id: 'electrical-2', slug: 'wiring-rewiring', name: 'Wiring & Rewiring' },
+      { id: 'electrical-3', slug: 'lighting-installation', name: 'Lighting Installation' },
+      { id: 'electrical-4', slug: 'outlet-switch-installation', name: 'Outlet & Switch Installation' },
+      { id: 'electrical-5', slug: 'panel-circuit-breaker-service', name: 'Panel & Circuit Breaker Service' },
+    ],
+  },
+  {
+    id: 'plumbing',
+    slug: 'plumbing',
+    name: 'Plumbing',
+    skills: [
+      { id: 'plumbing-1', slug: 'plumbing', name: 'Plumbing' },
+      { id: 'plumbing-2', slug: 'leak-detection-repair', name: 'Leak Detection & Repair' },
+      { id: 'plumbing-3', slug: 'drain-unclogging', name: 'Drain Unclogging' },
+      { id: 'plumbing-4', slug: 'fixture-installation', name: 'Fixture Installation' },
+      { id: 'plumbing-5', slug: 'pipe-installation-repair', name: 'Pipe Installation & Repair' },
+    ],
+  },
+  {
+    id: 'carpentry',
+    slug: 'carpentry',
+    name: 'Carpentry',
+    skills: [
+      { id: 'carpentry-1', slug: 'furniture-repair', name: 'Furniture Repair' },
+      { id: 'carpentry-2', slug: 'cabinet-installation-repair', name: 'Cabinet Installation & Repair' },
+      { id: 'carpentry-3', slug: 'door-window-repair', name: 'Door & Window Repair' },
+      { id: 'carpentry-4', slug: 'custom-woodwork', name: 'Custom Woodwork' },
+      { id: 'carpentry-5', slug: 'ceiling-partition-installation', name: 'Ceiling & Partition Installation' },
+    ],
+  },
+  {
+    id: 'painting',
+    slug: 'painting',
+    name: 'Painting',
+    skills: [
+      { id: 'painting-1', slug: 'interior-painting', name: 'Interior Painting' },
+      { id: 'painting-2', slug: 'exterior-painting', name: 'Exterior Painting' },
+      { id: 'painting-3', slug: 'repainting-touch-ups', name: 'Repainting & Touch-Ups' },
+      { id: 'painting-4', slug: 'surface-preparation', name: 'Surface Preparation' },
+    ],
+  },
+  {
+    id: 'masonry-tiling',
+    slug: 'masonry-tiling',
+    name: 'Masonry & Tiling',
+    skills: [
+      { id: 'masonry-1', slug: 'masonry', name: 'Masonry' },
+      { id: 'masonry-2', slug: 'tiling', name: 'Tiling' },
+    ],
+  },
+  {
+    id: 'air-conditioning-refrigeration',
+    slug: 'air-conditioning-refrigeration',
+    name: 'Air Conditioning & Refrigeration',
+    skills: [
+      { id: 'ac-1', slug: 'ac-cleaning', name: 'AC Cleaning' },
+      { id: 'ac-2', slug: 'ac-repair', name: 'AC Repair' },
+      { id: 'ac-3', slug: 'ac-installation', name: 'AC Installation' },
+    ],
+  },
+  {
+    id: 'appliance-repair',
+    slug: 'appliance-repair',
+    name: 'Appliance Repair',
+    skills: [
+      { id: 'appliance-1', slug: 'appliance-diagnosis-repair', name: 'Appliance Diagnosis & Repair' },
+    ],
+  },
+  {
+    id: 'landscaping-gardening',
+    slug: 'landscaping-gardening',
+    name: 'Landscaping & Gardening',
+    skills: [
+      { id: 'lawn-1', slug: 'lawn-care', name: 'Lawn & Garden Care' },
+    ],
+  },
+  {
+    id: 'roofing-waterproofing',
+    slug: 'roofing-waterproofing',
+    name: 'Roofing & Waterproofing',
+    skills: [
+      { id: 'roof-1', slug: 'roof-leak-repair', name: 'Roof & Leak Repair' },
+    ],
+  },
+];
+
 export async function fetchIndustriesAndSkills(): Promise<
   ApiResponse<IndustryWithSkills[]>
 > {
   return wrap(async () => {
-    const { data, error } = await supabase
-      .from('industries')
-      .select(
-        'id,slug,name,sort_order,service_categories!inner!service_categories_industry_id_fkey(id,slug,name,is_active)',
-      )
-      .eq('is_active', true)
-      .order('sort_order')
-      .order('name');
-    if (error) throw error;
-    return (data ?? []).map((row: any) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      skills: (row.service_categories ?? [])
-        .filter((skill: any) => skill.is_active)
-        .map((skill: any) => ({
-          id: skill.id,
-          slug: skill.slug,
-          name: skill.name,
-        }))
-        .sort((left: IndustrySkill, right: IndustrySkill) =>
-          left.name.localeCompare(right.name),
-        ),
-    }));
+    try {
+      const { data, error } = await supabase
+        .from('industries')
+        .select(
+          'id,slug,name,sort_order,service_categories!inner!service_categories_industry_id_fkey(id,slug,name,is_active)',
+        )
+        .eq('is_active', true)
+        .order('sort_order')
+        .order('name');
+      if (error) throw error;
+      const formatted = (data ?? []).map((row: any) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        skills: (row.service_categories ?? [])
+          .filter((skill: any) => skill.is_active)
+          .map((skill: any) => ({
+            id: skill.id,
+            slug: skill.slug,
+            name: skill.name,
+          }))
+          .sort((left: IndustrySkill, right: IndustrySkill) =>
+            left.name.localeCompare(right.name),
+          ),
+      }));
+      if (formatted.length > 0) return formatted;
+      return FALLBACK_TAXONOMY;
+    } catch (err) {
+      console.warn('fetchIndustriesAndSkills fallback triggered due to database permission or network issue:', err);
+      return FALLBACK_TAXONOMY;
+    }
   });
 }
 export async function fetchCancellationReasons() {

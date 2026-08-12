@@ -178,9 +178,6 @@ export const UserReviewWorkModal = React.memo(function UserReviewWorkModal({
         proofImages.map((uri) => uploadBookingProof(uri)),
       );
       uploadedRef.current = uploaded;
-      await Promise.all(
-        uploaded.map((media) => attachBookingProof(bookingId, media)),
-      );
 
       // 2. Submit review
       const mediaPayload = uploaded.map((m) => ({
