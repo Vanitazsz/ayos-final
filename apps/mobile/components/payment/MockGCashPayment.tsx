@@ -9,6 +9,7 @@ interface MockGCashPaymentProps {
   bookingId: string;
   totalAmount: number;
   hasReceipt?: boolean;
+  proofPath?: string | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -19,6 +20,7 @@ export const MockGCashPayment: React.FC<MockGCashPaymentProps> = ({
   bookingId,
   totalAmount,
   hasReceipt,
+  proofPath,
   onSuccess,
   onCancel,
 }) => {
@@ -41,7 +43,7 @@ export const MockGCashPayment: React.FC<MockGCashPaymentProps> = ({
       setStep('processing');
 
       try {
-        await simulateMockGcashPayment(bookingId, mockReference);
+        await simulateMockGcashPayment(bookingId, mockReference, proofPath);
         if (isCancelledRef.current) return;
         setStep('paid');
 
@@ -58,7 +60,7 @@ export const MockGCashPayment: React.FC<MockGCashPaymentProps> = ({
         );
       }
     }, 2500);
-  }, [bookingId, mockReference, onSuccess]);
+  }, [bookingId, mockReference, proofPath, onSuccess]);
 
   useEffect(() => {
     startSimulation();

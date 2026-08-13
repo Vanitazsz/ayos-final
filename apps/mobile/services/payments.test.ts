@@ -50,6 +50,35 @@ describe('simulateMockGcashPayment service tests', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('simulate_gcash_booking_payment', {
       p_booking_id: bookingId,
       p_reference_number: mockRef,
+      p_proof_path: null,
+    });
+  });
+
+  it('forwards the uploaded proof path to the RPC when provided', async () => {
+    const bookingId = '98000000-0000-4000-8000-000000000012';
+    const mockRef = 'MOCK-GCASH-980000000000';
+    const proofPath = '8a9f3c2e-0000-4000-8000-000000000099/abc123.jpg';
+    const mockPayment = {
+      id: 'pay-123',
+      booking_id: bookingId,
+      method: 'GCASH',
+      provider: 'MOCK_GCASH',
+      status: 'SUCCESSFUL',
+    };
+
+    mocks.rpc.mockResolvedValueOnce({
+      data: mockPayment,
+      error: null,
+    });
+
+    const { simulateMockGcashPayment } = await import('./payments');
+    const result = await simulateMockGcashPayment(bookingId, mockRef, proofPath);
+
+    expect(result).toEqual(mockPayment);
+    expect(mocks.rpc).toHaveBeenCalledWith('simulate_gcash_booking_payment', {
+      p_booking_id: bookingId,
+      p_reference_number: mockRef,
+      p_proof_path: proofPath,
     });
   });
 

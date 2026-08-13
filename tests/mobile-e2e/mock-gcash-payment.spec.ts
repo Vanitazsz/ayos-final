@@ -131,6 +131,7 @@ test('GCash details, 2.5s delay, processing, paid state, and success navigation'
   expect(rpcCalls[0]).toEqual({
     p_booking_id: bookingId,
     p_reference_number: 'MOCK-GCASH-980000000000',
+    p_proof_path: null,
   });
 });
 

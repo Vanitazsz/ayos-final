@@ -960,10 +960,11 @@ export async function fetchBookingSummary(bookingId: string) {
 
   return { booking, proofPhotos: photosWithUrls };
 }
-export async function confirmCashPayment(bookingId: string) {
+export async function confirmCashPayment(bookingId: string, proofPath?: string | null) {
   const { data, error } = await supabase.rpc('confirm_cash_payment', {
     p_booking_id: bookingId,
     p_idempotency_key: randomUUID(),
+    p_proof_path: proofPath ?? null,
   });
   if (error) throw error;
   return data;
@@ -971,10 +972,12 @@ export async function confirmCashPayment(bookingId: string) {
 export async function simulateMockGcashPayment(
   bookingId: string,
   referenceNumber: string,
+  proofPath?: string | null,
 ) {
   const { data, error } = await supabase.rpc('simulate_gcash_booking_payment', {
     p_booking_id: bookingId,
     p_reference_number: referenceNumber,
+    p_proof_path: proofPath ?? null,
   });
   if (error) throw error;
   if (

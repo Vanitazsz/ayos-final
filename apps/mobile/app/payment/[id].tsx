@@ -55,6 +55,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [proofPath, setProofPath] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>('cash');
   const [showGcashSim, setShowGcashSim] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -91,9 +92,12 @@ export default function PaymentScreen() {
     setLoading(true);
     setError('');
 
+    let uploadedProofPath: string | null = null;
     if (receiptUri) {
       try {
-        await uploadBookingProof(receiptUri);
+        const uploaded = await uploadBookingProof(receiptUri);
+        uploadedProofPath = uploaded.path;
+        setProofPath(uploadedProofPath);
       } catch (uploadError) {
         console.warn('Optional receipt proof upload note:', uploadError);
       }
@@ -106,7 +110,7 @@ export default function PaymentScreen() {
     }
 
     try {
-      const payment = await confirmCashPayment(bookingId);
+      const payment = await confirmCashPayment(bookingId, uploadedProofPath);
       if (payment.status === 'SUCCESSFUL') {
         router.push(`/payment/success?id=${bookingId}`);
       } else {
@@ -132,6 +136,7 @@ export default function PaymentScreen() {
           bookingId={bookingId}
           totalAmount={total}
           hasReceipt={Boolean(receiptUri)}
+          proofPath={proofPath}
           onSuccess={() => router.push(`/payment/success?id=${bookingId}`)}
           onCancel={() => setShowGcashSim(false)}
         />
