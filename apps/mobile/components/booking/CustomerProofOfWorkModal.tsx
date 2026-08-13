@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { X, ImagePlus, Trash2 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -179,7 +180,7 @@ export const CustomerProofOfWorkModal = React.memo(
       <Modal
         visible={visible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={onClose}
       >
         <KeyboardAvoidingView
@@ -193,7 +194,7 @@ export const CustomerProofOfWorkModal = React.memo(
               if (!submitting) onClose();
             }}
           />
-          <View style={styles.sheet}>
+          <Animated.View entering={SlideInDown} style={styles.sheet}>
             <View style={styles.header}>
               <View style={{ width: 32 }} />
               <AppText
@@ -313,7 +314,7 @@ export const CustomerProofOfWorkModal = React.memo(
                 onPress={() => void handleSubmit()}
               />
             </View>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
     );

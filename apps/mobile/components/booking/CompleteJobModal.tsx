@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { X, Star, Check, ImagePlus, Trash2, ThumbsUp, MessageSquare } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { QUICK_TAGS, RATING_LABELS } from '@/constants/workerFeedback';
@@ -183,7 +184,7 @@ export const CompleteJobModal = React.memo(function CompleteJobModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -197,7 +198,7 @@ export const CompleteJobModal = React.memo(function CompleteJobModal({
             if (!submitting) onClose();
           }}
         />
-        <View style={styles.sheet}>
+        <Animated.View entering={SlideInDown} style={styles.sheet}>
           <View style={styles.header}>
             <View style={{ width: 32 }} />
             <AppText variant="h3" weight="bold" color={theme.colors.textPrimary}>
@@ -408,7 +409,7 @@ export const CompleteJobModal = React.memo(function CompleteJobModal({
               onPress={() => void handleSubmit()}
             />
           </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

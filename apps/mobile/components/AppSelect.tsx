@@ -8,6 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AppText } from './AppText';
 
@@ -74,13 +75,13 @@ export const AppSelect: React.FC<AppSelectProps> = ({
 
       <Modal
         visible={modalVisible}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
-          <View style={styles.modalContent}>
+          <Animated.View entering={SlideInDown} style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AppText variant="h3" weight="bold">{label || 'Select Option'}</AppText>
             </View>
@@ -107,7 +108,7 @@ export const AppSelect: React.FC<AppSelectProps> = ({
               )}
               contentContainerStyle={styles.listContainer}
             />
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>

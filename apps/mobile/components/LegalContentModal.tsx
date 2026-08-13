@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X } from 'lucide-react-native';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { theme } from '@/constants/theme';
@@ -153,12 +154,12 @@ export function LegalContentModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.container}>
+        <Animated.View entering={SlideInDown} style={styles.container}>
           <View style={styles.header}>
             <AppText variant="h3" weight="bold" style={styles.headerTitle}>
               {title}
@@ -196,7 +197,7 @@ export function LegalContentModal({
               onPress={onClose}
             />
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

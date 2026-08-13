@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Search, Bell, MapPin, Star, ChevronRight, Droplets, Zap, Wrench, Sparkles, Monitor, Fan, Paintbrush, Shovel, Calendar, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, SlideInDown } from 'react-native-reanimated';
 import { homePromotions } from '@/constants/mockData';
 import * as Haptics from 'expo-haptics';
 import { styles } from '@/features/customer/CustomerHome.styles';
@@ -295,12 +295,12 @@ export default function HomeScreen() {
       <Modal
         visible={!!selectedParent}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setSelectedParent(null)}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={{ flex: 1 }} onPress={() => setSelectedParent(null)} />
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+          <Animated.View entering={SlideInDown} style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.modalHeader}>
               <Text style={theme.typography.h3}>{selectedParent} Services</Text>
               <TouchableOpacity onPress={() => setSelectedParent(null)}>
@@ -328,7 +328,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>
