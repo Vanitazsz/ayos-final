@@ -39,14 +39,13 @@ Shared screens (accessible from both modes): Provider Detail, Booking, Payment, 
 | 8 | Payment | `/payment` | Stack | modal |
 | 9 | Payment Success | `/payment/success?id=:bookingId` | Stack | modal |
 | 10 | Live Tracking | `/tracking/:id` | Stack | slide_from_right |
-| 11 | Rate & Review | `/review/:id` | Stack | modal |
-| 12 | New Request | `/new-request/create` | Stack | slide_from_right |
-| 13 | Accept Worker | `/accept-worker/:id` | Stack | slide_from_right |
-| 14 | Chat | `/chat/:id` | Stack | slide_from_right |
-| 15 | Worker Match | `/match/:id` | Stack | slide_from_right |
-| 16 | Request Matching | `/new-request/matching?requestId=:id` | Stack | slide_from_right |
-| 17 | Booking Success | `/new-request/success` | Stack | modal |
-| 18 | 404 | `+not-found` | Stack | default |
+| 11 | New Request | `/new-request/create` | Stack | slide_from_right |
+| 12 | Accept Worker | `/accept-worker/:id` | Stack | slide_from_right |
+| 13 | Chat | `/chat/:id` | Stack | slide_from_right |
+| 14 | Worker Match | `/match/:id` | Stack | slide_from_right |
+| 15 | Request Matching | `/new-request/matching?requestId=:id` | Stack | slide_from_right |
+| 16 | Booking Success | `/new-request/success` | Stack | modal |
+| 17 | 404 | `+not-found` | Stack | default |
 
 ## Mermaid Diagram
 

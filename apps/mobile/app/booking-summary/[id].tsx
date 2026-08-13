@@ -19,7 +19,6 @@ import {
   Clock,
   Wrench,
   Receipt,
-  Star,
   Image as ImageIcon,
   MessageSquare,
   AlertTriangle,
@@ -407,33 +406,6 @@ export default function BookingSummaryScreen() {
             <View style={styles.actionsCard}>
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => router.push(`/review/${bookingId}`)}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: '#FFF8E1' }]}>
-                  <Star size={20} color="#F59E0B" fill="#F59E0B" />
-                </View>
-                <View style={styles.actionText}>
-                  <Text style={styles.actionTitle}>Leave a Review</Text>
-                  <Text style={styles.actionSub}>
-                    Rate your experience with {providerName}
-                  </Text>
-                </View>
-                <View style={styles.actionChevron}>
-                  <Text
-                    style={[
-                      theme.typography.caption,
-                      { color: theme.colors.primary },
-                    ]}
-                  >
-                    →
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={styles.actionDivider} />
-
-              <TouchableOpacity
-                style={styles.actionButton}
                 onPress={handleReport}
               >
                 <View
@@ -674,11 +646,5 @@ const styles = StyleSheet.create({
   actionSub: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
-  },
-  actionChevron: { paddingLeft: theme.spacing.sm },
-  actionDivider: {
-    height: 1,
-    backgroundColor: theme.colors.borderLight,
-    marginHorizontal: theme.spacing.lg,
   },
 });

@@ -279,10 +279,6 @@ export default function HomeScreen() {
                   <View style={styles.recommendedInfo}>
                     <Text style={theme.typography.body1} numberOfLines={1}>{worker.name}</Text>
                     <View style={styles.recommendedMeta}>
-                      <View style={styles.ratingRow}>
-                        <Star color={theme.colors.warning} size={14} fill={theme.colors.warning} />
-                        <Text style={[theme.typography.caption, { marginLeft: 4 }]}>{worker.rating?.toFixed(1) || '0.0'}</Text>
-                      </View>
                       <View style={styles.distanceRow}>
                         <MapPin color={theme.colors.textSecondary} size={14} />
                         <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginLeft: 2 }]}>{worker.distance || '0km'}</Text>

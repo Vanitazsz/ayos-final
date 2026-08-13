@@ -18,7 +18,6 @@ import {
   Globe,
   ShieldCheck,
   CheckCircle2,
-  Star,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -27,7 +26,6 @@ import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
-import { RatingStars } from '@/components/RatingStars';
 import { SectionHeader } from '@/components/SectionHeader';
 import { fetchProviderProfile } from '@/services/api';
 
@@ -42,14 +40,11 @@ export default function ProviderProfileScreen() {
     avatarUri: '',
     category: '',
     verified: false,
-    rating: 0,
-    reviewCount: 0,
     distance: '',
     eta: '',
     price: '',
     bio: '',
     services: [],
-    reviews: [],
   });
   const [isFav, setIsFav] = React.useState(false);
   useEffect(() => {
@@ -126,14 +121,6 @@ export default function ProviderProfileScreen() {
             >
               {provider.category}
             </AppText>
-            <View style={styles.ratingRow}>
-              <RatingStars
-                rating={provider.rating}
-                size={15}
-                showValue
-                reviewCount={provider.reviewCount}
-              />
-            </View>
           </View>
         </View>
 
@@ -210,43 +197,6 @@ export default function ProviderProfileScreen() {
               </View>
             ))}
           </View>
-        </View>
-
-        {/* Reviews */}
-        <View style={styles.section}>
-          <SectionHeader title="Reviews" />
-          {provider.reviews.slice(0, 2).map((r: any) => (
-            <View key={r.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <Avatar uri={r.avatarUri} size={36} />
-                <View style={styles.reviewInfo}>
-                  <AppText variant="bodySm" weight="semiBold">
-                    {r.author}
-                  </AppText>
-                  <AppText variant="caption" color={Colors.textTertiary}>
-                    {r.date}
-                  </AppText>
-                </View>
-                <RatingStars rating={r.rating} size={13} />
-              </View>
-              <AppText
-                variant="bodySm"
-                color={Colors.textSecondary}
-                style={{ marginTop: Spacing['2'], lineHeight: 20 }}
-              >
-                {r.comment}
-              </AppText>
-            </View>
-          ))}
-          <AppButton
-            label="Write a Review"
-            variant="primary"
-            size="sm"
-            fullWidth
-            leftIcon={<Star size={18} color={Colors.white} strokeWidth={2} />}
-            onPress={() => router.push('/(tabs)/bookings')}
-            style={{ marginTop: Spacing['3'] }}
-          />
         </View>
 
         {/* Contact */}
@@ -363,7 +313,6 @@ const styles = StyleSheet.create({
     gap: Spacing['2'],
     flexWrap: 'wrap',
   },
-  ratingRow: { marginTop: Spacing['1'] },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -401,21 +350,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     ...Elevation.sm,
   },
-  reviewCard: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.xl,
-    padding: Spacing['4'],
-    marginTop: Spacing['3'],
-    ...Elevation.md,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['2'],
-  },
-  reviewInfo: { flex: 1 },
   contactList: {
     marginTop: Spacing['3'],
     backgroundColor: Colors.white,

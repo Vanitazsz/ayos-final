@@ -157,8 +157,6 @@ export const styles = StyleSheet.create({
   },
   acceptedPill: { backgroundColor: theme.colors.success },
   pillText: { ...theme.typography.caption, color: '#fff', fontWeight: '700' },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  ratingText: { ...theme.typography.caption },
   state: {
     flex: 1,
     alignItems: 'center',

@@ -374,8 +374,9 @@
     "text": "The system shall provide a post-payment Rate & Review modal that displays the customer?s submitted rating and review for the related completed, paid booking. The worker shall view this feedback only and shall not submit a rating or review through the modal. Customer feedback remains subject to administrator moderation before publication.",
     "traceability": {
       "sources": [
-        "apps/mobile/app/payment/success.tsx",
-        "apps/mobile/app/review/[id].tsx",
+        "apps/mobile/components/booking/UserReviewWorkModal.tsx",
+        "apps/mobile/app/payment/[id].tsx",
+        "apps/mobile/app/tracking/[id].tsx",
         "apps/mobile/services/reviewQueries.ts"
       ],
       "tests": ["apps/mobile/services/reviewQueries.test.ts"],

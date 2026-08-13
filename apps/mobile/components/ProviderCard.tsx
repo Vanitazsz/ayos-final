@@ -5,7 +5,6 @@ import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from './AppText';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
-import { RatingStars } from './RatingStars';
 import * as Haptics from 'expo-haptics';
 
 export interface ProviderData {
@@ -13,8 +12,6 @@ export interface ProviderData {
   name: string;
   category: string;
   avatarUri: string;
-  rating: number;
-  reviewCount: number;
   distance: string;
   eta: string;
   verified: boolean;
@@ -64,9 +61,6 @@ export const ProviderCard = React.memo(function ProviderCard({
           <AppText variant="caption" color={Colors.textSecondary} numberOfLines={1}>
             {provider.category}
           </AppText>
-          <View style={styles.ratingRow}>
-            <RatingStars rating={provider.rating} size={13} showValue reviewCount={provider.reviewCount} />
-          </View>
         </View>
       </View>
       <View style={styles.metaRow}>
@@ -112,9 +106,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing['2'],
     flexWrap: 'wrap',
-  },
-  ratingRow: {
-    marginTop: 2,
   },
   metaRow: {
     flexDirection: 'row',

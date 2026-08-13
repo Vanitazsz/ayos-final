@@ -12,7 +12,6 @@ import {
   Clock,
   Minus,
   Plus,
-  Star,
   UsersRound,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
@@ -338,12 +337,6 @@ function WorkerCard({
             {accepted ? 'Accepted' : 'Notified'}
           </Text>
         </View>
-      </View>
-      <View style={styles.rating}>
-        <Star size={16} color={theme.colors.warning} />
-        <Text style={styles.ratingText}>
-          {Number(worker.rating).toFixed(1)} ({worker.reviewCount})
-        </Text>
       </View>
       {accepted ? (
         <Button

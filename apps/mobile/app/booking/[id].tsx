@@ -15,7 +15,6 @@ import { AppButton } from '@/components/AppButton';
 import { AppInput } from '@/components/AppInput';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
-import { RatingStars } from '@/components/RatingStars';
 import { fetchProviderProfile, selectWorker } from '@/services/api';
 import { useRequestStore } from '@/store/useRequestStore';
 import { showAlert } from '@/components/AppAlert';
@@ -44,8 +43,6 @@ export default function BookingScreen() {
     avatarUri: '',
     verified: false,
     category: '',
-    rating: 0,
-    reviewCount: 0,
     price: '',
   });
   useEffect(() => {
@@ -116,12 +113,6 @@ export default function BookingScreen() {
             <AppText variant="caption" color={Colors.textSecondary}>
               {provider.category}
             </AppText>
-            <RatingStars
-              rating={provider.rating}
-              size={13}
-              showValue
-              reviewCount={provider.reviewCount}
-            />
           </View>
           <AppText variant="h4" weight="bold" color={Colors.cta}>
             {provider.price}

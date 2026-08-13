@@ -75,23 +75,10 @@ export function formatElapsedTime(seconds: number): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export function formatRating(
-  value: number | string | null | undefined,
-): string {
-  return Number(value).toFixed(1);
-}
-
 export function etaMinutes(
   etaSeconds: number | null | undefined,
 ): number {
   return Math.max(1, Math.ceil((etaSeconds ?? 0) / 60));
-}
-
-export function ratingToPercent(
-  rating: number | null | undefined,
-  max = 5,
-): number {
-  return Math.round(((rating ?? 0) / max) * 100);
 }
 
 export function formatAddressParts(

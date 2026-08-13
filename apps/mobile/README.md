@@ -66,7 +66,6 @@ app/
 ├── payment.tsx              # Payment screen (modal)
 ├── payment-received.tsx     # Payment success (modal)
 ├── tracking/[id].tsx        # Live tracking screen
-└── review/[id].tsx          # Rate & review (modal)
 
 components/
 ├── AppText.tsx              # Typography component

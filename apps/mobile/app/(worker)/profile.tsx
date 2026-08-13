@@ -21,7 +21,6 @@ import {
   HelpCircle,
   Shield,
   LogOut,
-  Star,
   CheckCircle,
   BadgeCheck,
   ArrowUpFromLine,
@@ -30,7 +29,6 @@ import {
   DollarSign,
 } from 'lucide-react-native';
 import { fetchWorkerProfile } from '@/services/api';
-import { formatRating } from '@/services/reviewRatings';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { getMyProfile, uploadMyAvatar } from '@/services/profile';
@@ -50,12 +48,6 @@ const MENU_SECTIONS = [
       { id: 'personal', title: 'Personal Information', icon: User, color: theme.colors.primary },
       { id: 'industry', title: 'Industry & Skills', icon: Wrench, color: theme.colors.success },
       { id: 'areas', title: 'Service Areas', icon: MapPin, color: theme.colors.info },
-    ],
-  },
-  {
-    title: 'Reviews',
-    items: [
-      { id: 'reviews', title: 'My Reviews', icon: Star, color: theme.colors.warning },
     ],
   },
   {
@@ -192,10 +184,6 @@ export default function WorkerProfileScreen() {
         pathname: '/(worker)/service-setup',
         params: { from: 'profile' },
       });
-      return;
-    }
-    if (id === 'reviews') {
-      router.push('/(worker)/reviews');
       return;
     }
     if (id === 'personal') {
@@ -348,23 +336,6 @@ export default function WorkerProfileScreen() {
                   ]}
                 >
                   Jobs Done
-                </Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Star color="#F59E0B" size={16} fill="#F59E0B" />
-                  <Text style={[theme.typography.h3, { marginLeft: 4 }]}>
-                    {formatRating(workerProfile.rating)}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  Rating
                 </Text>
               </View>
               <View style={styles.statDivider} />
@@ -558,23 +529,6 @@ export default function WorkerProfileScreen() {
                 </View>
                 <Text style={theme.typography.body1}>
                   {workerProfile.yearsExperience} years
-                </Text>
-              </View>
-              <View style={styles.infoCardDivider} />
-              <View style={styles.infoCardRow}>
-                <View style={styles.infoCardItem}>
-                  <Star size={16} color="#F59E0B" />
-                  <Text
-                    style={[
-                      theme.typography.body2,
-                      { color: theme.colors.textSecondary, marginLeft: 6 },
-                    ]}
-                  >
-                    Reviews
-                  </Text>
-                </View>
-                <Text style={theme.typography.body1}>
-                  {workerProfile.reviewCount} reviews
                 </Text>
               </View>
             </View>

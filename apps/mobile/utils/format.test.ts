@@ -10,11 +10,9 @@ import {
   formatKm,
   formatPesoMajor,
   formatPesoMinor,
-  formatRating,
   formatSchedule,
   formatTime,
   formatWholeNumber,
-  ratingToPercent,
 } from './format';
 
 describe('formatPesoMinor', () => {
@@ -93,25 +91,11 @@ describe('formatElapsedTime', () => {
   });
 });
 
-describe('formatRating', () => {
-  it('pins one decimal', () => {
-    expect(formatRating(4.567)).toBe('4.6');
-    expect(formatRating('4')).toBe('4.0');
-  });
-});
-
 describe('etaMinutes', () => {
   it('rounds up seconds to whole minutes with a one-minute floor', () => {
     expect(etaMinutes(30)).toBe(1);
     expect(etaMinutes(125)).toBe(3);
     expect(etaMinutes(null)).toBe(1);
-  });
-});
-
-describe('ratingToPercent', () => {
-  it('converts a rating to a percentage of the max', () => {
-    expect(ratingToPercent(4.5)).toBe(90);
-    expect(ratingToPercent(0)).toBe(0);
   });
 });
 

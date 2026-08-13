@@ -28,8 +28,6 @@ import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { styles } from '@/styles/tracking/_tracking.styles';
 import { useBookingTracking } from '@/hooks/useBookingTracking';
 import { showAlert } from '@/components/AppAlert';
-import { UserReviewWorkModal } from '@/components/booking/UserReviewWorkModal';
-import { fetchReviewForBooking } from '@/services/reviews';
 
 
 const STATUS_STEP_MAP: Record<string, number> = {
@@ -142,20 +140,9 @@ export default function TrackingScreen() {
       : 0;
   }, [workerStatus]);
 
-  const [showReviewModal, setShowReviewModal] = React.useState(false);
-
   const handlePayment = async () => {
     if (!bookingId) return;
-    try {
-      const existing = await fetchReviewForBooking(bookingId);
-      if (existing) {
-        router.push(`/payment/${bookingId}`);
-      } else {
-        setShowReviewModal(true);
-      }
-    } catch {
-      setShowReviewModal(true);
-    }
+    router.push(`/payment/${bookingId}`);
   };
 
   const rawAddress = tracking?.booking?.service_requests?.addresses;
@@ -620,20 +607,6 @@ export default function TrackingScreen() {
         )}
       </View>
       </View>
-
-      {bookingId && (
-        <UserReviewWorkModal
-          visible={showReviewModal}
-          bookingId={bookingId}
-          providerName={tracking?.booking?.worker_profiles?.display_name ?? 'Provider'}
-          serviceName={tracking?.booking?.service_requests?.service_categories?.name ?? 'Service'}
-          onClose={() => setShowReviewModal(false)}
-          onSubmitted={() => {
-            setShowReviewModal(false);
-            router.push(`/payment/${bookingId}`);
-          }}
-        />
-      )}
     </Screen>
   );
 }

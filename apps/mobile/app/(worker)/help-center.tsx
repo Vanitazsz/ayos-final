@@ -25,9 +25,6 @@ Earnings from completed jobs are deposited directly to your selected payout meth
 What should I do if a customer cancels?
 If a job is canceled after you accept, you will receive a notification. Check your Bookings tab for the updated status and details.
 
-How do customer ratings and reviews work?
-After every completed job, customers can leave a rating and written review. Maintaining high ratings improves your matching priority and earnings potential.
-
 ## Worker Support & Emergency
 
 If you encounter any safety, technical, or account issues during a service call, contact our support team at support@ayos.ph or reach out through in-app messaging.`,

@@ -14,7 +14,6 @@ import {
   batchResolveAvatars,
   resolveProfileAvatar,
 } from '@/services/profile';
-import { averageRating } from '@/services/reviewRatings';
 import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
 import { normalizeCommissionRatePercent } from '@/utils/commission';
 import { recordWorkerLocation as recordWorkerLocationRpc } from './bookingLocation';
@@ -36,16 +35,6 @@ export {
   type GeocodingResult,
 } from '@/services/geocoding';
 export { calculateRoute, type RouteResult } from '@/services/routing';
-export interface ReviewData {
-  id: string;
-  author: string;
-  avatarUri: string;
-  rating: number;
-  date: string;
-  comment: string;
-  serviceType: string;
-  moderationStatus?: 'PENDING' | 'PUBLISHED' | 'REJECTED';
-}
 export interface WorkerBooking {
   id: string;
   requestId?: string;
@@ -106,8 +95,6 @@ export interface WorkerProfile {
   verificationStatus: 'verified' | 'pending' | 'needs_review' | 'rejected';
   profileComplete: boolean;
   yearsExperience: number;
-  rating: number;
-  reviewCount: number;
   completedJobs: number;
   earnings: string;
   hourlyRate: string;
@@ -282,7 +269,7 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
     const { data, error } = await supabase
       .from('worker_profiles')
       .select(
-        'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name)),reviews:account_id(stars,moderation_status)',
+        'account_id,display_name,avatar_path,approval_status,worker_skills(years,rate_minor,service_categories(name))',
       )
       .eq('approval_status', 'APPROVED')
       .eq('is_available', true)
@@ -293,9 +280,6 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
       rows.map((row: any) => row.avatar_path),
     );
     return rows.map((row: any) => {
-      const reviews = (row.reviews ?? []).filter(
-        (review: any) => review.moderation_status === 'PUBLISHED',
-      );
       return {
         id: row.account_id,
         name: requireIdentity(row.display_name, 'Worker'),
@@ -307,8 +291,6 @@ export async function fetchProviders(): Promise<ApiResponse<ProviderData[]>> {
           'Worker service',
         ),
         avatarUri: avatarMap.get(row.avatar_path) ?? '',
-        rating: averageRating(reviews),
-        reviewCount: reviews.length,
         distance: '',
         eta: '',
         verified: row.approval_status === 'APPROVED',
@@ -340,7 +322,6 @@ export async function fetchProviderProfile(id: string) {
   return wrap(async () => {
     const [
       { data: profile, error },
-      { data: reviews, error: reviewError },
       { data: skills, error: skillError },
     ] = await Promise.all([
       supabase
@@ -350,30 +331,16 @@ export async function fetchProviderProfile(id: string) {
         .eq('approval_status', 'APPROVED')
         .single(),
       supabase
-        .from('reviews')
-        .select(
-          'id,stars,body,created_at,user_profiles:user_account_id(display_name,avatar_path)',
-        )
-        .eq('worker_account_id', id)
-        .eq('moderation_status', 'PUBLISHED')
-        .order('created_at', { ascending: false }),
-      supabase
         .from('worker_skills')
         .select('rate_minor,service_categories(name)')
         .eq('worker_id', id),
     ]);
     if (error) throw error;
-    if (reviewError) throw reviewError;
     if (skillError) throw skillError;
-    const rows = reviews ?? [];
     const workerRates = (skills ?? [])
       .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
-    const rating = averageRating(rows);
-    const avatarMap = await batchResolveAvatars([
-      profile.avatar_path,
-      ...rows.map((row: any) => row.user_profiles?.avatar_path),
-    ]);
+    const avatarMap = await batchResolveAvatars([profile.avatar_path]);
     return {
       id: profile.account_id,
       name: requireIdentity(profile.display_name, 'Worker'),
@@ -383,8 +350,6 @@ export async function fetchProviderProfile(id: string) {
         'Worker service',
       ),
       verified: profile.approval_status === 'APPROVED',
-      rating,
-      reviewCount: rows.length,
       distance: '',
       eta: '',
       price: workerRates.length
@@ -398,50 +363,7 @@ export async function fetchProviderProfile(id: string) {
       services: (skills ?? [])
         .map((skill: any) => skill.service_categories?.name)
         .filter(Boolean),
-      reviews: rows.map((row: any) => ({
-        id: row.id,
-        author: requireIdentity(
-          row.user_profiles?.display_name,
-          'Review author',
-        ),
-        avatarUri: avatarMap.get(row.user_profiles?.avatar_path) ?? '',
-        rating: row.stars,
-        date: relative(row.created_at),
-        comment: row.body,
-      })),
     };
-  });
-}
-export async function fetchReviews(): Promise<ApiResponse<ReviewData[]>> {
-  return wrap(async () => {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(
-        'id,stars,body,created_at,user_profiles:user_account_id(display_name,avatar_path),service:bookings(service_requests(service_categories(name)))',
-      )
-      .eq('moderation_status', 'PUBLISHED')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    const rows = data ?? [];
-    const avatarMap = await batchResolveAvatars(
-      rows.map((row: any) => row.user_profiles?.avatar_path),
-    );
-    return rows.map((row: any) => ({
-      id: row.id,
-      author: requireIdentity(
-        row.user_profiles?.display_name,
-        'Review author',
-      ),
-      avatarUri:
-        avatarMap.get(row.user_profiles?.avatar_path) ?? '',
-      rating: row.stars,
-      date: relative(row.created_at),
-      comment: row.body,
-      serviceType: requireIdentity(
-        row.service?.service_requests?.service_categories?.name,
-        'Reviewed service',
-      ),
-    }));
   });
 }
 export async function fetchBookings(): Promise<ApiResponse<any[]>> {
@@ -450,7 +372,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     const bookingResult = await supabase
       .from('bookings')
       .select(
-        'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path,reviews!reviews_worker_account_id_fkey(stars,moderation_status))',
+        'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path)',
       )
       .eq('user_account_id', user.id)
       .order('created_at', { ascending: false });
@@ -462,9 +384,6 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     );
 
     return rows.map((row: any) => {
-      const reviews = (row.worker_profiles?.reviews ?? []).filter(
-        (review: any) => review.moderation_status === 'PUBLISHED',
-      );
       return {
         id: row.id,
         requestId: row.service_request_id,
@@ -508,7 +427,6 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
           row.agreed_service_amount == null
             ? 'Pending price'
             : money(row.agreed_service_amount),
-        rating: averageRating(reviews),
       };
     });
   });
@@ -547,7 +465,6 @@ export async function fetchWorkerProfile(): Promise<
     const [
       { data: account, error: accountError },
       { data: profile, error: profileError },
-      { data: reviews },
       { data: bookings },
       { data: skills },
     ] = await Promise.all([
@@ -564,10 +481,6 @@ export async function fetchWorkerProfile(): Promise<
         .eq('account_id', user.id)
         .single(),
       supabase
-        .from('reviews')
-        .select('stars,moderation_status')
-        .eq('worker_account_id', user.id),
-      supabase
         .from('bookings')
         .select('id,agreed_service_amount')
         .eq('worker_account_id', user.id)
@@ -579,10 +492,6 @@ export async function fetchWorkerProfile(): Promise<
     ]);
     if (accountError) throw accountError;
     if (profileError) throw profileError;
-    const accountReviews = (reviews ?? []).filter(
-      (row) => row.moderation_status !== 'REJECTED',
-    );
-    const rating = averageRating(accountReviews);
     const prices = (skills ?? [])
       .map((skill: any) => Number(skill.rate_minor))
       .filter(Number.isFinite);
@@ -615,8 +524,6 @@ export async function fetchWorkerProfile(): Promise<
           ...(profile.worker_skills ?? []).map((skill: any) => skill.years),
           0,
         ),
-        rating,
-        reviewCount: accountReviews.length,
         completedJobs: (bookings ?? []).length,
         earnings: money(earnings),
         hourlyRate: prices.length
@@ -648,44 +555,6 @@ export async function fetchWorkerVerification() {
       .maybeSingle();
     if (error) throw error;
     return data;
-  });
-}
-export async function fetchWorkerReviews() {
-  return wrap(async () => {
-    const user = await requireUser();
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(
-        'id,stars,body,created_at,moderation_status,user_profiles:user_account_id(display_name,avatar_path),service:bookings(service_requests(service_categories(name)))',
-      )
-      .eq('worker_account_id', user.id)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    const rows = data ?? [];
-    const avatarMap = await batchResolveAvatars(
-      rows.map((row: any) => row.user_profiles?.avatar_path),
-    );
-    const result: ReviewData[] = [];
-    for (const row of rows as any[]) {
-      result.push({
-        id: row.id,
-        author: requireIdentity(
-          row.user_profiles?.display_name,
-          'Review author',
-        ),
-        avatarUri:
-          avatarMap.get(row.user_profiles?.avatar_path) ?? '',
-        rating: Number(row.stars),
-        date: relative(row.created_at),
-        comment: row.body,
-        serviceType: requireIdentity(
-          row.service?.service_requests?.service_categories?.name,
-          'Reviewed service',
-        ),
-        moderationStatus: row.moderation_status,
-      });
-    }
-    return result;
   });
 }
 export async function fetchWorkerBookings(): Promise<
@@ -1148,34 +1017,6 @@ export async function fetchPlatformFeeSettings() {
       serviceCategoryOverrides: payload?.serviceCategoryOverrides ?? [],
     };
   });
-}
-export async function createReview(
-  bookingId: string,
-  stars: number,
-  body: string,
-  recommendWorker: boolean,
-  media: { path: string; contentType: string; byteSize: number }[] = [],
-) {
-  const { data, error } = await supabase.rpc('create_review', {
-    p_booking_id: bookingId,
-    stars,
-    body,
-    recommend_worker: recommendWorker,
-  });
-  if (error) throw error;
-  if (!data?.id) {
-    throw new Error('Review submission returned no review record.');
-  }
-  for (const item of media) {
-    const { error: mediaError } = await supabase.rpc('attach_review_media', {
-      p_review_id: (data as any).id,
-      p_storage_path: item.path,
-      p_content_type: item.contentType,
-      p_byte_size: item.byteSize,
-    });
-    if (mediaError) throw mediaError;
-  }
-  return data;
 }
 const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
   {

@@ -26,8 +26,6 @@ export type LiveWorkerCandidate = {
   distanceMeters: number;
   latitude: number;
   longitude: number;
-  rating: number;
-  reviewCount: number;
   rateMinor: number | null;
 };
 export type DispatchDiagnostics = {

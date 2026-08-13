@@ -313,7 +313,6 @@ export default function WorkerDashboardScreen() {
             <View style={styles.perfStats}>
               {[
                 { label: 'Completion Rate', val: completionRate, color: theme.colors.success },
-                { label: 'Average Rating', val: Math.round(((workerProfile?.rating ?? 0) / 5) * 100), color: theme.colors.info },
                 { label: 'Profile Completion', val: workerProfile?.bio ? 100 : 75, color: theme.colors.warning },
               ].map((s) => (
                 <View key={s.label} style={styles.perfRow}>

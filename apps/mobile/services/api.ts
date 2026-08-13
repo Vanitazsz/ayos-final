@@ -12,7 +12,6 @@ export * from './messaging';
 export * from './notifications';
 export * from './payments';
 export * from './requests';
-export * from './reviews';
 export * from './routing';
 export * from './support';
 export * from './wallet';
@@ -24,7 +23,6 @@ export {
   type IndustrySkill,
   type IndustryWithSkills,
   type MediaAssistResult,
-  type ReviewData,
   type TransactionStatus,
   type WalletSummary,
   type WalletTransaction,

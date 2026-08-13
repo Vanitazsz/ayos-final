@@ -39,13 +39,12 @@ Shared screens (accessible from both modes): Provider Detail, Booking, Payment, 
 | 9 | Payment | `/payment` | Stack | modal | Yes |
 | 10 | Payment Success | `/payment/success?id=:bookingId` | Stack | modal | Yes |
 | 11 | Live Tracking | `/tracking/:id` | Stack | slide_from_right | Yes |
-| 12 | Rate & Review | `/review/:id` | Stack | modal | Yes |
-| 13 | Accept Worker | `/accept-worker/:id` | Stack | slide_from_right | Yes |
-| 14 | Chat | `/chat/:id` | Stack | slide_from_right | Yes |
-| 15 | Worker Match | `/match/:id` | Stack | slide_from_right | Yes |
-| 16 | Request Matching | `/new-request/matching?requestId=:id` | Stack | slide_from_right | Yes |
-| 17 | Booking Success | `/new-request/success` | Stack | modal | Yes |
-| 18 | 404 | `+not-found` | Stack | default | Yes |
+| 12 | Accept Worker | `/accept-worker/:id` | Stack | slide_from_right | Yes |
+| 13 | Chat | `/chat/:id` | Stack | slide_from_right | Yes |
+| 14 | Worker Match | `/match/:id` | Stack | slide_from_right | Yes |
+| 15 | Request Matching | `/new-request/matching?requestId=:id` | Stack | slide_from_right | Yes |
+| 16 | Booking Success | `/new-request/success` | Stack | modal | Yes |
+| 17 | 404 | `+not-found` | Stack | default | Yes |
 
 ## Mermaid Diagram
 
@@ -226,7 +225,6 @@ These screens are accessible from both User and Worker tabs via stack navigation
 | Payment | `/payment` | Complete booking flow |
 | Payment Success | `/payment/success?id=:bookingId` | Success confirmation |
 | Live Tracking | `/tracking/:id` | View active job progress |
-| Rate & Review | `/review/:id` | Leave review for customer |
 | Accept Worker | `/accept-worker/:id` | Accept incoming job request |
 | Chat | `/chat/:id` | Message customer before hiring |
 | Worker Match | `/match/:id` | View matched workers |

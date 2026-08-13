@@ -165,28 +165,3 @@ async function compressProofImage(uri: string): Promise<string> {
     return uri;
   }
 }
-
-export async function uploadReviewMedia(uris: string[]) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user)
-    throw userError ?? new Error('Authentication required');
-
-  return Promise.all(
-    uris.map(async (uri) => {
-      const response = await fetch(uri);
-      if (!response.ok)
-        throw new Error('The selected review photo could not be read.');
-      const bytes = await response.arrayBuffer();
-      const contentType = response.headers.get('content-type') ?? 'image/jpeg';
-      const path = `${user.id}/${randomUUID()}.jpg`;
-      const { error } = await supabase.storage
-        .from('review-media')
-        .upload(path, bytes, { contentType });
-      if (error) throw error;
-      return { path, contentType, byteSize: bytes.byteLength };
-    }),
-  );
-}

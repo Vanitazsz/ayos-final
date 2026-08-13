@@ -215,10 +215,6 @@ export default function WorkerTabLayout() {
           options={{ href: null, tabBarItemStyle: { display: 'none' } }}
         />
         <Tabs.Screen
-          name="reviews"
-          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
-        />
-        <Tabs.Screen
           name="settings"
           options={{ href: null, tabBarItemStyle: { display: 'none' } }}
         />

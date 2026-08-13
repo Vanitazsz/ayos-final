@@ -14,8 +14,6 @@ import {
   Banknote,
   Smartphone,
 } from 'lucide-react-native';
-import { UserReviewWorkModal } from '@/components/booking/UserReviewWorkModal';
-import { fetchReviewForBooking } from '@/services/reviews';
 import {
   confirmCashPayment,
   fetchBookingDetail,
@@ -65,19 +63,6 @@ export default function PaymentScreen() {
   const [error, setError] = useState('');
   const bookingId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/(tabs)/bookings');
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [providerName, setProviderName] = useState('Provider');
-  const [serviceName, setServiceName] = useState('Service');
-
-  useEffect(() => {
-    if (bookingId) {
-      void fetchReviewForBooking(bookingId).then((existing) => {
-        if (!existing) {
-          setShowReviewModal(true);
-        }
-      });
-    }
-  }, [bookingId]);
 
   useEffect(() => {
     if (bookingId)
@@ -88,8 +73,6 @@ export default function PaymentScreen() {
         if (result.error) setError(result.error);
         else {
           const b = result.data;
-          if (b?.worker_profiles?.display_name) setProviderName(b.worker_profiles.display_name);
-          if (b?.service_requests?.service_categories?.name) setServiceName(b.service_requests.service_categories.name);
           const agreedAmount = b?.agreed_service_amount;
           if (agreedAmount == null || Number(agreedAmount) <= 0) {
             setError('A worker price must be agreed before payment.');
@@ -373,17 +356,6 @@ export default function PaymentScreen() {
           fullWidth
         />
       </View>
-
-      {bookingId && (
-        <UserReviewWorkModal
-          visible={showReviewModal}
-          bookingId={bookingId}
-          providerName={providerName}
-          serviceName={serviceName}
-          onClose={() => setShowReviewModal(false)}
-          onSubmitted={() => setShowReviewModal(false)}
-        />
-      )}
     </Screen>
   );
 }
