@@ -371,15 +371,15 @@
   },
   {
     "id": "FR-88",
-    "text": "The system shall provide a post-payment Rate & Review modal that displays the customer?s submitted rating and review for the related completed, paid booking. The worker shall view this feedback only and shall not submit a rating or review through the modal. Customer feedback remains subject to administrator moderation before publication.",
+    "text": "The system shall require the homeowner to attach at least one photo of the completed work (proof of work) before paying for the completed, paid booking, and shall make the proof visible to the booking's parties and administrators.",
     "traceability": {
       "sources": [
-        "apps/mobile/components/booking/UserReviewWorkModal.tsx",
+        "apps/mobile/components/booking/CustomerProofOfWorkModal.tsx",
         "apps/mobile/app/payment/[id].tsx",
         "apps/mobile/app/tracking/[id].tsx",
-        "apps/mobile/services/reviewQueries.ts"
+        "apps/mobile/services/apiCore.ts"
       ],
-      "tests": ["apps/mobile/services/reviewQueries.test.ts"],
+      "tests": ["apps/mobile/services/api.workerBookings.test.ts"],
       "uat": "UAT#12",
       "status": "repository_verified_hosted_moderation_uat_pending"
     }
