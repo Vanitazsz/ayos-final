@@ -22,4 +22,3 @@ supabase/.env.local
 * 2.*
 apps/mobile/android/app/debug.keystore
 /ios/
-
