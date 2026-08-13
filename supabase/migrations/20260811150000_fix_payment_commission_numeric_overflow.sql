@@ -1,6 +1,9 @@
 -- Fix numeric field overflow when creating payments/receipts with commission_rate
 -- Safely clamp commission rates to numeric(5,4) range [0.0000, 0.9999]
--- Allow customer review submission during COMPLETED or PENDING_CONFIRMATION states
+-- NOTE: the create_review update was removed from this migration on 2026-08-13
+-- because the reviews feature (and its tables) were dropped by
+-- 20260814020000_deprecate_reviews_remove_ratings, so that function no longer
+-- has a valid target schema on deployed environments.
 
 -- 1. Normalize existing payments table if any rows stored commission_rate > 1 (e.g. 10 instead of 0.10)
 update public.payments
@@ -255,53 +258,5 @@ begin
     'newBalance', new_balance,
     'status', 'COMPLETED'
   );
-end;
-$$;
-
--- 4. Update create_review RPC to allow review submission for COMPLETED / PENDING_CONFIRMATION bookings
-create or replace function public.create_review(
-  p_booking_id uuid,
-  stars integer,
-  body text,
-  recommend_worker boolean
-) returns public.reviews
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  booking public.bookings;
-  result public.reviews;
-begin
-  select * into booking from public.bookings where id = p_booking_id;
-
-  if booking.id is null
-     or booking.user_account_id is distinct from auth.uid()
-     or booking.status not in ('COMPLETED', 'PENDING_CONFIRMATION')
-  then
-    raise exception using errcode = '42501', message = 'REVIEW_NOT_ALLOWED';
-  end if;
-
-  if stars not between 1 and 5
-     or length(trim(body)) not between 3 and 4000
-  then
-    raise exception using errcode = '22023', message = 'Invalid review';
-  end if;
-
-  insert into public.reviews(
-    booking_id, user_account_id, worker_account_id,
-    stars, body, recommend_worker, moderation_status
-  ) values (
-    booking.id, booking.user_account_id, booking.worker_account_id,
-    stars, trim(body), recommend_worker, 'PUBLISHED'
-  )
-  on conflict (booking_id) do update
-  set stars = excluded.stars,
-      body = excluded.body,
-      recommend_worker = excluded.recommend_worker,
-      moderation_status = 'PUBLISHED'
-  returning * into result;
-
-  return result;
 end;
 $$;
