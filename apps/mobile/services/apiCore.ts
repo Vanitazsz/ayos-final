@@ -1676,11 +1676,9 @@ export async function setPreferredLocale(locale: 'en' | 'fil') {
 }
 export async function fetchConversationForBooking(bookingId: string) {
   return wrap(async () => {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('booking_id', bookingId)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('chat_ensure_booking_conversation', {
+      p_booking_id: bookingId,
+    });
     if (error) throw error;
     if (!data) throw new Error('Conversation not available for this booking');
     return data;

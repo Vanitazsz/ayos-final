@@ -2,7 +2,9 @@ begin;
 
 alter table public.conversations
   add column if not exists archived_at timestamptz,
-  add column if not exists archived_by uuid references public.accounts(id) on delete restrict;
+  add column if not exists archived_by uuid references public.accounts(id) on delete restrict,
+  add column if not exists deleted_at timestamptz,
+  add column if not exists deleted_by uuid references public.accounts(id) on delete set null;
 
 create index if not exists conversations_participant_visible_idx
   on public.conversations(updated_at desc)
@@ -111,6 +113,7 @@ as $$
         from public.conversations conversation
         where conversation.id = p_conversation_id
           and conversation.archived_at is null
+          and conversation.deleted_at is null
       )
     )
 $$;
@@ -133,6 +136,7 @@ as $$
         on request.id = conversation.service_request_id
       where conversation.id = p_conversation_id
         and conversation.archived_at is null
+        and conversation.deleted_at is null
         and (
           (
             conversation.booking_id is not null
