@@ -7,6 +7,7 @@ import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
 import { MockGCashPayment } from '@/components/payment/MockGCashPayment';
 import { ImageUploadCard } from '@/components/ImageUploadCard';
+import { CustomerProofOfWorkModal } from '@/components/booking/CustomerProofOfWorkModal';
 import { uploadBookingProof } from '@/services/uploads';
 import {
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
   confirmCashPayment,
   fetchBookingDetail,
   fetchPlatformFeeSettings,
+  hasCustomerProof,
 } from '@/services/api';
 
 const PAYMENT_METHODS = [
@@ -63,6 +65,18 @@ export default function PaymentScreen() {
   const [error, setError] = useState('');
   const bookingId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/(tabs)/bookings');
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [hasProof, setHasProof] = useState(false);
+
+  useEffect(() => {
+    if (bookingId)
+      void hasCustomerProof(bookingId)
+        .then((exists) => {
+          setHasProof(exists);
+          if (!exists) setShowProofModal(true);
+        })
+        .catch(() => setShowProofModal(true));
+  }, [bookingId]);
 
   useEffect(() => {
     if (bookingId)
@@ -87,7 +101,12 @@ export default function PaymentScreen() {
   const total = (amount ?? 0) + homeownerCharge;
 
   const handlePayment = async () => {
-    if (!selectedMethod || !bookingId) return;
+    if (!bookingId) return;
+    if (!hasProof) {
+      setShowProofModal(true);
+      return;
+    }
+    if (!selectedMethod) return;
     setLoading(true);
     setError('');
 
@@ -346,9 +365,11 @@ export default function PaymentScreen() {
         ) : null}
         <Button
           title={
-            selectedMethod === 'gcash'
-              ? `Proceed to GCash Payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
-              : `Confirm cash payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+            !hasProof
+              ? 'Attach proof of work to continue'
+              : selectedMethod === 'gcash'
+                ? `Proceed to GCash Payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+                : `Confirm cash payment ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
           }
           onPress={handlePayment}
           disabled={!selectedMethod || amount == null}
@@ -356,6 +377,18 @@ export default function PaymentScreen() {
           fullWidth
         />
       </View>
+
+      {bookingId && (
+        <CustomerProofOfWorkModal
+          visible={showProofModal}
+          bookingId={bookingId}
+          onClose={() => setShowProofModal(false)}
+          onSubmitted={() => {
+            setShowProofModal(false);
+            setHasProof(true);
+          }}
+        />
+      )}
     </Screen>
   );
 }

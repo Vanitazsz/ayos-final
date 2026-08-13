@@ -15,6 +15,7 @@ export {
   fetchBookingTracking,
   fetchBookings,
   fetchBookingProofPhotos,
+  hasCustomerProof,
   fetchCancellationReasons,
   fetchWorkerBookings,
   markJobInProgress,

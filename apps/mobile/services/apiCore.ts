@@ -1211,6 +1211,7 @@ export interface BookingProofPhoto {
   contentType: string;
   byteSize: number;
   createdAt: string;
+  submittedBy: string;
   signedUrl: string | null;
 }
 
@@ -1252,6 +1253,7 @@ export async function attachBookingProof(
     contentType: photo.content_type,
     byteSize: photo.byte_size,
     createdAt: photo.created_at,
+    submittedBy: photo.submitted_by ?? 'worker',
     signedUrl,
   };
 }
@@ -1279,6 +1281,7 @@ export async function fetchBookingProofPhotos(
           contentType: photo.content_type,
           byteSize: photo.byte_size,
           createdAt: photo.created_at,
+          submittedBy: photo.submitted_by ?? 'worker',
           signedUrl: signed?.signedUrl ?? null,
         };
       } catch {
@@ -1289,11 +1292,25 @@ export async function fetchBookingProofPhotos(
           contentType: photo.content_type,
           byteSize: photo.byte_size,
           createdAt: photo.created_at,
+          submittedBy: photo.submitted_by ?? 'worker',
           signedUrl: null,
         };
       }
     }),
   );
+}
+
+export async function hasCustomerProof(
+  bookingId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('booking_proof_media')
+    .select('id')
+    .eq('booking_id', bookingId)
+    .eq('submitted_by', 'customer')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data != null;
 }
 
 export async function deleteBookingProof(

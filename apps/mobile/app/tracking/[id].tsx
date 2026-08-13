@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {View,
   Text,
   TouchableOpacity,
@@ -25,8 +25,10 @@ import {
 import { buildProviderReportEmail } from '@/services/support';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
+import { CustomerProofOfWorkModal } from '@/components/booking/CustomerProofOfWorkModal';
 import { styles } from '@/styles/tracking/_tracking.styles';
 import { useBookingTracking } from '@/hooks/useBookingTracking';
+import { hasCustomerProof } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
 
 
@@ -120,6 +122,7 @@ export default function TrackingScreen() {
   const { id } = useLocalSearchParams();
   const bookingId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/(tabs)/bookings');
+  const [showProofModal, setShowProofModal] = useState(false);
   const {
     tracking,
     isConfirming,
@@ -142,7 +145,16 @@ export default function TrackingScreen() {
 
   const handlePayment = async () => {
     if (!bookingId) return;
-    router.push(`/payment/${bookingId}`);
+    try {
+      const existing = await hasCustomerProof(bookingId);
+      if (existing) {
+        router.push(`/payment/${bookingId}`);
+      } else {
+        setShowProofModal(true);
+      }
+    } catch {
+      setShowProofModal(true);
+    }
   };
 
   const rawAddress = tracking?.booking?.service_requests?.addresses;
@@ -607,6 +619,25 @@ export default function TrackingScreen() {
         )}
       </View>
       </View>
+
+      {bookingId && (
+        <CustomerProofOfWorkModal
+          visible={showProofModal}
+          bookingId={bookingId}
+          providerName={
+            tracking?.booking?.worker_profiles?.display_name ?? 'Provider'
+          }
+          serviceName={
+            tracking?.booking?.service_requests?.service_categories?.name ??
+            'Service'
+          }
+          onClose={() => setShowProofModal(false)}
+          onSubmitted={() => {
+            setShowProofModal(false);
+            router.push(`/payment/${bookingId}`);
+          }}
+        />
+      )}
     </Screen>
   );
 }

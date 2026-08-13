@@ -323,3 +323,50 @@ describe('customer booking tracking', () => {
     );
   });
 });
+
+describe('customer proof of work', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mocks.from.mockReset();
+  });
+
+  it('reports true when a customer-submitted proof exists', async () => {
+    const proofQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(),
+    };
+    proofQuery.select.mockReturnValue(proofQuery);
+    proofQuery.eq.mockReturnValue(proofQuery);
+    proofQuery.maybeSingle.mockResolvedValue({
+      data: { id: 'proof-id' },
+      error: null,
+    });
+    mocks.from.mockReturnValue(proofQuery);
+
+    const { hasCustomerProof } = await import('./api');
+
+    await expect(hasCustomerProof('booking-id')).resolves.toBe(true);
+
+    expect(proofQuery.select).toHaveBeenCalledWith('id');
+    expect(proofQuery.eq).toHaveBeenCalledWith('booking_id', 'booking-id');
+    expect(proofQuery.eq).toHaveBeenCalledWith('submitted_by', 'customer');
+  });
+
+  it('reports false when no customer proof exists', async () => {
+    const proofQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(),
+    };
+    proofQuery.select.mockReturnValue(proofQuery);
+    proofQuery.eq.mockReturnValue(proofQuery);
+    proofQuery.maybeSingle.mockResolvedValue({ data: null, error: null });
+    mocks.from.mockReturnValue(proofQuery);
+
+    const { hasCustomerProof } = await import('./api');
+
+    await expect(hasCustomerProof('booking-id')).resolves.toBe(false);
+  });
+});
