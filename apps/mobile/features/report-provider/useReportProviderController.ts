@@ -136,7 +136,7 @@ export function useReportProviderController() {
                 response.headers.get('content-type') ?? 'image/jpeg';
               const path = `${user.id}/${randomUUID()}.jpg`;
               const { error } = await supabase.storage
-                .from('review-media')
+                .from('booking-proof')
                 .upload(path, bytes, { contentType });
 
               if (!error) {
@@ -144,7 +144,7 @@ export function useReportProviderController() {
                   path,
                   contentType,
                   byteSize: bytes.byteLength,
-                });
+                }, { submittedBy: 'customer' });
               }
             } catch (err) {
               // Ignore individual proof upload failure silently

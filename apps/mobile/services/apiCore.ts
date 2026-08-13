@@ -1217,12 +1217,22 @@ export interface BookingProofPhoto {
 export async function attachBookingProof(
   bookingId: string,
   media: { path: string; contentType: string; byteSize: number },
+  options?: {
+    rating?: number;
+    comment?: string;
+    submittedBy?: 'worker' | 'customer';
+  },
 ): Promise<BookingProofPhoto> {
   const { data, error } = await supabase.rpc('attach_booking_proof', {
     p_booking_id: bookingId,
     p_storage_path: media.path,
     p_content_type: media.contentType,
     p_byte_size: media.byteSize,
+    ...(options?.submittedBy !== undefined
+      ? { p_submitted_by: options.submittedBy }
+      : {}),
+    ...(options?.rating !== undefined ? { p_rating: options.rating } : {}),
+    ...(options?.comment !== undefined ? { p_comment: options.comment } : {}),
   });
   if (error) throw error;
   const photo = data as any;

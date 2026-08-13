@@ -152,7 +152,12 @@ export const CompleteJobModal = React.memo(function CompleteJobModal({
       );
       uploadedRef.current = uploaded;
       await Promise.all(
-        uploaded.map((media) => attachBookingProof(bookingId, media)),
+        uploaded.map((media) =>
+          attachBookingProof(bookingId, media, {
+            rating,
+            ...(comment.trim() ? { comment: comment.trim() } : {}),
+          }),
+        ),
       );
       await submitWorkerFeedback(
         bookingId,
