@@ -9,86 +9,21 @@ begin;
 -- aggregated review ratings for matching / live dispatch / worker ranking are
 -- rewritten to return a neutral 0 rating while keeping their JSON contracts.
 
--- 1. Storage: remove the review-media bucket and its policy branches ---------
+-- Storage: the review-media bucket is deleted via the Storage dashboard
+-- (postgres is not the owner of storage.objects / storage.buckets, so the
+-- protect_delete trigger and policy DDL cannot run from the migration role).
+-- The storage.objects policy booking_proof_review_media_party_or_admin_read
+-- (which referenced the removed review tables) is dropped automatically by the
+-- drop table ... cascade below.
 
-delete from storage.objects where bucket_id = 'review-media';
-delete from storage.buckets where id = 'review-media';
-
-drop policy if exists booking_proof_review_media_party_or_admin_read
-  on storage.objects;
-
-drop policy if exists storage_owner_upload on storage.objects;
-create policy storage_owner_upload
-on storage.objects
-for insert
-to authenticated
-with check (
-  bucket_id in ('request-media', 'verification-documents', 'message-attachments', 'profile-images')
-  and (storage.foldername(name))[1] = auth.uid()::text
-);
-
-drop policy if exists "authenticated_uploads_owned_path" on storage.objects;
-create policy "authenticated_uploads_owned_path"
-on storage.objects
-for insert
-to authenticated
-with check (
-  bucket_id = any(array['service-request-media', 'verification-documents', 'chat-attachments', 'support-attachments'])
-  and (storage.foldername(name))[1] = auth.uid()::text
-);
-
-drop policy if exists "authenticated_reads_owned_path" on storage.objects;
-create policy "authenticated_reads_owned_path"
-on storage.objects
-for select
-to authenticated
-using (
-  bucket_id = any(array['service-request-media', 'verification-documents', 'chat-attachments', 'support-attachments', 'report-exports'])
-  and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin(false))
-);
-
-drop policy if exists storage_authorized_read on storage.objects;
-create policy storage_authorized_read
-on storage.objects
-for select
-to authenticated
-using(
-  owner_id = auth.uid()::text
-  or public.is_admin(false)
-  or (
-    bucket_id = 'message-attachments'
-    and exists(
-      select 1
-      from public.message_attachments attachment
-      join public.messages message on message.id = attachment.message_id
-      where attachment.storage_path = name
-        and public.chat_can_read(message.conversation_id)
-    )
-  )
-  or (
-    bucket_id = 'request-media'
-    and exists(
-      select 1
-      from public.request_media media
-      join public.service_requests request
-        on request.id = media.service_request_id
-      where media.storage_path = name
-        and (
-          request.user_account_id = auth.uid()
-          or request.selected_worker_id = auth.uid()
-        )
-    )
-  )
-);
-
--- 2. Drop review RPCs --------------------------------------------------------
+-- 1. Drop review RPCs --------------------------------------------------------
 
 drop function if exists public.create_review(uuid, integer, text, boolean);
 drop function if exists public.attach_review_media(uuid, text, text, bigint);
 drop function if exists public.set_review_vote(uuid, boolean);
 drop function if exists public.moderate_review(uuid, public.review_moderation_status);
 
--- 3. Rewrite functions that aggregated review ratings ------------------------
+-- 2. Rewrite functions that aggregated review ratings ------------------------
 
 -- public.generate_matches: rating is now a neutral 0 (matching no longer uses
 -- customer reviews; the JSON `factors.rating` key is preserved for clients).
@@ -508,7 +443,7 @@ exception when foreign_key_violation then
   raise exception using errcode = '23503', message = 'DELETE_BLOCKED_BY_RELATED_RECORDS';
 end $$;
 
--- 4. Drop review tables and their type ---------------------------------------
+-- 3. Drop review tables and their type ---------------------------------------
 
 drop table if exists
   public.review_ai_insights,
@@ -521,7 +456,7 @@ cascade;
 
 drop type if exists public.review_moderation_status;
 
--- 5. booking_proof_media.submitted_by is added by 20260814030000
+-- 4. booking_proof_media.submitted_by is added by 20260814030000
 -- (worker_proof_rating_comment), which runs after this migration.
 
 notify pgrst, 'reload schema';

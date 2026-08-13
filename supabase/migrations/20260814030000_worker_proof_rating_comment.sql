@@ -13,13 +13,13 @@ begin;
 -- 1. booking-level worker proof summary --------------------------------------
 
 alter table public.bookings
-  add column worker_proof_rating smallint
+  add column if not exists worker_proof_rating smallint
     check (worker_proof_rating between 1 and 5),
-  add column worker_proof_comment text
+  add column if not exists worker_proof_comment text
     check (length(worker_proof_comment) <= 5000);
 
 alter table public.booking_proof_media
-  add column submitted_by text not null default 'worker'
+  add column if not exists submitted_by text not null default 'worker'
     check (submitted_by in ('worker', 'customer'));
 
 -- 2. attach_booking_proof accepts rating + comment ---------------------------
