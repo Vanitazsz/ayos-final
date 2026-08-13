@@ -54,7 +54,7 @@ Deno.serve(async (request) => {
     const reportType = String(body.reportType ?? '').toUpperCase();
     const format = String(body.format ?? 'PDF').toUpperCase();
     if (
-      !['FINANCIAL', 'WORKERS', 'CUSTOMERS', 'SERVICES', 'REVIEWS'].includes(reportType) ||
+      !['FINANCIAL', 'WORKERS', 'CUSTOMERS', 'SERVICES'].includes(reportType) ||
       !['CSV', 'XLSX', 'PDF'].includes(format)
     )
       throw new HttpError(422, 'invalid_report', 'Invalid report type or format');
@@ -75,7 +75,6 @@ Deno.serve(async (request) => {
         WORKERS: 'worker_profiles',
         CUSTOMERS: 'user_profiles',
         SERVICES: 'service_requests',
-        REVIEWS: 'reviews',
       };
       const table = tableMap[reportType];
       if (!table) throw new HttpError(422, 'invalid_report', 'Invalid report type');

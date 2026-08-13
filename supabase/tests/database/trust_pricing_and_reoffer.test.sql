@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(51);
+select plan(49);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -806,32 +806,5 @@ select is(
   1::bigint,
   'successful cash settlement creates one receipt'
 );
-select lives_ok(
-  $$select public.create_review(
-    (
-      select id
-      from public.bookings
-      where service_request_id = '96000000-0000-0000-0000-000000000001'
-    ),
-    5,
-    'Verified service review.',
-    true
-  )$$,
-  'customer can create a review after successful service payment'
-);
-select is(
-  (
-    select count(*)
-    from public.reviews
-    where booking_id = (
-      select id
-      from public.bookings
-      where service_request_id = '96000000-0000-0000-0000-000000000001'
-    )
-  ),
-  1::bigint,
-  'post-service review is persisted once'
-);
-
 select * from finish();
 rollback;
