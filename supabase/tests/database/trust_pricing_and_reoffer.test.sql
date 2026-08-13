@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(52);
 
 select has_column('public', 'worker_skills', 'rate_minor', 'worker skills store worker-owned rates');
 select has_table('public', 'account_blocks', 'account blocks are persisted');
@@ -734,6 +734,58 @@ select is(
   ),
   0::bigint,
   'proof-of-work metadata is removed'
+);
+reset role;
+insert into storage.objects(bucket_id, name, owner_id, metadata)
+values (
+  'booking-proof',
+  '91000000-0000-0000-0000-000000000001/proof.jpg',
+  '91000000-0000-0000-0000-000000000001',
+  '{"mimetype":"image/jpeg","size":1024}'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+select lives_ok(
+  $$select public.attach_booking_proof(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    auth.uid()::text || '/proof.jpg',
+    'image/jpeg',
+    1024,
+    'customer'
+  )$$,
+  'customer can attach their own after-job proof to the booking'
+);
+select is(
+  (
+    select submitted_by
+    from public.booking_proof_media
+    where booking_id = (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    )
+  ),
+  'customer',
+  'customer-submitted proof is flagged as submitted by the customer'
+);
+select lives_ok(
+  $$select public.delete_booking_proof(
+    (
+      select id
+      from public.bookings
+      where service_request_id = '96000000-0000-0000-0000-000000000001'
+    ),
+    auth.uid()::text || '/proof.jpg'
+  )$$,
+  'customer can remove their own after-job proof'
 );
 reset role;
 select is(
