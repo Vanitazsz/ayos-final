@@ -95,6 +95,35 @@ describe('signupErrorMessage', () => {
     );
   });
 
+  it('maps a duplicate email Auth error to the existing email guidance', () => {
+    expect(signupErrorMessage({ code: 'user_already_exists' })).toBe(
+      'An account already exists for this email address. Please sign in instead.',
+    );
+  });
+
+  it('maps a raw duplicate-mobile unique constraint to the mobile guidance', () => {
+    expect(
+      signupErrorMessage({
+        message: 'Database error saving new user',
+        details: 'duplicate key value violates unique constraint "accounts_mobile_key"',
+      }),
+    ).toBe(
+      'This mobile number is already registered. Sign in or use a different number.',
+    );
+  });
+
+  it('prefers duplicate-mobile guidance over the masked Auth fallback', () => {
+    expect(
+      signupErrorMessage({
+        code: 'unexpected_failure',
+        message: '{}',
+        details: 'duplicate key value violates unique constraint "accounts_mobile_key"',
+      }),
+    ).toBe(
+      'This mobile number is already registered. Sign in or use a different number.',
+    );
+  });
+
   it('maps a masked Auth signup failure to an actionable message', () => {
     expect(
       signupErrorMessage({ code: 'unexpected_failure', message: '{}' }),
@@ -110,6 +139,20 @@ describe('signupErrorMessage', () => {
   it('falls back when no usable detail is present', () => {
     expect(signupErrorMessage({})).toBe(
       'Registration failed. Please check your details and try again.',
+    );
+  });
+});
+
+describe('workerRegistrationErrorMessage duplicate-classification precedence', () => {
+  it('prefers duplicate-mobile guidance over the generic worker signup fallback', () => {
+    expect(
+      workerRegistrationErrorMessage({
+        code: 'unexpected_failure',
+        message: '{}',
+        details: 'duplicate key value violates unique constraint "accounts_mobile_key"',
+      }),
+    ).toBe(
+      'This mobile number is already registered. Sign in or use a different number.',
     );
   });
 });
