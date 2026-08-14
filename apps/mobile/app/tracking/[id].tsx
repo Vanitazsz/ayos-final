@@ -486,6 +486,19 @@ export default function TrackingScreen() {
             onPress={reportWorker}
             fullWidth
           />
+          {isActive && bookingId ? (
+            <Button
+              title="Cancel Booking"
+              variant="danger"
+              onPress={() =>
+                router.push({
+                  pathname: '/cancel-booking/[id]',
+                  params: { id: bookingId },
+                })
+              }
+              fullWidth
+            />
+          ) : null}
         </View>
 
         {/* Cancellation info */}

@@ -380,6 +380,8 @@ git commit -m "feat: support homeowner cancellation confirmation copy"
 **Files:**
 - Create: `apps/mobile/app/cancel-booking/[id].tsx`
 - Modify: `apps/mobile/app/tracking/[id].tsx:1-30,405-455`
+- Modify: `apps/mobile/app/(tabs)/bookings.tsx:120-155`
+- Modify: `apps/mobile/services/apiCore.ts:354-405`
 
 **Interfaces:**
 - Consumes: `useAuthStore`, `useGoBack`, `fetchCancellationReasons`, `fetchPublishedContentPage`, `cancelCustomerBooking`, `CancellationConfirmation`, existing theme primitives, and `CUSTOMER_BOOKING_TABS`.
@@ -436,6 +438,27 @@ Import `XCircle` only if the existing icon package usage requires it. In `tracki
 
 Leave report, call, emergency, completion, payment, realtime subscriptions, and cancelled-state footer behavior unchanged.
 
+In the existing customer booking fetch/card path, select the related cancellation reason, map it to `cancellationReason`, and render that reason only for `CANCELLED` cards. This completes the UAT requirement that the Cancelled tab shows the persisted reason without changing other tab cards.
+
+```ts
+const cancellation = Array.isArray(row.cancellations)
+  ? row.cancellations[0]
+  : row.cancellations;
+
+return {
+  // existing mapped booking fields
+  cancellationReason: cancellation?.reason ?? null,
+};
+```
+
+```tsx
+{booking.rawStatus === 'CANCELLED' && booking.cancellationReason ? (
+  <Text style={[theme.typography.caption, styles.cancelledReason]}>
+    Reason: {booking.cancellationReason}
+  </Text>
+) : null}
+```
+
 - [ ] **Step 4: Run the focused Playwright test and verify green**
 
 Run:
@@ -462,7 +485,7 @@ Expected: exit code 0 with no new lint or type errors.
 Run:
 
 ```bash
-git add 'apps/mobile/app/cancel-booking/[id].tsx' 'apps/mobile/app/tracking/[id].tsx'
+git add 'apps/mobile/app/cancel-booking/[id].tsx' 'apps/mobile/app/tracking/[id].tsx' 'apps/mobile/app/(tabs)/bookings.tsx' apps/mobile/services/apiCore.ts
 git commit -m "feat: add homeowner booking cancellation flow"
 ```
 

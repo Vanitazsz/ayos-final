@@ -17,10 +17,7 @@ import {
 import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
 import { normalizeCommissionRatePercent } from '@/utils/commission';
 import { recordWorkerLocation as recordWorkerLocationRpc } from './bookingLocation';
-import {
-  cancelCustomerBooking,
-  cancelWorkerBooking,
-} from './bookingCancellation';
+import { cancelWorkerBooking } from './bookingCancellation';
 
 export { cancelCustomerBooking } from './bookingCancellation';
 
@@ -358,7 +355,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     const bookingResult = await supabase
       .from('bookings')
       .select(
-        'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path)',
+        'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path),cancellations(reason)',
       )
       .eq('user_account_id', user.id)
       .order('created_at', { ascending: false });
@@ -370,6 +367,10 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     );
 
     return rows.map((row: any) => {
+      const cancellation = Array.isArray(row.cancellations)
+        ? row.cancellations[0]
+        : row.cancellations;
+
       return {
         id: row.id,
         requestId: row.service_request_id,
@@ -410,6 +411,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
           row.agreed_service_amount == null
             ? 'Pending price'
             : money(row.agreed_service_amount),
+        cancellationReason: cancellation?.reason ?? null,
       };
     });
   });

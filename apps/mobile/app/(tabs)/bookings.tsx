@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppState, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -34,6 +34,7 @@ export default function BookingsScreen() {
   const [activeTab, setActiveTab] = useState(() =>
     getInitialCustomerBookingTab(filter),
   );
+  const tabsRef = useRef<ScrollView>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [showAll, setShowAll] = useState(false);
 
@@ -41,6 +42,12 @@ export default function BookingsScreen() {
     setActiveTab(getInitialCustomerBookingTab(filter));
     setShowAll(false);
   }, [filter]);
+
+  useEffect(() => {
+    if (activeTab === 'Cancelled') {
+      tabsRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [activeTab]);
 
   const load = () =>
     void fetchBookings().then((result) => {
@@ -96,11 +103,23 @@ export default function BookingsScreen() {
 
       {/* Custom Tab Bar */}
       <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+        <ScrollView
+          ref={tabsRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsScroll}
+          onContentSizeChange={() => {
+            if (activeTab === 'Cancelled') {
+              tabsRef.current?.scrollToEnd({ animated: false });
+            }
+          }}
+        >
           {CUSTOMER_BOOKING_TABS.map((tab) => (
             <TouchableOpacity 
               key={tab} 
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeTab === tab }}
               onPress={() => {
                 setActiveTab(tab);
                 setShowAll(false);
@@ -166,6 +185,11 @@ export default function BookingsScreen() {
                   </View>
                   <ChevronRight color={theme.colors.textTertiary} size={18} />
                 </View>
+                {booking.rawStatus === 'CANCELLED' && booking.cancellationReason ? (
+                  <Text style={[theme.typography.caption, styles.cancelledReason]}>
+                    Reason: {booking.cancellationReason}
+                  </Text>
+                ) : null}
               </TouchableOpacity>
             );
           })}
@@ -213,4 +237,8 @@ const styles = StyleSheet.create({
   detailText: { color: theme.colors.textSecondary, marginLeft: 4 },
   badgeContainer: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, marginTop: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  cancelledReason: {
+    color: theme.colors.error,
+    marginTop: theme.spacing.sm,
+  },
 });
