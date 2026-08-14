@@ -9,13 +9,23 @@ interface CancellationConfirmationProps {
   visible: boolean;
   customerName: string;
   onViewBookings: () => void;
+  audience?: 'worker' | 'customer';
 }
 
 export const CancellationConfirmation = React.memo(function CancellationConfirmation({
   visible,
   customerName,
   onViewBookings,
+  audience = 'worker',
 }: CancellationConfirmationProps) {
+  const isCustomer = audience === 'customer';
+  const title = isCustomer
+    ? 'Cancellation Confirmed'
+    : 'Reason Sent to Customer';
+  const description = isCustomer
+    ? 'Your booking has been cancelled.'
+    : `Your cancellation reason has been shared with ${customerName}. The booking has been cancelled.`;
+
   return (
     <Modal
       visible={visible}
@@ -29,11 +39,11 @@ export const CancellationConfirmation = React.memo(function CancellationConfirma
           </View>
           
           <AppText variant="h3" weight="bold" align="center" style={styles.title}>
-            Reason Sent to Customer
+            {title}
           </AppText>
           
           <AppText variant="body" color={Colors.textSecondary} align="center" style={styles.description}>
-            Your cancellation reason has been shared with {customerName}. The booking has been cancelled.
+            {description}
           </AppText>
           
           <AppButton
