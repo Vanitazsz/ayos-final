@@ -4,13 +4,18 @@ import { router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft, CheckCircle, Clock, AlertCircle, Upload,
   FileText, Camera, RefreshCw, Shield, BadgeCheck, Briefcase,
-  HelpCircle, ChevronDown,
+  HelpCircle, ChevronDown, Trash2,
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors, Radius, Spacing, Elevation, Layout, theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { Pill } from '@/components/Pill';
 import { fetchWorkerVerification } from '@/services/api';
 import { getMyProfile } from '@/services/profile';
+import {
+  removeWorkerVerificationDocument,
+  resubmitWorkerVerificationDocuments,
+} from '@/services/workerApplication';
 import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -199,7 +204,7 @@ function DocSummary({documents}:{documents:Document[]}) {
   );
 }
 
-function DocRow({ doc }: { doc: Document }) {
+function DocRow({ doc, onRemove }: { doc: Document; onRemove?: () => void }) {
   const config = {
     verified: { label: 'Verified', textColor: Colors.verified, bg: '#E7F8F5', icon: <CheckCircle size={12} color={Colors.verified} /> },
     uploaded: { label: 'In Review', textColor: Colors.warning, bg: '#FFF4D6', icon: <Clock size={12} color={Colors.warning} /> },
@@ -231,6 +236,11 @@ function DocRow({ doc }: { doc: Document }) {
           <View style={styles.uploadBtn}>
             {doc.status === 'rejected' ? <RefreshCw size={12} color={Colors.info} /> : <Upload size={12} color={Colors.info} />}
           </View>
+        )}
+        {onRemove && (
+          <Pressable style={styles.removeBtn} onPress={onRemove} hitSlop={8}>
+            <Trash2 size={13} color={Colors.error} />
+          </Pressable>
         )}
       </View>
     </View>
@@ -321,6 +331,98 @@ export default function VerificationScreen() {
       status: status === 'APPROVED' ? 'done' : 'pending',
     },
   ];
+  const canEditDocs = status === 'PENDING' || status === 'NEEDS_DOCUMENTS';
+  const canResubmit =
+    status === 'NEEDS_DOCUMENTS' ||
+    status === 'REJECTED' ||
+    documents.length === 0;
+  const [draftFront, setDraftFront] = useState<string | null>(null);
+  const [draftBack, setDraftBack] = useState<string | null>(null);
+  const [busyPath, setBusyPath] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [progressMessage, setProgressMessage] = useState<string | null>(null);
+
+  const refreshVerification = () => {
+    void fetchWorkerVerification().then((result) => {
+      if (!result.error) setVerification(result.data);
+    });
+  };
+
+  const pickDocument = async (side: 'front' | 'back') => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.85,
+      });
+      if (result.canceled) return;
+      if (side === 'front') setDraftFront(result.assets[0].uri);
+      else setDraftBack(result.assets[0].uri);
+    } catch (error) {
+      showAlert(
+        'Select document',
+        error instanceof Error ? error.message : 'Unable to select the image',
+      );
+    }
+  };
+
+  const confirmRemoveDocument = (path: string) => {
+    showAlert(
+      'Remove document',
+      'This document will be permanently removed from your verification.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setBusyPath(path);
+              try {
+                await removeWorkerVerificationDocument(path);
+                refreshVerification();
+              } catch (error) {
+                showAlert(
+                  'Remove document',
+                  error instanceof Error
+                    ? error.message
+                    : 'Unable to remove the document',
+                );
+              } finally {
+                setBusyPath(null);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
+
+  const submitDraft = () => {
+    if (!draftFront || !draftBack) return;
+    void (async () => {
+      setResubmitting(true);
+      try {
+        await resubmitWorkerVerificationDocuments(
+          draftFront,
+          draftBack,
+          (message) => setProgressMessage(message),
+        );
+        setDraftFront(null);
+        setDraftBack(null);
+        setProgressMessage(null);
+        refreshVerification();
+      } catch (error) {
+        showAlert(
+          'Submit documents',
+          error instanceof Error ? error.message : 'Unable to submit documents',
+        );
+      } finally {
+        setResubmitting(false);
+      }
+    })();
+  };
 
   return (
     <View style={styles.container}>
@@ -387,23 +489,77 @@ export default function VerificationScreen() {
           <>
             <DocSummary documents={documents}/>
 
-            <View style={styles.card}>
-              {documents.map((doc) => (
-                <DocRow key={doc.id} doc={doc} />
-              ))}
-            </View>
+            {documents.length > 0 && (
+              <View style={styles.card}>
+                {documents.map((doc) => (
+                  <DocRow
+                    key={doc.id}
+                    doc={doc}
+                    onRemove={
+                      canEditDocs && busyPath !== doc.id
+                        ? () => confirmRemoveDocument(doc.id)
+                        : undefined
+                    }
+                  />
+                ))}
+              </View>
+            )}
 
-            <Pressable style={styles.uploadArea} onPress={() => showAlert('Resubmit Documents', 'To resubmit documents, please contact support or re-register as a worker.')}>
-              <Camera size={20} color={Colors.info} />
-              <AppText variant="bodySm" weight="bold" color={Colors.info}>Upload Additional Documents</AppText>
-              <AppText variant="caption" color={Colors.textTertiary}>JPG, PNG, PDF · Max 10MB per file</AppText>
-            </Pressable>
+            {canResubmit && (
+              <>
+                <View style={[styles.uploadArea, resubmitting && { opacity: 0.6 }]}>
+                  <Camera size={20} color={Colors.info} />
+                  <AppText variant="bodySm" weight="bold" color={Colors.info}>
+                    {status === 'REJECTED' ? 'Resubmit Documents' : 'Replace Documents'}
+                  </AppText>
+                  <AppText variant="caption" color={Colors.textTertiary}>JPG, PNG · Max 10MB per file</AppText>
 
-            <AlertCard
-              type="info"
-              title="Accepted Government IDs"
-              body="PhilSys, Passport, Driver's License, SSS, GSIS, PRC ID, Voter's ID, or Postal ID. All documents must be valid and not expired."
-            />
+                  <Pressable
+                    style={[styles.draftPick, draftFront && styles.draftPickFilled]}
+                    onPress={() => pickDocument('front')}
+                    disabled={resubmitting}
+                  >
+                    {draftFront ? (
+                      <AppText variant="caption" weight="bold" color={Colors.verified} numberOfLines={1} style={{ flex: 1 }}>Front ID selected</AppText>
+                    ) : (
+                      <AppText variant="caption" weight="bold" color={Colors.info} style={{ flex: 1 }}>Pick the front of your ID</AppText>
+                    )}
+                    {draftFront && <RefreshCw size={12} color={Colors.verified} />}
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.draftPick, draftBack && styles.draftPickFilled]}
+                    onPress={() => pickDocument('back')}
+                    disabled={resubmitting}
+                  >
+                    {draftBack ? (
+                      <AppText variant="caption" weight="bold" color={Colors.verified} numberOfLines={1} style={{ flex: 1 }}>Back ID selected</AppText>
+                    ) : (
+                      <AppText variant="caption" weight="bold" color={Colors.info} style={{ flex: 1 }}>Pick the back of your ID</AppText>
+                    )}
+                    {draftBack && <RefreshCw size={12} color={Colors.verified} />}
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.submitBtn, (!draftFront || !draftBack || resubmitting) && { opacity: 0.5 }]}
+                    onPress={submitDraft}
+                    disabled={!draftFront || !draftBack || resubmitting}
+                  >
+                    {resubmitting ? (
+                      <AppText variant="caption" weight="bold" color={Colors.white}>{progressMessage ?? 'Submitting…'}</AppText>
+                    ) : (
+                      <AppText variant="caption" weight="bold" color={Colors.white}>Submit documents</AppText>
+                    )}
+                  </Pressable>
+                </View>
+
+                <AlertCard
+                  type="info"
+                  title="Accepted Government IDs"
+                  body="PhilSys, Passport, Driver's License, SSS, GSIS, PRC ID, Voter's ID, or Postal ID. All documents must be valid and not expired."
+                />
+              </>
+            )}
           </>
         )}
 
@@ -504,6 +660,7 @@ const styles = StyleSheet.create({
   docBody: { flex: 1 },
   docRight: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
   uploadBtn: { width: 24, height: 24, borderRadius: 6, backgroundColor: '#EEF4FF', justifyContent: 'center', alignItems: 'center' },
+  removeBtn: { width: 24, height: 24, borderRadius: 6, backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center', marginTop: 2 },
 
   // Upload area
   uploadArea: {
@@ -511,6 +668,16 @@ const styles = StyleSheet.create({
     padding: Spacing['5'], borderRadius: Radius.lg,
     borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(46,107,203,0.3)',
     backgroundColor: '#EEF4FF',
+  },
+  draftPick: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing['1'], alignSelf: 'stretch',
+    paddingVertical: Spacing['2'], paddingHorizontal: Spacing['3'],
+    borderRadius: Radius.md, backgroundColor: '#F0F4FA',
+  },
+  draftPickFilled: { backgroundColor: '#E7F8F5' },
+  submitBtn: {
+    alignSelf: 'stretch', paddingVertical: Spacing['2'],
+    borderRadius: Radius.md, backgroundColor: theme.colors.primary, alignItems: 'center',
   },
 
   // FAQ

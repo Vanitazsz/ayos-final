@@ -74,6 +74,10 @@ export function workerRegistrationErrorMessage(error: unknown): string {
     return 'The uploaded ID documents could not be validated. Upload them again.';
   if (/VERIFICATION_CANNOT_BE_RESUBMITTED/i.test(diagnostic))
     return 'This worker verification can no longer be resubmitted.';
+  if (/VERIFICATION_NOT_ACTIONABLE/i.test(diagnostic))
+    return 'This worker verification can no longer be edited.';
+  if (/DOCUMENT_NOT_FOUND|INVALID_DOCUMENT_PATH/i.test(diagnostic))
+    return 'That document is no longer part of your verification.';
   if (/user_already_exists|already registered|already exists/i.test(diagnostic))
     return 'An account already exists for this email. Sign in to continue.';
   if (

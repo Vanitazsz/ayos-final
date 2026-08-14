@@ -141,3 +141,57 @@ export async function completePendingWorkerApplication(
   clearPendingWorkerApplication();
   return { completed: true, data: res };
 }
+
+export type WorkerDocumentResubmitProgress =
+  | 'Uploading the front of your ID…'
+  | 'Uploading the back of your ID…'
+  | 'Submitting your updated documents…';
+
+/**
+ * Removes a submitted identity document while the worker verification is still actionable.
+ */
+export async function removeWorkerVerificationDocument(p_document_path: string) {
+  try {
+    const { data, error } = await supabase.rpc(
+      'remove_worker_verification_document',
+      { p_document_path },
+    );
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw new Error(workerRegistrationErrorMessage(error));
+  }
+}
+
+/**
+ * Replaces the current identity documents with a freshly uploaded front/back pair.
+ */
+export async function resubmitWorkerVerificationDocuments(
+  frontId: string,
+  backId: string,
+  onProgress?: (message: WorkerDocumentResubmitProgress) => void,
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Sign in to resubmit your documents.');
+
+  const paths: string[] = [];
+  try {
+    onProgress?.('Uploading the front of your ID…');
+    paths.push(await uploadDocument(user.id, frontId));
+    onProgress?.('Uploading the back of your ID…');
+    paths.push(await uploadDocument(user.id, backId));
+    onProgress?.('Submitting your updated documents…');
+    const { data, error } = await supabase.rpc(
+      'resubmit_worker_verification_documents',
+      { p_document_paths: paths },
+    );
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    if (paths.length)
+      await supabase.storage.from('verification-documents').remove(paths);
+    throw new Error(workerRegistrationErrorMessage(error));
+  }
+}
