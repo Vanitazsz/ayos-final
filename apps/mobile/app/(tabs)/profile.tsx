@@ -16,7 +16,6 @@ import {
   LogOut,
   MapPin,
   Fingerprint,
-  Languages,
   Info,
   Save,
 } from 'lucide-react-native';
@@ -62,13 +61,6 @@ const SETTINGS_SECTIONS = [
         icon: Bell,
         route: '/notifications',
         color: theme.colors.warning,
-      },
-      {
-        id: 'language',
-        title: 'Message Language',
-        icon: Languages,
-        route: '/settings/language',
-        color: theme.colors.secondary,
       },
     ],
   },

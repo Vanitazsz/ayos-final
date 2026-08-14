@@ -1,1 +1,0 @@
-export { setPreferredLocale } from './apiCore';

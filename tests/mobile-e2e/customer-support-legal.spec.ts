@@ -94,7 +94,6 @@ async function useAccountFixture(page: Page, role: 'USER' | 'WORKER' = 'USER') {
           avatar_path: null,
           verification_status: 'verified',
           subdivision_id: null,
-          preferred_locale: 'en',
         },
         default_address: null,
         email_verified: true,

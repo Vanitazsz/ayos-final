@@ -33,7 +33,9 @@ test.beforeEach(async ({ page }, testInfo) => {
       body: 'The completed job message is retained.',
       original_locale: 'en',
       created_at: '2026-07-28T08:00:00.000Z',
-      message_translations: [],
+      message_translations: [
+        { target_locale: 'fil', translated: 'Isinaling mensahe' },
+      ],
     },
   ];
   const session = {
@@ -79,7 +81,7 @@ test.beforeEach(async ({ page }, testInfo) => {
         },
         profile: {
           display_name: 'Matched Customer',
-          preferred_locale: 'en',
+          preferred_locale: 'fil',
           approval_status: workerSession ? 'APPROVED' : undefined,
         },
         active_role: workerSession ? 'WORKER' : 'USER',
@@ -209,7 +211,6 @@ test.beforeEach(async ({ page }, testInfo) => {
       body: request.p_body,
       original_locale: 'en',
       created_at: '2026-07-28T08:01:00.000Z',
-      message_translations: [],
     };
     messageRows.push(sent);
     await route.fulfill({
@@ -258,6 +259,11 @@ test('only matched conversations are listed and closed chat is read-only', async
 
   await page.goto(`/messages/chat?conversationId=${conversationId}`);
 
+  await expect(
+    page.getByText('The completed job message is retained.', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Isinaling mensahe', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Show original', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Read-only history')).toBeVisible();
   await expect(
     page.getByText('This conversation is read-only because the job is closed.'),

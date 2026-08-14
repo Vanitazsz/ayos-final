@@ -3,10 +3,7 @@ import { randomUUID } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
 import type { MediaInput } from '@/types/ai';
 import type { AddressDetailsRecord } from '@/types/location';
-import {
-  invokeAuthenticatedFunction,
-  SessionExpiredError,
-} from '@/services/authenticatedFunctions';
+import { invokeAuthenticatedFunction } from '@/services/authenticatedFunctions';
 import { normalizeFunctionError } from '@/services/functionErrors';
 import {
   getMyProfile,
@@ -1485,8 +1482,6 @@ export async function fetchConversation(conversationId: string) {
   return wrap(async () => {
     const user = await requireUser();
     const profile = await getMyProfile();
-    const preferredLocale =
-      profile.role === 'ADMIN' ? 'en' : profile.preferredLocale;
 
     const [
       { data: conversation, error: conversationError },
@@ -1501,7 +1496,7 @@ export async function fetchConversation(conversationId: string) {
         .maybeSingle(),
       supabase
         .from('messages')
-        .select('*,message_translations(target_locale,translated)')
+        .select('id,body,sender_id,created_at')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true }),
     ]);
@@ -1546,7 +1541,6 @@ export async function fetchConversation(conversationId: string) {
     }
 
     return {
-      preferredLocale,
       id: conversation.id,
       bookingId: conversation.booking_id,
       serviceRequestId: conversation.service_request_id,
@@ -1562,15 +1556,9 @@ export async function fetchConversation(conversationId: string) {
         ),
       },
       messages: (messages ?? []).map((row: any) => {
-        const translation = (row.message_translations ?? []).find(
-          (item: any) => item.target_locale === preferredLocale,
-        );
         return {
           id: row.id,
-          text: translation?.translated ?? row.body,
-          originalText: row.body,
-          translatedText: translation?.translated ?? null,
-          isTranslated: Boolean(translation),
+          text: row.body,
           sender: row.sender_id === user.id ? 'self' : 'other',
           createdAt: row.created_at,
           timestamp: new Date(row.created_at).toLocaleTimeString([], {
@@ -1585,43 +1573,13 @@ export async function fetchConversation(conversationId: string) {
 export async function sendMessage(
   conversationId: string,
   body: string,
-  locale?: 'en' | 'fil',
 ) {
-  const ownProfile = await getMyProfile();
-  const sourceLocale =
-    locale ?? (ownProfile.role === 'ADMIN' ? 'en' : ownProfile.preferredLocale);
-
   const { data, error } = await supabase.rpc('send_chat_message', {
     p_conversation_id: conversationId,
     p_body: body.trim(),
-    p_original_locale: sourceLocale,
   });
   if (error) throw error;
   if (!data) throw new Error('Message could not be sent');
-
-  const { data: recipientLocale } = await supabase.rpc(
-    'get_conversation_recipient_locale',
-    { p_conversation_id: conversationId },
-  );
-  const targetLocale: 'en' | 'fil' = recipientLocale === 'fil' ? 'fil' : 'en';
-  if (targetLocale !== sourceLocale) {
-    void invokeAuthenticatedFunction('ai-translate-message', {
-      body: { messageId: data.id, targetLocale },
-    }).catch((translationError) => {
-      if (!(translationError instanceof SessionExpiredError))
-        console.warn(
-          '[translation] automatic translation failed:',
-          translationError,
-        );
-    });
-  }
-  return data;
-}
-export async function setPreferredLocale(locale: 'en' | 'fil') {
-  const { data, error } = await supabase.rpc('set_my_preferred_locale', {
-    p_locale: locale,
-  });
-  if (error) throw error;
   return data;
 }
 export async function fetchConversationForBooking(bookingId: string) {
@@ -1902,7 +1860,6 @@ export async function fetchCustomerProfile() {
       subdivisionId: profile.subdivisionId,
       subdivisionName,
       verificationStatus: profile.verificationStatus,
-      preferredLocale: profile.preferredLocale,
     };
   });
 }

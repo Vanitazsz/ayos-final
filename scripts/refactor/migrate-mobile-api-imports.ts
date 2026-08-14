@@ -67,7 +67,6 @@ const moduleByExport: Record<string, string> = {
   ReviewData: 'reviews',
   selectWorker: 'requests',
   sendMessage: 'messaging',
-  setPreferredLocale: 'localization',
   startConversation: 'messaging',
   startJob: 'bookings',
   subscribeToBookingFeed: 'realtime',

@@ -23,42 +23,35 @@
 
 **Files:**
 - Modify: `tests/mobile-e2e/matched-messaging.spec.ts`
-- Create: `apps/mobile/services/chatRealtime.test.ts`
+- Modify: `apps/mobile/services/chatRealtime.test.ts`
 
 **Interfaces:**
 - Consumes: the current `createOptimisticMessage(text, now?)` helper and matched-messaging Playwright fixtures.
 - Produces: regression coverage proving translation-shaped data is ignored by the client and optimistic messages contain only original text.
 
-- [ ] **Step 1: Write the failing unit test**
+- [x] **Step 1: Write the failing unit test**
 
-Create `apps/mobile/services/chatRealtime.test.ts`:
+Extend the existing `apps/mobile/services/chatRealtime.test.ts` test:
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import { createOptimisticMessage } from './chatRealtime';
+const message = createOptimisticMessage(
+  'Hello worker',
+  new Date('2026-08-14T12:00:00.000Z'),
+);
 
-describe('chat message contract', () => {
-  it('creates an original-text-only optimistic message', () => {
-    const message = createOptimisticMessage(
-      'Hello worker',
-      new Date('2026-08-14T12:00:00.000Z'),
-    );
-
-    expect(message.text).toBe('Hello worker');
-    expect(message).not.toHaveProperty('originalText');
-    expect(message).not.toHaveProperty('translatedText');
-    expect(message).not.toHaveProperty('isTranslated');
-  });
-});
+expect(message.text).toBe('Hello worker');
+expect(message).not.toHaveProperty('originalText');
+expect(message).not.toHaveProperty('translatedText');
+expect(message).not.toHaveProperty('isTranslated');
 ```
 
-- [ ] **Step 2: Run the unit test and verify the expected failure**
+- [x] **Step 2: Run the unit test and verify the expected failure**
 
 Run: `pnpm --dir apps/mobile test -- services/chatRealtime.test.ts`
 
 Expected: FAIL because the current optimistic message still contains `originalText`, `translatedText`, and `isTranslated`.
 
-- [ ] **Step 3: Make the Playwright fixture contain a translation-shaped response**
+- [x] **Step 3: Make the Playwright fixture contain a translation-shaped response**
 
 In `tests/mobile-e2e/matched-messaging.spec.ts`, set the mocked profile locale to `fil` and add one translation row to the initial and sent message fixtures:
 
@@ -82,7 +75,7 @@ await expect(page.getByText('Isinaling mensahe', { exact: true })).toHaveCount(0
 await expect(page.getByText('Show original', { exact: true })).toHaveCount(0);
 ```
 
-- [ ] **Step 4: Run the focused Playwright test and verify the expected failure**
+- [x] **Step 4: Run the focused Playwright test and verify the expected failure**
 
 Run: `pnpm exec playwright test tests/mobile-e2e/matched-messaging.spec.ts`
 
@@ -99,7 +92,7 @@ Expected: FAIL in the new original-only assertions because the current client re
 - Consumes: `send_chat_message` RPC and existing conversation/profile services.
 - Produces: `ConversationMessage` with `id`, `text`, `sender`, `createdAt`, `timestamp`, and optional `optimistic`; `fetchConversation` messages built from `messages.body`; `sendMessage(conversationId, body)` with no locale argument.
 
-- [ ] **Step 1: Simplify the message type and optimistic factory**
+- [x] **Step 1: Simplify the message type and optimistic factory**
 
 Change `ConversationMessage` to:
 
@@ -116,7 +109,7 @@ export interface ConversationMessage {
 
 Make `createOptimisticMessage` return only those fields, retaining the current timestamp and optimistic behavior.
 
-- [ ] **Step 2: Remove translation reads and locale-dependent response fields**
+- [x] **Step 2: Remove translation reads and locale-dependent response fields**
 
 In `fetchConversation`:
 
@@ -125,7 +118,7 @@ In `fetchConversation`:
 - Change the messages query from the translation relation to `select('id,body,sender_id,created_at')`.
 - Map each row to `id`, `text: row.body`, sender, `createdAt`, and timestamp only.
 
-- [ ] **Step 3: Remove locale RPC and Edge Function invocation from sending**
+- [x] **Step 3: Remove locale RPC and Edge Function invocation from sending**
 
 Replace `sendMessage` with:
 
@@ -143,11 +136,11 @@ export async function sendMessage(conversationId: string, body: string) {
 
 Delete `setPreferredLocale` from `apiCore.ts`. Keep the shared `invokeAuthenticatedFunction` import because the same file still uses it for `ai-analyze-request`, `ai-process-job`, and `ai-assist-media`.
 
-- [ ] **Step 4: Remove preferred-locale fields from mobile profile contracts**
+- [x] **Step 4: Remove preferred-locale fields from mobile profile contracts**
 
 Remove `preferredLocale` from `CustomerProfile` and `WorkerProfileView`, and remove the two `preferred_locale` mapping properties from `getMyProfile`. Remove `preferredLocale` from the object returned by `fetchCustomerProfile`.
 
-- [ ] **Step 5: Run the focused unit test and mobile typecheck**
+- [x] **Step 5: Run the focused unit test and mobile typecheck**
 
 Run: `pnpm --dir apps/mobile test -- services/chatRealtime.test.ts`
 
@@ -173,7 +166,7 @@ Expected: PASS with no new TypeScript errors.
 - Consumes: the simplified `ConversationMessage` contract and existing settings routes.
 - Produces: chat bubbles that render `row.text` directly and profile/settings screens with no Message Language navigation.
 
-- [ ] **Step 1: Remove translation UI state and controls from chat**
+- [x] **Step 1: Remove translation UI state and controls from chat**
 
 In `apps/mobile/app/messages/chat.tsx`:
 
@@ -183,21 +176,21 @@ In `apps/mobile/app/messages/chat.tsx`:
 - Remove the `row.isTranslated` toggle, its accessibility labels, the translation icon/labels, and the `🌐` timestamp prefix.
 - Preserve message bubbles, timestamps, send/retry behavior, attachments, read-only behavior, and navigation.
 
-- [ ] **Step 2: Remove translation-only styles**
+- [x] **Step 2: Remove translation-only styles**
 
 Delete `translationToggle` and `translationLabel` from `apps/mobile/styles/messages/_chat.styles.ts`. Keep all bubble, timestamp, error, input, attachment, and action styles.
 
-- [ ] **Step 3: Remove customer and worker settings entries**
+- [x] **Step 3: Remove customer and worker settings entries**
 
 In the customer profile screen, remove the `Message Language` item and `Languages` import while retaining `ChevronRight` for all other settings rows.
 
 In the worker settings screen, remove the language row, `router` navigation, `ChevronRight`, `Languages`, search state, SearchBar, and styles that only served the removed row. Retain the Settings header and existing informational card.
 
-- [ ] **Step 4: Remove the unused localization facade and migration mapping**
+- [x] **Step 4: Remove the unused localization facade and migration mapping**
 
 Remove `export * from './localization';` from `apps/mobile/services/api.ts`, delete `apps/mobile/services/localization.ts`, and remove the `setPreferredLocale: 'localization'` entry from `scripts/refactor/migrate-mobile-api-imports.ts`.
 
-- [ ] **Step 5: Remove the language route and verify no route callers remain**
+- [x] **Step 5: Remove the language route and verify no route callers remain**
 
 Delete `apps/mobile/app/settings/language.tsx` and run:
 
@@ -207,11 +200,11 @@ rg -n "settings/language|Message Language|setPreferredLocale|preferredLocale" ap
 
 Expected: no output from application, test, or refactor source.
 
-- [ ] **Step 6: Run mobile lint**
+- [x] **Step 6: Run mobile lint**
 
 Run: `pnpm --dir apps/mobile lint`
 
-Expected: PASS with no unused-import or unused-style errors.
+Expected: PASS with no unused-import or unused-style errors. The full command still reports the pre-existing `register-worker.tsx:888` unescaped-entity error; targeted ESLint for all changed files passes.
 
 ### Task 4: Remove the local backend translation implementation
 
@@ -223,15 +216,15 @@ Expected: PASS with no unused-import or unused-style errors.
 - Consumes: the repository function-check script.
 - Produces: no local automatic translation Edge Function or application invocation.
 
-- [ ] **Step 1: Remove the translation Edge Function from `functions:check`**
+- [x] **Step 1: Remove the translation Edge Function from `functions:check`**
 
 Delete only `supabase/functions/ai-translate-message/index.ts` from the command list in `package.json`; retain every other checked function.
 
-- [ ] **Step 2: Delete the unreferenced local translation function**
+- [x] **Step 2: Delete the unreferenced local translation function**
 
 Delete `supabase/functions/ai-translate-message/index.ts`. Do not edit `supabase/migrations/`, `packages/supabase/src/database.generated.ts`, or hosted-backup artifacts.
 
-- [ ] **Step 3: Run the Edge Function check**
+- [x] **Step 3: Run the Edge Function check**
 
 Run: `pnpm functions:check`
 
@@ -247,15 +240,15 @@ Expected: PASS and no missing-file error for the removed function.
 - Consumes: the approved product scope and fixed FR/NFR identifiers.
 - Produces: documentation that no longer asks testers to verify removed translation behavior while retaining all requirement IDs for traceability.
 
-- [ ] **Step 1: Update Messaging UAT scope**
+- [x] **Step 1: Update Messaging UAT scope**
 
 Change the UAT#16 objective to state that homeowners can exchange messages and share images and location in chat. Remove the translation rows and renumber the attachment and location scenarios from 8/9 to 6/7.
 
-- [ ] **Step 2: Remove Profile & Settings language rows**
+- [x] **Step 2: Remove Profile & Settings language rows**
 
 Delete UAT#21 rows 12, 13, and 14, leaving rows 1–11 unchanged.
 
-- [ ] **Step 3: Mark translation requirements removed from current scope**
+- [x] **Step 3: Mark translation requirements removed from current scope**
 
 Add this status definition after `Blocked`:
 
@@ -265,7 +258,7 @@ Add this status definition after `Blocked`:
 
 Change the status for FR-45, FR-46, FR-47, FR-48, and NFR-14 to `Removed from current scope`. Keep their identifiers and canonical statements so `traceability:check` and the catalog identifier test continue to pass.
 
-- [ ] **Step 4: Run documentation checks**
+- [x] **Step 4: Run documentation checks**
 
 Run: `pnpm traceability:check`
 
@@ -276,13 +269,13 @@ Expected: PASS and all FR-01–FR-104/NFR-01–NFR-18 identifiers remain present
 **Files:**
 - Verify: all modified and deleted files from Tasks 1–5.
 
-- [ ] **Step 1: Run focused messaging E2E after implementation**
+- [x] **Step 1: Run focused messaging E2E after implementation**
 
 Run: `pnpm exec playwright test tests/mobile-e2e/matched-messaging.spec.ts`
 
 Expected: all matched-messaging tests pass, including the original-only/no-translation assertions.
 
-- [ ] **Step 2: Run mobile tests and typecheck**
+- [x] **Step 2: Run mobile tests and typecheck**
 
 Run: `pnpm --dir apps/mobile test`
 
@@ -292,7 +285,7 @@ Run: `pnpm --dir apps/mobile typecheck`
 
 Expected: PASS with zero TypeScript errors.
 
-- [ ] **Step 3: Run formatting, lint, and web export**
+- [x] **Step 3: Run formatting, lint, and web export**
 
 Run: `pnpm format:check`
 
@@ -300,13 +293,13 @@ Expected: PASS.
 
 Run: `pnpm lint`
 
-Expected: PASS, or report an exact pre-existing failure unrelated to this change.
+Expected: PASS, or report an exact pre-existing failure unrelated to this change. This run reports only the pre-existing `apps/mobile/app/register-worker.tsx:888` lint error plus unrelated warnings; targeted lint passes.
 
 Run: `pnpm --dir apps/mobile build:web`
 
 Expected: PASS with a successful Expo web export.
 
-- [ ] **Step 4: Verify the removal boundary**
+- [x] **Step 4: Verify the removal boundary**
 
 Run:
 
@@ -314,9 +307,9 @@ Run:
 rg -n "ai-translate-message|setPreferredLocale|preferredLocale|message_translations|translatedText|originalText|isTranslated|Show translation|Show original|Message Language|settings/language" apps packages tests scripts supabase/functions package.json checkuat.md REQUIREMENTS.md
 ```
 
-Expected: no active application/UI/test/script/Edge Function references. Any remaining matches must be limited to preserved database migrations, generated types, hosted backups, or the deliberate requirement statements/status records.
+Expected: no active application/UI/script/Edge Function references. Remaining matches are limited to the deliberate translation-shaped regression fixture and negative assertions in `matched-messaging.spec.ts`.
 
-- [ ] **Step 5: Inspect the final diff and preserve unrelated changes**
+- [x] **Step 5: Inspect the final diff and preserve unrelated changes**
 
 Run: `git status --short` and `git diff --stat`
 
