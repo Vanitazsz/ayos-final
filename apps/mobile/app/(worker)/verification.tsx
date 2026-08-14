@@ -286,6 +286,8 @@ export default function VerificationScreen() {
     );
   }, []);
   const status = verification?.status ?? 'PENDING';
+  const showPendingNotice =
+    status === 'PENDING' || status === 'NEEDS_DOCUMENTS';
   const submitted = verification?.created_at
     ? new Date(verification.created_at).toLocaleDateString()
     : 'Not submitted';
@@ -484,7 +486,9 @@ export default function VerificationScreen() {
                 verification?.requested_notes ??
                 (status === 'REJECTED'
                   ? 'Review the administrator feedback and resubmit your documents.'
-                  : verificationPendingNotice.message)
+                  : showPendingNotice
+                    ? verificationPendingNotice.message
+                    : 'Your submitted application is tracked here.')
               }
               action={{ label: 'Go to Documents', onPress: () => setTab('documents') }}
             />

@@ -113,3 +113,46 @@
 ## Commit hash
 
 - Exact final commit hash is returned in the task handoff response. Embedding the final SHA inside this committed report would change the SHA again.
+
+## Fix round 1
+
+### Findings addressed
+
+1. Restored the existing worker signup OTP-required E2E path by returning the original empty-identities signup response and keeping the `/otp?...` URL assertion. The success modal assertions now run deterministically by reopening `/register-worker?submitted=true` only after that OTP navigation assertion.
+2. Scoped the shared pending notice in `apps/mobile/app/(worker)/verification.tsx` to pending review statuses only (`PENDING` and `NEEDS_DOCUMENTS`), while preserving rejected copy, approved/generic copy, and existing `requested_notes`.
+3. Added the missing E2E assertion for `Status location: Verification`.
+
+### Fix verification commands
+
+1. Exact command:
+
+   ```bash
+   pnpm --dir apps/mobile test -- workerApplication.test.ts
+   ```
+
+   Result: passed.
+
+   Summary:
+
+   ```text
+   Test Files  34 passed (34)
+   Tests  174 passed (174)
+   ```
+
+2. Exact command:
+
+   ```bash
+   pnpm --dir apps/mobile typecheck
+   ```
+
+   Result: passed.
+
+   Summary:
+
+   ```text
+   $ tsc --noEmit
+   ```
+
+### Fix round commit hash
+
+- Recorded in the final task handoff response after the fix commit is created. Writing the final SHA into this same committed file would change the SHA again.
