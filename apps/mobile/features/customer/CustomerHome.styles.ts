@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
   iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: theme.spacing.sm },
   badge: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.error, borderWidth: 1, borderColor: '#1e3a8a' },
   avatarButton: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: theme.colors.surface },
-  headerAvatar: { width: '100%', height: '100%' },
+  headerAvatar: { width: '100%', height: '100%', backgroundColor: theme.colors.border },
   content: { flex: 1, zIndex: 5 },
   contentContainer: { paddingBottom: theme.spacing.xxxl, paddingTop: theme.spacing.lg },
   mainCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, marginHorizontal: theme.layout.screenPadding, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.md, paddingHorizontal: theme.spacing.md, ...theme.shadows.md, marginBottom: theme.spacing.xl, borderWidth: 1, borderColor: theme.colors.borderLight },

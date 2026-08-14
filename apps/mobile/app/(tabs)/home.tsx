@@ -108,7 +108,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.avatarButton} onPress={() => router.push('/(tabs)/profile')}>
             <Image 
-              source={profile?.avatarUri || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop"}
+              source={profile?.avatarUri || undefined}
               style={styles.headerAvatar} 
               contentFit="cover" 
             />
