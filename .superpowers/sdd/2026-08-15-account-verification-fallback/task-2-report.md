@@ -155,4 +155,4 @@
 
 ### Fix round commit hash
 
-- Recorded in the final task handoff response after the fix commit is created. Writing the final SHA into this same committed file would change the SHA again.
+- `446c0e3e8624219884cfb3fcfb4319991884920a`
