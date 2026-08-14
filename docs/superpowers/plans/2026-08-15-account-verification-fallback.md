@@ -21,6 +21,8 @@
 ### Task 1: Registration error classification and duplicate-email Auth handling
 
 **Files:**
+- Create: `apps/mobile/lib/verificationStatus.ts`
+- Test: `apps/mobile/lib/verificationStatus.test.ts`
 - Modify: `apps/mobile/lib/workerRegistration.ts`
 - Test: `apps/mobile/lib/workerRegistration.test.ts`
 - Modify: `apps/mobile/services/auth.ts`
@@ -28,21 +30,21 @@
 
 **Interfaces:**
 - Consumes: Supabase Auth signup errors/responses and existing `normalizePhilippinePhone` behavior.
-- Produces: Stable duplicate-email and duplicate-mobile messages for both registration services; `signUpCustomer` rejects empty-identity duplicate-email responses before OTP.
+- Produces: Stable duplicate-email and duplicate-mobile messages for both registration services; a tested pending-verification notice contract; `signUpCustomer` rejects empty-identity duplicate-email responses before OTP.
 
 - [ ] **Step 1: Add failing classifier tests.**
 
-  Add tests to `workerRegistration.test.ts` asserting that `signupErrorMessage` returns the existing-email message for an Auth error containing `user_already_exists`, and the mobile message for `MOBILE_ALREADY_REGISTERED`, `accounts_mobile_key`, and duplicate-mobile diagnostics. Add a test for the worker error mapper if its current generic fallback would mask a duplicate-mobile response.
+  Add tests to `workerRegistration.test.ts` asserting that `signupErrorMessage` returns the existing-email message for an Auth error containing `user_already_exists`, and the mobile message for `MOBILE_ALREADY_REGISTERED`, `accounts_mobile_key`, and duplicate-mobile diagnostics. Add a test for the worker error mapper if its current generic fallback would mask a duplicate-mobile response. Add `verificationStatus.test.ts` asserting that `getVerificationPendingNotice()` returns title `Verification pending`, message `Verification may take 2–3 days after complete documents are submitted.`, and action label `Continue`.
 
 - [ ] **Step 2: Run the focused classifier tests and verify the expected failure.**
 
   Run:
 
   ```bash
-  pnpm --dir apps/mobile test -- workerRegistration.test.ts
+  pnpm --dir apps/mobile test -- workerRegistration.test.ts verificationStatus.test.ts
   ```
 
-  Expected: the new duplicate-email/mobile assertions fail only if the current classifier does not produce the requested message.
+  Expected: the new duplicate-email/mobile assertions and the missing verification-status helper assertion fail because the new behavior is not implemented.
 
 - [ ] **Step 3: Add a failing customer Auth test for an empty-identity signup response.**
 
@@ -60,14 +62,14 @@
 
 - [ ] **Step 5: Implement the minimal shared mapping and Auth guard.**
 
-  Keep the existing public helper names and messages. Add only the diagnostic pattern needed for duplicate email/mobile cases. In `signUpCustomer`, after the existing Auth error check and before returning data, reject when `authResult.data.user?.identities?.length === 0` with the duplicate-email message already used by the current service.
+  Keep the existing public helper names and messages. Add only the diagnostic pattern needed for duplicate email/mobile cases. Implement `getVerificationPendingNotice()` in the new focused helper with the exact tested copy. In `signUpCustomer`, after the existing Auth error check and before returning data, reject when `authResult.data.user?.identities?.length === 0` with the duplicate-email message already used by the current service.
 
 - [ ] **Step 6: Run the focused tests and the existing mobile suite.**
 
   Run:
 
   ```bash
-  pnpm --dir apps/mobile test -- workerRegistration.test.ts auth.test.ts
+  pnpm --dir apps/mobile test -- workerRegistration.test.ts verificationStatus.test.ts auth.test.ts
   pnpm --dir apps/mobile test
   ```
 
@@ -77,13 +79,13 @@
 
 **Files:**
 - Modify: `apps/mobile/services/workerApplication.ts`
-- Test: `apps/mobile/services/workerApplication.test.ts` (create only if the existing package has no worker application unit test)
+- Create: `apps/mobile/services/workerApplication.test.ts`
 - Modify: `apps/mobile/app/register-worker.tsx`
 - Modify: `apps/mobile/app/(worker)/verification.tsx`
-- Test: `tests/mobile-e2e/worker-industry-taxonomy.spec.ts` only if a stable existing fixture can assert the changed success modal.
+- Modify: `tests/mobile-e2e/worker-industry-taxonomy.spec.ts`
 
 **Interfaces:**
-- Consumes: `workerRegistrationErrorMessage`, existing worker application buffer, existing `showSuccess` modal, and worker verification status values.
+- Consumes: `workerRegistrationErrorMessage`, `getVerificationPendingNotice()`, existing worker application buffer, existing `showSuccess` modal, and worker verification status values.
 - Produces: Duplicate email signup stops before buffering/OTP; worker success feedback displays pending status and the 2–3-day review notice.
 
 - [ ] **Step 1: Add a failing worker service test for empty-identity signup.**
@@ -106,18 +108,23 @@
 
 - [ ] **Step 4: Update the existing worker success modal.**
 
-  Keep the current modal and navigation. Change its body to explicitly show `Verification status: Pending`, state that review may take `2–3 days`, and identify `Verification` as the status location. Use existing `AppText`, `AppButton`, icon, spacing, and color tokens.
+  Keep the current modal and navigation. Change its body to explicitly show `Verification status: Pending`, use `getVerificationPendingNotice().message` for the 2–3-day review notice, and identify `Verification` as the status location. Use existing `AppText`, `AppButton`, icon, spacing, and color tokens.
 
 - [ ] **Step 5: Align the worker verification pending copy.**
 
-  Update the existing FAQ/pending status copy from the old timeframe to `2–3 days` without changing status values, document actions, or administrator decisions.
+  Update the existing FAQ/pending status copy from the old timeframe to `2–3 days` using `getVerificationPendingNotice().message` without changing status values, document actions, or administrator decisions.
 
-- [ ] **Step 6: Run focused tests and inspect the worker route typecheck.**
+- [ ] **Step 6: Add a failing worker E2E assertion for the success modal.**
+
+  Extend the existing worker signup E2E case after the submission URL assertion to require the existing `Registration Submitted!` modal, `Verification status: Pending`, and the `2–3 days` notice.
+
+- [ ] **Step 7: Run focused tests and inspect the worker route typecheck.**
 
   Run:
 
   ```bash
   pnpm --dir apps/mobile test -- workerApplication.test.ts
+  pnpm exec playwright test tests/mobile-e2e/worker-industry-taxonomy.spec.ts
   pnpm --dir apps/mobile typecheck
   ```
 
@@ -127,23 +134,29 @@
 
 **Files:**
 - Modify: `apps/mobile/app/(auth)/verify-identity.tsx`
-- Test: Existing mobile tests for the screen if present; otherwise verify through the relevant Playwright/public flow and keep service tests as the boundary coverage.
+- Test: `apps/mobile/lib/verificationStatus.test.ts` covers the dialog contract consumed by this screen; no React Native screen-test harness exists in the current Vitest configuration.
 
 **Interfaces:**
-- Consumes: `submitCustomerVerification` success result, existing `showAlert`, and existing Home route.
+- Consumes: `submitCustomerVerification` success result, `getVerificationPendingNotice()`, existing `showAlert`, and existing Home route.
 - Produces: A user-dismissed success popup showing pending status and the 2–3-day review notice before navigating Home.
 
-- [ ] **Step 1: Add the smallest available failing UI assertion.**
+- [ ] **Step 1: Use the failing pending-notice contract from Task 1 as the UI copy test boundary.**
 
-  If a screen test harness already exists for `verify-identity`, assert that a successful submit calls the existing alert flow with pending status and `2–3 days`; otherwise add no new test harness and use the existing customer-verification service contract plus Playwright/manual route verification.
+  The new screen consumes the tested `getVerificationPendingNotice()` contract; do not add a competing UI test framework.
 
-- [ ] **Step 2: Run the focused assertion or existing relevant test and verify the missing behavior.**
+- [ ] **Step 2: Run the focused pending-notice test before the screen edit.**
 
-  Run the applicable focused command from the repository’s existing test scripts and confirm the new assertion fails because success currently redirects immediately without the requested popup.
+  Run:
+
+  ```bash
+  pnpm --dir apps/mobile test -- verificationStatus.test.ts
+  ```
+
+  Expected: the helper assertion is green after Task 1; the screen change remains an integration-only JSX change validated by the existing web/E2E workflow.
 
 - [ ] **Step 3: Implement the existing-alert success flow.**
 
-  On successful customer verification, call `showAlert` with pending status, the 2–3-day notice, and an OK button whose callback routes to `/(tabs)/home`. Preserve existing progress/error states and prevent duplicate submission while the request is active.
+  On successful customer verification, call `showAlert` with `getVerificationPendingNotice()` and a Continue button whose callback routes to `/(tabs)/home`. Preserve existing progress/error states and prevent duplicate submission while the request is active.
 
 - [ ] **Step 4: Run mobile tests and verify the customer route typecheck.**
 

@@ -32,7 +32,7 @@ Make customer and worker account creation fail clearly when the submitted email 
 
 ## Files in scope
 
-- Modify the existing registration error helper, customer auth service, worker application service, customer registration screen, customer identity-verification screen, worker registration screen, and worker verification screen.
+- Create one small verification-status copy helper and test; modify the existing registration error helper, customer auth service, worker application service, customer registration screen, customer identity-verification screen, worker registration screen, and worker verification screen.
 - Extend the nearest existing unit tests for registration errors and customer auth; extend the existing worker mobile E2E coverage only where its current fixtures can observe the behavior.
 - No new route, shared state store, database migration, dependency, or Supabase client.
 
