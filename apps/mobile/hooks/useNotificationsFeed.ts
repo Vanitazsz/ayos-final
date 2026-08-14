@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  fetchNotifications,
-  markNotificationRead,
-  subscribeToTable,
-} from '@/services/api';
+import { fetchNotifications, markNotificationRead } from '@/services/api';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   queryKeys,
@@ -29,16 +26,19 @@ export function useNotificationsFeed() {
 
   useEffect(() => {
     if (!userId) return;
-    return subscribeToTable(
-      'notifications',
-      () =>
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.notifications(userId),
-        }),
-      `recipient_id=eq.${userId}`,
-      undefined,
-      ['INSERT', 'UPDATE'],
-    );
+    const invalidate = () =>
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications(userId),
+      });
+    const channel = supabase
+      .channel(`user:${userId}:notifications`, {
+        config: { private: true },
+      })
+      .on('broadcast', { event: '*' }, invalidate)
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [userId, queryClient]);
 
   const markRead = async (id: string) => {

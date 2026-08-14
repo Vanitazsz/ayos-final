@@ -1664,7 +1664,7 @@ export async function fetchConversations(
     let query = supabase
       .from('conversations')
       .select(
-        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id,order(created_at.desc).limit(1))',
+        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
       );
 
     if (mode === 'active') {
@@ -1672,6 +1672,10 @@ export async function fetchConversations(
     } else {
       query = query.not('archived_at', 'is', null);
     }
+
+    query = query
+      .order('created_at', { referencedTable: 'messages', ascending: false })
+      .limit(1, { referencedTable: 'messages' });
 
     const { data, error } = await query.order('updated_at', {
       ascending: false,
@@ -1868,7 +1872,7 @@ export async function fetchNotifications() {
     const user = await requireUser();
     const { data, error } = await supabase
       .from('notifications')
-      .select('id,title,body,read_at,created_at,payload')
+      .select('id,title,body,read_at,created_at')
       .eq('recipient_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
