@@ -92,7 +92,7 @@ export default function NotificationsScreen() {
                     } else {
                       if (notif.payload?.booking_id) {
                         if (role === 'WORKER') {
-                          router.push(`/booking-request/${notif.payload.booking_id}` as any);
+                          router.push(`/(worker)/booking-request/${notif.payload.booking_id}` as any);
                         } else {
                           router.push(`/booking-summary/${notif.payload.booking_id}` as any);
                         }

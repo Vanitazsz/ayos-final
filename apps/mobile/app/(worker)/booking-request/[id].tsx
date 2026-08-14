@@ -125,96 +125,123 @@ export default function BookingRequestScreen() {
   const bookingRow = tracking?.booking;
 
   useEffect(() => {
-    if (!bookingRow?.id) return;
-    const request = bookingRow.service_requests;
-    const payment = Array.isArray(bookingRow.payments)
-      ? bookingRow.payments[0]
-      : bookingRow.payments;
-    setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
-    const storedRate = Number(payment?.commission_rate);
-    setCommissionRatePercent(
-      Number.isFinite(storedRate)
-        ? storedRate <= 1
-          ? storedRate * 100
-          : storedRate
-        : null,
-    );
-    const storedCommission = Number(payment?.commission_amount);
-    setCommissionAmount(
-      Number.isFinite(storedCommission) ? storedCommission : null,
-    );
-    const earningsAmount = resolveWorkerEarningsAmount(
-      bookingRow.agreed_service_amount,
-      payment,
-    );
-    const address = Array.isArray(request?.addresses)
-      ? request.addresses[0]
-      : request?.addresses;
-    const workerProf = Array.isArray(bookingRow.worker_profiles)
-      ? bookingRow.worker_profiles[0]
-      : bookingRow.worker_profiles;
-    const status = viewStatus(bookingRow.status);
-    if (bookingRow.accepted_at && bookingRow.completed_at) {
-      const minutes = Math.max(
-        0,
-        Math.round(
-          (new Date(bookingRow.completed_at).getTime() -
-            new Date(bookingRow.accepted_at).getTime()) /
-            60000,
-        ),
-      );
-      setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
+    if (!id) return;
+    const load = () =>
+      void fetchBookingDetail(id)
+        .then((result) => {
+          setIsLoading(false);
+          if (result.error) {
+            console.error(
+              '[booking-detail] fetchBookingDetail failed:',
+              result.error,
+            );
+            return;
+          }
+          const row = result.data;
+          if (!row?.id) return;
+          const request = row.service_requests;
+          const payment = Array.isArray(row.payments)
+            ? row.payments[0]
+            : row.payments;
+          setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
+          const storedRate = Number(payment?.commission_rate);
+          setCommissionRatePercent(
+            Number.isFinite(storedRate)
+              ? storedRate <= 1
+                ? storedRate * 100
+                : storedRate
+              : null,
+          );
+          const storedCommission = Number(payment?.commission_amount);
+          setCommissionAmount(Number.isFinite(storedCommission) ? storedCommission : null);
+          const earningsAmount = resolveWorkerEarningsAmount(
+            row.agreed_service_amount,
+            payment,
+          );
+          const address = Array.isArray(request?.addresses)
+            ? request.addresses[0]
+            : request?.addresses;
+          const workerProf = Array.isArray(row.worker_profiles)
+            ? row.worker_profiles[0]
+            : row.worker_profiles;
+          const status = viewStatus(row.status);
+          if (row.accepted_at && row.completed_at) {
+            const minutes = Math.max(
+              0,
+              Math.round(
+                (new Date(row.completed_at).getTime() -
+                  new Date(row.accepted_at).getTime()) /
+                  60000,
+              ),
+            );
+            setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
+          }
+          setBackendStatus(row.status);
+          setRouteDetails({
+            startLat: row.worker_start_lat ?? workerProf?.latitude,
+            startLng: row.worker_start_lng ?? workerProf?.longitude,
+            destinationLat: address?.latitude,
+            destinationLng: address?.longitude,
+            address: [address?.line1, address?.barangay, address?.city]
+              .filter(Boolean)
+              .join(', '),
+          });
+          setBooking({
+            id: row.id,
+            customerName: row.user_profiles?.display_name ?? '',
+            customerAvatar: row.user_profiles?.avatar_path ?? '',
+            service: request?.service_categories?.name ?? '',
+            date: new Date(request?.scheduled_at).toLocaleDateString(),
+            time: new Date(request?.scheduled_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            address: [address?.line1, address?.barangay, address?.city]
+              .filter(Boolean)
+              .join(', '),
+            price:
+              earningsAmount == null
+                ? 'Price pending'
+                : `₱${earningsAmount.toLocaleString()}`,
+            status,
+            distance: '',
+            lat: Number(address?.latitude ?? 0),
+            lng: Number(address?.longitude ?? 0),
+            hourlyRate: earningsAmount ?? 0,
+          });
+          setJob({
+            id: row.id,
+            requestId: request?.id,
+            service: request?.service_categories?.name ?? '',
+            customerName: row.user_profiles?.display_name ?? '',
+            customerAvatar: row.user_profiles?.avatar_path ?? '',
+            urgency:
+              new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
+                ? 'urgent'
+                : 'normal',
+            description: request?.description ?? '',
+            location: [address?.line1, address?.barangay, address?.city]
+              .filter(Boolean)
+              .join(', '),
+            imageUrl: null,
+          });
+          setStoreStatus(row.id, status as any);
+        })
+        .catch((e) => {
+          console.error('[booking-detail] load failed:', e);
+          setIsLoading(false);
+        });
+    load();
+    let unsub = () => {};
+    try {
+      unsub = subscribeToTable('bookings', load, `id=eq.${id}`, undefined, ['INSERT', 'UPDATE']);
+    } catch (e) {
+      console.warn('[booking-detail] realtime subscribe failed:', e);
     }
-    setBackendStatus(bookingRow.status);
-    setRouteDetails({
-      startLat: bookingRow.worker_start_lat ?? workerProf?.latitude,
-      startLng: bookingRow.worker_start_lng ?? workerProf?.longitude,
-      destinationLat: address?.latitude,
-      destinationLng: address?.longitude,
-      address: [address?.line1, address?.barangay, address?.city]
-        .filter(Boolean)
-        .join(', '),
-    });
-    setBooking({
-      id: bookingRow.id,
-      customerName: bookingRow.user_profiles?.display_name ?? '',
-      customerAvatar: bookingRow.user_profiles?.avatar_path ?? '',
-      service: request?.service_categories?.name ?? '',
-      date: new Date(request?.scheduled_at).toLocaleDateString(),
-      time: new Date(request?.scheduled_at).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      address: [address?.line1, address?.barangay, address?.city]
-        .filter(Boolean)
-        .join(', '),
-      price:
-        earningsAmount == null
-          ? 'Price pending'
-          : `₱${earningsAmount.toLocaleString()}`,
-      status,
-      distance: '',
-      lat: Number(address?.latitude ?? 0),
-      lng: Number(address?.longitude ?? 0),
-      hourlyRate: earningsAmount ?? 0,
-    });
-    setJob({
-      id: request?.id,
-      service: request?.service_categories?.name ?? '',
-      customerName: bookingRow.user_profiles?.display_name ?? '',
-      customerAvatar: bookingRow.user_profiles?.avatar_path ?? '',
-      urgency:
-        new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
-          ? 'urgent'
-          : 'normal',
-      description: request?.description ?? '',
-      location: [address?.line1, address?.barangay, address?.city]
-        .filter(Boolean)
-        .join(', '),
-      imageUrl: null,
-    });
-    setStoreStatus(bookingRow.id, status as any);
-  }, [bookingRow, setStoreStatus]);
+    return () => {
+      unsub();
+    };
+  }, [id, setStoreStatus]);
 
   const beginLocationPublisher = useCallback((bookingId: string) => {
     setLocationPublisherError(null);
