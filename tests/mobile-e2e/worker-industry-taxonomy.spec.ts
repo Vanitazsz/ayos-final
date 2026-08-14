@@ -106,16 +106,29 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({ 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        id: '98000000-0000-0000-0000-000000000001',
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: 'phone.worker@example.test',
-        app_metadata: { provider: 'email', providers: ['email'] },
-        user_metadata: signupBody?.data ?? {},
-        identities: [],
-        created_at: now,
-        updated_at: now,
-        confirmation_sent_at: now,
+        user: {
+          id: '98000000-0000-0000-0000-000000000001',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'phone.worker@example.test',
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: signupBody?.data ?? {},
+          identities: [
+            {
+              identity_id: '98000000-0000-0000-0000-000000000099',
+              id: '98000000-0000-0000-0000-000000000001',
+              user_id: '98000000-0000-0000-0000-000000000001',
+              identity_data: { email: 'phone.worker@example.test' },
+              provider: 'email',
+              created_at: now,
+              updated_at: now,
+            },
+          ],
+          created_at: now,
+          updated_at: now,
+          confirmation_sent_at: now,
+        },
+        session: null,
       }),
     });
   });
@@ -176,5 +189,15 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({ 
 
   await expect(page).toHaveURL(/\/otp\?email=phone\.worker%40example\.test/);
   expect(signupBody?.data?.mobile).toBe('+639171234567');
+  await page.goto('/register-worker?submitted=true');
+  await expect(page.getByText('Registration Submitted!', { exact: true })).toBeVisible();
+  await expect(page.getByText('Verification status: Pending', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'Verification may take 2–3 days after complete documents are submitted.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByText('Status location: Verification', { exact: true })).toBeVisible();
   await expect(page.getByText('{}', { exact: true })).toHaveCount(0);
 });

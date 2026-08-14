@@ -53,15 +53,28 @@ function mobileAlreadyRegisteredMessage(): string {
   return 'This mobile number is already registered. Sign in or use a different number.';
 }
 
-export function workerRegistrationErrorMessage(error: unknown): string {
-  const diagnostic = errorDiagnostic(error);
-
+function duplicateIdentityConflict(
+  diagnostic: string,
+): 'mobile' | 'email' | null {
   if (
     /MOBILE_ALREADY_REGISTERED|accounts_mobile_key|duplicate key.*mobile/i.test(
       diagnostic,
     )
   )
+    return 'mobile';
+  if (/user_already_exists|already registered|already exists/i.test(diagnostic))
+    return 'email';
+  return null;
+}
+
+export function workerRegistrationErrorMessage(error: unknown): string {
+  const diagnostic = errorDiagnostic(error);
+  const duplicateConflict = duplicateIdentityConflict(diagnostic);
+
+  if (duplicateConflict === 'mobile')
     return mobileAlreadyRegisteredMessage();
+  if (duplicateConflict === 'email')
+    return 'An account already exists for this email. Sign in to continue.';
   if (/INVALID_MOBILE_NUMBER|accounts_mobile_check/i.test(diagnostic))
     return 'Enter a valid Philippine mobile number.';
   if (/WORKER_ROLE_REQUIRED|WORKER_PROFILE_NOT_FOUND/i.test(diagnostic))
@@ -78,8 +91,6 @@ export function workerRegistrationErrorMessage(error: unknown): string {
     return 'This worker verification can no longer be edited.';
   if (/DOCUMENT_NOT_FOUND|INVALID_DOCUMENT_PATH/i.test(diagnostic))
     return 'That document is no longer part of your verification.';
-  if (/user_already_exists|already registered|already exists/i.test(diagnostic))
-    return 'An account already exists for this email. Sign in to continue.';
   if (
     /over_email_send_rate_limit|rate.?limit|too many requests/i.test(diagnostic)
   )
@@ -95,17 +106,14 @@ export function workerRegistrationErrorMessage(error: unknown): string {
 
 export function signupErrorMessage(error: unknown): string {
   const diagnostic = errorDiagnostic(error);
+  const duplicateConflict = duplicateIdentityConflict(diagnostic);
 
-  if (
-    /MOBILE_ALREADY_REGISTERED|accounts_mobile_key|duplicate key.*mobile/i.test(
-      diagnostic,
-    )
-  )
+  if (duplicateConflict === 'mobile')
     return mobileAlreadyRegisteredMessage();
+  if (duplicateConflict === 'email')
+    return 'An account already exists for this email address. Please sign in instead.';
   if (/INVALID_MOBILE_NUMBER|accounts_mobile_check/i.test(diagnostic))
     return 'Enter a valid Philippine mobile number (e.g. 09171234567).';
-  if (/user_already_exists|already registered|already exists/i.test(diagnostic))
-    return 'An account already exists for this email address. Please sign in instead.';
   if (
     /over_email_send_rate_limit|rate.?limit|too many requests/i.test(diagnostic)
   )

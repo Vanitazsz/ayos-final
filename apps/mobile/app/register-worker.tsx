@@ -41,6 +41,7 @@ import { LegalContentModal } from '@/components/LegalContentModal';
 import { fetchIndustriesAndSkills } from '@/services/api';
 import { submitWorkerApplication } from '@/services/workerApplication';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
+import { getVerificationPendingNotice } from '@/lib/verificationStatus';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import {
   getWorkerRegistrationReadiness,
@@ -73,6 +74,7 @@ const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 export default function RegisterWorkerScreen() {
   const goBack = useGoBack('/(auth)/register');
   const { submitted } = useLocalSearchParams<{ submitted?: string }>();
+  const verificationPendingNotice = getVerificationPendingNotice();
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -1376,10 +1378,23 @@ export default function RegisterWorkerScreen() {
             <AppText
               variant="body"
               color={Colors.textSecondary}
+              style={{ textAlign: 'center', marginBottom: Spacing['2'] }}
+            >
+              Verification status: Pending
+            </AppText>
+            <AppText
+              variant="body"
+              color={Colors.textSecondary}
+              style={{ textAlign: 'center', marginBottom: Spacing['2'] }}
+            >
+              {verificationPendingNotice.message}
+            </AppText>
+            <AppText
+              variant="body"
+              color={Colors.textSecondary}
               style={{ textAlign: 'center', marginBottom: Spacing['6'] }}
             >
-              Your worker account is under review. We will notify you once
-              you&apos;re verified and ready to accept jobs.
+              Status location: Verification
             </AppText>
             <AppButton
               label="Go to Sign In"
