@@ -6,12 +6,13 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { SlideInDown } from 'react-native-reanimated';
-import { X, ImagePlus, Trash2 } from 'lucide-react-native';
+import { X, Star, ImagePlus, Trash2 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -45,6 +46,14 @@ async function removeProofStorage(storagePath: string) {
   if (error) console.warn('booking-proof storage removal failed:', error);
 }
 
+const WORKER_RATING_LABELS: Record<number, string> = {
+  1: '1/5 - Poor Service',
+  2: '2/5 - Below Average',
+  3: '3/5 - Average Service',
+  4: '4/5 - Good Service',
+  5: '5/5 - Excellent Service!',
+};
+
 export const CustomerProofOfWorkModal = React.memo(
   function CustomerProofOfWorkModal({
     visible,
@@ -55,6 +64,8 @@ export const CustomerProofOfWorkModal = React.memo(
     onSubmitted,
   }: CustomerProofOfWorkModalProps) {
     const [proofImages, setProofImages] = useState<string[]>([]);
+    const [rating, setRating] = useState(5);
+    const [comment, setComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const uploadedRef = useRef<
       { path: string; contentType: string; byteSize: number }[]
@@ -63,6 +74,8 @@ export const CustomerProofOfWorkModal = React.memo(
     useEffect(() => {
       if (visible) {
         setProofImages([]);
+        setRating(5);
+        setComment('');
         setSubmitting(false);
         uploadedRef.current = [];
       }
@@ -157,7 +170,11 @@ export const CustomerProofOfWorkModal = React.memo(
         uploadedRef.current = uploaded;
         await Promise.all(
           uploaded.map((media) =>
-            attachBookingProof(bookingId, media, { submittedBy: 'customer' }),
+            attachBookingProof(bookingId, media, {
+              submittedBy: 'customer',
+              rating,
+              ...(comment.trim() ? { comment: comment.trim() } : {}),
+            }),
           ),
         );
         onSubmitted();
@@ -295,6 +312,54 @@ export const CustomerProofOfWorkModal = React.memo(
                   />
                 </View>
               </View>
+
+              <View style={styles.card}>
+                <View style={styles.sectionHeader}>
+                  <Star size={18} color={theme.colors.primary} />
+                  <AppText
+                    variant="h4"
+                    color={theme.colors.textPrimary}
+                    style={styles.sectionTitle}
+                  >
+                    Rate Your Provider
+                  </AppText>
+                </View>
+                <View style={styles.starsContainer}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => setRating(star)}
+                      style={styles.starBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Star
+                        color={
+                          star <= rating
+                            ? theme.colors.warning
+                            : theme.colors.border
+                        }
+                        size={34}
+                        fill={
+                          star <= rating ? theme.colors.warning : 'transparent'
+                        }
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <AppText style={styles.ratingLabel}>
+                  {WORKER_RATING_LABELS[rating] ?? ''}
+                </AppText>
+                <TextInput
+                  placeholder="Optional: add a note about the completed work..."
+                  placeholderTextColor={theme.colors.textTertiary}
+                  multiline
+                  numberOfLines={3}
+                  value={comment}
+                  onChangeText={setComment}
+                  style={styles.textArea}
+                  textAlignVertical="top"
+                />
+              </View>
             </ScrollView>
 
             <View style={styles.footer}>
@@ -412,6 +477,32 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+  },
+  starBtn: {
+    padding: theme.spacing.xs,
+  },
+  ratingLabel: {
+    ...theme.typography.body2,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: theme.spacing.md,
+  },
+  textArea: {
+    minHeight: 90,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   footer: {
     flexDirection: 'row',
