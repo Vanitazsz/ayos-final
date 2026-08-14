@@ -82,6 +82,11 @@ export async function submitWorkerApplication(
         options: { data: { name: displayName, role: 'WORKER', mobile: phone } },
       });
       if (error) throw error;
+      if (data.user?.identities?.length === 0) {
+        throw new Error(
+          workerRegistrationErrorMessage({ code: 'user_already_exists' }),
+        );
+      }
       session = data.session;
       if (!session) {
         savePendingWorkerApplication(input);

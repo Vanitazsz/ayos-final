@@ -95,8 +95,18 @@ test('industry step has no desktop horizontal overflow', async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test('worker signup normalizes the mobile number and opens email OTP', async ({ page }) => {
+test('worker signup normalizes the mobile number and shows pending verification feedback', async ({ page }) => {
   let signupBody: { data?: { mobile?: string } } | null = null;
+  await page.route('https://dns.google/resolve?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        Status: 0,
+        Answer: [{ name: 'gmail.com.', type: 15, TTL: 60, data: '10 smtp.gmail.com.' }],
+      }),
+    });
+  });
   await page.route('**/auth/v1/signup*', async (route) => {
     signupBody = route.request().postDataJSON() as {
       data?: { mobile?: string };
@@ -106,16 +116,50 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({ 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        id: '98000000-0000-0000-0000-000000000001',
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: 'phone.worker@example.test',
-        app_metadata: { provider: 'email', providers: ['email'] },
-        user_metadata: signupBody?.data ?? {},
-        identities: [],
-        created_at: now,
-        updated_at: now,
-        confirmation_sent_at: now,
+        access_token: 'worker-signup-access-token',
+        refresh_token: 'worker-signup-refresh-token',
+        expires_in: 3600,
+        token_type: 'bearer',
+        user: {
+          id: '98000000-0000-0000-0000-000000000001',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'phone.worker@gmail.com',
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: signupBody?.data ?? {},
+          identities: [{ id: 'worker-identity-id' }],
+          created_at: now,
+          updated_at: now,
+          confirmation_sent_at: now,
+        },
+      }),
+    });
+  });
+  await page.route('**/rest/v1/rpc/get_my_profile', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        account: {
+          id: '98000000-0000-0000-0000-000000000001',
+          role: 'WORKER',
+        },
+      }),
+    });
+  });
+  await page.route('**/storage/v1/object/verification-documents/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ Key: 'verification-documents/test-upload.jpg' }),
+    });
+  });
+  await page.route('**/rest/v1/rpc/submit_worker_application', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'PENDING',
       }),
     });
   });
@@ -123,7 +167,7 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({ 
   await page.goto('/register-worker');
   await page.getByPlaceholder('Enter first name').fill('Phone');
   await page.getByPlaceholder('Enter last name').fill('Worker');
-  await page.getByPlaceholder('Enter email address').fill('phone.worker@example.test');
+  await page.getByPlaceholder('Enter email address').fill('phone.worker@gmail.com');
   await page.getByPlaceholder('Enter mobile number').fill('0917 123 4567');
   await page.getByPlaceholder('MM/DD/YYYY').fill('01011990');
   await page.getByPlaceholder('Min. 8 chars, 1 Upper, 1 Number, 1 Special').fill('Taxonomy1!');
@@ -174,7 +218,15 @@ test('worker signup normalizes the mobile number and opens email OTP', async ({ 
   await page.getByText(/I agree to the Terms of Service/).click();
   await page.getByText('Submit Registration', { exact: true }).click();
 
-  await expect(page).toHaveURL(/\/otp\?email=phone\.worker%40example\.test/);
+  await expect(page).toHaveURL(/\/register-worker$/);
   expect(signupBody?.data?.mobile).toBe('+639171234567');
+  await expect(page.getByText('Registration Submitted!', { exact: true })).toBeVisible();
+  await expect(page.getByText('Verification status: Pending', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'Verification may take 2–3 days after complete documents are submitted.',
+      { exact: true },
+    ),
+  ).toBeVisible();
   await expect(page.getByText('{}', { exact: true })).toHaveCount(0);
 });

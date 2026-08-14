@@ -20,6 +20,7 @@ import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
 import { showAlert } from '@/components/AppAlert';
+import { getVerificationPendingNotice } from '@/lib/verificationStatus';
 
 type StepStatus = 'done' | 'active' | 'pending' | 'rejected';
 
@@ -40,8 +41,10 @@ interface Document {
   date?: string;
 }
 
+const VERIFICATION_PENDING_NOTICE = getVerificationPendingNotice();
+
 const FAQ_ITEMS = [
-  { q: 'How long does verification take?', a: 'Standard verification takes 1–2 business days after all documents are submitted and complete. You\'ll receive a notification once the review is done.' },
+  { q: 'How long does verification take?', a: `${VERIFICATION_PENDING_NOTICE.message} You'll receive a notification once the review is done.` },
   { q: 'Why was my document rejected?', a: 'Documents are rejected if they are blurry, expired, incomplete, or do not match the required type. Check the rejection note on each document for the specific reason.' },
   { q: 'Can I work while verification is pending?', a: 'No. You need to be fully verified before receiving booking requests. This protects both workers and customers on the platform.' },
   { q: 'What happens if I\'m rejected?', a: 'You\'ll receive the specific reasons for rejection and can resubmit corrected documents. There is no limit on resubmissions.' },
@@ -264,6 +267,7 @@ function FaqItem({ q, a, isOpen, onPress }: { q: string; a: string; isOpen: bool
 export default function VerificationScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const goBack = useGoBack('/(worker)/profile');
+  const verificationPendingNotice = getVerificationPendingNotice();
   const handleBack = () => {
     const route = getBackRoute(from);
     if (route) router.push(route);
@@ -476,7 +480,12 @@ export default function VerificationScreen() {
             <AlertCard
               type="warning"
               title={status==='REJECTED'?'Action Required':'Application Status'}
-              body={verification?.requested_notes??(status==='REJECTED'?'Review the administrator feedback and resubmit your documents.':'Your submitted application is tracked here.')}
+              body={
+                verification?.requested_notes ??
+                (status === 'REJECTED'
+                  ? 'Review the administrator feedback and resubmit your documents.'
+                  : verificationPendingNotice.message)
+              }
               action={{ label: 'Go to Documents', onPress: () => setTab('documents') }}
             />
 
