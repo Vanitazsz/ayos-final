@@ -12,7 +12,10 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { submitCustomerVerification } from '@/services/customerVerification';
 import { detectSubdivision, setMySubdivision } from '@/services/subdivisions';
 import { showAlert } from '@/components/AppAlert';
-import { getVerificationPendingNotice } from '@/lib/verificationStatus';
+import {
+  getVerificationPendingAlert,
+  getVerificationPendingNotice,
+} from '@/lib/verificationStatus';
 
 const ID_TYPES: SelectOption[] = [
   { label: 'PhilSys ID', value: 'philsys' },
@@ -96,12 +99,10 @@ export default function VerifyIdentityScreen() {
       }, setSubmitStatus);
       setSubmitStatus('Verification submitted.');
       const notice = getVerificationPendingNotice();
-      showAlert(notice.title, notice.message, [
-        {
-          text: notice.actionLabel,
-          onPress: () => router.replace('/(tabs)/home'),
-        },
-      ]);
+      const alert = getVerificationPendingAlert(() =>
+        router.replace('/(tabs)/home'),
+      );
+      showAlert(notice.title, notice.message, alert.buttons, alert.options);
     } catch (error) {
       setSubmitStatus('');
       setSubmitError(

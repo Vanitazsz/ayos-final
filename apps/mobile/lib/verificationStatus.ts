@@ -6,3 +6,15 @@ export function getVerificationPendingNotice() {
     actionLabel: 'Continue',
   };
 }
+
+export function isVerificationPendingStatus(status?: string | null) {
+  return status === 'PENDING' || status === 'NEEDS_DOCUMENTS';
+}
+
+export function getVerificationPendingAlert(onContinue: () => void) {
+  const notice = getVerificationPendingNotice();
+  return {
+    buttons: [{ text: notice.actionLabel, onPress: onContinue }],
+    options: { cancelable: false },
+  };
+}

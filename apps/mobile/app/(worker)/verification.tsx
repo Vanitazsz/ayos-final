@@ -20,7 +20,10 @@ import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
 import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
 import { showAlert } from '@/components/AppAlert';
-import { getVerificationPendingNotice } from '@/lib/verificationStatus';
+import {
+  getVerificationPendingNotice,
+  isVerificationPendingStatus,
+} from '@/lib/verificationStatus';
 
 type StepStatus = 'done' | 'active' | 'pending' | 'rejected';
 
@@ -286,8 +289,7 @@ export default function VerificationScreen() {
     );
   }, []);
   const status = verification?.status ?? 'PENDING';
-  const showPendingNotice =
-    status === 'PENDING' || status === 'NEEDS_DOCUMENTS';
+  const showPendingNotice = isVerificationPendingStatus(verification?.status);
   const submitted = verification?.created_at
     ? new Date(verification.created_at).toLocaleDateString()
     : 'Not submitted';
