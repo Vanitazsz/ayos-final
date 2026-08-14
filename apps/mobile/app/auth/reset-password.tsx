@@ -11,6 +11,7 @@ import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
 import { changeMyPassword } from '@/services/profile';
 import {
+  clearPasswordRecoveryPending,
   closePasswordRecoverySession,
   isPasswordRecoveryFlow,
   loadPasswordRecoverySession,
@@ -65,13 +66,16 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     let cancelled = false;
 
-    const initialize = async () => {
-      startPasswordRecovery();
+    const persistLock = async () => {
       try {
         await markPasswordRecoveryPending();
       } catch (error) {
         console.warn('[auth] Could not persist password recovery lock:', error);
       }
+    };
+
+    const initialize = async () => {
+      startPasswordRecovery();
       if (!isPasswordRecoveryFlow(flow)) {
         if (!cancelled) {
           setErrorMessage(PASSWORD_RECOVERY_ERROR);
@@ -89,13 +93,13 @@ export default function ResetPasswordScreen() {
       }
 
       if (tokenHash) {
+        await persistLock();
         if (!cancelled) setStatus('awaiting_confirmation');
         return;
       }
 
       try {
         await loadPasswordRecoverySession(code);
-        if (!cancelled) setStatus('ready');
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(
@@ -103,7 +107,10 @@ export default function ResetPasswordScreen() {
           );
           setStatus('invalid');
         }
+        return;
       }
+      await persistLock();
+      if (!cancelled) setStatus('ready');
     };
 
     void initialize();
@@ -111,6 +118,13 @@ export default function ResetPasswordScreen() {
       cancelled = true;
     };
   }, [code, flow, startPasswordRecovery, tokenHash, tokenType]);
+
+  useEffect(() => {
+    return () => {
+      void clearPasswordRecoveryPending().catch(() => {});
+      clearPasswordRecovery();
+    };
+  }, [clearPasswordRecovery]);
 
   const verifyToken = async () => {
     if (!tokenHash) return;

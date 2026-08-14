@@ -15,9 +15,9 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { loadCurrentUser } from '@/services/auth';
 import {
-  hasPendingPasswordRecovery,
   markPasswordRecoveryPending,
   PASSWORD_RECOVERY_ROUTE,
+  resolvePendingPasswordRecovery,
   shouldStartPasswordRecoveryForRoute,
 } from '@/services/passwordRecovery';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -85,7 +85,7 @@ export default function RootLayout() {
       }
       let pendingRecovery = false;
       try {
-        pendingRecovery = await hasPendingPasswordRecovery();
+        pendingRecovery = await resolvePendingPasswordRecovery();
       } catch (error) {
         console.error('[auth] Could not verify password recovery lock:', error);
         if (mounted) {

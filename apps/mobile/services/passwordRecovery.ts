@@ -45,6 +45,63 @@ export async function clearPasswordRecoveryPending() {
   await AsyncStorage.removeItem(PASSWORD_RECOVERY_LOCK_KEY);
 }
 
+export async function hasActiveRecoverySession() {
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) return false;
+  const amr = decodeAmr(session.access_token);
+  return (amr ?? []).some((entry) =>
+    typeof entry === 'string'
+      ? entry === 'recovery'
+      : entry.method === 'recovery',
+  );
+}
+
+function decodeBase64Url(b64url: string): string {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
+  if (typeof atob === 'function') return atob(padded);
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let binary = '';
+  let buffer = 0;
+  let bits = 0;
+  for (const char of padded) {
+    if (char === '=') break;
+    const value = chars.indexOf(char);
+    if (value < 0) continue;
+    buffer = (buffer << 6) | value;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      binary += String.fromCharCode((buffer >> bits) & 0xff);
+    }
+  }
+  return binary;
+}
+
+function decodeAmr(
+  accessToken: string,
+): Array<{ method?: string } | string> | undefined {
+  const payload = accessToken.split('.')[1];
+  if (!payload) return undefined;
+  try {
+    const decoded = JSON.parse(decodeBase64Url(payload)) as {
+      amr?: Array<{ method?: string } | string>;
+    };
+    return decoded.amr;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function resolvePendingPasswordRecovery() {
+  if (!(await hasPendingPasswordRecovery())) return false;
+  if (await hasActiveRecoverySession()) return true;
+  await clearPasswordRecoveryPending();
+  return false;
+}
+
 export async function loadPasswordRecoverySession(code?: string) {
   let { data: sessionData, error: sessionError } =
     await supabase.auth.getSession();

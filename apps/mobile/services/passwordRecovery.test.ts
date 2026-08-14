@@ -152,4 +152,94 @@ describe('password recovery flow', () => {
     expect(shouldStartPasswordRecoveryForRoute(true, true)).toBe(false);
     expect(shouldStartPasswordRecoveryForRoute(false, false)).toBe(false);
   });
+
+  it('recognizes a session created through password recovery', async () => {
+    const payload = JSON.stringify({
+      amr: [{ method: 'recovery', timestamp: 1 }],
+    });
+    const accessToken = `header.${Buffer.from(payload).toString('base64url')}.sig`;
+    mocks.getSession.mockResolvedValue({
+      data: { session: { access_token: accessToken } },
+      error: null,
+    });
+    const { hasActiveRecoverySession } = await import('./passwordRecovery');
+
+    await expect(hasActiveRecoverySession()).resolves.toBe(true);
+  });
+
+  it('recognizes a recovery method in the RFC-8176 string form', async () => {
+    const payload = JSON.stringify({ amr: ['recovery'] });
+    const accessToken = `header.${Buffer.from(payload).toString('base64url')}.sig`;
+    mocks.getSession.mockResolvedValue({
+      data: { session: { access_token: accessToken } },
+      error: null,
+    });
+    const { hasActiveRecoverySession } = await import('./passwordRecovery');
+
+    await expect(hasActiveRecoverySession()).resolves.toBe(true);
+  });
+
+  it('does not treat a normal password session as recovery', async () => {
+    const payload = JSON.stringify({
+      amr: [{ method: 'password', timestamp: 1 }],
+    });
+    const accessToken = `header.${Buffer.from(payload).toString('base64url')}.sig`;
+    mocks.getSession.mockResolvedValue({
+      data: { session: { access_token: accessToken } },
+      error: null,
+    });
+    const { hasActiveRecoverySession } = await import('./passwordRecovery');
+
+    await expect(hasActiveRecoverySession()).resolves.toBe(false);
+  });
+
+  it('reports no active recovery when there is no session', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    const { hasActiveRecoverySession } = await import('./passwordRecovery');
+
+    await expect(hasActiveRecoverySession()).resolves.toBe(false);
+  });
+
+  it('keeps the lock and starts recovery while a recovery session is active', async () => {
+    const payload = JSON.stringify({
+      amr: [{ method: 'recovery', timestamp: 1 }],
+    });
+    const accessToken = `header.${Buffer.from(payload).toString('base64url')}.sig`;
+    mocks.storage.getItem.mockResolvedValue('true');
+    mocks.getSession.mockResolvedValue({
+      data: { session: { access_token: accessToken } },
+      error: null,
+    });
+    const { resolvePendingPasswordRecovery } = await import('./passwordRecovery');
+
+    await expect(resolvePendingPasswordRecovery()).resolves.toBe(true);
+    expect(mocks.storage.removeItem).not.toHaveBeenCalled();
+  });
+
+  it('clears a stale lock when the session is not a recovery session', async () => {
+    const payload = JSON.stringify({
+      amr: [{ method: 'password', timestamp: 1 }],
+    });
+    const accessToken = `header.${Buffer.from(payload).toString('base64url')}.sig`;
+    mocks.storage.getItem.mockResolvedValue('true');
+    mocks.getSession.mockResolvedValue({
+      data: { session: { access_token: accessToken } },
+      error: null,
+    });
+    const { resolvePendingPasswordRecovery } = await import('./passwordRecovery');
+
+    await expect(resolvePendingPasswordRecovery()).resolves.toBe(false);
+    expect(mocks.storage.removeItem).toHaveBeenCalledWith(
+      'password_recovery_pending',
+    );
+  });
+
+  it('does nothing when no recovery lock is present', async () => {
+    mocks.storage.getItem.mockResolvedValue(null);
+    const { resolvePendingPasswordRecovery } = await import('./passwordRecovery');
+
+    await expect(resolvePendingPasswordRecovery()).resolves.toBe(false);
+    expect(mocks.storage.removeItem).not.toHaveBeenCalled();
+    expect(mocks.getSession).not.toHaveBeenCalled();
+  });
 });
