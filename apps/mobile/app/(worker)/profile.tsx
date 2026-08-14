@@ -1,14 +1,11 @@
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Switch,
-} from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, Switch } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Avatar } from '@/components/Avatar';
 import { theme } from '@/constants/theme';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useWorkerProfile } from '@/hooks/useProfile';
 import {
   ChevronRight,
   User,
@@ -28,7 +25,6 @@ import {
   Pencil,
   DollarSign,
 } from 'lucide-react-native';
-import { fetchWorkerProfile } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { getMyProfile, uploadMyAvatar } from '@/services/profile';
@@ -45,84 +41,165 @@ const MENU_SECTIONS = [
   {
     title: 'Account',
     items: [
-      { id: 'personal', title: 'Personal Information', icon: User, color: theme.colors.primary },
-      { id: 'industry', title: 'Industry & Skills', icon: Wrench, color: theme.colors.success },
-      { id: 'areas', title: 'Service Areas', icon: MapPin, color: theme.colors.info },
+      {
+        id: 'personal',
+        title: 'Personal Information',
+        icon: User,
+        color: theme.colors.primary,
+      },
+      {
+        id: 'industry',
+        title: 'Industry & Skills',
+        icon: Wrench,
+        color: theme.colors.success,
+      },
+      {
+        id: 'areas',
+        title: 'Service Areas',
+        icon: MapPin,
+        color: theme.colors.info,
+      },
     ],
   },
   {
     title: 'Payments',
     items: [
-      { id: 'payout-methods', title: 'Payout Methods', icon: Wallet, color: theme.colors.secondary },
-      { id: 'payout-history', title: 'Payout History', icon: Clock, color: theme.colors.textSecondary },
-      { id: 'topup-methods', title: 'Top-Up Methods', icon: ArrowUpFromLine, color: theme.colors.info },
-      { id: 'topup-history', title: 'Top-Up History', icon: PlusCircle, color: theme.colors.success },
+      {
+        id: 'payout-methods',
+        title: 'Payout Methods',
+        icon: Wallet,
+        color: theme.colors.secondary,
+      },
+      {
+        id: 'payout-history',
+        title: 'Payout History',
+        icon: Clock,
+        color: theme.colors.textSecondary,
+      },
+      {
+        id: 'topup-methods',
+        title: 'Top-Up Methods',
+        icon: ArrowUpFromLine,
+        color: theme.colors.info,
+      },
+      {
+        id: 'topup-history',
+        title: 'Top-Up History',
+        icon: PlusCircle,
+        color: theme.colors.success,
+      },
     ],
   },
   {
     title: 'Preferences',
     items: [
-      { id: 'notifications', title: 'Notifications', icon: Bell, color: theme.colors.warning },
+      {
+        id: 'notifications',
+        title: 'Notifications',
+        icon: Bell,
+        color: theme.colors.warning,
+      },
     ],
   },
   {
     title: 'Support & Legal',
     items: [
-      { id: 'verification', title: 'Verification', icon: BadgeCheck, color: theme.colors.success },
-      { id: 'help', title: 'Help Center', icon: HelpCircle, color: theme.colors.primaryLight },
-      { id: 'privacy', title: 'Privacy Policy', icon: Shield, color: theme.colors.textSecondary },
+      {
+        id: 'verification',
+        title: 'Verification',
+        icon: BadgeCheck,
+        color: theme.colors.success,
+      },
+      {
+        id: 'help',
+        title: 'Help Center',
+        icon: HelpCircle,
+        color: theme.colors.primaryLight,
+      },
+      {
+        id: 'privacy',
+        title: 'Privacy Policy',
+        icon: Shield,
+        color: theme.colors.textSecondary,
+      },
     ],
   },
 ];
 
 export default function WorkerProfileScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const profileQuery = useWorkerProfile();
   const [workerProfile, setWorkerProfile] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
   const [matchingReadiness, setMatchingReadiness] =
     useState<WorkerMatchingReadiness | null>(null);
-  const load = useCallback(async () => {
-    setLoadError('');
-    try {
-      const result = await fetchWorkerProfile();
-      if (result.error || !result.data) {
-        throw new Error(result.error ?? 'Worker profile is not active');
-      }
 
-      let accountProfile: Awaited<ReturnType<typeof getMyProfile>> | null =
-        null;
-      try {
-        accountProfile = await getMyProfile();
-      } catch {
-        // The worker profile data is sufficient to render this screen. Account
-        // details are optional here and may be unavailable during migrations.
-      }
-      if (accountProfile?.role && accountProfile.role !== 'WORKER') {
-        throw new Error('Worker profile is not active');
-      }
-
-      let readiness: WorkerMatchingReadiness | null = null;
-      try {
-        readiness = await getWorkerMatchingReadiness();
-      } catch {
-        // Matching availability is optional here and must not block the profile.
-      }
-      setMatchingReadiness(readiness);
-
-      setWorkerProfile(result.data);
-    } catch (error) {
+  useEffect(() => {
+    if (profileQuery.data) {
+      setWorkerProfile(profileQuery.data);
+      setLoadError('');
+    }
+    if (profileQuery.error) {
       setWorkerProfile(null);
       setLoadError(
-        error instanceof Error
-          ? error.message
+        profileQuery.error instanceof Error
+          ? profileQuery.error.message
           : 'Unable to load worker profile',
       );
     }
-  }, []);
+  }, [profileQuery.data, profileQuery.error]);
+
+  const {
+    isLoading: profileLoading,
+    isStale: profileStale,
+    refetch: refetchProfile,
+  } = profileQuery;
+
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load]),
+      if (!profileLoading && profileStale) {
+        void refetchProfile();
+      }
+      let active = true;
+      void (async () => {
+        try {
+          let accountProfile: Awaited<ReturnType<typeof getMyProfile>> | null =
+            null;
+          try {
+            accountProfile = await getMyProfile();
+          } catch {
+            // The worker profile data is sufficient to render this screen.
+            // Account details are optional here and may be unavailable during
+            // migrations.
+          }
+          if (accountProfile?.role && accountProfile.role !== 'WORKER') {
+            throw new Error('Worker profile is not active');
+          }
+
+          let readiness: WorkerMatchingReadiness | null = null;
+          try {
+            readiness = await getWorkerMatchingReadiness();
+          } catch {
+            // Matching availability is optional here and must not block the
+            // profile.
+          }
+          if (active) setMatchingReadiness(readiness);
+        } catch (error) {
+          if (active) {
+            setWorkerProfile(null);
+            setLoadError(
+              error instanceof Error
+                ? error.message
+                : 'Unable to load worker profile',
+            );
+          }
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [profileLoading, profileStale, refetchProfile]),
   );
   const chooseAvatar = async () => {
     try {
@@ -141,6 +218,7 @@ export default function WorkerProfileScreen() {
         ...current,
         avatarUri: updated.avatarUri,
       }));
+      void queryClient.invalidateQueries({ queryKey: ['worker', 'profile'] });
     } catch (error) {
       showAlert(
         'Profile photo',
@@ -360,7 +438,8 @@ export default function WorkerProfileScreen() {
               </Text>
 
               {/* Service Area Setup Guidance Banner */}
-              {(!matchingReadiness?.setupComplete || !matchingReadiness?.matchable) && (
+              {(!matchingReadiness?.setupComplete ||
+                !matchingReadiness?.matchable) && (
                 <TouchableOpacity
                   style={styles.guidanceBanner}
                   onPress={() => handleItemPress('areas')}
@@ -373,10 +452,22 @@ export default function WorkerProfileScreen() {
                     </Text>
                   </View>
                   <Text style={styles.guidanceBannerText}>
-                    To enable matching availability and start receiving service requests, please go to <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Service Areas</Text> page under Account to set up your work location and radius.
+                    To enable matching availability and start receiving service
+                    requests, please go to{' '}
+                    <Text
+                      style={{
+                        fontWeight: '700',
+                        textDecorationLine: 'underline',
+                      }}
+                    >
+                      Service Areas
+                    </Text>{' '}
+                    page under Account to set up your work location and radius.
                   </Text>
                   <View style={styles.guidanceBannerBtn}>
-                    <Text style={styles.guidanceBannerBtnText}>Go to Service Areas</Text>
+                    <Text style={styles.guidanceBannerBtnText}>
+                      Go to Service Areas
+                    </Text>
                     <ChevronRight size={14} color="#1E40AF" />
                   </View>
                 </TouchableOpacity>
@@ -431,7 +522,8 @@ export default function WorkerProfileScreen() {
                         },
                       ]}
                     >
-                      ⚠️ Matching disabled: Tap here to configure Service Area & Radius.
+                      ⚠️ Matching disabled: Tap here to configure Service Area &
+                      Radius.
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -564,11 +656,14 @@ export default function WorkerProfileScreen() {
                         >
                           {item.title}
                         </Text>
-                        {item.id === 'areas' && !matchingReadiness?.setupComplete && (
-                          <View style={styles.badgeRequired}>
-                            <Text style={styles.badgeRequiredText}>Setup Needed</Text>
-                          </View>
-                        )}
+                        {item.id === 'areas' &&
+                          !matchingReadiness?.setupComplete && (
+                            <View style={styles.badgeRequired}>
+                              <Text style={styles.badgeRequiredText}>
+                                Setup Needed
+                              </Text>
+                            </View>
+                          )}
                         <ChevronRight
                           color={theme.colors.textTertiary}
                           size={20}

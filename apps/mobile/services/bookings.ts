@@ -18,6 +18,7 @@ export {
   hasCustomerProof,
   fetchCancellationReasons,
   fetchWorkerBookings,
+  fetchWorkerBookingById,
   markJobInProgress,
   prepareJob,
   startJob,

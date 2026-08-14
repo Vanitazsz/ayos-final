@@ -1,87 +1,87 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import {
   fetchBookings,
-  fetchCustomerProfile,
-  fetchProviders,
   fetchServiceCategories,
+  fetchProviders,
   subscribeToTable,
 } from '@/services/api';
+import {
+  queryKeys,
+  QUERY_STALE_TIMES,
+  toQueryData,
+} from '@/services/queryUtils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
-
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const ttlCache = new Map<string, { data: unknown; expiresAt: number }>();
-
-function cachedResponse<T extends { error?: string | null }>(
-  key: string,
-  load: () => Promise<T>,
-): Promise<T> {
-  const hit = ttlCache.get(key);
-  if (hit && hit.expiresAt > Date.now()) {
-    return Promise.resolve(hit.data as T);
-  }
-  return load().then((response) => {
-    if (response && !response.error) {
-      ttlCache.set(key, {
-        data: response,
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      });
-    }
-    return response;
-  });
-}
+import { useCustomerProfile } from '@/hooks/useProfile';
 
 export function useHomeData() {
   const user = useAuthStore((s: any) => s.user);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [workers, setWorkers] = useState<any[]>([]);
-  const [profile, setProfile] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const mounted = useRef(true);
+  const userId = user?.id;
+  const queryClient = useQueryClient();
 
-  const load = useCallback(() => {
-    void Promise.all([
-      cachedResponse('home:categories', fetchServiceCategories),
-      cachedResponse('home:providers', fetchProviders),
-      fetchCustomerProfile(),
-      fetchBookings(),
-    ]).then(([catalog, providers, account, bookingRows]) => {
-      if (!mounted.current) return;
-      setCategories(catalog.data);
-      setWorkers(providers.data);
-      if (!account.error) setProfile(account.data);
-      setBookings(bookingRows.data);
+  const categoriesQuery = useQuery({
+    queryKey: queryKeys.catalogCategories,
+    queryFn: async () => toQueryData(await fetchServiceCategories()),
+    staleTime: QUERY_STALE_TIMES.catalog,
+  });
+  const providersQuery = useQuery({
+    queryKey: queryKeys.catalogProviders,
+    queryFn: async () => toQueryData(await fetchProviders()),
+    staleTime: QUERY_STALE_TIMES.catalog,
+  });
+  const profileQuery = useCustomerProfile();
+  const bookingsQuery = useQuery({
+    queryKey: queryKeys.customerBookings(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchBookings()),
+    staleTime: QUERY_STALE_TIMES.list,
+    enabled: Boolean(userId),
+  });
+
+  const debouncedInvalidateBookings = useDebouncedCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.customerBookings(userId ?? 'anonymous'),
     });
-  }, []);
-
-  const debouncedLoad = useDebouncedCallback(() => void load(), 400);
+  }, 400);
 
   useEffect(() => {
-    mounted.current = true;
-    let unsubscribe: (() => void) | null = null;
-    load();
-    unsubscribe = subscribeToTable(
+    if (!userId) return;
+    return subscribeToTable(
       'bookings',
-      debouncedLoad,
-      user?.id ? `user_account_id=eq.${user.id}` : undefined,
+      debouncedInvalidateBookings,
+      `user_account_id=eq.${userId}`,
       undefined,
       ['INSERT', 'UPDATE'],
     );
-    return () => {
-      mounted.current = false;
-      unsubscribe?.();
-    };
-  }, [load, debouncedLoad, user?.id]);
+  }, [userId, debouncedInvalidateBookings]);
+
+  const categories = categoriesQuery.data ?? [];
+  const workers = providersQuery.data ?? [];
+  const profile = profileQuery.data ?? null;
+  const bookings = bookingsQuery.data ?? [];
 
   const activeBookingsCount = useMemo(
-    () => bookings.filter((row) => !['completed', 'cancelled'].includes(row.status)).length,
+    () =>
+      bookings.filter((row) => !['completed', 'cancelled'].includes(row.status))
+        .length,
     [bookings],
   );
 
   const lastCompletedWorkerName = useMemo(
-    () => bookings.find((row) => row.status === 'completed')?.providerName ?? 'No completed booking',
+    () =>
+      bookings.find((row) => row.status === 'completed')?.providerName ??
+      'No completed booking',
     [bookings],
   );
 
-  return { user, categories, workers, profile, bookings, activeBookingsCount, lastCompletedWorkerName };
+  return {
+    user,
+    categories,
+    workers,
+    profile,
+    bookings,
+    activeBookingsCount,
+    lastCompletedWorkerName,
+  };
 }

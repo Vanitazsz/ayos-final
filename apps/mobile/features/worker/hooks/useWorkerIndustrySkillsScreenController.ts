@@ -87,6 +87,7 @@ export function useWorkerIndustrySkillsScreenController() {
         rateBySkillId,
       });
       if (result.error) throw new Error(result.error);
+      reload();
       setShowSaveConfirmation(true);
     } catch (err) {
       setError(

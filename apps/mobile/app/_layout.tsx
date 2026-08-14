@@ -27,7 +27,15 @@ import { AppAlertHost } from '@/components/AppAlert';
 // Prevent auto hide while checking auth state
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 if (typeof globalThis !== 'undefined' && (globalThis as any).ErrorUtils) {
   const prev = (globalThis as any).ErrorUtils.getGlobalHandler?.() ?? null;
@@ -173,7 +181,11 @@ export default function RootLayout() {
   );
 }
 
-function SessionBoundary({ authBootstrapReady }: { authBootstrapReady: boolean }) {
+function SessionBoundary({
+  authBootstrapReady,
+}: {
+  authBootstrapReady: boolean;
+}) {
   const { user, isAuthenticated, isLoading, isPasswordRecovery } =
     useAuthStore();
   const segments = useSegments();
@@ -190,9 +202,7 @@ function SessionBoundary({ authBootstrapReady }: { authBootstrapReady: boolean }
 
   if (!authBootstrapReady) return null;
   if (isPasswordRecovery && pathname !== PASSWORD_RECOVERY_ROUTE)
-    return (
-      <Redirect href={'/auth/reset-password?flow=recovery' as Href} />
-    );
+    return <Redirect href={'/auth/reset-password?flow=recovery' as Href} />;
   if (!isLoading && !isAuthenticated && !isPublic)
     return <Redirect href="/(auth)/login" />;
   if (
@@ -213,9 +223,17 @@ function SessionBoundary({ authBootstrapReady }: { authBootstrapReady: boolean }
   if (isAuthenticated && !user?.profileComplete) {
     if (user?.role === 'WORKER' && root === 'register-worker') {
       // Allow register-worker page to render normally
-    } else if (user?.role === 'WORKER' && root !== '(worker)' && !pathname.includes('profile')) {
+    } else if (
+      user?.role === 'WORKER' &&
+      root !== '(worker)' &&
+      !pathname.includes('profile')
+    ) {
       return <Redirect href="/(worker)/profile" />;
-    } else if (user?.role === 'USER' && root !== '(tabs)' && !pathname.includes('profile')) {
+    } else if (
+      user?.role === 'USER' &&
+      root !== '(tabs)' &&
+      !pathname.includes('profile')
+    ) {
       return <Redirect href="/(tabs)/profile" />;
     }
   }

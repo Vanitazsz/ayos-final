@@ -1,30 +1,54 @@
 import { useEffect, useState } from 'react';
-import { fetchNotifications, markNotificationRead, subscribeToTable } from '@/services/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchNotifications,
+  markNotificationRead,
+  subscribeToTable,
+} from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import {
+  queryKeys,
+  QUERY_STALE_TIMES,
+  toQueryData,
+} from '@/services/queryUtils';
 
 export type NotificationFilter = 'ALL' | 'UNREAD';
 
 export function useNotificationsFeed() {
-  const user = useAuthStore((s) => s.user);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const userId = useAuthStore((s) => s.user?.id);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<NotificationFilter>('ALL');
 
+  const notificationsQuery = useQuery({
+    queryKey: queryKeys.notifications(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchNotifications()),
+    staleTime: QUERY_STALE_TIMES.list,
+    enabled: Boolean(userId),
+  });
+  const notifications = notificationsQuery.data ?? [];
+
   useEffect(() => {
-    const load = () => void fetchNotifications().then((result) => setNotifications(result.data));
-    load();
+    if (!userId) return;
     return subscribeToTable(
       'notifications',
-      () => void load(),
-      user?.id ? `recipient_id=eq.${user.id}` : undefined,
+      () =>
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.notifications(userId),
+        }),
+      `recipient_id=eq.${userId}`,
       undefined,
       ['INSERT', 'UPDATE'],
     );
-  }, [user?.id]);
+  }, [userId, queryClient]);
 
   const markRead = async (id: string) => {
     await markNotificationRead(id);
-    setNotifications((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, unread: false } : row)),
+    queryClient.setQueryData<unknown[]>(
+      queryKeys.notifications(userId ?? 'anonymous'),
+      (rows) =>
+        (rows ?? []).map((row: any) =>
+          row.id === id ? { ...row, unread: false } : row,
+        ),
     );
   };
 
@@ -32,7 +56,10 @@ export function useNotificationsFeed() {
     const unread = notifications.filter((n) => n.unread);
     if (unread.length > 0) {
       await Promise.all(unread.map((n) => markNotificationRead(n.id)));
-      setNotifications((rows) => rows.map((row) => ({ ...row, unread: false })));
+      queryClient.setQueryData<unknown[]>(
+        queryKeys.notifications(userId ?? 'anonymous'),
+        (rows) => (rows ?? []).map((row: any) => ({ ...row, unread: false })),
+      );
     }
   };
 

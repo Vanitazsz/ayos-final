@@ -1,18 +1,26 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import {
-  MessageSquare,
-  Trash2,
-} from 'lucide-react-native';
+import { MessageSquare, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { Screen } from '@/components/layout/Screen';
 import { showAlert } from '@/components/AppAlert';
 import { theme } from '@/constants/theme';
-import { deleteConversations, fetchConversations, subscribeToConversationBroadcast, subscribeToTable } from '@/services/api';
+import {
+  deleteConversations,
+  fetchConversations,
+  subscribeToTable,
+} from '@/services/api';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 const DELETED_CHATS_KEY = 'ayos_deleted_conversation_ids';
@@ -59,19 +67,33 @@ export function ConversationListScreen({
 
   useEffect(() => {
     load(true);
-    const stops = [
-      subscribeToTable('messages', () => load(), undefined, undefined, ['INSERT']),
-      subscribeToTable('conversations', () => load(), undefined, undefined, ['INSERT', 'UPDATE']),
-    ];
-    return () => stops.forEach((stop) => stop());
+    const stop = subscribeToTable(
+      'conversations',
+      () => load(),
+      undefined,
+      undefined,
+      ['INSERT', 'UPDATE'],
+    );
+    return () => stop();
   }, [load]);
 
+  const conversationIds = chats
+    .map((chat) => chat.id)
+    .sort()
+    .join(',');
+
   useEffect(() => {
-    const stops = chats.map((chat) =>
-      subscribeToConversationBroadcast(chat.id, () => load()),
+    const ids = conversationIds.split(',').filter(Boolean).join(',');
+    if (!ids) return;
+    const stop = subscribeToTable(
+      'messages',
+      () => load(),
+      `conversation_id=in.(${ids})`,
+      undefined,
+      ['INSERT'],
     );
-    return () => stops.forEach((stop) => stop());
-  }, [chats, load]);
+    return () => stop();
+  }, [conversationIds, load]);
 
   const handleDelete = (chat: any) => {
     swipeableRefs.current[chat.id]?.close();
@@ -80,18 +102,21 @@ export function ConversationListScreen({
       'Are you sure you want to delete this conversation? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive', 
+        {
+          text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
             const nextDeleted = new Set(deletedIds);
             nextDeleted.add(chat.id);
             setDeletedIds(nextDeleted);
-            await AsyncStorage.setItem(DELETED_CHATS_KEY, JSON.stringify(Array.from(nextDeleted)));
+            await AsyncStorage.setItem(
+              DELETED_CHATS_KEY,
+              JSON.stringify(Array.from(nextDeleted)),
+            );
             void deleteConversations([chat.id]);
-          } 
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -113,17 +138,27 @@ export function ConversationListScreen({
   const visibleChats = chats.filter((chat) => !deletedIds.has(chat.id));
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
+    <Screen
+      safeArea
+      backgroundColor={theme.colors.background}
+      style={{ paddingBottom: 0 }}
+      keyboardAvoiding={false}
+    >
       <View style={styles.header}>
         <View style={{ width: 40 }} />
-        <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>Messages</Text>
+        <Text style={[theme.typography.h2, { flex: 1, textAlign: 'center' }]}>
+          Messages
+        </Text>
         <View style={{ width: 40 }} />
       </View>
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         contentContainerStyle={[
           styles.contentContainer,
-          (loading || error || visibleChats.length === 0) && { flexGrow: 1, justifyContent: 'center' }
+          (loading || error || visibleChats.length === 0) && {
+            flexGrow: 1,
+            justifyContent: 'center',
+          },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -146,9 +181,17 @@ export function ConversationListScreen({
           <View style={styles.listContainer}>
             {visibleChats.map((chat, index) => {
               return (
-                <Animated.View key={chat.id} entering={FadeInDown.delay(index * 50).duration(400).springify()} style={{ marginBottom: theme.spacing.sm }}>
+                <Animated.View
+                  key={chat.id}
+                  entering={FadeInDown.delay(index * 50)
+                    .duration(400)
+                    .springify()}
+                  style={{ marginBottom: theme.spacing.sm }}
+                >
                   <Swipeable
-                    ref={(ref) => { swipeableRefs.current[chat.id] = ref; }}
+                    ref={(ref) => {
+                      swipeableRefs.current[chat.id] = ref;
+                    }}
                     renderRightActions={() => renderRightActions(chat)}
                     friction={2}
                     overshootRight={false}
@@ -177,16 +220,31 @@ export function ConversationListScreen({
                       />
                       <View style={styles.chatDetails}>
                         <View style={styles.chatHeader}>
-                          <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>{chat.name}</Text>
+                          <Text
+                            style={[
+                              theme.typography.h4,
+                              { color: theme.colors.textPrimary },
+                            ]}
+                          >
+                            {chat.name}
+                          </Text>
                           <Text
                             style={[
                               theme.typography.body2,
                               {
-                                color: chat.unread > 0 ? theme.colors.primary : theme.colors.textSecondary,
+                                color:
+                                  chat.unread > 0
+                                    ? theme.colors.primary
+                                    : theme.colors.textSecondary,
                               },
                             ]}
                           >
-                            {chat.timestamp ? new Date(chat.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : chat.time}
+                            {chat.timestamp
+                              ? new Date(chat.timestamp).toLocaleTimeString(
+                                  [],
+                                  { hour: '2-digit', minute: '2-digit' },
+                                )
+                              : chat.time}
                           </Text>
                         </View>
                         <View style={styles.chatFooter}>
@@ -194,7 +252,10 @@ export function ConversationListScreen({
                             style={[
                               theme.typography.body2,
                               {
-                                color: chat.unread > 0 ? theme.colors.textPrimary : theme.colors.textSecondary,
+                                color:
+                                  chat.unread > 0
+                                    ? theme.colors.textPrimary
+                                    : theme.colors.textSecondary,
                                 flex: 1,
                                 fontWeight: chat.unread > 0 ? '600' : '400',
                               },
@@ -203,9 +264,7 @@ export function ConversationListScreen({
                           >
                             {chat.lastMessage}
                           </Text>
-                          {chat.unread > 0 && (
-                            <View style={styles.unreadDot} />
-                          )}
+                          {chat.unread > 0 && <View style={styles.unreadDot} />}
                         </View>
                       </View>
                     </TouchableOpacity>

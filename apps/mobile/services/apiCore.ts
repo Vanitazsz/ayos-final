@@ -189,7 +189,9 @@ export function subscribeToTable(
       'postgres_changes',
       { event: '*', schema: 'public', table, filter },
       (payload) => {
-        if (events.includes(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE')) {
+        if (
+          events.includes(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE')
+        ) {
           onChange();
         }
       },
@@ -220,26 +222,8 @@ export async function subscribeToBookingFeed(
   onChange: () => void,
 ) {
   const user = await requireUser();
-  const statuses = new Map<string, string>([
-    ['bookings', 'CONNECTING'],
-    ['service_requests', 'CONNECTING'],
-  ]);
-  let fallback: ReturnType<typeof setInterval> | null = null;
-  const syncFallback = () => {
-    const connected = [...statuses.values()].every(
-      (status) => status === 'SUBSCRIBED',
-    );
-    if (connected && fallback) {
-      clearInterval(fallback);
-      fallback = null;
-    } else if (!connected && !fallback) {
-      fallback = setInterval(onChange, 20000);
-    }
-  };
-  const track = (table: string) => (status: string) => {
-    statuses.set(table, status);
+  const track = (_table: string) => (status: string) => {
     if (status === 'SUBSCRIBED') onChange();
-    syncFallback();
   };
   const stops = [
     subscribeToTable(
@@ -257,10 +241,8 @@ export async function subscribeToBookingFeed(
       ['INSERT', 'UPDATE'],
     ),
   ];
-  syncFallback();
   return () => {
     stops.forEach((stop) => stop());
-    if (fallback) clearInterval(fallback);
   };
 }
 
@@ -320,21 +302,19 @@ export async function fetchProviderById(
 }
 export async function fetchProviderProfile(id: string) {
   return wrap(async () => {
-    const [
-      { data: profile, error },
-      { data: skills, error: skillError },
-    ] = await Promise.all([
-      supabase
-        .from('worker_profiles')
-        .select('*,worker_skills(years,rate_minor,service_categories(name))')
-        .eq('account_id', id)
-        .eq('approval_status', 'APPROVED')
-        .single(),
-      supabase
-        .from('worker_skills')
-        .select('rate_minor,service_categories(name)')
-        .eq('worker_id', id),
-    ]);
+    const [{ data: profile, error }, { data: skills, error: skillError }] =
+      await Promise.all([
+        supabase
+          .from('worker_profiles')
+          .select('*,worker_skills(years,rate_minor,service_categories(name))')
+          .eq('account_id', id)
+          .eq('approval_status', 'APPROVED')
+          .single(),
+        supabase
+          .from('worker_skills')
+          .select('rate_minor,service_categories(name)')
+          .eq('worker_id', id),
+      ]);
     if (error) throw error;
     if (skillError) throw skillError;
     const workerRates = (skills ?? [])
@@ -397,8 +377,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
           row.service_requests?.service_categories?.name,
           'Booked service',
         ),
-        avatarUri:
-          avatarMap.get(row.worker_profiles?.avatar_path) ?? '',
+        avatarUri: avatarMap.get(row.worker_profiles?.avatar_path) ?? '',
         date: new Date(
           row.service_requests?.scheduled_at ?? row.created_at,
         ).toLocaleDateString(),
@@ -410,9 +389,7 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
             ? 'completed'
             : row.status === 'CANCELLED'
               ? 'cancelled'
-              : ['PENDING', 'ACCEPTED', 'WORKER_PREPARING'].includes(
-                    row.status,
-                  )
+              : ['PENDING', 'ACCEPTED', 'WORKER_PREPARING'].includes(row.status)
                 ? 'upcoming'
                 : 'ongoing',
         rawStatus: row.status,
@@ -557,6 +534,43 @@ export async function fetchWorkerVerification() {
     return data;
   });
 }
+const WORKER_BOOKING_SELECT =
+  'id,service_request_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)';
+
+const mapWorkerBookingRow = (
+  row: any,
+  avatarMap: Map<string, string>,
+): WorkerBooking => ({
+  id: row.id,
+  requestId: row.service_request_id,
+  recordType: 'booking' as const,
+  customerName: requireIdentity(
+    row.user_profiles?.display_name,
+    'Booking customer',
+  ),
+  customerAvatar: avatarMap.get(row.user_profiles?.avatar_path) ?? '',
+  service: requireIdentity(
+    row.service_requests?.service_categories?.name,
+    'Booked service',
+  ),
+  date: new Date(
+    row.service_requests?.scheduled_at ?? row.created_at,
+  ).toLocaleDateString(),
+  time: new Date(
+    row.service_requests?.scheduled_at ?? row.created_at,
+  ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  address: [
+    row.service_requests?.addresses?.line1,
+    row.service_requests?.addresses?.barangay,
+    row.service_requests?.addresses?.city,
+  ]
+    .filter(Boolean)
+    .join(', '),
+  price: money(row.agreed_service_amount),
+  status: row.status.toLowerCase(),
+  distance: '',
+});
+
 export async function fetchWorkerBookings(): Promise<
   ApiResponse<WorkerBooking[]>
 > {
@@ -564,9 +578,7 @@ export async function fetchWorkerBookings(): Promise<
     const user = await requireUser();
     const bookingResult = await supabase
       .from('bookings')
-      .select(
-        'id,service_request_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),user_profiles:user_account_id(display_name,avatar_path)',
-      )
+      .select(WORKER_BOOKING_SELECT)
       .eq('worker_account_id', user.id)
       .order('created_at', { ascending: false });
     if (bookingResult.error) throw new Error(bookingResult.error.message);
@@ -576,44 +588,34 @@ export async function fetchWorkerBookings(): Promise<
       rows.map((row: any) => row.user_profiles?.avatar_path),
     );
 
-    return rows.map((row: any) => ({
-      id: row.id,
-      requestId: row.service_request_id,
-      recordType: 'booking' as const,
-      customerName: requireIdentity(
-        row.user_profiles?.display_name,
-        'Booking customer',
-      ),
-      customerAvatar:
-        avatarMap.get(row.user_profiles?.avatar_path) ?? '',
-      service: requireIdentity(
-        row.service_requests?.service_categories?.name,
-        'Booked service',
-      ),
-      date: new Date(
-        row.service_requests?.scheduled_at ?? row.created_at,
-      ).toLocaleDateString(),
-      time: new Date(
-        row.service_requests?.scheduled_at ?? row.created_at,
-      ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      address: [
-        row.service_requests?.addresses?.line1,
-        row.service_requests?.addresses?.barangay,
-        row.service_requests?.addresses?.city,
-      ]
-        .filter(Boolean)
-        .join(', '),
-      price: money(row.agreed_service_amount),
-      status: row.status.toLowerCase(),
-      distance: '',
-    }));
+    return rows.map((row: any) => mapWorkerBookingRow(row, avatarMap));
   });
 }
-async function transition(
+
+export async function fetchWorkerBookingById(
   bookingId: string,
-  status: string,
-  reason?: string,
-) {
+): Promise<ApiResponse<WorkerBooking | null>> {
+  try {
+    const user = await requireUser();
+    const bookingResult = await supabase
+      .from('bookings')
+      .select(WORKER_BOOKING_SELECT)
+      .eq('id', bookingId)
+      .eq('worker_account_id', user.id)
+      .maybeSingle();
+    if (bookingResult.error) throw new Error(bookingResult.error.message);
+    if (!bookingResult.data) return { data: null };
+
+    const userProfile = Array.isArray(bookingResult.data.user_profiles)
+      ? bookingResult.data.user_profiles[0]
+      : bookingResult.data.user_profiles;
+    const avatarMap = await batchResolveAvatars([userProfile?.avatar_path]);
+    return { data: mapWorkerBookingRow(bookingResult.data, avatarMap) };
+  } catch (error) {
+    return { data: null, error: apiErrorMessage(error) };
+  }
+}
+async function transition(bookingId: string, status: string, reason?: string) {
   const { data, error } = await supabase.rpc('transition_booking', {
     p_booking_id: bookingId,
     p_target_status: status,
@@ -648,7 +650,8 @@ export async function confirmPaymentWithCommission(
 ) {
   const { data, error } = await supabase.rpc('deduct_booking_commission', {
     p_booking_id: bookingId,
-    p_payment_method: paymentMethod === 'ONLINE_SIMULATED' ? 'ONLINE_SIMULATED' : 'CASH',
+    p_payment_method:
+      paymentMethod === 'ONLINE_SIMULATED' ? 'ONLINE_SIMULATED' : 'CASH',
   });
 
   if (error) throw error;
@@ -677,10 +680,7 @@ export async function completeJob(bookingId: string) {
 export async function confirmJobCompletion(bookingId: string) {
   return transition(bookingId, 'COMPLETED');
 }
-export async function cancelBooking(
-  bookingId: string,
-  reason: string,
-) {
+export async function cancelBooking(bookingId: string, reason: string) {
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .select('status')
@@ -735,7 +735,9 @@ export async function fetchWalletTransactions(): Promise<
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? [])
-      .filter((row: any) => Math.abs(Number(row.amount_minor ?? 0)) < 100000000000)
+      .filter(
+        (row: any) => Math.abs(Number(row.amount_minor ?? 0)) < 100000000000,
+      )
       .map((row: any) => {
         const credit = Number(row.amount_minor) >= 0;
         let label = String(row.transaction_type).replaceAll('_', ' ');
@@ -753,7 +755,8 @@ export async function fetchWalletTransactions(): Promise<
             Math.abs(Number(row.amount_minor)) / 100,
           )}`,
           credit,
-          status: row.transaction_type === 'PAYOUT_HOLD' ? 'pending' : 'completed',
+          status:
+            row.transaction_type === 'PAYOUT_HOLD' ? 'pending' : 'completed',
           date: new Date(row.created_at).toLocaleDateString('en-PH', {
             month: 'short',
             day: 'numeric',
@@ -913,7 +916,7 @@ export async function fetchBookingTracking(id: string) {
     supabase
       .from('bookings')
       .select(
-        '*,service_requests(*,addresses(*)),worker_profiles:worker_account_id(*,accounts:accounts!worker_profiles_account_id_fkey(mobile)),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
+        '*,service_requests(*,addresses(*),service_categories(name)),worker_profiles:worker_account_id(*,accounts:accounts!worker_profiles_account_id_fkey(mobile)),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
       )
       .eq('id', id)
       .single(),
@@ -921,6 +924,24 @@ export async function fetchBookingTracking(id: string) {
   ]);
   if (error) throw error;
   if (updates.error) throw updates.error;
+  try {
+    const avatarMap = await batchResolveAvatars([
+      booking.user_profiles?.avatar_path,
+      booking.worker_profiles?.avatar_path,
+    ]);
+    if (booking.user_profiles?.avatar_path) {
+      booking.user_profiles.avatar_path =
+        avatarMap.get(booking.user_profiles.avatar_path) ??
+        booking.user_profiles.avatar_path;
+    }
+    if (booking.worker_profiles?.avatar_path) {
+      booking.worker_profiles.avatar_path =
+        avatarMap.get(booking.worker_profiles.avatar_path) ??
+        booking.worker_profiles.avatar_path;
+    }
+  } catch (e) {
+    console.warn('[fetchBookingTracking] avatar resolve failed:', e);
+  }
   return { booking, updates: updates.data ?? [] };
 }
 export async function fetchBookingSummary(bookingId: string) {
@@ -960,7 +981,10 @@ export async function fetchBookingSummary(bookingId: string) {
 
   return { booking, proofPhotos: photosWithUrls };
 }
-export async function confirmCashPayment(bookingId: string, proofPath?: string | null) {
+export async function confirmCashPayment(
+  bookingId: string,
+  proofPath?: string | null,
+) {
   const { data, error } = await supabase.rpc('confirm_cash_payment', {
     p_booking_id: bookingId,
     p_idempotency_key: randomUUID(),
@@ -994,7 +1018,9 @@ export async function fetchPaymentForBooking(bookingId: string) {
   return wrap(async () => {
     const { data, error } = await supabase
       .from('payments')
-      .select('*,receipts(receipt_number,issued_at),bookings(agreed_service_amount)')
+      .select(
+        '*,receipts(receipt_number,issued_at),bookings(agreed_service_amount)',
+      )
       .eq('booking_id', bookingId)
       .single();
     if (error) throw error;
@@ -1029,9 +1055,21 @@ const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
     skills: [
       { id: 'cleaning-1', slug: 'cleaning', name: 'Cleaning' },
       { id: 'cleaning-2', slug: 'deep-cleaning', name: 'Deep Cleaning' },
-      { id: 'cleaning-3', slug: 'move-in-move-out-cleaning', name: 'Move-In/Move-Out Cleaning' },
-      { id: 'cleaning-4', slug: 'post-construction-cleaning', name: 'Post-Construction Cleaning' },
-      { id: 'cleaning-5', slug: 'carpet-upholstery-cleaning', name: 'Carpet & Upholstery Cleaning' },
+      {
+        id: 'cleaning-3',
+        slug: 'move-in-move-out-cleaning',
+        name: 'Move-In/Move-Out Cleaning',
+      },
+      {
+        id: 'cleaning-4',
+        slug: 'post-construction-cleaning',
+        name: 'Post-Construction Cleaning',
+      },
+      {
+        id: 'cleaning-5',
+        slug: 'carpet-upholstery-cleaning',
+        name: 'Carpet & Upholstery Cleaning',
+      },
     ],
   },
   {
@@ -1040,10 +1078,26 @@ const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
     name: 'Electrical',
     skills: [
       { id: 'electrical-1', slug: 'electrical', name: 'Electrical' },
-      { id: 'electrical-2', slug: 'wiring-rewiring', name: 'Wiring & Rewiring' },
-      { id: 'electrical-3', slug: 'lighting-installation', name: 'Lighting Installation' },
-      { id: 'electrical-4', slug: 'outlet-switch-installation', name: 'Outlet & Switch Installation' },
-      { id: 'electrical-5', slug: 'panel-circuit-breaker-service', name: 'Panel & Circuit Breaker Service' },
+      {
+        id: 'electrical-2',
+        slug: 'wiring-rewiring',
+        name: 'Wiring & Rewiring',
+      },
+      {
+        id: 'electrical-3',
+        slug: 'lighting-installation',
+        name: 'Lighting Installation',
+      },
+      {
+        id: 'electrical-4',
+        slug: 'outlet-switch-installation',
+        name: 'Outlet & Switch Installation',
+      },
+      {
+        id: 'electrical-5',
+        slug: 'panel-circuit-breaker-service',
+        name: 'Panel & Circuit Breaker Service',
+      },
     ],
   },
   {
@@ -1052,10 +1106,22 @@ const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
     name: 'Plumbing',
     skills: [
       { id: 'plumbing-1', slug: 'plumbing', name: 'Plumbing' },
-      { id: 'plumbing-2', slug: 'leak-detection-repair', name: 'Leak Detection & Repair' },
+      {
+        id: 'plumbing-2',
+        slug: 'leak-detection-repair',
+        name: 'Leak Detection & Repair',
+      },
       { id: 'plumbing-3', slug: 'drain-unclogging', name: 'Drain Unclogging' },
-      { id: 'plumbing-4', slug: 'fixture-installation', name: 'Fixture Installation' },
-      { id: 'plumbing-5', slug: 'pipe-installation-repair', name: 'Pipe Installation & Repair' },
+      {
+        id: 'plumbing-4',
+        slug: 'fixture-installation',
+        name: 'Fixture Installation',
+      },
+      {
+        id: 'plumbing-5',
+        slug: 'pipe-installation-repair',
+        name: 'Pipe Installation & Repair',
+      },
     ],
   },
   {
@@ -1064,10 +1130,22 @@ const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
     name: 'Carpentry',
     skills: [
       { id: 'carpentry-1', slug: 'furniture-repair', name: 'Furniture Repair' },
-      { id: 'carpentry-2', slug: 'cabinet-installation-repair', name: 'Cabinet Installation & Repair' },
-      { id: 'carpentry-3', slug: 'door-window-repair', name: 'Door & Window Repair' },
+      {
+        id: 'carpentry-2',
+        slug: 'cabinet-installation-repair',
+        name: 'Cabinet Installation & Repair',
+      },
+      {
+        id: 'carpentry-3',
+        slug: 'door-window-repair',
+        name: 'Door & Window Repair',
+      },
       { id: 'carpentry-4', slug: 'custom-woodwork', name: 'Custom Woodwork' },
-      { id: 'carpentry-5', slug: 'ceiling-partition-installation', name: 'Ceiling & Partition Installation' },
+      {
+        id: 'carpentry-5',
+        slug: 'ceiling-partition-installation',
+        name: 'Ceiling & Partition Installation',
+      },
     ],
   },
   {
@@ -1075,10 +1153,26 @@ const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
     slug: 'painting',
     name: 'Painting',
     skills: [
-      { id: 'painting-1', slug: 'interior-painting', name: 'Interior Painting' },
-      { id: 'painting-2', slug: 'exterior-painting', name: 'Exterior Painting' },
-      { id: 'painting-3', slug: 'repainting-touch-ups', name: 'Repainting & Touch-Ups' },
-      { id: 'painting-4', slug: 'surface-preparation', name: 'Surface Preparation' },
+      {
+        id: 'painting-1',
+        slug: 'interior-painting',
+        name: 'Interior Painting',
+      },
+      {
+        id: 'painting-2',
+        slug: 'exterior-painting',
+        name: 'Exterior Painting',
+      },
+      {
+        id: 'painting-3',
+        slug: 'repainting-touch-ups',
+        name: 'Repainting & Touch-Ups',
+      },
+      {
+        id: 'painting-4',
+        slug: 'surface-preparation',
+        name: 'Surface Preparation',
+      },
     ],
   },
   {
@@ -1105,16 +1199,18 @@ const FALLBACK_TAXONOMY: IndustryWithSkills[] = [
     slug: 'appliance-repair',
     name: 'Appliance Repair',
     skills: [
-      { id: 'appliance-1', slug: 'appliance-diagnosis-repair', name: 'Appliance Diagnosis & Repair' },
+      {
+        id: 'appliance-1',
+        slug: 'appliance-diagnosis-repair',
+        name: 'Appliance Diagnosis & Repair',
+      },
     ],
   },
   {
     id: 'landscaping-gardening',
     slug: 'landscaping-gardening',
     name: 'Landscaping & Gardening',
-    skills: [
-      { id: 'lawn-1', slug: 'lawn-care', name: 'Lawn & Garden Care' },
-    ],
+    skills: [{ id: 'lawn-1', slug: 'lawn-care', name: 'Lawn & Garden Care' }],
   },
   {
     id: 'roofing-waterproofing',
@@ -1158,7 +1254,10 @@ export async function fetchIndustriesAndSkills(): Promise<
       if (formatted.length > 0) return formatted;
       return FALLBACK_TAXONOMY;
     } catch (err) {
-      console.warn('fetchIndustriesAndSkills fallback triggered due to database permission or network issue:', err);
+      console.warn(
+        'fetchIndustriesAndSkills fallback triggered due to database permission or network issue:',
+        err,
+      );
       return FALLBACK_TAXONOMY;
     }
   });
@@ -1303,9 +1402,7 @@ export async function fetchBookingProofPhotos(
   );
 }
 
-export async function hasCustomerProof(
-  bookingId: string,
-): Promise<boolean> {
+export async function hasCustomerProof(bookingId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('booking_proof_media')
     .select('id')
@@ -1547,31 +1644,38 @@ export async function setPreferredLocale(locale: 'en' | 'fil') {
 }
 export async function fetchConversationForBooking(bookingId: string) {
   return wrap(async () => {
-    const { data, error } = await supabase.rpc('chat_ensure_booking_conversation', {
-      p_booking_id: bookingId,
-    });
+    const { data, error } = await supabase.rpc(
+      'chat_ensure_booking_conversation',
+      {
+        p_booking_id: bookingId,
+      },
+    );
     if (error) throw error;
     if (!data) throw new Error('Conversation not available for this booking');
     return data;
   });
 }
-export async function fetchConversations(mode: 'active' | 'archived' = 'active') {
+export async function fetchConversations(
+  mode: 'active' | 'archived' = 'active',
+) {
   return wrap(async () => {
     const user = await requireUser();
     const profile = await getMyProfile();
     let query = supabase
       .from('conversations')
       .select(
-        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id)',
+        'id,booking_id,service_request_id,worker_account_id,archived_at,updated_at,worker_profiles:worker_account_id(display_name,avatar_path),bookings:booking_id(status,user_account_id,worker_account_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:worker_account_id(display_name,avatar_path)),service_requests:service_request_id(status,user_account_id,selected_worker_id,user_profiles:user_account_id(display_name,avatar_path),worker_profiles:selected_worker_id(display_name,avatar_path)),conversation_participants(account_id,last_read_at,accounts:account_id(user_profiles(display_name,avatar_path),worker_profiles(display_name,avatar_path))),messages(id,body,created_at,sender_id,order(created_at.desc).limit(1))',
       );
-      
+
     if (mode === 'active') {
       query = query.is('archived_at', null);
     } else {
       query = query.not('archived_at', 'is', null);
     }
-    
-    const { data, error } = await query.order('updated_at', { ascending: false });
+
+    const { data, error } = await query.order('updated_at', {
+      ascending: false,
+    });
     if (error) throw error;
     const prepared = (data ?? [])
       .map((row: any) => {
@@ -1611,8 +1715,7 @@ export async function fetchConversations(mode: 'active' | 'archived' = 'active')
         return {
           row,
           participantName: (resolvedParticipantProfile as any).display_name,
-          avatarPath:
-            (resolvedParticipantProfile as any).avatar_path ?? '',
+          avatarPath: (resolvedParticipantProfile as any).avatar_path ?? '',
           latest,
           readAt,
           messages,
@@ -1620,9 +1723,7 @@ export async function fetchConversations(mode: 'active' | 'archived' = 'active')
           closed,
         };
       })
-      .filter(
-        (item): item is NonNullable<typeof item> => item !== null,
-      );
+      .filter((item): item is NonNullable<typeof item> => item !== null);
     const avatarMap = await batchResolveAvatars(
       prepared.map((item) => item.avatarPath),
     );
@@ -1668,7 +1769,10 @@ export async function archiveConversations(conversationIds: string[]) {
     if (result.status === 'fulfilled') {
       deleted.push(conversationIds[i]);
     } else {
-      const err = await normalizeFunctionError(result.reason, 'Unable to delete conversation.');
+      const err = await normalizeFunctionError(
+        result.reason,
+        'Unable to delete conversation.',
+      );
       failed.push({
         id: conversationIds[i],
         error: err.message,
@@ -1727,9 +1831,7 @@ export async function deleteConversation(conversationId: string) {
 }
 export async function deleteConversations(conversationIds: string[]) {
   const results = await Promise.allSettled(
-    conversationIds.map((conversationId) =>
-      deleteConversation(conversationId),
-    ),
+    conversationIds.map((conversationId) => deleteConversation(conversationId)),
   );
   const deleted: string[] = [];
   const failed: { id: string; error: string }[] = [];
@@ -1738,7 +1840,10 @@ export async function deleteConversations(conversationIds: string[]) {
     if (result.status === 'fulfilled') {
       deleted.push(conversationIds[i]);
     } else {
-      const err = await normalizeFunctionError(result.reason, 'Unable to delete conversation.');
+      const err = await normalizeFunctionError(
+        result.reason,
+        'Unable to delete conversation.',
+      );
       failed.push({
         id: conversationIds[i],
         error: err.message,
@@ -2081,7 +2186,8 @@ export async function confirmCustomerArrival(
     p_booking_id: bookingId,
   });
   if (error) throw error;
-  if (!data) throw new Error('Customer arrival confirmation returned no result.');
+  if (!data)
+    throw new Error('Customer arrival confirmation returned no result.');
   return data as CustomerTrackingActionResult;
 }
 
@@ -2092,7 +2198,8 @@ export async function confirmCustomerCompletion(
     p_booking_id: bookingId,
   });
   if (error) throw error;
-  if (!data) throw new Error('Customer completion confirmation returned no result.');
+  if (!data)
+    throw new Error('Customer completion confirmation returned no result.');
   return data as CustomerTrackingActionResult;
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import {
   acceptJob,
@@ -11,45 +12,93 @@ import {
 } from '@/services/api';
 import { useWorkerBookingStore } from '@/store/useWorkerBookingStore';
 import { showAlert } from '@/components/AppAlert';
+import {
+  queryKeys,
+  QUERY_STALE_TIMES,
+  toQueryData,
+} from '@/services/queryUtils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const TAB_FILTERS: Record<string, WorkerBooking['status'][]> = {
   Upcoming: ['pending', 'hired', 'accepted', 'worker_preparing'],
-  'In Progress': ['en_route', 'worker_en_route', 'arrived', 'worker_arrived', 'service_started', 'in_progress', 'pending_confirmation'],
+  'In Progress': [
+    'en_route',
+    'worker_en_route',
+    'arrived',
+    'worker_arrived',
+    'service_started',
+    'in_progress',
+    'pending_confirmation',
+  ],
   Pending: ['pending_review'],
   Completed: ['completed'],
   Cancelled: ['cancelled'],
 };
 
 export function useWorkerBookings(initialFilter?: string) {
+  const userId = useAuthStore((s) => s.user?.id);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(
-    initialFilter === 'Cancelled' ? 'Cancelled' : initialFilter === 'Reported' ? 'Reported' : 'Upcoming',
+    initialFilter === 'Cancelled'
+      ? 'Cancelled'
+      : initialFilter === 'Reported'
+        ? 'Reported'
+        : 'Upcoming',
   );
-  const [bookings, setBookings] = useState<WorkerBooking[]>([]);
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, WorkerFeedback>>({});
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [feedbackMap, setFeedbackMap] = useState<
+    Record<string, WorkerFeedback>
+  >({});
   const isCurrentlyWorking = useWorkerBookingStore((s) => s.isCurrentlyWorking);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const result = await fetchWorkerBookings();
-    setBookings(result.data);
-    setLoadError(result.error ?? '');
+  const bookingsQuery = useQuery({
+    queryKey: queryKeys.workerBookings(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchWorkerBookings()),
+    staleTime: QUERY_STALE_TIMES.list,
+    enabled: Boolean(userId),
+  });
+  const bookings = bookingsQuery.data ?? [];
+  const loading = bookingsQuery.isLoading;
+  const loadError = bookingsQuery.error
+    ? bookingsQuery.error instanceof Error
+      ? bookingsQuery.error.message
+      : 'Unable to load bookings'
+    : '';
 
-    const completedItems = (result.data ?? []).filter(
-      (b) => b.status === 'completed',
-    );
-    const map = await getWorkerFeedbackBatch(
-      completedItems.map((b) => b.id),
-    );
-    setFeedbackMap(map);
-    setLoading(false);
-  }, []);
+  const load = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.workerBookings(userId ?? 'anonymous'),
+    });
+  }, [queryClient, userId]);
+
+  const completedKey = useMemo(
+    () =>
+      bookings
+        .filter((b) => b.status === 'completed')
+        .map((b) => b.id)
+        .sort()
+        .join(','),
+    [bookings],
+  );
+
+  useEffect(() => {
+    if (!completedKey) {
+      setFeedbackMap({});
+      return;
+    }
+    let active = true;
+    void getWorkerFeedbackBatch(completedKey.split(','))
+      .then((map) => {
+        if (active) setFeedbackMap(map);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [completedKey]);
 
   useEffect(() => {
     let active = true;
     let stopRealtime = () => {};
-    void load();
     void subscribeToBookingFeed('worker', () => void load()).then((stop) => {
       if (active) stopRealtime = stop;
       else stop();

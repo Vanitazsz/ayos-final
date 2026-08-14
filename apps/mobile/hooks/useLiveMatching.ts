@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { attachRequestMedia, publishServiceRequest, selectWorker } from '@/services/api';
+import { AppState } from 'react-native';
+import {
+  attachRequestMedia,
+  publishServiceRequest,
+  selectWorker,
+} from '@/services/api';
 import {
   getLiveDispatchSnapshot,
   normalizeSupabaseError,
@@ -82,6 +87,17 @@ export function useLiveMatching(initialRequestId?: string) {
       }
     };
 
+    const startClock = () => {
+      if (clock) return;
+      clock = setInterval(() => setNow(Date.now()), 1000);
+    };
+    const stopClock = () => {
+      if (clock) {
+        clearInterval(clock);
+        clock = null;
+      }
+    };
+
     void refresh();
     stopRealtime = subscribeToDispatch(
       () => void refresh(),
@@ -89,13 +105,22 @@ export function useLiveMatching(initialRequestId?: string) {
       syncPoll,
     );
     syncPoll();
-    clock = setInterval(() => setNow(Date.now()), 1000);
+    startClock();
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setNow(Date.now());
+        startClock();
+      } else {
+        stopClock();
+      }
+    });
 
     return () => {
       active = false;
       stopRealtime();
       if (poll) clearInterval(poll);
-      if (clock) clearInterval(clock);
+      stopClock();
+      appState.remove();
     };
   }, [dispatchRequestId]);
 

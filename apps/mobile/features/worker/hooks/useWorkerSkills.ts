@@ -1,10 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   fetchMyWorkerSkillsAndIndustry,
   type IndustryWithSkills,
 } from '@/services/api';
 import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
+import {
+  queryKeys,
+  QUERY_STALE_TIMES,
+  toQueryData,
+} from '@/services/queryUtils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export interface WorkerSkillsSnapshot {
   industries: string;
@@ -14,6 +21,7 @@ export interface WorkerSkillsSnapshot {
 }
 
 export function useWorkerSkills() {
+  const userId = useAuthStore((s) => s.user?.id);
   const [industries, setIndustries] = useState<IndustryWithSkills[]>([]);
   const [selectedIndustryIds, setSelectedIndustryIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
@@ -23,56 +31,53 @@ export function useWorkerSkills() {
   >({});
   const [initialSnapshot, setInitialSnapshot] =
     useState<WorkerSkillsSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError('');
-    void fetchMyWorkerSkillsAndIndustry()
-      .then((res) => {
-        if (res.error) {
-          setError(res.error);
-          return;
-        }
-        setIndustries(res.data.industries);
-        const selectedIndustries = res.data.selectedIndustryIds
-          .map((industryId) =>
-            res.data.industries.find((item) => item.id === industryId),
-          )
-          .filter((item): item is IndustryWithSkills => item != null);
-        const compatible = filterWorkerSkillsForIndustries(
-          res.data.selectedSkillIds,
-          res.data.rateBySkillId,
-          res.data.industries,
-          selectedIndustries.map((item) => item.id),
-        );
-        const nextYearsExperience = res.data.yearsExperience || 3;
-        setSelectedIndustryIds(selectedIndustries.map((item) => item.id));
-        setSelectedSkillIds(compatible.skillIds);
-        setYearsExperience(nextYearsExperience);
-        setRateBySkillId(compatible.rates);
-        setInitialSnapshot({
-          industries: JSON.stringify(
-            selectedIndustries.map((item) => item.id).sort(),
-          ),
-          skills: JSON.stringify([...compatible.skillIds].sort()),
-          years: nextYearsExperience,
-          rates: JSON.stringify(Object.entries(compatible.rates).sort()),
-        });
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Unable to load skills');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+  const skillsQuery = useQuery({
+    queryKey: queryKeys.workerSkills(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchMyWorkerSkillsAndIndustry()),
+    staleTime: QUERY_STALE_TIMES.profile,
+    enabled: Boolean(userId),
+  });
+
+  useEffect(() => {
+    const res = skillsQuery.data;
+    if (!res) return;
+    setIndustries(res.industries);
+    const selectedIndustries = res.selectedIndustryIds
+      .map((industryId) =>
+        res.industries.find((item) => item.id === industryId),
+      )
+      .filter((item): item is IndustryWithSkills => item != null);
+    const compatible = filterWorkerSkillsForIndustries(
+      res.selectedSkillIds,
+      res.rateBySkillId,
+      res.industries,
+      selectedIndustries.map((item) => item.id),
+    );
+    const nextYearsExperience = res.yearsExperience || 3;
+    setSelectedIndustryIds(selectedIndustries.map((item) => item.id));
+    setSelectedSkillIds(compatible.skillIds);
+    setYearsExperience(nextYearsExperience);
+    setRateBySkillId(compatible.rates);
+    setInitialSnapshot({
+      industries: JSON.stringify(
+        selectedIndustries.map((item) => item.id).sort(),
+      ),
+      skills: JSON.stringify([...compatible.skillIds].sort()),
+      years: nextYearsExperience,
+      rates: JSON.stringify(Object.entries(compatible.rates).sort()),
+    });
+  }, [skillsQuery.data]);
+
+  const loading = skillsQuery.isLoading;
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      if (!skillsQuery.isLoading && skillsQuery.isStale) {
+        void skillsQuery.refetch();
+      }
+    }, [skillsQuery.isLoading, skillsQuery.isStale, skillsQuery.refetch]),
   );
 
   const toggleIndustry = useCallback(
@@ -108,6 +113,6 @@ export function useWorkerSkills() {
     loading,
     error,
     setError,
-    reload: load,
+    reload: () => void skillsQuery.refetch(),
   };
 }

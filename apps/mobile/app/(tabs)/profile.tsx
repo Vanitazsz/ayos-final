@@ -1,15 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { TextInput } from '@/components/inputs/TextInput';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCustomerProfile } from '@/hooks/useProfile';
 
 import {
   ChevronRight,
@@ -22,10 +19,8 @@ import {
   Languages,
   Info,
   Save,
-  CheckCircle2,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
-import { fetchCustomerProfile } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { updateMyProfile, uploadMyAvatar } from '@/services/profile';
@@ -101,28 +96,34 @@ const SETTINGS_SECTIONS = [
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const profileQuery = useCustomerProfile();
   const [profile, setProfile] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    const result = await fetchCustomerProfile();
-    if (result.error) {
-      setLoadError(result.error);
-      setProfile(null);
-      return;
-    }
-    setProfile(result.data);
-    setName(result.data.name ?? '');
-    setMobile(user?.phone ?? '');
-    setLoadError('');
-  }, [user?.phone]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (profileQuery.data) {
+      setProfile(profileQuery.data);
+      setName(profileQuery.data.name ?? '');
+      setMobile(user?.phone ?? '');
+      setLoadError('');
+    }
+    if (profileQuery.error) {
+      setProfile(null);
+      setLoadError(
+        profileQuery.error instanceof Error
+          ? profileQuery.error.message
+          : 'Unable to load profile',
+      );
+    }
+  }, [profileQuery.data, profileQuery.error, user?.phone]);
+
+  const invalidateProfile = () => {
+    void queryClient.invalidateQueries({ queryKey: ['customer', 'profile'] });
+  };
 
   const chooseAvatar = async () => {
     try {
@@ -141,6 +142,7 @@ export default function ProfileScreen() {
         ...current,
         avatarUri: updated.avatarUri,
       }));
+      invalidateProfile();
     } catch (error) {
       showAlert(
         'Profile photo',
@@ -153,7 +155,10 @@ export default function ProfileScreen() {
 
   const saveProfile = async () => {
     if (!name.trim()) {
-      showAlert('Full Name Required', 'Please enter your full name before saving.');
+      showAlert(
+        'Full Name Required',
+        'Please enter your full name before saving.',
+      );
       return;
     }
     try {
@@ -171,6 +176,7 @@ export default function ProfileScreen() {
         name: updated.displayName,
         profileComplete: updated.profileComplete,
       }));
+      invalidateProfile();
       showAlert(
         'Profile Saved Successfully!',
         'Your profile details have been saved. You can now freely navigate to all app pages.',
@@ -178,7 +184,9 @@ export default function ProfileScreen() {
     } catch (error) {
       showAlert(
         'Profile Update Failed',
-        error instanceof Error ? error.message : 'Unable to update profile details',
+        error instanceof Error
+          ? error.message
+          : 'Unable to update profile details',
       );
     } finally {
       setIsSaving(false);
@@ -244,7 +252,9 @@ export default function ProfileScreen() {
                   contentFit="cover"
                 />
               </TouchableOpacity>
-              <Text style={theme.typography.h3}>{profile.name || 'New Customer'}</Text>
+              <Text style={theme.typography.h3}>
+                {profile.name || 'New Customer'}
+              </Text>
               <Text
                 style={[
                   theme.typography.body2,
@@ -291,7 +301,14 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
                 <Text style={styles.guidanceText}>
-                  Welcome! Please enter your Full Name and Mobile Number below, then tap the highlighted <Text style={{ fontWeight: '800', color: theme.colors.primary }}>SAVE PROFILE DETAILS</Text> button first before navigating to other pages.
+                  Welcome! Please enter your Full Name and Mobile Number below,
+                  then tap the highlighted{' '}
+                  <Text
+                    style={{ fontWeight: '800', color: theme.colors.primary }}
+                  >
+                    SAVE PROFILE DETAILS
+                  </Text>{' '}
+                  button first before navigating to other pages.
                 </Text>
               </View>
             )}
@@ -299,7 +316,12 @@ export default function ProfileScreen() {
             {/* Complete Profile Card with Highlighted Save Button */}
             {!profile.profileComplete && (
               <View style={styles.editCardHighlight}>
-                <Text style={[theme.typography.h4, { marginBottom: theme.spacing.sm }]}>
+                <Text
+                  style={[
+                    theme.typography.h4,
+                    { marginBottom: theme.spacing.sm },
+                  ]}
+                >
                   Complete Your Profile Details
                 </Text>
 
@@ -311,7 +333,9 @@ export default function ProfileScreen() {
                   style={styles.inputStyle}
                 />
 
-                <Text style={[styles.fieldLabel, { marginTop: theme.spacing.sm }]}>
+                <Text
+                  style={[styles.fieldLabel, { marginTop: theme.spacing.sm }]}
+                >
                   MOBILE NUMBER (+63...) *
                 </Text>
                 <TextInput
@@ -374,7 +398,9 @@ export default function ProfileScreen() {
                         </Text>
                         {!profile.profileComplete && (
                           <View style={styles.badgeSaveFirst}>
-                            <Text style={styles.badgeSaveFirstText}>Save First</Text>
+                            <Text style={styles.badgeSaveFirstText}>
+                              Save First
+                            </Text>
                           </View>
                         )}
                         <ChevronRight

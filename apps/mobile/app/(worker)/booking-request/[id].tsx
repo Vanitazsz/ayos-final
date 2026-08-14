@@ -1,9 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import {View,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Image,} from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import {
   ChevronLeft,
   MapPin,
@@ -44,12 +40,10 @@ import {
   confirmWorkerArrival,
   declineAssignedBooking,
   departForJob,
-  fetchBookingDetail,
   markJobInProgress,
   prepareJob,
   reportBookingParticipant,
   startJob,
-  subscribeToTable,
 } from '@/services/api';
 import {
   startEnRouteLocationPublisher,
@@ -60,7 +54,6 @@ import { useBookingTracking } from '@/hooks/useBookingTracking';
 import { resolveWorkerEarningsAmount } from '@/utils/bookingPayment';
 import type { WorkerBooking } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
-
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   hired: { label: 'Pending', variant: 'warning' },
@@ -80,8 +73,8 @@ const viewStatus = (status: string) =>
         : status === 'SERVICE_STARTED' || status === 'IN_PROGRESS'
           ? 'in_progress'
           : status === 'PENDING_CONFIRMATION'
-          ? 'pending_review'
-          : status.toLowerCase();
+            ? 'pending_review'
+            : status.toLowerCase();
 
 export default function BookingRequestScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -115,131 +108,113 @@ export default function BookingRequestScreen() {
   const [backendStatus, setBackendStatus] = useState('PENDING');
   const [duration, setDuration] = useState('Not recorded');
   const [routeDetails, setRouteDetails] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('UNCONFIRMED');
-  const [commissionRatePercent, setCommissionRatePercent] = useState<number | null>(null);
+  const [commissionRatePercent, setCommissionRatePercent] = useState<
+    number | null
+  >(null);
   const [commissionAmount, setCommissionAmount] = useState<number | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
-  const [locationPublisherError, setLocationPublisherError] = useState<string | null>(null);
+  const [locationPublisherError, setLocationPublisherError] = useState<
+    string | null
+  >(null);
 
   const setStoreStatus = useWorkerBookingStore((s) => s.setStatus);
-  const { liveLocation, tracking } = useBookingTracking(booking.id);
+  const { liveLocation, tracking, trackingIsLoading } = useBookingTracking(
+    booking.id,
+  );
+  const bookingRow = tracking?.booking;
 
   useEffect(() => {
-    if (!id) return;
-    const load = () =>
-      void fetchBookingDetail(id)
-        .then((result) => {
-          setIsLoading(false);
-          if (result.error) {
-            console.error(
-              '[booking-detail] fetchBookingDetail failed:',
-              result.error,
-            );
-            return;
-          }
-          const row = result.data;
-          if (!row?.id) return;
-          const request = row.service_requests;
-          const payment = Array.isArray(row.payments)
-            ? row.payments[0]
-            : row.payments;
-          setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
-          const storedRate = Number(payment?.commission_rate);
-          setCommissionRatePercent(
-            Number.isFinite(storedRate)
-              ? storedRate <= 1
-                ? storedRate * 100
-                : storedRate
-              : null,
-          );
-          const storedCommission = Number(payment?.commission_amount);
-          setCommissionAmount(Number.isFinite(storedCommission) ? storedCommission : null);
-          const earningsAmount = resolveWorkerEarningsAmount(
-            row.agreed_service_amount,
-            payment,
-          );
-          const address = Array.isArray(request?.addresses)
-            ? request.addresses[0]
-            : request?.addresses;
-          const workerProf = Array.isArray(row.worker_profiles)
-            ? row.worker_profiles[0]
-            : row.worker_profiles;
-          const status = viewStatus(row.status);
-          if (row.accepted_at && row.completed_at) {
-            const minutes = Math.max(
-              0,
-              Math.round(
-                (new Date(row.completed_at).getTime() -
-                  new Date(row.accepted_at).getTime()) /
-                  60000,
-              ),
-            );
-            setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
-          }
-          setBackendStatus(row.status);
-          setRouteDetails({
-            startLat: row.worker_start_lat ?? workerProf?.latitude,
-            startLng: row.worker_start_lng ?? workerProf?.longitude,
-            destinationLat: address?.latitude,
-            destinationLng: address?.longitude,
-            address: [address?.line1, address?.barangay, address?.city]
-              .filter(Boolean)
-              .join(', '),
-          });
-          setBooking({
-            id: row.id,
-            customerName: row.user_profiles?.display_name ?? '',
-            customerAvatar: row.user_profiles?.avatar_path ?? '',
-            service: request?.service_categories?.name ?? '',
-            date: new Date(request?.scheduled_at).toLocaleDateString(),
-            time: new Date(request?.scheduled_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-            address: [address?.line1, address?.barangay, address?.city]
-              .filter(Boolean)
-              .join(', '),
-            price:
-              earningsAmount == null
-                ? 'Price pending'
-                : `₱${earningsAmount.toLocaleString()}`,
-            status,
-            distance: '',
-            lat: Number(address?.latitude ?? 0),
-            lng: Number(address?.longitude ?? 0),
-            hourlyRate: earningsAmount ?? 0,
-          });
-          setJob({
-            id: request?.id,
-            service: request?.service_categories?.name ?? '',
-            customerName: row.user_profiles?.display_name ?? '',
-            customerAvatar: row.user_profiles?.avatar_path ?? '',
-            urgency:
-              new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
-                ? 'urgent'
-                : 'normal',
-            description: request?.description ?? '',
-            location: [address?.line1, address?.barangay, address?.city]
-              .filter(Boolean)
-              .join(', '),
-            imageUrl: null,
-          });
-          setStoreStatus(row.id, status as any);
-        })
-        .catch((e) => {
-          console.error('[booking-detail] load failed:', e);
-          setIsLoading(false);
-        });
-    load();
-    let unsub = () => {};
-    try {
-      unsub = subscribeToTable('bookings', load, `id=eq.${id}`, undefined, ['INSERT', 'UPDATE']);
-    } catch (e) {
-      console.warn('[booking-detail] realtime subscribe failed:', e);
+    if (!bookingRow?.id) return;
+    const request = bookingRow.service_requests;
+    const payment = Array.isArray(bookingRow.payments)
+      ? bookingRow.payments[0]
+      : bookingRow.payments;
+    setPaymentStatus(payment?.status ?? 'UNCONFIRMED');
+    const storedRate = Number(payment?.commission_rate);
+    setCommissionRatePercent(
+      Number.isFinite(storedRate)
+        ? storedRate <= 1
+          ? storedRate * 100
+          : storedRate
+        : null,
+    );
+    const storedCommission = Number(payment?.commission_amount);
+    setCommissionAmount(
+      Number.isFinite(storedCommission) ? storedCommission : null,
+    );
+    const earningsAmount = resolveWorkerEarningsAmount(
+      bookingRow.agreed_service_amount,
+      payment,
+    );
+    const address = Array.isArray(request?.addresses)
+      ? request.addresses[0]
+      : request?.addresses;
+    const workerProf = Array.isArray(bookingRow.worker_profiles)
+      ? bookingRow.worker_profiles[0]
+      : bookingRow.worker_profiles;
+    const status = viewStatus(bookingRow.status);
+    if (bookingRow.accepted_at && bookingRow.completed_at) {
+      const minutes = Math.max(
+        0,
+        Math.round(
+          (new Date(bookingRow.completed_at).getTime() -
+            new Date(bookingRow.accepted_at).getTime()) /
+            60000,
+        ),
+      );
+      setDuration(`${Math.floor(minutes / 60)}h ${minutes % 60}m`);
     }
-    return unsub;
-  }, [id, setStoreStatus]);
+    setBackendStatus(bookingRow.status);
+    setRouteDetails({
+      startLat: bookingRow.worker_start_lat ?? workerProf?.latitude,
+      startLng: bookingRow.worker_start_lng ?? workerProf?.longitude,
+      destinationLat: address?.latitude,
+      destinationLng: address?.longitude,
+      address: [address?.line1, address?.barangay, address?.city]
+        .filter(Boolean)
+        .join(', '),
+    });
+    setBooking({
+      id: bookingRow.id,
+      customerName: bookingRow.user_profiles?.display_name ?? '',
+      customerAvatar: bookingRow.user_profiles?.avatar_path ?? '',
+      service: request?.service_categories?.name ?? '',
+      date: new Date(request?.scheduled_at).toLocaleDateString(),
+      time: new Date(request?.scheduled_at).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      address: [address?.line1, address?.barangay, address?.city]
+        .filter(Boolean)
+        .join(', '),
+      price:
+        earningsAmount == null
+          ? 'Price pending'
+          : `₱${earningsAmount.toLocaleString()}`,
+      status,
+      distance: '',
+      lat: Number(address?.latitude ?? 0),
+      lng: Number(address?.longitude ?? 0),
+      hourlyRate: earningsAmount ?? 0,
+    });
+    setJob({
+      id: request?.id,
+      service: request?.service_categories?.name ?? '',
+      customerName: bookingRow.user_profiles?.display_name ?? '',
+      customerAvatar: bookingRow.user_profiles?.avatar_path ?? '',
+      urgency:
+        new Date(request?.scheduled_at).getTime() - Date.now() < 86400000
+          ? 'urgent'
+          : 'normal',
+      description: request?.description ?? '',
+      location: [address?.line1, address?.barangay, address?.city]
+        .filter(Boolean)
+        .join(', '),
+      imageUrl: null,
+    });
+    setStoreStatus(bookingRow.id, status as any);
+  }, [bookingRow, setStoreStatus]);
 
   const beginLocationPublisher = useCallback((bookingId: string) => {
     setLocationPublisherError(null);
@@ -303,10 +278,19 @@ export default function BookingRequestScreen() {
       if (current === 'ACCEPTED' || current === 'WORKER_PREPARING') {
         await departForJob(booking.id).catch(() => null);
       }
-      if (['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(current)) {
+      if (
+        ['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(current)
+      ) {
         await arriveAtJob(booking.id).catch(() => null);
       }
-      if (['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE', 'WORKER_ARRIVED'].includes(current)) {
+      if (
+        [
+          'ACCEPTED',
+          'WORKER_PREPARING',
+          'WORKER_EN_ROUTE',
+          'WORKER_ARRIVED',
+        ].includes(current)
+      ) {
         await startJob(booking.id).catch(() => null);
       }
       await markJobInProgress(booking.id).catch(() => null);
@@ -345,7 +329,8 @@ export default function BookingRequestScreen() {
         if (proximity.error || !proximity.data) {
           showAlert(
             'Arrival denied',
-            proximity.error || 'The server could not validate your arrival location.',
+            proximity.error ||
+              'The server could not validate your arrival location.',
             [
               {
                 text: 'Continue Anyways',
@@ -359,9 +344,7 @@ export default function BookingRequestScreen() {
           return;
         }
         withinProximity = proximity.data.within_proximity === true;
-        if (
-          !proximity.data.within_proximity
-        ) {
+        if (!proximity.data.within_proximity) {
           showAlert(
             'Outside Arrival Radius',
             proximity.data.message ||
@@ -410,7 +393,6 @@ export default function BookingRequestScreen() {
     }
   };
 
-
   const handleComplete = () => {
     setShowCompleteModal(true);
   };
@@ -421,7 +403,9 @@ export default function BookingRequestScreen() {
     setBooking((b) => ({ ...b, status: 'pending_review' }));
   };
 
-  const handleConfirmCash = async (method: 'CASH' | 'ONLINE_SIMULATED' = 'CASH') => {
+  const handleConfirmCash = async (
+    method: 'CASH' | 'ONLINE_SIMULATED' = 'CASH',
+  ) => {
     try {
       if (method === 'CASH') {
         try {
@@ -435,7 +419,7 @@ export default function BookingRequestScreen() {
       showAlert(
         'Payment & Commission Recorded',
         `Payment method: ${method === 'ONLINE_SIMULATED' ? 'Online Payment (Simulated)' : 'Cash'}\n` +
-        'The server-calculated platform commission deduction has been successfully applied to your wallet.',
+          'The server-calculated platform commission deduction has been successfully applied to your wallet.',
       );
     } catch (error: any) {
       const message =
@@ -481,11 +465,7 @@ export default function BookingRequestScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={goBack}
-          hitSlop={12}
-        >
+        <Pressable style={styles.backButton} onPress={goBack} hitSlop={12}>
           <ChevronLeft size={24} color={Colors.textPrimary} />
         </Pressable>
         <AppText variant="h4" weight="bold" color={Colors.textPrimary}>
@@ -494,7 +474,7 @@ export default function BookingRequestScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {isLoading ? (
+      {trackingIsLoading ? (
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
         >
@@ -633,13 +613,16 @@ export default function BookingRequestScreen() {
           {isActive &&
             routeDetails &&
             routeDetails.destinationLat != null &&
-            routeDetails.destinationLng != null && (() => {
+            routeDetails.destinationLng != null &&
+            (() => {
               const destLat = Number(routeDetails.destinationLat);
               const destLng = Number(routeDetails.destinationLng);
               const fallbackWorkerLat = destLat + 0.012;
               const fallbackWorkerLng = destLng + 0.012;
               const latestUpdate = tracking?.updates?.[0];
-              const workerProf = Array.isArray(tracking?.booking?.worker_profiles)
+              const workerProf = Array.isArray(
+                tracking?.booking?.worker_profiles,
+              )
                 ? tracking.booking.worker_profiles[0]
                 : tracking?.booking?.worker_profiles;
 
@@ -668,16 +651,24 @@ export default function BookingRequestScreen() {
               const isEnRoute = backendStatus === 'WORKER_EN_ROUTE';
 
               const workerCurrentLat = isArrivedOrLater
-                ? (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat)
-                : (isEnRoute && liveLocation?.latitude != null
-                    ? Number(liveLocation.latitude)
-                    : (latestUpdate ? Number(latestUpdate.latitude) : workerStartLat));
+                ? latestUpdate
+                  ? Number(latestUpdate.latitude)
+                  : workerStartLat
+                : isEnRoute && liveLocation?.latitude != null
+                  ? Number(liveLocation.latitude)
+                  : latestUpdate
+                    ? Number(latestUpdate.latitude)
+                    : workerStartLat;
 
               const workerCurrentLng = isArrivedOrLater
-                ? (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng)
-                : (isEnRoute && liveLocation?.longitude != null
-                    ? Number(liveLocation.longitude)
-                    : (latestUpdate ? Number(latestUpdate.longitude) : workerStartLng));
+                ? latestUpdate
+                  ? Number(latestUpdate.longitude)
+                  : workerStartLng
+                : isEnRoute && liveLocation?.longitude != null
+                  ? Number(liveLocation.longitude)
+                  : latestUpdate
+                    ? Number(latestUpdate.longitude)
+                    : workerStartLng;
 
               return (
                 <View style={{ gap: 12 }}>
@@ -735,18 +726,17 @@ export default function BookingRequestScreen() {
                       })
                       .catch((err: any) => {
                         const msg = err?.message ?? err?.code ?? String(err);
-                        if (msg.includes('Insufficient wallet balance') || msg.includes('INSUFFICIENT_WALLET_BALANCE')) {
-                          showAlert(
-                            'Insufficient Wallet Balance',
-                            msg,
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Go to Wallet',
-                                onPress: () => router.push('/(worker)/wallet'),
-                              },
-                            ],
-                          );
+                        if (
+                          msg.includes('Insufficient wallet balance') ||
+                          msg.includes('INSUFFICIENT_WALLET_BALANCE')
+                        ) {
+                          showAlert('Insufficient Wallet Balance', msg, [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Go to Wallet',
+                              onPress: () => router.push('/(worker)/wallet'),
+                            },
+                          ]);
                         } else {
                           showAlert('Accept failed', msg);
                         }
@@ -790,7 +780,11 @@ export default function BookingRequestScreen() {
             <View style={{ gap: 12 }}>
               {locationPublisherError && (
                 <View style={styles.locationErrorCard}>
-                  <AppText variant="bodySm" weight="semiBold" color={Colors.error}>
+                  <AppText
+                    variant="bodySm"
+                    weight="semiBold"
+                    color={Colors.error}
+                  >
                     Route sharing unavailable
                   </AppText>
                   <AppText variant="caption" color={Colors.textSecondary}>

@@ -108,6 +108,87 @@ describe('fetchWorkerBookings', () => {
   });
 });
 
+describe('fetchWorkerBookingById', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mocks.getUser.mockResolvedValue({
+      data: { user: { id: 'worker-id' } },
+      error: null,
+    });
+  });
+
+  const singleQuery = (result: unknown) => {
+    const builder = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(),
+    };
+    builder.select.mockReturnValue(builder);
+    builder.eq.mockReturnValue(builder);
+    builder.maybeSingle.mockResolvedValue(result);
+    return builder;
+  };
+
+  it('loads a single booking by id without scanning the list', async () => {
+    const bookingQuery = singleQuery({
+      data: {
+        id: 'booking-id',
+        service_request_id: 'request-id',
+        status: 'COMPLETED',
+        created_at: '2026-07-28T00:00:00.000Z',
+        agreed_service_amount: 2500,
+        service_requests: {
+          scheduled_at: '2026-07-29T01:00:00.000Z',
+          addresses: {
+            line1: '456 Main Street',
+            barangay: 'Central',
+            city: 'Manila',
+          },
+          service_categories: { name: 'Electrical Repair' },
+        },
+        user_profiles: {
+          display_name: 'Test Customer',
+          avatar_path: null,
+        },
+      },
+      error: null,
+    });
+    mocks.from.mockReturnValue(bookingQuery);
+    const { fetchWorkerBookingById } = await import('./api');
+
+    const result = await fetchWorkerBookingById('booking-id');
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        id: 'booking-id',
+        requestId: 'request-id',
+        customerName: 'Test Customer',
+        service: 'Electrical Repair',
+        address: '456 Main Street, Central, Manila',
+        price: '₱2,500.00',
+        status: 'completed',
+      }),
+    );
+    expect(bookingQuery.eq).toHaveBeenCalledWith('id', 'booking-id');
+    expect(bookingQuery.eq).toHaveBeenCalledWith(
+      'worker_account_id',
+      'worker-id',
+    );
+  });
+
+  it('returns null instead of an empty array when no booking exists', async () => {
+    mocks.from.mockReturnValue(singleQuery({ data: null, error: null }));
+    const { fetchWorkerBookingById } = await import('./api');
+
+    const result = await fetchWorkerBookingById('missing-booking');
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toBeNull();
+  });
+});
+
 describe('selectWorker', () => {
   beforeEach(() => {
     vi.resetModules();

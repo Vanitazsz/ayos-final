@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchWalletTransactions,
   fetchWorkerBookings,
@@ -16,85 +17,103 @@ import {
   type DispatchOffer,
   type WorkerLiveStatus,
 } from '@/services/liveDispatch';
-import { getMyWalletAccountId } from '@/services/wallet';
 import { useWorkerPresence } from '@/context/WorkerPresenceContext';
+import {
+  queryKeys,
+  QUERY_STALE_TIMES,
+  toQueryData,
+} from '@/services/queryUtils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export function useWorkerDashboard() {
-  const [workerProfile, setWorkerProfile] = useState<WorkerProfile | null>(null);
-  const [workerBookings, setWorkerBookings] = useState<WorkerBooking[]>([]);
-  const [earnings, setEarnings] = useState(0);
+  const userId = useAuthStore((s) => s.user?.id);
+  const queryClient = useQueryClient();
   const [dispatchOffers, setDispatchOffers] = useState<DispatchOffer[]>([]);
-  const { state: presenceState, message: presenceMessage } = useWorkerPresence();
+  const { state: presenceState, message: presenceMessage } =
+    useWorkerPresence();
   const ready = presenceState !== 'starting';
   const [liveStatus, setLiveStatus] = useState<WorkerLiveStatus | null>(null);
   const [refreshingLocation, setRefreshingLocation] = useState(false);
 
+  const profileQuery = useQuery({
+    queryKey: queryKeys.workerProfile(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchWorkerProfile()),
+    staleTime: QUERY_STALE_TIMES.profile,
+    enabled: Boolean(userId),
+  });
+  const bookingsQuery = useQuery({
+    queryKey: queryKeys.workerBookings(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchWorkerBookings()),
+    staleTime: QUERY_STALE_TIMES.list,
+    enabled: Boolean(userId),
+  });
+  const transactionsQuery = useQuery({
+    queryKey: queryKeys.walletTransactions(userId ?? 'anonymous'),
+    queryFn: async () => toQueryData(await fetchWalletTransactions()),
+    staleTime: QUERY_STALE_TIMES.list,
+    enabled: Boolean(userId),
+  });
+
+  const workerProfile = profileQuery.data ?? null;
+  const workerBookings = bookingsQuery.data ?? [];
+  const transactions = transactionsQuery.data ?? [];
+
+  const earnings = useMemo(() => {
+    const completedBookingSum = (workerBookings ?? [])
+      .filter((row) => row.status === 'completed')
+      .reduce(
+        (sum, row) => sum + Number(row.price.replace(/[^0-9.]/g, '') || 0),
+        0,
+      );
+    const walletTxSum = (transactions ?? [])
+      .filter((row) => row.credit && row.status === 'completed')
+      .reduce(
+        (sum, row) => sum + Number(row.amount.replace(/[^0-9.]/g, '') || 0),
+        0,
+      );
+    const profileEarnings = workerProfile?.earnings
+      ? Number(workerProfile.earnings.replace(/[^0-9.]/g, '') || 0)
+      : 0;
+    const validWalletTxSum = walletTxSum < 1000000000 ? walletTxSum : 0;
+    return profileEarnings || completedBookingSum || validWalletTxSum;
+  }, [workerProfile, workerBookings, transactions]);
+
   useEffect(() => {
-    const load = () =>
-      void Promise.all([
-        fetchWorkerProfile(),
-        fetchWorkerBookings(),
-        fetchWalletTransactions(),
-      ])
-        .then(([profile, bookings, transactions]) => {
-          if (!profile.error) setWorkerProfile(profile.data);
-          setWorkerBookings(bookings.data);
-          const completedBookingSum = (bookings.data ?? [])
-            .filter((row) => row.status === 'completed')
-            .reduce(
-              (sum, row) =>
-                sum + Number(row.price.replace(/[^0-9.]/g, '') || 0),
-              0,
-            );
-          const walletTxSum = (transactions.data ?? [])
-            .filter((row) => row.credit && row.status === 'completed')
-            .reduce(
-              (sum, row) =>
-                sum + Number(row.amount.replace(/[^0-9.]/g, '') || 0),
-              0,
-            );
-          const profileEarnings = profile.data?.earnings
-            ? Number(profile.data.earnings.replace(/[^0-9.]/g, '') || 0)
-            : 0;
-          const validWalletTxSum = walletTxSum < 1000000000 ? walletTxSum : 0;
-          setEarnings(
-            profileEarnings || completedBookingSum || validWalletTxSum,
-          );
-        })
-        .catch((e) => console.warn('[worker-dashboard] load failed:', e));
-    load();
-    let stops: (() => void)[] = [];
-    void (async () => {
-      const accountId = await getMyWalletAccountId();
-      if (!accountId) return;
-      stops = [
-        subscribeToTable(
-          'bookings',
-          load,
-          `worker_account_id=eq.${accountId}`,
-          undefined,
-          ['INSERT', 'UPDATE'],
-        ),
-        subscribeToTable(
-          'service_requests',
-          load,
-          `selected_worker_id=eq.${accountId}`,
-          undefined,
-          ['INSERT', 'UPDATE'],
-        ),
-        subscribeToTable(
-          'wallet_transactions',
-          load,
-          `wallet_account_id=eq.${accountId}`,
-          undefined,
-          ['INSERT', 'UPDATE'],
-        ),
-      ];
-    })();
-    return () => {
-      stops.forEach((stop) => stop());
-    };
-  }, []);
+    if (!userId) return;
+    const stops = [
+      subscribeToTable(
+        'bookings',
+        () =>
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.workerBookings(userId),
+          }),
+        `worker_account_id=eq.${userId}`,
+        undefined,
+        ['INSERT', 'UPDATE'],
+      ),
+      subscribeToTable(
+        'service_requests',
+        () =>
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.workerBookings(userId),
+          }),
+        `selected_worker_id=eq.${userId}`,
+        undefined,
+        ['INSERT', 'UPDATE'],
+      ),
+      subscribeToTable(
+        'wallet_transactions',
+        () =>
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.walletTransactions(userId),
+          }),
+        `wallet_account_id=eq.${userId}`,
+        undefined,
+        ['INSERT', 'UPDATE'],
+      ),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, [userId, queryClient]);
 
   useEffect(() => {
     let active = true;

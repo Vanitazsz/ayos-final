@@ -86,27 +86,14 @@ export function useConversationChat(conversationId: string | null) {
 
   useEffect(() => {
     if (!conversationId) return;
-    let fallback: ReturnType<typeof setInterval> | null = null;
-    const syncFallback = (status: string) => {
-      if (status === 'SUBSCRIBED') {
-        if (fallback) clearInterval(fallback);
-        fallback = null;
-      } else if (
-        ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status) &&
-        !fallback
-      ) {
-        fallback = setInterval(() => void refresh(), 15000);
-      }
-    };
     const stops = [
       subscribeToTable(
         'messages',
         () => void refresh(),
         `conversation_id=eq.${conversationId}`,
-        syncFallback,
+        undefined,
         ['INSERT'],
       ),
-      subscribeToTable('message_translations', () => void refresh(), undefined, undefined, ['INSERT', 'UPDATE']),
       subscribeToTable(
         'conversations',
         () => void refresh(),
@@ -120,12 +107,11 @@ export function useConversationChat(conversationId: string | null) {
         config: { private: true },
       })
       .on('broadcast', { event: '*' }, () => void refresh())
-      .subscribe(syncFallback);
+      .subscribe();
     stops.push(() => {
       void supabase.removeChannel(broadcastChannel);
     });
     return () => {
-      if (fallback) clearInterval(fallback);
       stops.forEach((stop) => stop());
     };
   }, [conversationId, refresh]);

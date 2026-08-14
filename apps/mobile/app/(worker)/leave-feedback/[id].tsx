@@ -22,10 +22,7 @@ import {
   MessageSquare,
   ThumbsUp,
 } from 'lucide-react-native';
-import {
-  fetchWorkerBookings,
-  type WorkerBooking,
-} from '@/services/api';
+import { fetchWorkerBookingById, type WorkerBooking } from '@/services/api';
 import {
   submitWorkerFeedback,
   getWorkerFeedback,
@@ -53,10 +50,9 @@ export default function WorkerLeaveFeedbackScreen() {
     let isMounted = true;
     void (async () => {
       try {
-        const result = await fetchWorkerBookings();
-        const found = (result.data ?? []).find((b) => b.id === bookingId);
-        if (isMounted && found) {
-          setBooking(found);
+        const result = await fetchWorkerBookingById(bookingId);
+        if (isMounted && result.data) {
+          setBooking(result.data);
         }
         const existing = await getWorkerFeedback(bookingId);
         if (isMounted && existing) {
@@ -107,7 +103,8 @@ export default function WorkerLeaveFeedbackScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.replace('/(worker)/bookings?filter=Completed'),
+            onPress: () =>
+              router.replace('/(worker)/bookings?filter=Completed'),
           },
         ],
       );
@@ -167,7 +164,9 @@ export default function WorkerLeaveFeedbackScreen() {
                   <Star
                     key={star}
                     color={
-                      star <= rating ? theme.colors.warning : theme.colors.border
+                      star <= rating
+                        ? theme.colors.warning
+                        : theme.colors.border
                     }
                     size={28}
                     fill={star <= rating ? theme.colors.warning : 'transparent'}
@@ -226,9 +225,7 @@ export default function WorkerLeaveFeedbackScreen() {
                   <Text style={styles.metaKey}>
                     Date: {booking?.date ?? 'Recently completed'}
                   </Text>
-                  <Text style={styles.metaValue}>
-                    {booking?.price ?? ''}
-                  </Text>
+                  <Text style={styles.metaValue}>{booking?.price ?? ''}</Text>
                 </View>
               </View>
 
@@ -256,9 +253,7 @@ export default function WorkerLeaveFeedbackScreen() {
                         }
                         size={38}
                         fill={
-                          star <= rating
-                            ? theme.colors.warning
-                            : 'transparent'
+                          star <= rating ? theme.colors.warning : 'transparent'
                         }
                       />
                     </TouchableOpacity>
