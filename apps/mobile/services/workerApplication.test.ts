@@ -67,8 +67,8 @@ describe('submitWorkerApplication', () => {
       frontId: 'file:///front-id.jpg',
       backId: 'file:///back-id.jpg',
       identityData: {
-        phone: '09171234567',
-        contactPhone: '09181234567',
+        phone: '09179998888',
+        contactPhone: '09189997777',
       },
     };
 
