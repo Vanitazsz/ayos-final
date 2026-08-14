@@ -156,3 +156,44 @@
 ### Fix round commit hash
 
 - `446c0e3e8624219884cfb3fcfb4319991884920a`
+
+## Fix round 2
+
+### Findings addressed
+
+1. Updated `tests/mobile-e2e/worker-industry-taxonomy.spec.ts` so the worker signup fixture no longer returns the duplicate-email shape. The E2E now stubs a new-signup response with a non-empty `identities` array and `session: null`, preserving the existing `/otp?email=phone.worker%40example.test` assertion and the deterministic follow-up navigation to `/register-worker?submitted=true`.
+
+### Fix verification commands
+
+1. Exact command:
+
+   ```bash
+   pnpm --dir apps/mobile test -- workerApplication.test.ts
+   ```
+
+   Result: passed.
+
+   Summary:
+
+   ```text
+   Test Files  34 passed (34)
+   Tests  174 passed (174)
+   ```
+
+2. Exact command:
+
+   ```bash
+   pnpm --dir apps/mobile typecheck
+   ```
+
+   Result: passed.
+
+   Summary:
+
+   ```text
+   $ tsc --noEmit
+   ```
+
+### Fix round 2 commit hash
+
+- Exact follow-up SHA is returned in the task handoff response so the committed report does not mutate it.
