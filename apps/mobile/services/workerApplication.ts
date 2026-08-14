@@ -149,9 +149,15 @@ export type WorkerDocumentResubmitProgress =
 
 /**
  * Removes a submitted identity document while the worker verification is still actionable.
+ * The file is deleted through the Storage API first (direct SQL deletion of
+ * storage.objects is blocked by Supabase), then the path is unlinked in the RPC.
  */
 export async function removeWorkerVerificationDocument(p_document_path: string) {
   try {
+    const { error: removeError } = await supabase.storage
+      .from('verification-documents')
+      .remove([p_document_path]);
+    if (removeError) throw removeError;
     const { data, error } = await supabase.rpc(
       'remove_worker_verification_document',
       { p_document_path },

@@ -39,8 +39,8 @@ select is(
 );
 select is(
   (select count(*) from storage.objects where bucket_id='verification-documents' and name='94000000-0000-0000-0000-000000000042/front.jpg'),
-  0::bigint,
-  'the storage object is deleted with the path'
+  1::bigint,
+  'the RPC leaves the storage object for the client to delete via the Storage API'
 );
 
 -- Removal while PENDING
