@@ -40,10 +40,12 @@ import {
   confirmWorkerArrival,
   declineAssignedBooking,
   departForJob,
+  fetchBookingDetail,
   markJobInProgress,
   prepareJob,
   reportBookingParticipant,
   startJob,
+  subscribeToTable,
 } from '@/services/api';
 import {
   startEnRouteLocationPublisher,
@@ -79,6 +81,7 @@ const viewStatus = (status: string) =>
 export default function BookingRequestScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const goBack = useGoBack('/(worker)/bookings');
+  const [isLoading, setIsLoading] = useState(true);
   const [job, setJob] = useState<any>({
     id,
     service: '',
