@@ -105,7 +105,6 @@ async function useCustomerFixture(
           avatar_path: null,
           verification_status: verificationStatus,
           subdivision_id: null,
-          preferred_locale: 'en',
         },
         default_address: null,
         email_verified: true,

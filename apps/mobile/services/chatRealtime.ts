@@ -1,9 +1,6 @@
 export interface ConversationMessage {
   id: string;
   text: string;
-  originalText: string;
-  translatedText: string | null;
-  isTranslated: boolean;
   sender: 'self' | 'other';
   createdAt: string;
   timestamp: string;
@@ -17,9 +14,6 @@ export function createOptimisticMessage(
   return {
     id: `optimistic:${now.getTime()}`,
     text,
-    originalText: text,
-    translatedText: null,
-    isTranslated: false,
     sender: 'self',
     createdAt: now.toISOString(),
     timestamp: now.toLocaleTimeString([], {

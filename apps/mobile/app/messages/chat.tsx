@@ -11,7 +11,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import {
   ArrowLeft,
-  Languages,
   MapPin,
   Paperclip,
   RotateCcw,
@@ -32,7 +31,6 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [showOriginal, setShowOriginal] = useState<Set<string>>(new Set());
   const scrollRef = useRef<ScrollView>(null);
   const unavailableHandled = useRef(false);
   const rawBookingId = Array.isArray(searchParams.id)
@@ -176,7 +174,6 @@ export default function ChatScreen() {
           </View>
         ) : (
           messages.map((row) => {
-            const original = showOriginal.has(row.id);
             const ownMessage = row.sender === 'self';
             return (
               <View
@@ -193,48 +190,14 @@ export default function ChatScreen() {
                     ownMessage && { color: theme.colors.surface },
                   ]}
                 >
-                  {original ? row.originalText : row.text}
+                  {row.text}
                 </Text>
-                {row.isTranslated && (
-                  <TouchableOpacity
-                    accessibilityLabel={
-                      original ? 'Show translation' : 'Show original'
-                    }
-                    style={styles.translationToggle}
-                    onPress={() =>
-                      setShowOriginal((current) => {
-                        const next = new Set(current);
-                        if (next.has(row.id)) next.delete(row.id);
-                        else next.add(row.id);
-                        return next;
-                      })
-                    }
-                  >
-                    <Languages
-                      size={12}
-                      color={
-                        ownMessage
-                          ? theme.colors.surface
-                          : theme.colors.primary
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.translationLabel,
-                        ownMessage && { color: theme.colors.surface },
-                      ]}
-                    >
-                      {original ? 'Show translation' : 'Show original'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
                 <Text
                   style={[
                     styles.messageTime,
                     ownMessage && { color: theme.colors.borderLight },
                   ]}
                 >
-                  {row.isTranslated ? '🌐 ' : ''}
                   {row.timestamp}
                 </Text>
               </View>

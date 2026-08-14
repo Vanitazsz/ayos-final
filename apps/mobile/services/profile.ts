@@ -21,7 +21,6 @@ export interface CustomerProfile extends ParticipantProfile {
   defaultAddress: Record<string, unknown> | null;
   subdivisionId: string | null;
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected';
-  preferredLocale: 'en' | 'fil';
 }
 
 export interface WorkerProfileView extends ParticipantProfile {
@@ -35,7 +34,6 @@ export interface WorkerProfileView extends ParticipantProfile {
   bio: string | null;
   serviceArea: string | null;
   subdivisionId: string | null;
-  preferredLocale: 'en' | 'fil';
 }
 
 export interface AdminProfile extends ParticipantProfile {
@@ -169,7 +167,6 @@ export async function getMyProfile(): Promise<
         typeof result.profile.subdivision_id === 'string'
           ? result.profile.subdivision_id
           : null,
-      preferredLocale: result.profile.preferred_locale === 'fil' ? 'fil' : 'en',
     };
   return {
     ...common,
@@ -186,7 +183,6 @@ export async function getMyProfile(): Promise<
       ? (result.profile
           .verification_status as CustomerProfile['verificationStatus'])
       : 'unverified',
-    preferredLocale: result.profile.preferred_locale === 'fil' ? 'fil' : 'en',
   };
 }
 

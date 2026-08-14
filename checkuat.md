@@ -174,7 +174,7 @@ No.	Module	Scenario	Status	Comments
 4	Live Tracking	Verify the ETA on the map -> arrival estimate displayed		
 
 UAT#16: Messaging (Homeowner)
-Objective: To verify that a homeowner can exchange messages, translate between English and Filipino, and share images and location in chat.
+Objective: To verify that a homeowner can exchange messages and share images and location in chat.
 Preconditions: Signed in as a homeowner. A conversation with the worker exists (available after matching).
 No.	Module	Scenario	Status	Comments
 1	Messaging	Tap the Messages tab -> conversation list opens with the worker conversation		
@@ -182,10 +182,8 @@ No.	Module	Scenario	Status	Comments
 3	Messaging	Enter a message in the message field -> text appears		
 4	Messaging	Tap Send -> message appears in the thread		
 5	Messaging	Worker replies -> reply appears in the thread		
-6	Messaging	Tap Show translation on a message -> translated message appears with an indicator and the original is preserved		
-7	Messaging	Tap Show original -> original message displayed again		
-8	Messaging	Tap the attachment option and choose an image -> image appears in the thread		
-9	Messaging	Tap the location share option and share the current location -> shared location appears in the thread		
+6	Messaging	Tap the attachment option and choose an image -> image appears in the thread
+7	Messaging	Tap the location share option and share the current location -> shared location appears in the thread
 
 UAT#17: Payment (Homeowner)
 Objective: To verify that a homeowner can pay a completed booking by cash or simulated GCash.
@@ -245,9 +243,6 @@ No.	Module	Scenario	Status	Comments
 9	Profile & Settings	Confirm the address location -> location confirmed		
 10	Profile & Settings	Tap Save Address -> address appears in the saved addresses list		
 11	Profile & Settings	Set the address as default -> marked as default		
-12	Profile & Settings	Open Message Language -> language options shown (English / Filipino)		
-13	Profile & Settings	Select Filipino and tap Save language -> confirmation appears		
-14	Profile & Settings	Select English and tap Save language -> confirmation appears		
 
 UAT#22: Support & Legal (Homeowner)
 Objective: To verify that the Help Center and Privacy Policy pages open and display published content.

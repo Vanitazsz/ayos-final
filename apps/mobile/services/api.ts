@@ -7,7 +7,6 @@ export * from './bookings';
 export * from './catalog';
 export * from './customerProfiles';
 export * from './geocoding';
-export * from './localization';
 export * from './messaging';
 export * from './notifications';
 export * from './payments';

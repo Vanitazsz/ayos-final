@@ -7,7 +7,8 @@ import {
 describe('chat realtime message reconciliation', () => {
   it('creates an optimistic self message with a stable timestamp', () => {
     const now = new Date('2026-07-28T08:00:00.000Z');
-    expect(createOptimisticMessage('Hello', now)).toEqual(
+    const message = createOptimisticMessage('Hello', now);
+    expect(message).toEqual(
       expect.objectContaining({
         id: `optimistic:${now.getTime()}`,
         text: 'Hello',
@@ -16,6 +17,9 @@ describe('chat realtime message reconciliation', () => {
         optimistic: true,
       }),
     );
+    expect(message).not.toHaveProperty('originalText');
+    expect(message).not.toHaveProperty('translatedText');
+    expect(message).not.toHaveProperty('isTranslated');
   });
 
   it('deduplicates realtime reloads and preserves chronological order', () => {

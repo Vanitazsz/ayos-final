@@ -111,17 +111,6 @@ export const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginTop: 4,
   },
-  translationToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-  },
-  translationLabel: {
-    fontSize: 11,
-    color: theme.colors.primary,
-    fontWeight: '600',
-  },
   errorContainer: {
     alignItems: 'center',
     gap: theme.spacing.xs,

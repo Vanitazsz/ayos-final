@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
-import { SearchBar } from '@/components/SearchBar';
-import { ChevronRight, Languages, Settings } from 'lucide-react-native';
+import { Settings } from 'lucide-react-native';
 
 export default function WorkerSettingsScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
-
   return (
     <Screen
       scrollable
@@ -37,22 +33,6 @@ export default function WorkerSettingsScreen() {
           </Text>
         </View>
 
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search settings..."
-          style={styles.searchBar}
-        />
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={() => router.push('/settings/language')}
-        >
-          <Languages color={theme.colors.primary} size={22} />
-          <Text style={[theme.typography.body1, styles.settingLabel]}>
-            Message Language
-          </Text>
-          <ChevronRight color={theme.colors.textTertiary} size={20} />
-        </TouchableOpacity>
       </View>
     </Screen>
   );
@@ -70,14 +50,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoCard: { alignItems: 'center', padding: theme.spacing.lg },
-  searchBar: { marginVertical: theme.spacing.md },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surface,
-    ...theme.shadows.sm,
-  },
-  settingLabel: { flex: 1, marginLeft: theme.spacing.md },
 });
