@@ -3,6 +3,7 @@ export {
   arriveAtJob,
   attachBookingProof,
   cancelBooking,
+  cancelCustomerBooking,
   completeJob,
   confirmJobCompletion,
   confirmCustomerArrival,

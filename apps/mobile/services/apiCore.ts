@@ -17,6 +17,12 @@ import {
 import { filterWorkerSkillsForIndustries } from '@/utils/workerSkills';
 import { normalizeCommissionRatePercent } from '@/utils/commission';
 import { recordWorkerLocation as recordWorkerLocationRpc } from './bookingLocation';
+import {
+  cancelCustomerBooking,
+  cancelWorkerBooking,
+} from './bookingCancellation';
+
+export { cancelCustomerBooking } from './bookingCancellation';
 
 // The current RPC schema still requires a positive request budget. Using the
 // maximum storable value removes customer-side price filtering; select_worker
@@ -681,33 +687,7 @@ export async function confirmJobCompletion(bookingId: string) {
   return transition(bookingId, 'COMPLETED');
 }
 export async function cancelBooking(bookingId: string, reason: string) {
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .select('status')
-    .eq('id', bookingId)
-    .single();
-  if (bookingError) throw bookingError;
-
-  const stages: Record<string, string> = {
-    PENDING: 'BEFORE_ACCEPTANCE',
-    ACCEPTED: 'BEFORE_TRAVEL',
-    WORKER_PREPARING: 'BEFORE_TRAVEL',
-    WORKER_EN_ROUTE: 'EN_ROUTE',
-    WORKER_ARRIVED: 'ARRIVED',
-    SERVICE_STARTED: 'SERVICE_STARTED',
-    IN_PROGRESS: 'IN_PROGRESS',
-  };
-
-  const { data, error } = await supabase.rpc('cancel_booking', {
-    p_booking_id: bookingId,
-    p_expected_version: null,
-    p_stage: stages[booking.status] ?? 'BEFORE_ACCEPTANCE',
-    p_reason_code: 'DECLINED',
-    p_details: reason || 'Worker declined assigned booking',
-    p_policy_version: '2026-07-21',
-  });
-  if (error) throw error;
-  return { data };
+  return cancelWorkerBooking(bookingId, reason);
 }
 
 export async function declineAssignedBooking(
