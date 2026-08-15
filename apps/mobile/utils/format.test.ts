@@ -4,6 +4,7 @@ import {
   capitalizeFirst,
   etaMinutes,
   formatAddressParts,
+  getInitials,
   formatCoordinates,
   formatCountdown,
   formatElapsedTime,
@@ -112,5 +113,26 @@ describe('capitalizeFirst', () => {
   it('capitalizes the first character and keeps the rest', () => {
     expect(capitalizeFirst('completed')).toBe('Completed');
     expect(capitalizeFirst('')).toBe('');
+  });
+});
+
+describe('getInitials', () => {
+  it('combines the first letters of the first and last words', () => {
+    expect(getInitials('Juan Dela Cruz')).toBe('JC');
+    expect(getInitials('Maria Santos')).toBe('MS');
+  });
+
+  it('uses a single letter for a one-word name', () => {
+    expect(getInitials('Maria')).toBe('M');
+  });
+
+  it('uppercases the initials', () => {
+    expect(getInitials('juan dela cruz')).toBe('JC');
+  });
+
+  it('handles extra whitespace and empty values', () => {
+    expect(getInitials('  Juan   Dela   Cruz  ')).toBe('JC');
+    expect(getInitials('')).toBe('');
+    expect(getInitials('   ')).toBe('');
   });
 });

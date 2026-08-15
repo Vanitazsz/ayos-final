@@ -1,6 +1,7 @@
-import React from 'react';
-import { Image, View, StyleSheet, ImageStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, View, Text, StyleSheet, ImageStyle } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { getInitials } from '@/utils/format';
 
 interface AvatarProps {
   uri?: string;
@@ -8,6 +9,7 @@ interface AvatarProps {
   borderRadius?: number;
   style?: ImageStyle;
   fallback?: React.ReactNode;
+  name?: string;
 }
 
 export const Avatar = React.memo(function Avatar({
@@ -16,20 +18,46 @@ export const Avatar = React.memo(function Avatar({
   borderRadius,
   style,
   fallback,
+  name,
 }: AvatarProps) {
   const r = borderRadius ?? size / 2;
+  const [imageFailed, setImageFailed] = useState(false);
 
-  if (!uri) {
+  useEffect(() => {
+    setImageFailed(false);
+  }, [uri]);
+
+  if (!uri || imageFailed) {
+    const initials = name ? getInitials(name) : null;
     return (
-      <View style={[styles.fallback, { width: size, height: size, borderRadius: r }, style]}>
-        {fallback}
+      <View
+        style={[
+          styles.fallback,
+          { width: size, height: size, borderRadius: r },
+          style,
+        ]}
+      >
+        {initials ? (
+          <Text
+            style={[styles.initials, { fontSize: Math.round(size * 0.36) }]}
+          >
+            {initials}
+          </Text>
+        ) : (
+          fallback
+        )}
       </View>
     );
   }
   return (
     <Image
       source={{ uri }}
-      style={[styles.image, { width: size, height: size, borderRadius: r }, style]}
+      onError={() => setImageFailed(true)}
+      style={[
+        styles.image,
+        { width: size, height: size, borderRadius: r },
+        style,
+      ]}
     />
   );
 });
@@ -44,5 +72,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  initials: {
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });

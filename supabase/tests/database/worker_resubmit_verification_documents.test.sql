@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(27);
 
 select has_function('public','remove_worker_verification_document'::name,array['text'],'worker document removal RPC exists');
 select has_function('public','resubmit_worker_verification_documents'::name,array['text[]'],'worker document resubmission RPC exists');
@@ -16,9 +16,52 @@ values
   ('verification-documents','94000000-0000-0000-0000-000000000042/back2.jpg','94000000-0000-0000-0000-000000000042','{"mimetype":"image/jpeg","size":1024}'),
   ('verification-documents','94000000-0000-0000-0000-000000000042/extra.jpg','94000000-0000-0000-0000-000000000042','{"mimetype":"image/jpeg","size":1024}');
 
+-- Second worker: has an account and ID files on storage but no verification on file.
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+values ('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000043','authenticated','authenticated','docs-worker-2@example.test','',now(),'{}','{"role":"WORKER","name":"Docs Worker 2"}',now(),now());
+
+insert into storage.objects(bucket_id,name,owner_id,metadata)
+values
+  ('verification-documents','94000000-0000-0000-0000-000000000043/front.jpg','94000000-0000-0000-0000-000000000043','{"mimetype":"image/jpeg","size":1024}'),
+  ('verification-documents','94000000-0000-0000-0000-000000000043/back.jpg','94000000-0000-0000-0000-000000000043','{"mimetype":"image/jpeg","size":1024}');
+
 insert into public.worker_verifications(worker_id, status, identity_data, document_paths)
 values ('94000000-0000-0000-0000-000000000042','NEEDS_DOCUMENTS','{}',array['94000000-0000-0000-0000-000000000042/front.jpg','94000000-0000-0000-0000-000000000042/back.jpg','94000000-0000-0000-0000-000000000042/extra.jpg']);
 
+select set_config('request.jwt.claims','{"sub":"94000000-0000-0000-0000-000000000042","role":"authenticated","aal":"aal1"}',true);
+set local role authenticated;
+
+-- First submission: no verification on file (worker whose application never completed).
+reset role;
+select set_config('request.jwt.claims','{"sub":"94000000-0000-0000-0000-000000000043","role":"authenticated","aal":"aal1"}',true);
+set local role authenticated;
+select throws_ok(
+  $$select public.remove_worker_verification_document('94000000-0000-0000-0000-000000000043/front.jpg')$$,
+  'P0002','VERIFICATION_NOT_FOUND',
+  'removing a document with no verification on file is rejected'
+);
+select lives_ok(
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000043/front.jpg','94000000-0000-0000-0000-000000000043/back.jpg'])$$,
+  'worker creates a verification by submitting documents with no application on file'
+);
+select is(
+  (select status from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000043'),
+  'PENDING'::public.worker_approval_status,
+  'first submission starts the application as PENDING'
+);
+select is(
+  (select cardinality(document_paths) from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000043'),
+  2::bigint,
+  'first submission records both document paths'
+);
+select is(
+  (select '94000000-0000-0000-0000-000000000043/front.jpg' = any(document_paths)
+      and '94000000-0000-0000-0000-000000000043/back.jpg' = any(document_paths)
+   from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000043'),
+  true,
+  'first submission records the front/back pair'
+);
+reset role;
 select set_config('request.jwt.claims','{"sub":"94000000-0000-0000-0000-000000000042","role":"authenticated","aal":"aal1"}',true);
 set local role authenticated;
 
@@ -145,7 +188,7 @@ select is(
 );
 select is(
   (select count(*) from public.audit_logs where entity_type='worker_verification' and action='WORKER_VERIFICATION_DOCUMENTS_RESUBMITTED'),
-  2::bigint,
+  3::bigint,
   'document resubmissions are audited'
 );
 

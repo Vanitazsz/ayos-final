@@ -356,6 +356,7 @@ export default function WorkerProfileScreen() {
                 >
                   <Avatar
                     uri={workerProfile.avatarUri}
+                    name={workerProfile.name}
                     size={88}
                     style={{ marginBottom: theme.spacing.sm }}
                   />
