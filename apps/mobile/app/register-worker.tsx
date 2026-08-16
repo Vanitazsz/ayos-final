@@ -1,36 +1,42 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
-  ScrollView,
   Pressable,
-  KeyboardAvoidingView,
-  Keyboard,
-  Platform,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
+import { Screen } from '@/components/layout/Screen';
 import {
-  ChevronLeft,
+  ArrowLeft,
   ChevronRight,
   CircleCheck,
   Briefcase,
   Wrench,
   MapPin,
   User,
+  Mail,
+  Phone,
+  Lock,
   Eye,
   EyeOff,
-  Square,
   Check,
   ShieldCheck,
   Edit3,
   Building2,
   X,
-  Info,
+  AlertCircle,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
+import {
+  InfoCard,
+  InfoCardHighlight,
+  infoCardStyles,
+} from '@/components/InfoCard';
 import { AppInput } from '@/components/AppInput';
 import { AppButton } from '@/components/AppButton';
 import { AppSelect, SelectOption } from '@/components/AppSelect';
@@ -43,10 +49,6 @@ import { submitWorkerApplication } from '@/services/workerApplication';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
 import { getVerificationPendingNotice } from '@/lib/verificationStatus';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
-import {
-  getWorkerRegistrationReadiness,
-} from '@/utils/profileReadiness';
-import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
 
 import { AppDatePicker } from '@/components/AppDatePicker';
 
@@ -73,7 +75,11 @@ const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 export default function RegisterWorkerScreen() {
   const goBack = useGoBack('/(auth)/register');
-  const { submitted } = useLocalSearchParams<{ submitted?: string }>();
+  const { submitted, error, notice } = useLocalSearchParams<{
+    submitted?: string;
+    error?: string;
+    notice?: string;
+  }>();
   const verificationPendingNotice = getVerificationPendingNotice();
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -82,8 +88,30 @@ export default function RegisterWorkerScreen() {
     if (submitted === 'true') {
       setShowSuccess(true);
     }
-  }, [submitted]);
+    if (error) {
+      setSubmissionError(error);
+      setStep(1);
+    }
+    if (notice) {
+      setSubmissionStatus(notice);
+    }
+  }, [submitted, error, notice]);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (event) =>
+      setKeyboardHeight(event.endCoordinates.height),
+    );
+    const hideSub = Keyboard.addListener('keyboardDidHide', () =>
+      setKeyboardHeight(0),
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Step 1: Account for Ayos
   const [firstName, setFirstName] = useState('');
@@ -104,10 +132,8 @@ export default function RegisterWorkerScreen() {
     'employed' | 'freelance' | ''
   >('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [skillInput, setSkillInput] = useState('');
 
   // Step 3: Office Address + Contact Info
-  const [streetNumber, setStreetNumber] = useState('');
   const [street, setStreet] = useState('');
   const [district, setDistrict] = useState('');
   const [city, setCity] = useState('');
@@ -127,7 +153,6 @@ export default function RegisterWorkerScreen() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [keyboardUp, setKeyboardUp] = useState(false);
   const [industries, setIndustries] = useState<SelectOption[]>([]);
   const [skillsByIndustry, setSkillsByIndustry] = useState<
     Record<string, SelectOption[]>
@@ -138,18 +163,6 @@ export default function RegisterWorkerScreen() {
   const [submissionStatus, setSubmissionStatus] = useState('');
   const [submissionError, setSubmissionError] = useState('');
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () =>
-      setKeyboardUp(true),
-    );
-    const hideSub = Keyboard.addListener('keyboardDidHide', () =>
-      setKeyboardUp(false),
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
   const loadIndustryCatalog = useCallback(async () => {
     setCatalogLoading(true);
     setCatalogError('');
@@ -210,7 +223,6 @@ export default function RegisterWorkerScreen() {
     if (!selectedLabel || text !== selectedLabel) {
       setIndustryValue('');
       setSelectedSkills([]);
-      setSkillInput('');
     }
   };
 
@@ -275,7 +287,7 @@ export default function RegisterWorkerScreen() {
 
   const validateStep3 = () => {
     const e: Record<string, string> = {};
-    if (!street) e.street = 'Street is required';
+    if (!street) e.street = 'Complete address is required';
     if (!city) e.city = 'City is required';
     if (!region) e.region = 'Province is required';
     if (!contactPerson) e.contactPerson = 'Contact person is required';
@@ -307,26 +319,6 @@ export default function RegisterWorkerScreen() {
       setErrors({});
     } else {
       goBack();
-    }
-  };
-
-  const profileReadiness = getWorkerRegistrationReadiness({
-    firstName,
-    lastName,
-    email,
-    phone,
-    birthday,
-    industryValue,
-    selectedSkills,
-    street,
-    city,
-    region,
-  });
-
-  const handleCompleteProfile = () => {
-    if (profileReadiness.firstIncompleteStep) {
-      setStep(profileReadiness.firstIncompleteStep);
-      setErrors({});
     }
   };
 
@@ -383,7 +375,6 @@ export default function RegisterWorkerScreen() {
             skillIds: selectedSkills,
             employmentType,
             address: {
-              streetNumber,
               street,
               barangay: district,
               city,
@@ -409,6 +400,7 @@ export default function RegisterWorkerScreen() {
           params: {
             email: email.trim().toLowerCase(),
             returnTo: 'worker-registration',
+            resumeToken: result.resumeToken,
           },
         });
         return;
@@ -444,54 +436,55 @@ export default function RegisterWorkerScreen() {
   const getGenderLabel = () =>
     GENDERS.find((g) => g.value === gender)?.label || 'Not specified';
 
-  const renderProgressBar = () => (
+  const stepLabels = ['Account', 'Industry', 'Address', 'Review'];
+
+  const renderStepper = () => (
     <View style={styles.progressContainer}>
-      {[1, 2, 3, 4].map((item, index) => (
+      {[1, 2, 3, 4].map((item) => (
         <View key={item} style={styles.progressStep}>
-          <View
-            style={[
-              styles.progressDot,
-              step >= item ? styles.progressDotActive : null,
-            ]}
-          >
-            {step > item ? (
-              <CircleCheck size={16} color={Colors.white} />
-            ) : (
-              <AppText
-                variant="caption"
-                weight="bold"
-                color={step === item ? Colors.white : Colors.textTertiary}
-              >
-                {item}
-              </AppText>
-            )}
-          </View>
-          {index < 3 && (
+          <View style={styles.stepDotsRow}>
             <View
               style={[
                 styles.progressLine,
+                item === 1 ? styles.progressLineHidden : null,
+                step > item - 1 ? styles.progressLineActive : null,
+              ]}
+            />
+            <View
+              style={[
+                styles.progressDot,
+                step >= item ? styles.progressDotActive : null,
+              ]}
+            >
+              {step > item ? (
+                <CircleCheck size={16} color={Colors.white} />
+              ) : (
+                <AppText
+                  variant="caption"
+                  weight="bold"
+                  color={step === item ? Colors.white : Colors.textTertiary}
+                >
+                  {item}
+                </AppText>
+              )}
+            </View>
+            <View
+              style={[
+                styles.progressLine,
+                item === 4 ? styles.progressLineHidden : null,
                 step > item ? styles.progressLineActive : null,
               ]}
             />
-          )}
+          </View>
+          <AppText
+            variant="caption"
+            weight={step === item ? 'bold' : 'regular'}
+            color={step === item ? Colors.primary : Colors.textTertiary}
+            style={styles.stepLabel}
+          >
+            {stepLabels[item - 1]}
+          </AppText>
         </View>
-      ))}
-    </View>
-  );
-
-  const stepLabels = ['Account', 'Industry', 'Address', 'Review'];
-
-  const renderStepLabels = () => (
-    <View style={styles.stepLabelsContainer}>
-      {stepLabels.map((label, i) => (
-        <AppText
-          key={label}
-          variant="caption"
-          weight={step === i + 1 ? 'bold' : 'regular'}
-          color={step === i + 1 ? Colors.primary : Colors.textTertiary}
-        >
-          {label}
-        </AppText>
       ))}
     </View>
   );
@@ -508,23 +501,16 @@ export default function RegisterWorkerScreen() {
       <AppText
         variant="body"
         color={Colors.textSecondary}
-        style={{ marginBottom: Spacing['3'] }}
       >
         Create your worker account credentials. This will be used to sign in.
       </AppText>
 
       {/* Instruction Banner */}
-      <View style={styles.instructionBanner}>
-        <Info size={20} color={Colors.primary} style={{ marginTop: 2 }} />
-        <View style={{ flex: 1 }}>
-          <AppText variant="bodySm" weight="bold" color={Colors.primaryDark}>
-            Step 1 Instructions
-          </AppText>
-          <AppText variant="caption" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-            Fill in your account information below (First & Last Name, Email, Mobile Number starting with +63, Birthday, and Password). Unfilled or invalid fields will be <AppText variant="caption" weight="bold" color={Colors.error}>highlighted in red</AppText>.
-          </AppText>
-        </View>
-      </View>
+      <InfoCard title="Step 1 Instructions" style={styles.instructionCard}>
+        Fill in your account information below (First &amp; Last Name, Email,
+        Mobile Number starting with +63, Birthday, and Password). Unfilled or
+        invalid fields will be <InfoCardHighlight>highlighted in red</InfoCardHighlight>.
+      </InfoCard>
 
       <AppInput
         label="First Name"
@@ -532,12 +518,18 @@ export default function RegisterWorkerScreen() {
         value={firstName}
         onChangeText={setFirstName}
         error={errors.firstName}
+        leftIcon={<User size={20} color={Colors.textSecondary} />}
+        autoComplete="given-name"
+        textContentType="givenName"
       />
       <AppInput
         label="Middle Name (Optional)"
         placeholder="Enter middle name"
         value={middleName}
         onChangeText={setMiddleName}
+        leftIcon={<User size={20} color={Colors.textSecondary} />}
+        autoComplete="given-name"
+        textContentType="givenName"
       />
       <AppInput
         label="Last Name"
@@ -545,6 +537,9 @@ export default function RegisterWorkerScreen() {
         value={lastName}
         onChangeText={setLastName}
         error={errors.lastName}
+        leftIcon={<User size={20} color={Colors.textSecondary} />}
+        autoComplete="family-name"
+        textContentType="familyName"
       />
       <AppInput
         label="Email Address"
@@ -554,22 +549,29 @@ export default function RegisterWorkerScreen() {
         error={errors.email}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        textContentType="emailAddress"
+        leftIcon={<Mail size={20} color={Colors.textSecondary} />}
       />
       <AppInput
         label="Mobile Number"
         placeholder="e.g. 09171234567 or +639171234567"
-        helperText="Example: 09171234567 or +639171234567 (11 digits starting with 09)"
+        helperText="(11 digits starting with 09)"
         value={phone}
         onChangeText={setPhone}
         error={errors.phone}
         keyboardType="phone-pad"
+        autoComplete="tel"
+        textContentType="telephoneNumber"
+        leftIcon={<Phone size={20} color={Colors.textSecondary} />}
       />
       <AppDatePicker
         label="Birthday (Date of Birth)"
         value={birthday}
         onChange={(dateStr) => setBirthday(dateStr)}
         error={errors.birthday}
-        helperText="Format: MM/DD/YYYY • Must be at least 18 years old"
+        helperText="Must be at least 18 years old"
       />
       <AppSelect
         label="Gender (Optional)"
@@ -577,7 +579,6 @@ export default function RegisterWorkerScreen() {
         value={gender}
         onSelect={setGender}
         placeholder="Select gender"
-        containerStyle={{ marginBottom: Spacing['4'] }}
       />
       <AppInput
         label="Password"
@@ -586,6 +587,11 @@ export default function RegisterWorkerScreen() {
         onChangeText={setPassword}
         error={errors.password}
         secureTextEntry={!showPassword}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="new-password"
+        textContentType="newPassword"
+        leftIcon={<Lock size={20} color={Colors.textSecondary} />}
         rightIcon={
           showPassword ? (
             <EyeOff size={20} color={Colors.textTertiary} />
@@ -594,6 +600,9 @@ export default function RegisterWorkerScreen() {
           )
         }
         onRightIconPress={() => setShowPassword(!showPassword)}
+        rightIconAccessibilityLabel={
+          showPassword ? 'Hide password' : 'Show password'
+        }
       />
       <AppInput
         label="Confirm Password"
@@ -601,7 +610,23 @@ export default function RegisterWorkerScreen() {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         error={errors.confirmPassword}
-        secureTextEntry={!showPassword}
+        secureTextEntry={!showConfirmPassword}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="new-password"
+        textContentType="newPassword"
+        leftIcon={<Lock size={20} color={Colors.textSecondary} />}
+        rightIcon={
+          showConfirmPassword ? (
+            <EyeOff size={20} color={Colors.textTertiary} />
+          ) : (
+            <Eye size={20} color={Colors.textTertiary} />
+          )
+        }
+        onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
+        rightIconAccessibilityLabel={
+          showConfirmPassword ? 'Hide password' : 'Show password'
+        }
       />
       <PasswordRequirements
         password={password}
@@ -623,28 +648,26 @@ export default function RegisterWorkerScreen() {
       <AppText
         variant="body"
         color={Colors.textSecondary}
-        style={{ marginBottom: Spacing['3'] }}
       >
         Select your primary industry and the services you offer.
       </AppText>
 
       {/* Instruction Banner */}
-      <View style={styles.instructionBanner}>
-        <Info size={20} color={Colors.primary} style={{ marginTop: 2 }} />
-        <View style={{ flex: 1 }}>
-          <AppText variant="bodySm" weight="bold" color={Colors.primaryDark}>
-            Step 2 Instructions: Industry & Skills
-          </AppText>
-          <AppText variant="caption" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-            • Select <AppText variant="caption" weight="bold">1 Primary Industry</AppText> from the catalog.{'\n'}
-            • Select your <AppText variant="caption" weight="bold">Employment Type</AppText> (Company or Freelance).{'\n'}
-            • Choose at least <AppText variant="caption" weight="bold">1 skill</AppText> (recommended 1–3 skills, up to 10 max).{'\n'}
-            • Incomplete selections will be <AppText variant="caption" weight="bold" color={Colors.error}>highlighted in red</AppText>.
-          </AppText>
-        </View>
-      </View>
+      <InfoCard title="Step 2 Instructions: Industry &amp; Skills" style={styles.instructionCard}>
+        {'\u2022'} Select{' '}
+        <Text style={styles.textBold}>1 Primary Industry</Text> from the
+        catalog.{'\n'}
+        {'\u2022'} Select your{' '}
+        <Text style={styles.textBold}>Employment Type</Text> (Company or
+        Freelance).{'\n'}
+        {'\u2022'} Choose at least{' '}
+        <Text style={styles.textBold}>1 skill</Text> (recommended 1–3 skills, up
+        to 10 max).{'\n'}
+        {'\u2022'} Incomplete selections will be{' '}
+        <InfoCardHighlight>highlighted in red</InfoCardHighlight>.
+      </InfoCard>
 
-      <AppText variant="label" style={{ marginBottom: Spacing['2'] }}>
+      <AppText variant="label" style={{ marginBottom: -Spacing['2'] }}>
         Primary Industry
       </AppText>
       {industryValue && !isEditingIndustry ? (
@@ -679,7 +702,6 @@ export default function RegisterWorkerScreen() {
           onSelect={(option) => {
             if (option.value !== industryValue) {
               setSelectedSkills([]);
-              setSkillInput('');
             }
             setIndustry(option.label);
             setIndustryValue(option.value);
@@ -690,14 +712,12 @@ export default function RegisterWorkerScreen() {
           error={errors.industry}
           allowCustom={false}
           maxSuggestions={10}
-          containerStyle={{ marginBottom: Spacing['4'] }}
         />
       )}
       {catalogLoading && (
         <AppText
           variant="caption"
           color={Colors.textSecondary}
-          style={{ marginBottom: Spacing['3'] }}
         >
           Loading industries from the service catalog…
         </AppText>
@@ -711,14 +731,13 @@ export default function RegisterWorkerScreen() {
           <AppText
             variant="caption"
             color={Colors.error}
-            style={{ marginBottom: Spacing['3'] }}
           >
             {catalogError} Tap to retry.
           </AppText>
         </Pressable>
       )}
 
-      <AppText variant="label" style={{ marginBottom: Spacing['2'] }}>
+      <AppText variant="label" style={{ marginBottom: -Spacing['2'] }}>
         Employment Type
       </AppText>
       <View
@@ -726,7 +745,6 @@ export default function RegisterWorkerScreen() {
           {
             flexDirection: 'row',
             gap: Spacing['3'],
-            marginBottom: errors.employmentType ? Spacing['1'] : Spacing['4'],
           },
           errors.employmentType ? styles.employmentContainerError : null,
         ]}
@@ -789,7 +807,6 @@ export default function RegisterWorkerScreen() {
           variant="caption"
           color={Colors.error}
           weight="bold"
-          style={{ marginBottom: Spacing['4'], marginTop: Spacing['1'] }}
         >
           ⚠️ {errors.employmentType}
         </AppText>
@@ -802,7 +819,7 @@ export default function RegisterWorkerScreen() {
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: Spacing['2'],
+              marginBottom: -Spacing['2'],
             }}
           >
             <AppText variant="label">Skills / Services</AppText>
@@ -814,36 +831,33 @@ export default function RegisterWorkerScreen() {
               Selected: {selectedSkills.length} (Recommended: 1–3 skills)
             </AppText>
           </View>
-          <AppAutocomplete
-            value={skillInput}
-            onChangeText={setSkillInput}
-            options={availableSkills}
-            placeholder="Type or select skills"
-            error={errors.skills}
-            multiSelect
-            selectedValues={selectedSkills}
-            onToggle={toggleSkill}
-            allowCustom={false}
-            containerStyle={{ marginBottom: Spacing['3'] }}
-          />
-          {selectedSkills.length > 0 && (
-            <View style={styles.chipGrid}>
-              {selectedSkills.map((sv) => {
-                const match = availableSkills.find((s) => s.value === sv);
-                if (!match) return null;
-                return (
-                  <Chip
-                    key={sv}
-                    label={match.label}
-                    selected
-                    onPress={() => toggleSkill(sv)}
-                    rightIcon={<X size={14} color={Colors.white} />}
-                    size="sm"
-                  />
-                );
-              })}
-            </View>
+          {catalogLoading && (
+            <AppText variant="caption" color={Colors.textSecondary}>
+              Loading available skills…
+            </AppText>
           )}
+          <View style={styles.chipGrid}>
+            {availableSkills.map((skill) => {
+              const isSelected = selectedSkills.includes(skill.value);
+              return (
+                <Chip
+                  key={skill.value}
+                  label={skill.label}
+                  selected={isSelected}
+                  onPress={() => toggleSkill(skill.value)}
+                  rightIcon={
+                    isSelected ? <X size={14} color={Colors.white} /> : undefined
+                  }
+                  size="sm"
+                />
+              );
+            })}
+          </View>
+          {errors.skills ? (
+            <AppText variant="caption" color={Colors.error} weight="bold">
+              ⚠️ {errors.skills}
+            </AppText>
+          ) : null}
         </>
       ) : (
         <View style={styles.emptyState}>
@@ -872,55 +886,40 @@ export default function RegisterWorkerScreen() {
       <AppText
         variant="body"
         color={Colors.textSecondary}
-        style={{ marginBottom: Spacing['3'] }}
       >
         Where is your office or primary service location? Also provide a backup
         contact.
       </AppText>
 
       {/* Instruction Banner */}
-      <View style={styles.instructionBanner}>
-        <Info size={20} color={Colors.primary} style={{ marginTop: 2 }} />
-        <View style={{ flex: 1 }}>
-          <AppText variant="bodySm" weight="bold" color={Colors.primaryDark}>
-            Step 3 Instructions: Address & Verification
-          </AppText>
-          <AppText variant="caption" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-            • Enter your primary office address (Street, City, Province).{'\n'}
-            • Provide an emergency Contact Person's name and valid phone (+63...).{'\n'}
-            • Select a valid Government ID and upload clear photos of both Front & Back.{'\n'}
-            • Missing details or photo uploads will be <AppText variant="caption" weight="bold" color={Colors.error}>highlighted in red</AppText>.
-          </AppText>
-        </View>
-      </View>
+      <InfoCard title="Step 3 Instructions: Address &amp; Verification" style={styles.instructionCard}>
+        {'\u2022'} Enter your primary office address (Street, City,
+        Province).{'\n'}
+        {'\u2022'} Provide an emergency Contact Person&apos;s name and valid
+        phone (+63...).{'\n'}
+        {'\u2022'} Select a valid Government ID and upload clear photos of both
+        Front &amp; Back.{'\n'}
+        {'\u2022'} Missing details or photo uploads will be{' '}
+        <InfoCardHighlight>highlighted in red</InfoCardHighlight>.
+      </InfoCard>
 
-      <AppText
-        variant="h4"
-        weight="bold"
-        style={{ marginBottom: Spacing['3'] }}
-      >
-        Office Address
-      </AppText>
-
-      <View style={{ flexDirection: 'row', gap: Spacing['3'] }}>
-        <AppInput
-          label="House/Unit No."
-          value={streetNumber}
-          onChangeText={setStreetNumber}
-          containerStyle={{ flex: 1 }}
-        />
-        <AppInput
-          label="Street"
-          value={street}
-          onChangeText={setStreet}
-          error={errors.street}
-          containerStyle={{ flex: 2 }}
-        />
-      </View>
-      <AppInput label="Barangay" value={district} onChangeText={setDistrict} />
+      <AppInput
+        label="Complete Address"
+        placeholder="e.g. 123 Rizal St."
+        value={street}
+        onChangeText={setStreet}
+        error={errors.street}
+      />
+      <AppInput
+        label="Barangay"
+        placeholder="e.g. Barangay San Lorenzo"
+        value={district}
+        onChangeText={setDistrict}
+      />
       <View style={{ flexDirection: 'row', gap: Spacing['3'] }}>
         <AppInput
           label="City / Municipality"
+          placeholder="e.g. Makati"
           value={city}
           onChangeText={setCity}
           error={errors.city}
@@ -928,6 +927,7 @@ export default function RegisterWorkerScreen() {
         />
         <AppInput
           label="Province"
+          placeholder="e.g. Metro Manila"
           value={region}
           onChangeText={setRegion}
           error={errors.region}
@@ -936,6 +936,7 @@ export default function RegisterWorkerScreen() {
       </View>
       <AppInput
         label="ZIP Code"
+        placeholder="e.g. 1200"
         value={postalCode}
         onChangeText={setPostalCode}
         keyboardType="number-pad"
@@ -943,16 +944,10 @@ export default function RegisterWorkerScreen() {
 
       <View style={styles.divider} />
 
-      <ProfileReadinessBanner
-        complete={profileReadiness.complete}
-        missing={profileReadiness.missing}
-        onCompleteProfile={handleCompleteProfile}
-      />
-
       <AppText
         variant="h4"
         weight="bold"
-        style={{ marginBottom: Spacing['3'] }}
+        style={{ marginBottom: -Spacing['2'] }}
       >
         Contact Information
       </AppText>
@@ -963,15 +958,19 @@ export default function RegisterWorkerScreen() {
         value={contactPerson}
         onChangeText={setContactPerson}
         error={errors.contactPerson}
+        leftIcon={<User size={20} color={Colors.textSecondary} />}
       />
       <AppInput
         label="Contact Person Phone"
         placeholder="e.g. 09171234567 or +639171234567"
-        helperText="Example: 09171234567 or +639171234567"
+        helperText="(11 digits starting with 09)"
         value={contactPhone}
         onChangeText={setContactPhone}
         error={errors.contactPhone}
         keyboardType="phone-pad"
+        autoComplete="tel"
+        textContentType="telephoneNumber"
+        leftIcon={<Phone size={20} color={Colors.textSecondary} />}
       />
 
       <View style={styles.divider} />
@@ -979,7 +978,7 @@ export default function RegisterWorkerScreen() {
       <AppText
         variant="h4"
         weight="bold"
-        style={{ marginBottom: Spacing['3'] }}
+        style={{ marginBottom: -Spacing['2'] }}
       >
         Identity Verification
       </AppText>
@@ -990,19 +989,16 @@ export default function RegisterWorkerScreen() {
         value={idType}
         onSelect={setIdType}
         error={errors.idType}
-        containerStyle={{ marginBottom: Spacing['4'] }}
       />
       <ImageUploadCard
         label="Upload Front of ID"
         onImageSelected={setFrontId}
         error={errors.frontId}
-        containerStyle={{ marginBottom: Spacing['4'] }}
       />
       <ImageUploadCard
         label="Upload Back of ID"
         onImageSelected={setBackId}
         error={errors.backId}
-        containerStyle={{ marginBottom: Spacing['4'] }}
       />
 
       <View style={styles.privacyNotice}>
@@ -1033,24 +1029,18 @@ export default function RegisterWorkerScreen() {
       <AppText
         variant="body"
         color={Colors.textSecondary}
-        style={{ marginBottom: Spacing['3'] }}
       >
         Please review your information before submitting.
       </AppText>
 
       {/* Instruction Banner */}
-      <View style={styles.instructionBanner}>
-        <Info size={20} color={Colors.primary} style={{ marginTop: 2 }} />
-        <View style={{ flex: 1 }}>
-          <AppText variant="bodySm" weight="bold" color={Colors.primaryDark}>
-            Step 4 Instructions: Review & Submit
-          </AppText>
-          <AppText variant="caption" color={Colors.textSecondary} style={{ marginTop: 2 }}>
-            • Carefully review all your submitted details above.{'\n'}
-            • You <AppText variant="caption" weight="bold">MUST check all 3 confirmation checkboxes</AppText> below before submitting your application. Unchecked boxes will be <AppText variant="caption" weight="bold" color={Colors.error}>highlighted in red</AppText>.
-          </AppText>
-        </View>
-      </View>
+      <InfoCard title="Step 4 Instructions: Review &amp; Submit" style={styles.instructionCard}>
+        {'\u2022'} Carefully review all your submitted details above.{'\n'}
+        {'\u2022'} You{' '}
+        <Text style={styles.textBold}>MUST check all 3 confirmation
+        checkboxes</Text> below before submitting your application. Unchecked
+        boxes will be <InfoCardHighlight>highlighted in red</InfoCardHighlight>.
+      </InfoCard>
 
       {/* Account Section */}
       <View style={styles.reviewCard}>
@@ -1173,7 +1163,7 @@ export default function RegisterWorkerScreen() {
             weight="medium"
             style={{ textAlign: 'right', flex: 1 }}
           >
-            {[streetNumber, street, district, city, region]
+            {[street, district, city, region]
               .filter(Boolean)
               .join(', ')}
             {postalCode ? ` ${postalCode}` : ''}
@@ -1225,12 +1215,22 @@ export default function RegisterWorkerScreen() {
         <Pressable
           style={styles.checkboxContainer}
           onPress={() => setInfoAccurate(!infoAccurate)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: infoAccurate }}
+          aria-checked={infoAccurate}
+          accessibilityLabel="Confirm information is accurate"
         >
-          {infoAccurate ? (
-            <Check size={24} color={Colors.primary} />
-          ) : (
-            <Square size={24} color={errors.consent ? Colors.error : Colors.textTertiary} />
-          )}
+          <View
+            style={[
+              styles.checkbox,
+              infoAccurate && styles.checkboxChecked,
+              errors.consent && !infoAccurate && styles.checkboxError,
+            ]}
+          >
+            {infoAccurate && (
+              <Check color="#ffffff" size={14} strokeWidth={3} />
+            )}
+          </View>
           <AppText
             variant="bodySm"
             color={Colors.textPrimary}
@@ -1242,12 +1242,22 @@ export default function RegisterWorkerScreen() {
         <Pressable
           style={styles.checkboxContainer}
           onPress={() => setAgreePrivacy(!agreePrivacy)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreePrivacy }}
+          aria-checked={agreePrivacy}
+          accessibilityLabel="Agree to the Privacy Policy"
         >
-          {agreePrivacy ? (
-            <Check size={24} color={Colors.primary} />
-          ) : (
-            <Square size={24} color={errors.consent ? Colors.error : Colors.textTertiary} />
-          )}
+          <View
+            style={[
+              styles.checkbox,
+              agreePrivacy && styles.checkboxChecked,
+              errors.consent && !agreePrivacy && styles.checkboxError,
+            ]}
+          >
+            {agreePrivacy && (
+              <Check color="#ffffff" size={14} strokeWidth={3} />
+            )}
+          </View>
           <AppText
             variant="bodySm"
             color={Colors.textPrimary}
@@ -1268,12 +1278,22 @@ export default function RegisterWorkerScreen() {
         <Pressable
           style={styles.checkboxContainer}
           onPress={() => setAgreeTerms(!agreeTerms)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreeTerms }}
+          aria-checked={agreeTerms}
+          accessibilityLabel="Agree to the Terms of Service"
         >
-          {agreeTerms ? (
-            <Check size={24} color={Colors.primary} />
-          ) : (
-            <Square size={24} color={errors.consent ? Colors.error : Colors.textTertiary} />
-          )}
+          <View
+            style={[
+              styles.checkbox,
+              agreeTerms && styles.checkboxChecked,
+              errors.consent && !agreeTerms && styles.checkboxError,
+            ]}
+          >
+            {agreeTerms && (
+              <Check color="#ffffff" size={14} strokeWidth={3} />
+            )}
+          </View>
           <AppText
             variant="bodySm"
             color={Colors.textPrimary}
@@ -1301,36 +1321,61 @@ export default function RegisterWorkerScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Screen
+      scrollable
+      keyboardAvoiding={false}
+      style={{ paddingBottom: 0 }}
+      contentContainerStyle={[
+        styles.screenContent,
+        { paddingBottom: Spacing['16'] + keyboardHeight },
+      ]}
     >
       <View style={styles.header}>
-        <Pressable onPress={handleBack} hitSlop={12} style={styles.backButton}>
-          <ChevronLeft size={24} color={Colors.textPrimary} />
+        <Pressable
+          onPress={handleBack}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.backButtonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ArrowLeft color={Colors.textPrimary} size={24} />
         </Pressable>
-        <AppText variant="h4" weight="bold">
+        <AppText variant="h2" align="center" style={styles.headerTitle}>
           Register as Worker
         </AppText>
-        <View style={{ width: 24 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      {renderProgressBar()}
-      {renderStepLabels()}
+      <View style={styles.content}>
+        {renderStepper()}
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={() => Keyboard.dismiss()}
-      >
+        {submissionError ? (
+          <View
+            style={[infoCardStyles.card, styles.errorCard]}
+            accessibilityRole="alert"
+          >
+            <View style={[styles.iconBadge, styles.errorBadge]}>
+              <AlertCircle size={16} color={Colors.error} />
+            </View>
+            <View style={infoCardStyles.body}>
+              <Text style={[infoCardStyles.title, styles.errorText]}>
+                Submission issue
+              </Text>
+              <Text style={[infoCardStyles.bodyText, styles.errorText]}>
+                {submissionError}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
         {step === 4 && renderStep4()}
-      </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: keyboardUp ? 10 : 30 }]}>
         {submissionStatus ? (
           <View style={[styles.submissionFeedback, styles.submissionProgress]}>
             <AppText variant="bodySm" color={Colors.primary}>
@@ -1338,19 +1383,14 @@ export default function RegisterWorkerScreen() {
             </AppText>
           </View>
         ) : null}
-        {submissionError ? (
-          <View style={[styles.submissionFeedback, styles.submissionFailure]}>
-            <AppText variant="bodySm" color={Colors.error}>
-              {submissionError}
-            </AppText>
-          </View>
-        ) : null}
+
         {step < 4 ? (
           <AppButton
             label="Next Step"
             onPress={handleNext}
             rightIcon={<ChevronRight size={20} color={Colors.white} />}
             fullWidth
+            style={styles.submitBtn}
           />
         ) : (
           <AppButton
@@ -1358,6 +1398,7 @@ export default function RegisterWorkerScreen() {
             onPress={() => void handleSubmit()}
             loading={submitting}
             fullWidth
+            style={styles.submitBtn}
           />
         )}
       </View>
@@ -1413,40 +1454,57 @@ export default function RegisterWorkerScreen() {
         type={legalModal}
         onClose={() => setLegalModal(null)}
       />
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.surfaceLight,
+  screenContent: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing['6'],
+    paddingBottom: Spacing['16'],
   },
   header: {
+    paddingVertical: Spacing['2'],
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingHorizontal: Spacing['4'],
-    paddingBottom: Spacing['4'],
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
   },
   backButton: {
-    padding: Spacing['1'],
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButtonPressed: {
+    backgroundColor: Colors.borderLight,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    color: Colors.textPrimary,
+  },
+  headerSpacer: {
+    width: 44,
+  },
+  content: {
+    flex: 1,
+    paddingTop: Spacing['4'],
   },
   progressContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing['4'],
-    backgroundColor: Colors.white,
-    paddingHorizontal: Spacing['8'],
+    alignItems: 'flex-start',
+    paddingHorizontal: Spacing['2'],
+    marginBottom: Spacing['6'],
   },
   progressStep: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  stepDotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   progressDot: {
     width: 28,
@@ -1455,50 +1513,66 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 2,
+    zIndex: 1,
   },
   progressDotActive: {
     backgroundColor: Colors.primary,
   },
   progressLine: {
-    width: 32,
+    flex: 1,
     height: 3,
     backgroundColor: Colors.border,
-    marginHorizontal: -4,
-    zIndex: 1,
   },
   progressLineActive: {
     backgroundColor: Colors.primary,
   },
-  stepLabelsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing['8'],
-    paddingBottom: Spacing['3'],
-    backgroundColor: Colors.white,
+  progressLineHidden: {
+    backgroundColor: 'transparent',
   },
-  scrollContent: {
-    paddingHorizontal: Spacing['4'],
-    paddingTop: Spacing['6'],
-    paddingBottom: Spacing['16'],
+  stepLabel: {
+    marginTop: Spacing['1'],
+    textAlign: 'center',
+  },
+  errorCard: {
+    alignItems: 'flex-start',
+    backgroundColor: Colors.surfaceCard,
+    borderColor: Colors.error,
+  },
+  iconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorBadge: {
+    backgroundColor: Colors.errorBg,
+  },
+  errorText: {
+    color: Colors.error,
+  },
+  textBold: {
+    fontWeight: '700',
   },
   formSection: {
-    gap: Spacing['2'],
+    gap: Spacing['4'],
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing['2'],
-    marginBottom: Spacing['2'],
+    marginBottom: -Spacing['2'],
   },
   sectionTitleNoMargin: {
+    marginBottom: 0,
+  },
+  instructionCard: {
     marginBottom: 0,
   },
   chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing['2'],
-    marginBottom: Spacing['4'],
   },
   employmentCard: {
     flex: 1,
@@ -1525,7 +1599,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.primary,
     backgroundColor: Colors.primary,
-    marginBottom: Spacing['4'],
   },
   emptyState: {
     alignItems: 'center',
@@ -1539,7 +1612,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: Colors.border,
-    marginVertical: Spacing['5'],
+    marginVertical: Spacing['2'],
   },
   privacyNotice: {
     flexDirection: 'row',
@@ -1548,7 +1621,6 @@ const styles = StyleSheet.create({
     padding: Spacing['4'],
     borderRadius: Radius.lg,
     gap: Spacing['3'],
-    marginTop: Spacing['5'],
     borderWidth: 1,
     borderColor: Colors.verified,
   },
@@ -1556,7 +1628,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing['4'],
-    marginBottom: Spacing['3'],
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -1575,17 +1646,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: Spacing['1'],
   },
-  instructionBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: Colors.primarySurface,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-    borderRadius: Radius.lg,
-    padding: Spacing['3'],
-    marginBottom: Spacing['4'],
-    gap: Spacing['3'],
-  },
   employmentContainerError: {
     padding: Spacing['2'],
     borderRadius: Radius.lg,
@@ -1595,8 +1655,6 @@ const styles = StyleSheet.create({
   },
   consentSection: {
     gap: Spacing['4'],
-    marginTop: Spacing['4'],
-    marginBottom: Spacing['4'],
     padding: Spacing['2'],
     borderRadius: Radius.lg,
   },
@@ -1610,18 +1668,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing['3'],
   },
-  footer: {
-    padding: Spacing['4'],
-    paddingBottom: 10,
-    backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceCard,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  checkboxError: {
+    borderColor: Colors.error,
+  },
+  submitBtn: {
+    marginTop: Spacing['10'],
   },
   submissionFeedback: {
     borderRadius: Radius.lg,
     borderWidth: 1,
     padding: Spacing['3'],
-    marginBottom: Spacing['3'],
+    marginTop: Spacing['4'],
   },
   submissionProgress: {
     backgroundColor: Colors.primarySurface,

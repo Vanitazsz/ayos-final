@@ -7,6 +7,8 @@ import {
   Platform,
   Modal,
   ViewStyle,
+  StyleProp,
+  TextStyle,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Upload, X, FileText, CheckCircle2, RefreshCw } from 'lucide-react-native';
@@ -20,6 +22,9 @@ interface ImageUploadCardProps {
   onImageSelected: (uri: string | null) => void;
   error?: string;
   containerStyle?: ViewStyle;
+  labelStyle?: StyleProp<TextStyle>;
+  existingUri?: string | null;
+  existingLabel?: string;
 }
 
 export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
@@ -28,6 +33,9 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
   onImageSelected,
   error,
   containerStyle,
+  labelStyle,
+  existingUri,
+  existingLabel = 'Current ID',
 }) => {
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -61,12 +69,16 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
             showAlert('File too large', 'Select a file up to 10 MB.');
             return;
           }
-          const uri = URL.createObjectURL(file);
-          const pdfCheck = file.type === 'application/pdf' || file.name.endsWith('.pdf');
-          setIsPdf(pdfCheck);
-          setFileName(file.name);
-          setFileUri(uri);
-          onImageSelected(uri);
+          const reader = new FileReader();
+          reader.onload = () => {
+            const uri = typeof reader.result === 'string' ? reader.result : URL.createObjectURL(file);
+            const pdfCheck = file.type === 'application/pdf' || file.name.endsWith('.pdf');
+            setIsPdf(pdfCheck);
+            setFileName(file.name);
+            setFileUri(uri);
+            onImageSelected(uri);
+          };
+          reader.readAsDataURL(file);
         };
         input.click();
       } catch (err) {
@@ -133,11 +145,15 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
         input.onchange = (e: any) => {
           const file = e.target?.files?.[0];
           if (!file) return;
-          const uri = URL.createObjectURL(file);
-          setIsPdf(false);
-          setFileName('Camera_ID_Capture.jpg');
-          setFileUri(uri);
-          onImageSelected(uri);
+          const reader = new FileReader();
+          reader.onload = () => {
+            const uri = typeof reader.result === 'string' ? reader.result : URL.createObjectURL(file);
+            setIsPdf(false);
+            setFileName('Camera_ID_Capture.jpg');
+            setFileUri(uri);
+            onImageSelected(uri);
+          };
+          reader.readAsDataURL(file);
         };
         input.click();
       } catch (err) {
@@ -213,7 +229,7 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <AppText variant="label" weight="medium" style={styles.label}>
+      <AppText variant="label" weight="medium" style={[styles.label, labelStyle]}>
         {label}
       </AppText>
 
@@ -249,37 +265,55 @@ export const ImageUploadCard: React.FC<ImageUploadCardProps> = ({
           </View>
         )
       ) : (
-        /* Options Card: Upload PDF / Photo OR Take Photo */
-        <View
-          style={[
-            styles.uploadArea,
-            { borderColor: error ? Colors.error : Colors.border },
-          ]}
-        >
-          <View style={styles.iconRow}>
-            <Pressable style={styles.actionButton} onPress={handleUploadGallery}>
-              <View style={styles.iconCircle}>
-                <Upload size={24} color={Colors.primary} />
+        <>
+          {existingUri ? (
+            <View style={styles.existingPreviewWrap}>
+              <Image
+                source={{ uri: existingUri }}
+                style={styles.existingPreview}
+                resizeMode="cover"
+              />
+              <View style={styles.existingBadge}>
+                <CheckCircle2 size={12} color={Colors.verified} />
+                <AppText variant="caption" color={Colors.verified} weight="semiBold">
+                  {existingLabel}
+                </AppText>
               </View>
-              <AppText variant="bodySm" weight="semiBold" style={styles.actionText}>
-                Upload PDF / File
-              </AppText>
-            </Pressable>
-            <View style={styles.divider} />
-            <Pressable style={styles.actionButton} onPress={handleCapture}>
-              <View style={styles.iconCircle}>
-                <Camera size={24} color={Colors.primary} />
-              </View>
-              <AppText variant="bodySm" weight="semiBold" style={styles.actionText}>
-                Take Photo
-              </AppText>
-            </Pressable>
-          </View>
+            </View>
+          ) : null}
 
-          <AppText variant="caption" color={Colors.textTertiary} style={styles.description}>
-            {description}
-          </AppText>
-        </View>
+          {/* Options Card: Upload PDF / Photo OR Take Photo */}
+          <View
+            style={[
+              styles.uploadArea,
+              { borderColor: error ? Colors.error : Colors.border },
+            ]}
+          >
+            <View style={styles.iconRow}>
+              <Pressable style={styles.actionButton} onPress={handleUploadGallery}>
+                <View style={styles.iconCircle}>
+                  <Upload size={24} color={Colors.primary} />
+                </View>
+                <AppText variant="bodySm" weight="semiBold" style={styles.actionText}>
+                  Upload PDF / File
+                </AppText>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable style={styles.actionButton} onPress={handleCapture}>
+                <View style={styles.iconCircle}>
+                  <Camera size={24} color={Colors.primary} />
+                </View>
+                <AppText variant="bodySm" weight="semiBold" style={styles.actionText}>
+                  Take Photo
+                </AppText>
+              </Pressable>
+            </View>
+
+            <AppText variant="caption" color={Colors.textTertiary} style={styles.description}>
+              {description}
+            </AppText>
+          </View>
+        </>
       )}
 
       {error && (
@@ -400,6 +434,27 @@ const styles = StyleSheet.create({
   },
   description: {
     textAlign: 'center',
+  },
+  existingPreviewWrap: {
+    position: 'relative',
+    marginBottom: Spacing['3'],
+  },
+  existingPreview: {
+    width: '100%',
+    height: 160,
+    borderRadius: Radius.lg,
+  },
+  existingBadge: {
+    position: 'absolute',
+    left: Spacing['2'],
+    bottom: Spacing['2'],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing['1'],
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: Radius.full,
+    paddingVertical: 4,
+    paddingHorizontal: Spacing['2'],
   },
   previewContainer: {
     width: '100%',

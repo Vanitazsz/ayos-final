@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, FileQuestion } from 'lucide-react-native';
+import { ArrowLeft, FileQuestion } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
 import { AppText } from '@/components/AppText';
 import { Screen } from '@/components/layout/Screen';
@@ -15,7 +15,7 @@ import {
   type ContentPageKey,
   type ContentPageViewModel,
 } from '@/services/contentPages';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Radius, Spacing, theme } from '@/constants/theme';
 
 interface PublishedContentPageProps {
   contentKey: ContentPageKey;
@@ -118,7 +118,7 @@ export function PublishedContentPage({
             hitSlop={12}
             style={styles.backButton}
           >
-            <ChevronLeft size={26} color={Colors.textPrimary} />
+            <ArrowLeft size={24} color={Colors.textPrimary} />
           </Pressable>
           <AppText variant="h3" weight="bold" style={styles.headerTitle}>
             {title}
@@ -206,6 +206,7 @@ const styles = StyleSheet.create({
     maxWidth: 840,
     alignSelf: 'center',
     flexGrow: 1,
+    paddingHorizontal: theme.layout.screenPadding,
   },
   header: {
     minHeight: 56,

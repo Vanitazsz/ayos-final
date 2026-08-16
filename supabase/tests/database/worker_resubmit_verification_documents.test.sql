@@ -1,9 +1,9 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(32);
 
 select has_function('public','remove_worker_verification_document'::name,array['text'],'worker document removal RPC exists');
-select has_function('public','resubmit_worker_verification_documents'::name,array['text[]'],'worker document resubmission RPC exists');
+select has_function('public','resubmit_worker_verification_documents'::name,array['text[]','text'],'worker document resubmission RPC exists');
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values ('00000000-0000-0000-0000-000000000000','94000000-0000-0000-0000-000000000042','authenticated','authenticated','docs-worker@example.test','',now(),'{}','{"role":"WORKER","name":"Docs Worker"}',now(),now());
@@ -41,7 +41,7 @@ select throws_ok(
   'removing a document with no verification on file is rejected'
 );
 select lives_ok(
-  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000043/front.jpg','94000000-0000-0000-0000-000000000043/back.jpg'])$$,
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000043/front.jpg','94000000-0000-0000-0000-000000000043/back.jpg'], 'philsys')$$,
   'worker creates a verification by submitting documents with no application on file'
 );
 select is(
@@ -60,6 +60,11 @@ select is(
    from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000043'),
   true,
   'first submission records the front/back pair'
+);
+select is(
+  (select identity_data->>'idType' from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000043'),
+  'philsys',
+  'first submission records the chosen ID type'
 );
 reset role;
 select set_config('request.jwt.claims','{"sub":"94000000-0000-0000-0000-000000000042","role":"authenticated","aal":"aal1"}',true);
@@ -134,7 +139,7 @@ update public.worker_verifications set status='NEEDS_DOCUMENTS' where worker_id=
 select set_config('request.jwt.claims','{"sub":"94000000-0000-0000-0000-000000000042","role":"authenticated","aal":"aal1"}',true);
 set local role authenticated;
 select lives_ok(
-  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'])$$,
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'], 'drivers_license')$$,
   'worker resubmits a fresh document pair'
 );
 select is(
@@ -154,13 +159,18 @@ select is(
   true,
   'the new document pair is recorded'
 );
+select is(
+  (select identity_data->>'idType' from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000042'),
+  'drivers_license',
+  'resubmission records the updated ID type'
+);
 select throws_ok(
-  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg'])$$,
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg'], 'philsys')$$,
   '22023','INVALID_VERIFICATION_DOCUMENT',
   'resubmission requires exactly two documents'
 );
 select throws_ok(
-  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','other-owner/x.jpg'])$$,
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','other-owner/x.jpg'], 'philsys')$$,
   '22023','INVALID_VERIFICATION_DOCUMENT',
   'resubmission rejects files the worker does not own'
 );
@@ -168,7 +178,7 @@ reset role;
 update public.worker_verifications set status='APPROVED' where worker_id='94000000-0000-0000-0000-000000000042';
 set local role authenticated;
 select throws_ok(
-  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'])$$,
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'], 'drivers_license')$$,
   '55000','VERIFICATION_CANNOT_BE_RESUBMITTED',
   'approved verification cannot be resubmitted'
 );
@@ -176,8 +186,27 @@ reset role;
 update public.worker_verifications set status='REJECTED' where worker_id='94000000-0000-0000-0000-000000000042';
 set local role authenticated;
 select lives_ok(
-  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'])$$,
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'], 'drivers_license')$$,
   'worker can resubmit documents after a rejection'
+);
+select is(
+  (select identity_data->>'idType' from public.worker_verifications where worker_id='94000000-0000-0000-0000-000000000042'),
+  'drivers_license',
+  'rejection resubmission records the updated ID type'
+);
+
+-- Invalid ID type
+select throws_ok(
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'], 'invalid_type')$$,
+  '22023','INVALID_ID_TYPE',
+  'resubmission rejects an unrecognized ID type'
+);
+
+-- Empty ID type
+select throws_ok(
+  $$select public.resubmit_worker_verification_documents(array['94000000-0000-0000-0000-000000000042/front2.jpg','94000000-0000-0000-0000-000000000042/back2.jpg'], '')$$,
+  '22023','INVALID_ID_TYPE',
+  'resubmission rejects an empty ID type'
 );
 
 -- Audit trail

@@ -61,8 +61,8 @@ export const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: {
     flexGrow: 1,
-    gap: Spacing['3'],
-    paddingBottom: theme.spacing.xxl,
+    gap: Spacing['4'],
+    paddingBottom: theme.spacing.md,
   },
 
   card: {
@@ -70,6 +70,9 @@ export const styles = StyleSheet.create({
     borderRadius: theme.radius.xl,
     padding: theme.spacing.md,
     ...theme.shadows.sm,
+  },
+  faqCard: {
+    paddingVertical: Spacing['2'],
   },
 
   // Steps / progress
@@ -128,35 +131,7 @@ export const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Alerts
-  alertCard: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.sm,
-    borderWidth: 1,
-  },
-  alertActionPressable: {
-    minHeight: TouchTarget,
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  alertActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 14,
-    borderBottomWidth: 1,
-    paddingBottom: 1,
-    alignSelf: 'flex-start',
-  },
-
   // Tips
-  tipsTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: theme.spacing.sm,
-  },
   tipsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -187,13 +162,9 @@ export const styles = StyleSheet.create({
   },
   nextStepsText: { fontWeight: '500' },
 
-  // Doc summary
-  docSummary: { flexDirection: 'row', gap: theme.spacing.sm },
-  docSummaryCard: {
-    flex: 1,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.sm,
-    alignItems: 'center',
+  // Application status card
+  applicationStatusCard: {
+    paddingVertical: theme.spacing.sm,
   },
 
   // Doc row
@@ -221,7 +192,7 @@ export const styles = StyleSheet.create({
     marginTop: 1,
   },
   docBody: { flex: 1 },
-  docRight: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
+  docRight: { alignItems: 'flex-end', gap: 6, flexShrink: 0 },
   uploadBtn: {
     width: 36,
     height: 36,
@@ -230,61 +201,15 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  removeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: theme.colors.errorBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
-  },
   docDate: { fontSize: 9 },
 
-  // Upload area
-  uploadArea: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    padding: theme.spacing.lg,
-    borderRadius: theme.radius.lg,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: `${theme.colors.primary}40`,
-    backgroundColor: theme.colors.infoBackground,
-  },
-  draftPick: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    alignSelf: 'stretch',
-    minHeight: TouchTarget,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.background,
-  },
-  draftPickFilled: { backgroundColor: theme.colors.successBackground },
-  submitBtn: { alignSelf: 'stretch', marginTop: theme.spacing.xs },
-
-  // FAQ
-  faqItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  faqQ: {
-    minHeight: TouchTarget,
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Resubmit
+  resubmitHeader: {
     gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
-  faqA: {
-    paddingBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-    lineHeight: 18,
-  },
+  submitBtn: { alignSelf: 'stretch' },
+  deleteBtn: { alignSelf: 'stretch' },
 
   // Support
   supportCard: {

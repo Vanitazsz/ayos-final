@@ -4,21 +4,26 @@ import {
   ArrowLeft,
   BadgeCheck,
   Briefcase,
-  Camera,
   CheckCircle,
-  ChevronDown,
   Clock,
   FileText,
   HelpCircle,
   RefreshCw,
   Shield,
-  Trash2,
   Upload,
 } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
+import { AppSelect } from '@/components/AppSelect';
 import { AppText } from '@/components/AppText';
 import { Badge } from '@/components/Badge';
-import { ProfileReadinessBanner } from '@/components/ProfileReadinessBanner';
+import { ImageUploadCard } from '@/components/ImageUploadCard';
+import { ToneCard } from '@/components/ToneCard';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/Accordion';
 import { Screen } from '@/components/layout/Screen';
 import { Skeleton } from '@/components/Skeleton';
 import { Colors, Spacing, theme } from '@/constants/theme';
@@ -27,6 +32,7 @@ import {
   getDocRowTone,
   getStatusLabel,
   getVerificationTone,
+  ID_TYPE_OPTIONS,
   type StatusTone,
   type VerificationDocument,
   type VerificationStep,
@@ -306,74 +312,13 @@ function StepTracker({ steps }: { steps: VerificationStep[] }) {
   );
 }
 
-function AlertCard({
-  tone,
-  title,
-  body,
-  action,
-}: {
-  tone: 'warning' | 'info';
-  title: string;
-  body: string;
-  action?: { label: string; onPress: () => void };
-}) {
-  return (
-    <View
-      style={[
-        styles.alertCard,
-        {
-          backgroundColor: toneBg[tone],
-          borderColor: `${toneFg[tone]}40`,
-        },
-      ]}
-    >
-      <AlertCircle size={14} color={toneFg[tone]} style={{ marginTop: 1, flexShrink: 0 }} />
-      <View style={{ flex: 1 }}>
-        <AppText variant="bodySm" weight="bold" color={Colors.textPrimary}>
-          {title}
-        </AppText>
-        <AppText
-          variant="caption"
-          color={Colors.textSecondary}
-          style={{ marginTop: 2, lineHeight: 18 }}
-        >
-          {body}
-        </AppText>
-        {action && (
-          <Pressable onPress={action.onPress} style={styles.alertActionPressable}>
-            <AppText
-              variant="caption"
-              weight="bold"
-              color={toneFg[tone]}
-              style={[styles.alertActionText, { borderBottomColor: toneFg[tone] }]}
-            >
-              {action.label}
-            </AppText>
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
-}
-
 function TipsCard() {
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: Colors.infoBg,
-          borderWidth: 1,
-          borderColor: `${Colors.info}40`,
-        },
-      ]}
+    <ToneCard
+      tone="info"
+      icon={<Shield size={16} color={Colors.info} />}
+      title="While you wait"
     >
-      <View style={styles.tipsTitle}>
-        <Shield size={14} color={Colors.info} />
-        <AppText variant="bodySm" weight="bold" color={Colors.textPrimary}>
-          While you wait
-        </AppText>
-      </View>
       {TIPS.map((tip, i) => (
         <View key={i} style={styles.tipsRow}>
           <View style={[styles.tipsBullet, { backgroundColor: Colors.info }]} />
@@ -382,7 +327,7 @@ function TipsCard() {
           </AppText>
         </View>
       ))}
-    </View>
+    </ToneCard>
   );
 }
 
@@ -411,42 +356,6 @@ function NextStepsCard() {
   );
 }
 
-function DocSummary({ documents }: { documents: VerificationDocument[] }) {
-  const counts = [
-    {
-      label: 'Verified',
-      count: documents.filter((d) => d.status === 'verified').length,
-      tone: 'verified' as const,
-    },
-    {
-      label: 'In Review',
-      count: documents.filter((d) => d.status === 'uploaded').length,
-      tone: 'warning' as const,
-    },
-    {
-      label: 'Issues',
-      count: documents.filter(
-        (d) => d.status === 'rejected' || d.status === 'missing',
-      ).length,
-      tone: 'error' as const,
-    },
-  ];
-  return (
-    <View style={styles.docSummary}>
-      {counts.map((s) => (
-        <View key={s.label} style={[styles.docSummaryCard, { backgroundColor: toneBg[s.tone] }]}>
-          <AppText variant="h3" weight="bold" color={toneFg[s.tone]}>
-            {s.count}
-          </AppText>
-          <AppText variant="caption" weight="bold" color={toneFg[s.tone]}>
-            {s.label}
-          </AppText>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 function DocStatusIcon({ status }: { status: VerificationDocument['status'] }) {
   if (status === 'verified') return <CheckCircle size={12} color={Colors.verified} />;
   if (status === 'uploaded') return <Clock size={12} color={Colors.warning} />;
@@ -456,10 +365,8 @@ function DocStatusIcon({ status }: { status: VerificationDocument['status'] }) {
 
 function DocRow({
   doc,
-  onRemove,
 }: {
   doc: VerificationDocument;
-  onRemove?: () => void;
 }) {
   const tone = getDocRowTone(doc.status);
   const needsAttention = doc.status === 'rejected' || doc.status === 'missing';
@@ -518,45 +425,8 @@ function DocRow({
             )}
           </View>
         )}
-        {onRemove && (
-          <Pressable style={styles.removeBtn} onPress={onRemove} hitSlop={8}>
-            <Trash2 size={13} color={Colors.error} />
-          </Pressable>
-        )}
       </View>
     </View>
-  );
-}
-
-function FaqItem({
-  q,
-  a,
-  isOpen,
-  onPress,
-}: {
-  q: string;
-  a: string;
-  isOpen: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable style={styles.faqItem} onPress={onPress}>
-      <View style={styles.faqQ}>
-        <AppText variant="bodySm" weight="semiBold" color={Colors.textPrimary} style={{ flex: 1 }}>
-          {q}
-        </AppText>
-        <ChevronDown
-          size={14}
-          color={Colors.textTertiary}
-          style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
-        />
-      </View>
-      {isOpen && (
-        <AppText variant="caption" color={Colors.textSecondary} style={styles.faqA}>
-          {a}
-        </AppText>
-      )}
-    </Pressable>
   );
 }
 
@@ -623,31 +493,33 @@ function VerificationError({
 
 export function VerificationView({ model }: { model: Controller }) {
   const {
-    router,
     handleBack,
     tab,
     setTab,
-    expandedFaq,
-    toggleFaq,
     loading,
     loadError,
     reload,
     verification,
-    profileComplete,
+    existingDocUrls,
     status,
     submitted,
     documents,
     steps,
     doneCount,
-    canEditDocs,
     canResubmit,
+    canDeleteSubmission,
     draftFront,
     draftBack,
-    busyPath,
+    setDraftFront,
+    setDraftBack,
+    draftIdType,
+    setDraftIdType,
+    idTypeError,
+    setIdTypeError,
     resubmitting,
+    deletingSubmission,
     progressMessage,
-    pickDocument,
-    confirmRemoveDocument,
+    confirmDeleteSubmission,
     submitDraft,
   } = model;
 
@@ -684,14 +556,9 @@ export function VerificationView({ model }: { model: Controller }) {
       >
         {tab === 'status' && (
           <>
-            <ProfileReadinessBanner
-              complete={profileComplete}
-              missing={profileComplete ? [] : ['saved profile details']}
-              onCompleteProfile={() => router.push('/(worker)/personal-info')}
-            />
             <StepTracker steps={steps} />
 
-            <AlertCard
+            <ToneCard
               tone="warning"
               title={status === 'REJECTED' ? 'Action Required' : 'Application Status'}
               body={
@@ -700,7 +567,7 @@ export function VerificationView({ model }: { model: Controller }) {
                   ? 'Review the administrator feedback and resubmit your documents.'
                   : 'Your submitted application is tracked here.')
               }
-              action={{ label: 'Go to Documents', onPress: () => setTab('documents') }}
+              style={styles.applicationStatusCard}
             />
 
             <TipsCard />
@@ -710,123 +577,118 @@ export function VerificationView({ model }: { model: Controller }) {
 
         {tab === 'documents' && (
           <>
-            <DocSummary documents={documents} />
-
             {documents.length > 0 && (
               <View style={styles.card}>
                 {documents.map((doc) => (
-                  <DocRow
-                    key={doc.id}
-                    doc={doc}
-                    onRemove={
-                      canEditDocs && busyPath !== doc.id
-                        ? () => confirmRemoveDocument(doc.id)
-                        : undefined
-                    }
-                  />
+                  <DocRow key={doc.id} doc={doc} />
                 ))}
               </View>
             )}
 
             {canResubmit && (
               <>
-                <View style={[styles.uploadArea, resubmitting && { opacity: 0.6 }]}>
-                  <Camera size={20} color={Colors.info} />
-                  <AppText variant="bodySm" weight="bold" color={Colors.info}>
-                    {status === 'REJECTED' ? 'Resubmit Documents' : 'Replace Documents'}
-                  </AppText>
-                  <AppText variant="caption" color={Colors.textTertiary}>
-                    JPG, PNG · Max 10MB per file
-                  </AppText>
+                <View style={resubmitting && { opacity: 0.6 }}>
+                  <View style={styles.resubmitHeader}>
+                    <AppText variant="h4" weight="bold">
+                      {status === 'REJECTED'
+                        ? 'Resubmit Documents'
+                        : 'Replace Documents'}
+                    </AppText>
+                  </View>
 
-                  <Pressable
-                    style={[styles.draftPick, draftFront && styles.draftPickFilled]}
-                    onPress={() => pickDocument('front')}
-                    disabled={resubmitting}
-                  >
-                    {draftFront ? (
-                      <AppText
-                        variant="caption"
-                        weight="bold"
-                        color={Colors.verified}
-                        numberOfLines={1}
-                        style={{ flex: 1 }}
-                      >
-                        Front ID selected
-                      </AppText>
-                    ) : (
-                      <AppText
-                        variant="caption"
-                        weight="bold"
-                        color={Colors.info}
-                        style={{ flex: 1 }}
-                      >
-                        Pick the front of your ID
-                      </AppText>
-                    )}
-                    {draftFront && <RefreshCw size={12} color={Colors.verified} />}
-                  </Pressable>
+                  <AppSelect
+                    label="ID Type"
+                    options={ID_TYPE_OPTIONS}
+                    value={draftIdType}
+                    onSelect={(value) => {
+                      setDraftIdType(value);
+                      if (idTypeError) setIdTypeError('');
+                    }}
+                    error={idTypeError}
+                    placeholder="Select your ID type"
+                    containerStyle={{ marginBottom: Spacing['4'] }}
+                  />
 
-                  <Pressable
-                    style={[styles.draftPick, draftBack && styles.draftPickFilled]}
-                    onPress={() => pickDocument('back')}
-                    disabled={resubmitting}
-                  >
-                    {draftBack ? (
-                      <AppText
-                        variant="caption"
-                        weight="bold"
-                        color={Colors.verified}
-                        numberOfLines={1}
-                        style={{ flex: 1 }}
-                      >
-                        Back ID selected
-                      </AppText>
-                    ) : (
-                      <AppText
-                        variant="caption"
-                        weight="bold"
-                        color={Colors.info}
-                        style={{ flex: 1 }}
-                      >
-                        Pick the back of your ID
-                      </AppText>
-                    )}
-                    {draftBack && <RefreshCw size={12} color={Colors.verified} />}
-                  </Pressable>
-
-                  <AppButton
-                    label={progressMessage ?? 'Submit documents'}
-                    loading={resubmitting && !progressMessage}
-                    disabled={!draftFront || !draftBack || resubmitting}
-                    fullWidth
-                    onPress={submitDraft}
-                    style={styles.submitBtn}
+                  <ImageUploadCard
+                    label="Upload Front of ID"
+                    description="JPG, PNG · Max 10MB per file"
+                    labelStyle={{ marginBottom: Spacing['4'] }}
+                    existingUri={existingDocUrls.front}
+                    existingLabel="Current front ID"
+                    onImageSelected={setDraftFront}
+                  />
+                  <ImageUploadCard
+                    label="Upload Back of ID"
+                    description="JPG, PNG · Max 10MB per file"
+                    labelStyle={{ marginBottom: Spacing['4'] }}
+                    containerStyle={{ marginTop: Spacing['4'] }}
+                    existingUri={existingDocUrls.back}
+                    existingLabel="Current back ID"
+                    onImageSelected={setDraftBack}
                   />
                 </View>
 
-                <AlertCard
+                <AppButton
+                  label={progressMessage ?? 'Submit documents'}
+                  loading={resubmitting && !progressMessage}
+                  disabled={!draftFront || !draftBack || resubmitting}
+                  fullWidth
+                  onPress={submitDraft}
+                  style={styles.submitBtn}
+                />
+
+                <ToneCard
                   tone="info"
                   title="Accepted Government IDs"
                   body="PhilSys, Passport, Driver's License, SSS, GSIS, PRC ID, Voter's ID, or Postal ID. All documents must be valid and not expired."
                 />
               </>
             )}
+
+            {canDeleteSubmission && (
+              <AppButton
+                variant="danger"
+                label={deletingSubmission ? 'Deleting…' : 'Delete submission'}
+                loading={deletingSubmission}
+                disabled={deletingSubmission}
+                fullWidth
+                onPress={confirmDeleteSubmission}
+                style={styles.deleteBtn}
+              />
+            )}
           </>
         )}
 
         {tab === 'faq' && (
           <>
-            <View style={styles.card}>
-              {FAQ_ITEMS.map((item) => (
-                <FaqItem
-                  key={item.q}
-                  q={item.q}
-                  a={item.a}
-                  isOpen={expandedFaq === item.q}
-                  onPress={() => toggleFaq(item.q)}
-                />
-              ))}
+            <View style={[styles.card, styles.faqCard]}>
+              <Accordion>
+                {FAQ_ITEMS.map((item, index) => (
+                  <AccordionItem
+                    key={item.q}
+                    id={item.q}
+                    isLast={index === FAQ_ITEMS.length - 1}
+                  >
+                    <AccordionTrigger label={item.q}>
+                      <AppText
+                        variant="bodySm"
+                        weight="semiBold"
+                        color={Colors.textPrimary}
+                      >
+                        {item.q}
+                      </AppText>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <AppText
+                        variant="caption"
+                        color={Colors.textSecondary}
+                      >
+                        {item.a}
+                      </AppText>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </View>
 
             <View style={styles.supportCard}>

@@ -1,10 +1,22 @@
 export { fetchWorkerVerification } from '@/services/api';
 export { getMyProfile } from '@/services/profile';
 export {
-  removeWorkerVerificationDocument,
+  deleteWorkerVerification,
   resubmitWorkerVerificationDocuments,
 } from '@/services/workerApplication';
 export { getBackRoute } from '@/constants/backRoutes';
+
+export const ID_TYPE_OPTIONS: { label: string; value: string }[] = [
+  { label: 'National ID (PhilSys)', value: 'philsys' },
+  { label: "Driver's License", value: 'drivers_license' },
+  { label: 'Passport', value: 'passport' },
+  { label: 'UMID', value: 'umid' },
+  { label: 'Postal ID', value: 'postal' },
+  { label: 'PRC ID', value: 'prc' },
+  { label: "Voter's ID", value: 'voters' },
+  { label: 'Senior Citizen ID', value: 'senior' },
+  { label: 'Other Government-issued ID', value: 'other' },
+];
 
 export type WorkerVerificationStatus =
   | 'PENDING'
@@ -39,7 +51,15 @@ export interface WorkerVerification {
   created_at?: string;
   document_paths?: string[] | null;
   requested_notes?: string | null;
+  identity_data?: Record<string, unknown> | null;
   [key: string]: unknown;
+}
+
+export function getSubmittedIdType(
+  verification: WorkerVerification | null,
+): string {
+  const idType = verification?.identity_data?.idType;
+  return typeof idType === 'string' ? idType : '';
 }
 
 export function getStatusLabel(status: string): string {

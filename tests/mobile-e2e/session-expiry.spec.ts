@@ -72,7 +72,7 @@ test('expired Edge Function authentication redirects to sign-in with a clear not
 
   await page.goto('/new-request/issue-summary');
 
-  await expect(page.getByText('Sign in', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('Welcome back', { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Your session expired. Please sign in again.')).toBeVisible();
   await expect(page.getByText('Authentication required')).toHaveCount(0);
 });

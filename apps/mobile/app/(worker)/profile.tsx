@@ -1,7 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Switch,
+  Modal,
+  Pressable,
+  Image,
+} from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { Avatar } from '@/components/Avatar';
+import { Badge } from '@/components/Badge';
+import { ToneCard } from '@/components/ToneCard';
 import { theme } from '@/constants/theme';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,22 +22,26 @@ import {
   Wrench,
   MapPin,
   Briefcase,
-  Wallet,
-  Clock,
+  // Wallet, // Payments section hidden
+  // Clock, // Payments section hidden
   Bell,
   HelpCircle,
   Shield,
   LogOut,
   CheckCircle,
   BadgeCheck,
-  ArrowUpFromLine,
-  PlusCircle,
-  Pencil,
+  Wallet,
+  // ArrowUpFromLine, // Payments section hidden
+  // PlusCircle, // Payments section hidden
   DollarSign,
+  Pencil,
+  Upload,
+  Trash2,
+  X,
 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
-import { getMyProfile, uploadMyAvatar } from '@/services/profile';
+import { getMyProfile, removeMyAvatar, uploadMyAvatar } from '@/services/profile';
 import { Chip } from '@/components/Chip';
 import {
   getWorkerMatchingReadiness,
@@ -35,6 +49,8 @@ import {
   type WorkerMatchingReadiness,
 } from '@/services/workerMatching';
 import { showAlert } from '@/components/AppAlert';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useNotificationsGate } from '@/hooks/useNotificationsGate';
 import { styles } from '@/styles/worker/profile.styles';
 
 const MENU_SECTIONS = [
@@ -59,37 +75,43 @@ const MENU_SECTIONS = [
         icon: MapPin,
         color: theme.colors.info,
       },
-    ],
-  },
-  {
-    title: 'Payments',
-    items: [
       {
-        id: 'payout-methods',
-        title: 'Payout Methods',
+        id: 'wallet',
+        title: 'Wallet',
         icon: Wallet,
-        color: theme.colors.secondary,
-      },
-      {
-        id: 'payout-history',
-        title: 'Payout History',
-        icon: Clock,
-        color: theme.colors.textSecondary,
-      },
-      {
-        id: 'topup-methods',
-        title: 'Top-Up Methods',
-        icon: ArrowUpFromLine,
-        color: theme.colors.info,
-      },
-      {
-        id: 'topup-history',
-        title: 'Top-Up History',
-        icon: PlusCircle,
-        color: theme.colors.success,
+        color: '#8b5cf6',
       },
     ],
   },
+  // {
+  //   title: 'Payments',
+  //   items: [
+  //     {
+  //       id: 'payout-methods',
+  //       title: 'Payout Methods',
+  //       icon: Wallet,
+  //       color: theme.colors.secondary,
+  //     },
+  //     {
+  //       id: 'payout-history',
+  //       title: 'Payout History',
+  //       icon: Clock,
+  //       color: theme.colors.textSecondary,
+  //     },
+  //     {
+  //       id: 'topup-methods',
+  //       title: 'Top-Up Methods',
+  //       icon: ArrowUpFromLine,
+  //       color: theme.colors.info,
+  //     },
+  //     {
+  //       id: 'topup-history',
+  //       title: 'Top-Up History',
+  //       icon: PlusCircle,
+  //       color: theme.colors.success,
+  //     },
+  //   ],
+  // },
   {
     title: 'Preferences',
     items: [
@@ -128,12 +150,16 @@ const MENU_SECTIONS = [
 
 export default function WorkerProfileScreen() {
   const router = useRouter();
+  const { logout } = useAuthStore();
+  const openNotifications = useNotificationsGate();
   const queryClient = useQueryClient();
   const profileQuery = useWorkerProfile();
   const [workerProfile, setWorkerProfile] = useState<any>(null);
   const [loadError, setLoadError] = useState('');
   const [matchingReadiness, setMatchingReadiness] =
     useState<WorkerMatchingReadiness | null>(null);
+  const [photoMenuVisible, setPhotoMenuVisible] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(false);
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -228,6 +254,44 @@ export default function WorkerProfileScreen() {
       );
     }
   };
+  const removeAvatar = async () => {
+    try {
+      const updated = await removeMyAvatar();
+      setWorkerProfile((current: any) => ({
+        ...current,
+        avatarUri: updated.avatarUri,
+      }));
+      void queryClient.invalidateQueries({ queryKey: ['worker', 'profile'] });
+    } catch (error) {
+      showAlert(
+        'Profile photo',
+        error instanceof Error
+          ? error.message
+          : 'Unable to remove profile photo',
+      );
+    }
+  };
+  const openPhotoMenu = () => {
+    setPhotoMenuVisible(true);
+  };
+  const closePhotoMenu = () => {
+    setPhotoMenuVisible(false);
+  };
+  const handleAvatarPress = () => {
+    if (workerProfile?.avatarUri) {
+      setPreviewVisible(true);
+      return;
+    }
+    openPhotoMenu();
+  };
+  const handleUploadPhoto = () => {
+    closePhotoMenu();
+    void chooseAvatar();
+  };
+  const handleRemovePhoto = () => {
+    closePhotoMenu();
+    void removeAvatar();
+  };
   const toggleMatching = async (value: boolean) => {
     if (!matchingReadiness) return;
     try {
@@ -278,6 +342,13 @@ export default function WorkerProfileScreen() {
       });
       return;
     }
+    if (id === 'wallet') {
+      router.push({
+        pathname: '/(worker)/wallet',
+        params: { from: 'profile' },
+      });
+      return;
+    }
     if (
       id === 'payout-methods' ||
       id === 'payout-history' ||
@@ -291,7 +362,7 @@ export default function WorkerProfileScreen() {
       return;
     }
     if (id === 'notifications') {
-      router.push('/notifications');
+      openNotifications();
       return;
     }
     if (id === 'help') {
@@ -315,7 +386,7 @@ export default function WorkerProfileScreen() {
   };
 
   const handleLogout = () => {
-    void supabase.auth.signOut().then(() => router.replace('/'));
+    void supabase.auth.signOut().then(() => logout());
   };
 
   return (
@@ -351,23 +422,74 @@ export default function WorkerProfileScreen() {
             <View style={styles.userInfo}>
               <View style={styles.avatarWrapper}>
                 <TouchableOpacity
-                  onPress={chooseAvatar}
-                  accessibilityLabel="Change profile photo"
+                  onPress={handleAvatarPress}
+                  accessibilityLabel="View profile photo"
                 >
                   <Avatar
                     uri={workerProfile.avatarUri}
                     name={workerProfile.name}
                     size={88}
-                    style={{ marginBottom: theme.spacing.sm }}
+                    style={{
+                      borderWidth: 3,
+                      borderColor: theme.colors.primary,
+                      backgroundColor: theme.colors.infoBackground,
+                      marginBottom: theme.spacing.sm,
+                    }}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.editBadge}
-                  onPress={chooseAvatar}
+                  onPress={openPhotoMenu}
                   accessibilityLabel="Edit profile photo"
                 >
-                  <Pencil size={11} color={theme.colors.surface} />
+                  <Pencil size={14} color={theme.colors.surface} />
                 </TouchableOpacity>
+                {photoMenuVisible && (
+                  <>
+                    <Pressable
+                      style={styles.photoMenuBackdrop}
+                      onPress={closePhotoMenu}
+                      accessibilityLabel="Close profile photo menu"
+                    />
+                    <View style={styles.photoMenu}>
+                      {workerProfile?.avatarUri && (
+                        <>
+                          <TouchableOpacity
+                            style={styles.photoMenuItem}
+                            onPress={handleRemovePhoto}
+                            accessibilityLabel="Remove profile picture"
+                          >
+                            <Trash2 size={18} color={theme.colors.error} />
+                            <Text
+                              style={[
+                                theme.typography.body1,
+                                { color: theme.colors.error },
+                              ]}
+                            >
+                              Remove profile picture
+                            </Text>
+                          </TouchableOpacity>
+                          <View style={styles.photoMenuDivider} />
+                        </>
+                      )}
+                      <TouchableOpacity
+                        style={styles.photoMenuItem}
+                        onPress={handleUploadPhoto}
+                        accessibilityLabel="Upload profile picture"
+                      >
+                        <Upload size={18} color={theme.colors.primary} />
+                        <Text
+                          style={[
+                            theme.typography.body1,
+                            { color: theme.colors.textPrimary },
+                          ]}
+                        >
+                          Upload profile picture
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
               </View>
               <Text style={theme.typography.h3}>{workerProfile.name}</Text>
               <Text
@@ -439,40 +561,30 @@ export default function WorkerProfileScreen() {
               </Text>
 
               {/* Service Area Setup Guidance Banner */}
-              {(!matchingReadiness?.setupComplete ||
-                !matchingReadiness?.matchable) && (
-                <TouchableOpacity
-                  style={styles.guidanceBanner}
-                  onPress={() => handleItemPress('areas')}
-                  activeOpacity={0.85}
-                >
-                  <View style={styles.guidanceBannerHeader}>
-                    <MapPin size={20} color={theme.colors.info} />
-                    <Text style={styles.guidanceBannerTitle}>
-                      📍 Setup Required to Enable Matching
-                    </Text>
-                  </View>
-                  <Text style={styles.guidanceBannerText}>
-                    To enable matching availability and start receiving service
-                    requests, please go to{' '}
-                    <Text
-                      style={{
-                        fontWeight: '700',
-                        textDecorationLine: 'underline',
-                      }}
-                    >
-                      Service Areas
-                    </Text>{' '}
-                    page under Account to set up your work location and radius.
-                  </Text>
-                  <View style={styles.guidanceBannerBtn}>
-                    <Text style={styles.guidanceBannerBtnText}>
-                      Go to Service Areas
-                    </Text>
-                    <ChevronRight size={14} color="#1E40AF" />
-                  </View>
-                </TouchableOpacity>
+              {(!matchingReadiness?.skillsReady ||
+                !matchingReadiness?.rateReady ||
+                !matchingReadiness?.serviceAreaReady) && (
+                <ToneCard
+                  tone="warning"
+                  icon={<MapPin size={16} color={theme.colors.warning} />}
+                  title="Setup Required to Enable Matching"
+                  body="To enable matching availability and start receiving service requests, please go to the Service Areas page under Account to set up your work location and radius."
+                  style={{ marginBottom: theme.spacing.md }}
+                />
               )}
+
+              {matchingReadiness?.skillsReady &&
+                matchingReadiness?.rateReady &&
+                matchingReadiness?.serviceAreaReady &&
+                matchingReadiness?.verificationStatus === 'PENDING' && (
+                  <ToneCard
+                    tone="info"
+                    icon={<Shield size={16} color={theme.colors.info} />}
+                    title="Waiting for Admin Verification"
+                    body="Your account setup is complete. You'll start receiving service requests once an administrator approves your verification."
+                    style={{ marginBottom: theme.spacing.md }}
+                  />
+                )}
 
               <View style={styles.matchingCard}>
                 <View style={styles.matchingRow}>
@@ -523,7 +635,7 @@ export default function WorkerProfileScreen() {
                         },
                       ]}
                     >
-                      ⚠️ Matching disabled: Tap here to configure Service Area &
+                      Matching disabled: Tap here to configure Service Area &
                       Radius.
                     </Text>
                   </TouchableOpacity>
@@ -659,11 +771,14 @@ export default function WorkerProfileScreen() {
                         </Text>
                         {item.id === 'areas' &&
                           !matchingReadiness?.setupComplete && (
-                            <View style={styles.badgeRequired}>
-                              <Text style={styles.badgeRequiredText}>
-                                Setup Needed
-                              </Text>
-                            </View>
+                            <Badge
+                              label="Setup Needed"
+                              variant="warning"
+                              style={{
+                                alignSelf: 'center',
+                                marginRight: theme.spacing.xs,
+                              }}
+                            />
                           )}
                         <ChevronRight
                           color={theme.colors.textTertiary}
@@ -690,6 +805,34 @@ export default function WorkerProfileScreen() {
           </>
         )}
       </View>
+
+      <Modal
+        visible={previewVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewVisible(false)}
+      >
+        <Pressable
+          style={styles.previewOverlay}
+          onPress={() => setPreviewVisible(false)}
+        >
+          {workerProfile?.avatarUri ? (
+            <Image
+              source={{ uri: workerProfile.avatarUri }}
+              style={styles.previewImage}
+              accessibilityLabel="Profile picture preview"
+            />
+          ) : null}
+          <Pressable
+            style={styles.previewClose}
+            onPress={() => setPreviewVisible(false)}
+            accessibilityLabel="Close profile picture preview"
+            hitSlop={8}
+          >
+            <X size={20} color={theme.colors.textPrimary} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }

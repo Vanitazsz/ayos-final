@@ -2,9 +2,9 @@ import { StyleSheet } from 'react-native';
 import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding, alignItems: 'center' },
+  header: { paddingVertical: theme.spacing.md, alignItems: 'center' },
   tabsContainer: { marginBottom: theme.spacing.md },
-  tabsScroll: { paddingHorizontal: theme.layout.screenPadding, gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
+  tabsScroll: { gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
   tabButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,

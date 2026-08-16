@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   CalendarDays,
   User,
-  Wallet,
   MessageSquare,
   Briefcase,
   AlertCircle,
@@ -143,7 +142,7 @@ export default function WorkerTabLayout() {
             height: TAB_BAR_HEIGHT,
             paddingBottom: Platform.OS === 'ios' ? 25 : 8,
             paddingTop: 6,
-            paddingHorizontal: theme.layout.screenPadding,
+            paddingHorizontal: 48,
             elevation: 8,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: -2 },
@@ -190,12 +189,7 @@ export default function WorkerTabLayout() {
         />
         <Tabs.Screen
           name="wallet"
-          options={{
-            title: 'Wallet',
-            tabBarIcon: ({ color }) => (
-              <Wallet size={24} color={color} strokeWidth={2} />
-            ),
-          }}
+          options={{ href: null, tabBarItemStyle: { display: 'none' } }}
         />
         <Tabs.Screen
           name="profile"

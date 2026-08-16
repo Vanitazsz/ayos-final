@@ -134,7 +134,8 @@ export default function AuthCallbackScreen() {
   const retry = async () => {
     setRetrying(true);
     try {
-      await signInWithGoogle();
+      const signedIn = await signInWithGoogle();
+      if (!signedIn) return;
     } catch (error) {
       setState({
         status: 'error',

@@ -89,6 +89,10 @@ export function workerRegistrationErrorMessage(error: unknown): string {
     return 'This worker verification can no longer be resubmitted.';
   if (/VERIFICATION_NOT_ACTIONABLE/i.test(diagnostic))
     return 'This worker verification can no longer be edited.';
+  if (/VERIFICATION_NOT_DELETABLE/i.test(diagnostic))
+    return 'This worker verification can no longer be deleted.';
+  if (/VERIFICATION_NOT_FOUND/i.test(diagnostic))
+    return 'No worker verification submission was found to delete.';
   if (/DOCUMENT_NOT_FOUND|INVALID_DOCUMENT_PATH/i.test(diagnostic))
     return 'That document is no longer part of your verification.';
   if (

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {Pressable, StyleSheet, TextInput, View} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, TriangleAlert } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Info } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppButton } from '@/components/AppButton';
 import { AppText } from '@/components/AppText';
 import { Screen } from '@/components/layout/Screen';
+import { ToneCard } from '@/components/ToneCard';
 import {
   Colors,
   Elevation,
@@ -17,24 +19,22 @@ import {
   getMyProfile,
   updateMyProfile,
 } from '@/services/profile';
-import { getBackRoute } from '@/constants/backRoutes';
-import { useGoBack } from '@/hooks/useGoBack';
+import { loadCurrentUser } from '@/services/auth';
+import { useAuthStore } from '@/store/useAuthStore';
 import { showAlert } from '@/components/AppAlert';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
-  const { from } = useLocalSearchParams<{ from?: string }>();
-  const goBack = useGoBack('/(tabs)/profile');
+  const queryClient = useQueryClient();
+  const setSessionUser = useAuthStore((state) => state.setSessionUser);
   const handleBack = () => {
-    const route = getBackRoute(from);
-    if (route) router.push(route);
-    else goBack();
+    router.replace('/(tabs)/profile');
   };
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [bio, setBio] = useState('');
   const [email, setEmail] = useState('');
+  const [profileComplete, setProfileComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -48,6 +48,7 @@ export default function PersonalInfoScreen() {
         setEmail(profile.email);
         setPhone(profile.mobile ?? '');
         setBio(profile.bio ?? '');
+        setProfileComplete(profile.profileComplete);
       } catch {
         // Account details are optional here and may be unavailable during migrations.
       } finally {
@@ -69,13 +70,24 @@ export default function PersonalInfoScreen() {
       const normalizedMobile = phone.trim().startsWith('0')
         ? `+63${phone.trim().slice(1)}`
         : phone.trim();
-      await updateMyProfile({
+      const updated = await updateMyProfile({
         displayName: name,
         mobile: normalizedMobile || null,
         location: null,
         bio: bio || null,
         complete: true,
       });
+      setProfileComplete(updated.profileComplete);
+      void queryClient.invalidateQueries({
+        queryKey: ['customer', 'profile'],
+      });
+      try {
+        const authUser = await loadCurrentUser();
+        if (authUser) setSessionUser(authUser);
+      } catch {
+        // The profile was saved; the auth store refreshes on the next
+        // session event if this optional refresh fails.
+      }
       showAlert('Saved', 'Your personal information has been updated.', [
         { text: 'OK', onPress: handleBack },
       ]);
@@ -121,6 +133,28 @@ export default function PersonalInfoScreen() {
         </AppText>
       ) : (
         <>
+          {!profileComplete && (
+            <ToneCard
+              tone="info"
+              icon={<Info size={16} color={Colors.info} />}
+              title="Important Instruction for New Accounts"
+              style={styles.instructionCard}
+            >
+              <AppText variant="caption" color={Colors.textSecondary}>
+                Welcome! Please enter your Full Name and Mobile Number below,
+                then tap the highlighted{' '}
+                <AppText
+                  variant="caption"
+                  weight="bold"
+                  color={Colors.primary}
+                >
+                  SAVE CHANGES
+                </AppText>{' '}
+                button first before navigating to other pages.
+              </AppText>
+            </ToneCard>
+          )}
+
           <View style={styles.formCard}>
             <View style={styles.inputGroup}>
               <AppText
@@ -165,44 +199,22 @@ export default function PersonalInfoScreen() {
               >
                 PHONE NUMBER *
               </AppText>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your phone number"
-                placeholderTextColor={Colors.textTertiary}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <AppText
-                  variant="caption"
-                  weight="semiBold"
-                  color={Colors.textTertiary}
-                  style={styles.inputLabel}
-                >
-                  ADDRESS
-                </AppText>
-                <View style={styles.warningBadge}>
-                  <TriangleAlert size={12} color={Colors.warning} />
-                  <AppText
-                    variant="caption"
-                    weight="semiBold"
-                    color={Colors.warning}
-                  >
-                    Not available yet
+              {profileComplete ? (
+                <View style={styles.emailDisplay}>
+                  <AppText variant="body" color={Colors.border}>
+                    {phone || '—'}
                   </AppText>
                 </View>
-              </View>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your address"
-                placeholderTextColor={Colors.textTertiary}
-                value={address}
-                onChangeText={setAddress}
-              />
+              ) : (
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. 09171234567 or +639171234567"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
+                />
+              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -251,6 +263,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing['3'],
+    paddingHorizontal: theme.layout.screenPadding,
   },
   backButton: {
     width: 40,
@@ -261,6 +274,7 @@ const styles = StyleSheet.create({
   headerSpacer: { width: 40 },
   loading: {
     marginTop: Spacing['6'],
+    paddingHorizontal: theme.layout.screenPadding,
   },
   formCard: {
     backgroundColor: Colors.white,
@@ -268,24 +282,19 @@ const styles = StyleSheet.create({
     padding: Spacing['4'],
     gap: Spacing['4'],
     marginBottom: theme.spacing.xl,
+    marginHorizontal: theme.layout.screenPadding,
     ...Elevation.sm,
+  },
+  instructionCard: {
+    marginHorizontal: theme.layout.screenPadding,
+    marginBottom: theme.spacing.xl,
   },
   inputGroup: {
     gap: Spacing['1'],
   },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['2'],
-  },
   inputLabel: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  warningBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['1'],
   },
   textInput: {
     backgroundColor: Colors.white,
@@ -314,5 +323,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     paddingTop: Spacing['2'],
+    marginHorizontal: theme.layout.screenPadding,
+    paddingBottom: theme.spacing.xl,
   },
 });

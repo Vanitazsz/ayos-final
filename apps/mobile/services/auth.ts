@@ -220,11 +220,10 @@ export async function signInWithGoogle() {
     options: { redirectTo, skipBrowserRedirect: Platform.OS !== 'web' },
   });
   if (error) throw error;
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'web') return true;
   if (!data.url) throw new Error('Google authorization URL was not returned');
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (result.type === 'cancel' || result.type === 'dismiss')
-    throw new Error('Google sign-in was cancelled');
+  if (result.type === 'cancel' || result.type === 'dismiss') return false;
   if (result.type !== 'success') throw new Error('Google sign-in failed');
   const parsed = Linking.parse(result.url);
   const code =
@@ -237,6 +236,7 @@ export async function signInWithGoogle() {
     await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) throw exchangeError;
   await invokeAuthenticatedFunction('record-auth-session', { body: {} });
+  return true;
 }
 
 export async function loadCurrentUser() {

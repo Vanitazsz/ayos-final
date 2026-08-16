@@ -9,6 +9,7 @@ interface PasswordRequirementsProps {
   password: string;
   confirmation?: string;
   showMatch?: boolean;
+  incompleteColor?: string;
 }
 
 const labels = [
@@ -22,6 +23,7 @@ export function PasswordRequirements({
   password,
   confirmation,
   showMatch = false,
+  incompleteColor = Colors.border,
 }: PasswordRequirementsProps) {
   const state = getPasswordRequirementState(password, confirmation);
   const items = showMatch
@@ -41,7 +43,7 @@ export function PasswordRequirements({
             {complete ? (
               <Check size={14} color={Colors.success} accessibilityLabel="Complete" />
             ) : (
-              <Circle size={14} color={Colors.textTertiary} accessibilityLabel="Incomplete" />
+              <Circle size={14} color={incompleteColor} accessibilityLabel="Incomplete" />
             )}
             <AppText
               variant="caption"

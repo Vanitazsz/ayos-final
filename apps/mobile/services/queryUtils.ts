@@ -14,7 +14,6 @@ export function toQueryData<T>(response: ApiResponse<T>): T {
 
 export const queryKeys = {
   catalogCategories: ['catalog', 'categories'] as const,
-  catalogProviders: ['catalog', 'providers'] as const,
   customerProfile: (userId: string) => ['customer', 'profile', userId] as const,
   customerBookings: (userId: string) =>
     ['customer', 'bookings', userId] as const,

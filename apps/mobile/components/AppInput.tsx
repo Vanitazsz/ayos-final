@@ -18,6 +18,7 @@ interface AppInputProps extends TextInputProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   onRightIconPress?: () => void;
+  rightIconAccessibilityLabel?: string;
   containerStyle?: ViewStyle;
   inputStyle?: TextStyle;
 }
@@ -30,6 +31,7 @@ export const AppInput = React.forwardRef<TextInput, AppInputProps>(function AppI
     leftIcon,
     rightIcon,
     onRightIconPress,
+    rightIconAccessibilityLabel,
     containerStyle,
     inputStyle,
     style,
@@ -64,10 +66,18 @@ export const AppInput = React.forwardRef<TextInput, AppInputProps>(function AppI
           ]}
           placeholderTextColor={Colors.textTertiary}
           accessibilityLabel={label || props.placeholder}
+          multiline={false}
+          numberOfLines={1}
           {...props}
         />
         {rightIcon && (
-          <Pressable onPress={onRightIconPress} style={styles.rightIcon} hitSlop={8}>
+          <Pressable
+            onPress={onRightIconPress}
+            style={styles.rightIcon}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={rightIconAccessibilityLabel}
+          >
             {rightIcon}
           </Pressable>
         )}

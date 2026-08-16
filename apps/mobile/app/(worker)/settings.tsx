@@ -41,11 +41,9 @@ export default function WorkerSettingsScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.layout.screenPadding,
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.layout.screenPadding,
     paddingBottom: theme.spacing.xxxl,
     justifyContent: 'center',
   },

@@ -5,7 +5,20 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding * 2 },
+  header: {
+    paddingVertical: Spacing['3'],
+    paddingHorizontal: theme.layout.screenPadding,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerSpacer: { width: 40 },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: theme.spacing.xxl },
 

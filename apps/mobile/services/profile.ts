@@ -34,6 +34,7 @@ export interface WorkerProfileView extends ParticipantProfile {
   bio: string | null;
   serviceArea: string | null;
   subdivisionId: string | null;
+  defaultAddress: Record<string, unknown> | null;
 }
 
 export interface AdminProfile extends ParticipantProfile {
@@ -167,6 +168,7 @@ export async function getMyProfile(): Promise<
         typeof result.profile.subdivision_id === 'string'
           ? result.profile.subdivision_id
           : null,
+      defaultAddress: result.default_address,
     };
   return {
     ...common,
@@ -229,6 +231,14 @@ export async function uploadMyAvatar(uri: string, contentType = 'image/jpeg') {
     await supabase.storage.from('profile-avatars').remove([path]);
     throw profileError;
   }
+  return getMyProfile();
+}
+
+export async function removeMyAvatar() {
+  const { error } = await supabase.rpc('set_my_avatar', {
+    p_storage_path: null,
+  });
+  if (error) throw error;
   return getMyProfile();
 }
 

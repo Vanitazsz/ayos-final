@@ -9,7 +9,6 @@ import { Bell, Search, ChevronRight, Circle, MapPin, Clock, RefreshCw } from 'lu
 import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { DispatchOffer as DispatchOfferCard } from '@/components/DispatchOffer';
 import { QuickActionsGrid } from '@/components/QuickActionsGrid';
 import { Badge } from '@/components/Badge';
@@ -17,6 +16,7 @@ import { Avatar } from '@/components/Avatar';
 import { showAlert } from '@/components/AppAlert';
 import { styles } from '@/features/worker/screens/WorkerDashboard.styles';
 import { useWorkerDashboard } from '@/hooks/useWorkerDashboard';
+import { useNotificationsGate } from '@/hooks/useNotificationsGate';
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   pending: { label: 'Pending', variant: 'warning' },
@@ -47,6 +47,7 @@ export default function WorkerDashboardScreen() {
     refreshLocation,
     respond,
   } = useWorkerDashboard();
+  const openNotifications = useNotificationsGate();
   const pingAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -78,15 +79,17 @@ export default function WorkerDashboardScreen() {
               pointerEvents="none"
             />
           </Pressable>
-          <Pressable style={styles.iconButton} onPress={() => router.push('/notifications')}>
+          <Pressable style={styles.iconButton} onPress={openNotifications} accessibilityLabel="Notifications">
             <Bell color={theme.colors.surface} size={24} />
             <View style={styles.badge} />
           </Pressable>
           <Pressable style={styles.avatarButton} onPress={() => router.push('/(worker)/profile')}>
-            <Image
-              source={workerProfile?.avatarUri}
-              style={styles.headerAvatar}
-              contentFit="cover"
+            <Avatar
+              uri={workerProfile?.avatarUri}
+              name={workerProfile?.name}
+              size={40}
+              borderRadius={20}
+              style={{ borderWidth: 2, borderColor: theme.colors.surface }}
             />
           </Pressable>
         </View>

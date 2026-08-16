@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldAlert,
-  Clock,
   Wrench,
   CreditCard,
 } from 'lucide-react-native';
 import {
+  EdgeFunctionError,
   fetchWorkerRateEstimate,
   processAiJob,
   queueAiAnalysis,
@@ -44,11 +44,14 @@ export default function IssueSummaryScreen() {
   );
   const [rateLoading, setRateLoading] = useState(true);
   const [rateError, setRateError] = useState('');
+  const runningRef = useRef(false);
+  const [pollTrigger, setPollTrigger] = useState(0);
 
   const start = useCallback(async () => {
+    if (runningRef.current) return;
+    runningRef.current = true;
     setStatus('loading');
     setError('');
-    let unsub: (() => void) | null = null;
     try {
       let jobId = draft.aiJobId;
       if (!jobId) {
@@ -67,20 +70,8 @@ export default function IssueSummaryScreen() {
         draft.setDraft({ aiJobId: jobId });
       }
       if (!jobId) throw new Error('AI job was not created');
-      const activeJobId = jobId;
 
-      unsub = subscribeToAiAnalysisJob(activeJobId, {
-        onSucceeded: (res) => {
-          draft.setDraft({ aiResult: res });
-          setStatus('success');
-        },
-        onFailed: (msg) => {
-          setError(msg);
-          setStatus('error');
-        },
-      });
-
-      const completed = await processAiJob(activeJobId);
+      const completed = await processAiJob(jobId);
       if (completed.status === 'SUCCEEDED') {
         draft.setDraft({ aiResult: completed.result });
         setStatus('success');
@@ -89,19 +80,105 @@ export default function IssueSummaryScreen() {
         setStatus('error');
       }
     } catch (reason) {
+      if (
+        reason instanceof EdgeFunctionError &&
+        (reason.status === 409 || reason.code === 'job_not_processable')
+      ) {
+        // The job is still running server-side. The realtime subscription
+        // below will deliver the outcome; the fallback poll covers realtime
+        // being unavailable. Keep the screen in the loading state.
+        setStatus('loading');
+        setPollTrigger((n) => n + 1);
+        return;
+      }
       console.error('[issue-summary] AI analysis failed:', reason);
       setError(
         reason instanceof Error ? reason.message : 'AI processing failed.',
       );
       setStatus('error');
     } finally {
-      if (unsub) unsub();
+      runningRef.current = false;
     }
   }, [draft.aiJobId, draft.description, draft.media, draft.setDraft]);
 
   useEffect(() => {
     void start();
   }, [start]);
+
+  // Live updates: deliver the final job outcome even if the kickoff request
+  // above errored, so a transient failure never strands the user.
+  useEffect(() => {
+    const jobId = draft.aiJobId;
+    if (!jobId) return;
+    return subscribeToAiAnalysisJob(jobId, {
+      onSucceeded: (res) => {
+        draft.setDraft({ aiResult: res });
+        setStatus('success');
+      },
+      onFailed: (msg) => {
+        setError(msg);
+        setStatus('error');
+      },
+    });
+  }, [draft.aiJobId, draft.setDraft]);
+
+  // Fallback poll: if realtime is unavailable and the job was already running
+  // when we kicked off, poll until it reaches a terminal state or the cap.
+  useEffect(() => {
+    if (pollTrigger === 0 || status !== 'loading') return;
+    const jobId = draft.aiJobId;
+    if (!jobId) return;
+    const INTERVAL_MS = 20_000;
+    const MAX_ATTEMPTS = 6;
+    let active = true;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const schedule = () => {
+      if (!active) return;
+      if (attempts >= MAX_ATTEMPTS) {
+        setError(
+          'AI analysis is taking longer than usual. You can retry or continue manually.',
+        );
+        setStatus('error');
+        return;
+      }
+      timer = setTimeout(async () => {
+        attempts += 1;
+        try {
+          const completed = await processAiJob(jobId);
+          if (!active) return;
+          if (completed.status === 'SUCCEEDED') {
+            draft.setDraft({ aiResult: completed.result });
+            setStatus('success');
+          } else if (completed.status === 'FAILED') {
+            setError(completed.error_message ?? 'AI processing failed.');
+            setStatus('error');
+          } else {
+            schedule();
+          }
+        } catch (reason) {
+          if (!active) return;
+          const processing =
+            reason instanceof EdgeFunctionError &&
+            (reason.status === 409 || reason.code === 'job_not_processable');
+          if (processing || attempts < MAX_ATTEMPTS) schedule();
+          else {
+            setError(
+              'AI analysis is taking longer than usual. You can retry or continue manually.',
+            );
+            setStatus('error');
+          }
+        }
+      }, INTERVAL_MS);
+    };
+
+    schedule();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [pollTrigger, status, draft.aiJobId, draft.setDraft]);
 
   const result = draft.aiResult;
 
@@ -234,10 +311,18 @@ export default function IssueSummaryScreen() {
                 },
               ]}
             >
-              AI is reviewing your request. Your photos and voice are analyzed
-              together with your description to generate a service summary.
+              AI is reviewing your request. Your photos are analyzed together
+              with your description to generate a service summary.
             </Text>
             <ActivityIndicator size="large" color={theme.colors.primary} />
+            <TouchableOpacity
+              onPress={() => router.replace('/new-request/matching')}
+              style={{ padding: theme.spacing.md }}
+            >
+              <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>
+                Continue manually
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : status === 'error' ? (
           <View style={styles.analyzingContainer}>
@@ -295,14 +380,6 @@ export default function IssueSummaryScreen() {
                 <Wrench color={theme.colors.primary} size={16} style={{ marginTop: 2 }} />
                 <Text style={[theme.typography.body1, { marginLeft: 8, flex: 1 }]}>
                   {result?.detectedIssue}
-                </Text>
-              </View>
-
-              <Text style={[theme.typography.label, { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs }]}>Estimated Repair Time</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.md }}>
-                <Clock color={theme.colors.primary} size={16} />
-                <Text style={[theme.typography.body1, { marginLeft: 8 }]}>
-                  {result?.estimatedDurationMinutes} minutes
                 </Text>
               </View>
 

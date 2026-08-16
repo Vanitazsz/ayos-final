@@ -348,7 +348,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.layout.screenPadding,
     paddingVertical: theme.spacing.md,
   },
   backButton: {
@@ -373,7 +372,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.layout.screenPadding,
     paddingBottom: theme.spacing.xxxl,
   },
   card: {

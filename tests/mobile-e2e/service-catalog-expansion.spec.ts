@@ -140,6 +140,12 @@ async function useCustomerFixture(
   );
 }
 
+async function setServiceAddress(page: Page, value: string) {
+  await page.getByRole('button', { name: 'Edit full address' }).click();
+  await page.getByPlaceholder('Enter complete address').fill(value);
+  await page.getByRole('button', { name: 'Save address' }).click();
+}
+
 test('customer home reveals one additional service row per tap', async ({ page }) => {
   await useCustomerFixture(page);
   await page.goto('/home');
@@ -169,7 +175,7 @@ test('request creation preselected from a category link stays editable', async (
   await page.goto('/new-request/create?categoryId=00000000-0000-4000-8000-000000000003');
 
   await expect(page.getByRole('radio', { name: 'Aircon Repair' })).toBeChecked();
-  await expect(page.getByPlaceholder('Enter complete address')).toBeVisible();
+  await expect(page.getByTestId('address-display')).toBeVisible();
 });
 
 test('request creation reveals services incrementally and preserves selection', async ({
@@ -222,8 +228,7 @@ test('request requires a confirmed point and continues after selecting a geocode
   await page
     .getByPlaceholder('e.g. The sink is leaking under the cabinet...')
     .fill('The air conditioner is leaking water inside the room.');
-  const address = page.getByPlaceholder('Enter complete address');
-  await address.fill('Makati City Hall');
+  await setServiceAddress(page, 'Makati City Hall');
 
   await page.getByText('Continue without AI', { exact: true }).click();
   await expect(
@@ -251,7 +256,7 @@ test('header current-location control confirms GPS and reverse-geocoded address'
 
   await page.getByRole('button', { name: 'Use current location' }).click();
   await expect(page.getByText('✓ Location Verified', { exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder('Enter complete address')).toHaveValue(
+  await expect(page.getByTestId('address-display')).toHaveText(
     geocodedAddress.displayLabel,
   );
 });
@@ -289,9 +294,7 @@ test('GPS point remains usable when reverse geocoding is unavailable', async ({
   await page
     .getByPlaceholder('e.g. The sink is leaking under the cabinet...')
     .fill('The air conditioner needs inspection and repair.');
-  await page
-    .getByPlaceholder('Enter complete address')
-    .fill('Manual address near Makati City Hall');
+  await setServiceAddress(page, 'Manual address near Makati City Hall');
   await page.getByPlaceholder('Barangay').fill('Poblacion');
   await page.getByPlaceholder('City or municipality').fill('Makati');
   await page.getByPlaceholder('Province').fill('Metro Manila');
@@ -317,7 +320,7 @@ test('address search falls back to manual entry without showing a persistent err
   );
   await page.goto('/new-request/create');
 
-  await page.getByPlaceholder('Enter complete address').fill('Trece Martires City, Cavite');
+  await setServiceAddress(page, 'Trece Martires City, Cavite');
   await expect(page.getByText(/typed address is saved/i)).toBeVisible();
   await expect(page.getByText('Complete the address', { exact: true })).toBeVisible();
   await expect(page.getByText(/That address could not be found/i)).toHaveCount(0);
@@ -333,7 +336,7 @@ test('AI consent blocks only the AI continuation path', async ({ page }) => {
   await page
     .getByPlaceholder('e.g. The sink is leaking under the cabinet...')
     .fill('The air conditioner is leaking water inside the room.');
-  await page.getByPlaceholder('Enter complete address').fill('Makati City Hall');
+  await setServiceAddress(page, 'Makati City Hall');
   await page.getByRole('button', { name: `Use address ${geocodedAddress.displayLabel}` }).click();
 
   await page.getByText('Continue', { exact: true }).click();
@@ -451,11 +454,21 @@ test('default saved address is selected automatically for a new booking', async 
   );
 
   await page.goto('/new-request/create');
-  await expect(page.getByPlaceholder('Enter complete address')).toHaveValue(
+  await expect(page.getByTestId('address-display')).toHaveText(
     '123 Test Street, Test Subdivision, Poblacion, Makati, Metro Manila, 1210',
   );
   await expect(page.getByRole('radio', { name: 'Use saved address Home' })).toBeChecked();
   await expect(page.getByText('✓ Location Verified', { exact: true })).toBeVisible();
+});
+
+test('pressable address display opens the editor and updates the service address', async ({ page }) => {
+  await useCustomerFixture(page);
+  await page.goto('/new-request/create');
+
+  await setServiceAddress(page, '123 Edited Street, Brgy San Nicolas, Trece Martires, Cavite');
+  await expect(page.getByTestId('address-display')).toHaveText(
+    '123 Edited Street, Brgy San Nicolas, Trece Martires, Cavite',
+  );
 });
 
 test('photo analysis waits for consent then merges an editable explanation', async ({ page }) => {
@@ -567,7 +580,7 @@ test('AI summary shows eligible worker rates and saves the edited request', asyn
   await page
     .getByPlaceholder('e.g. The sink is leaking under the cabinet...')
     .fill('The pipe under the kitchen sink is leaking.');
-  await page.getByPlaceholder('Enter complete address').fill('Makati City Hall');
+  await setServiceAddress(page, 'Makati City Hall');
   await page.getByRole('button', { name: `Use address ${geocodedAddress.displayLabel}` }).click();
   await page.getByRole('checkbox').click();
   await page.getByText('Continue', { exact: true }).click();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {Pressable, StyleSheet, TextInput, View} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, TriangleAlert } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
 import { AppText } from '@/components/AppText';
 import { Screen } from '@/components/layout/Screen';
@@ -22,6 +22,16 @@ import { getBackRoute } from '@/constants/backRoutes';
 import { useGoBack } from '@/hooks/useGoBack';
 import { showAlert } from '@/components/AppAlert';
 
+function formatWorkerAddress(address: Record<string, unknown> | null): string {
+  if (!address) return '';
+  const line1 = String(address.line1 ?? '').trim();
+  if (line1) return line1;
+  return [address.barangay, address.city, address.province, address.postal_code]
+    .map((part) => String(part ?? '').trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
 export default function PersonalInfoScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
@@ -33,9 +43,9 @@ export default function PersonalInfoScreen() {
   };
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [bio, setBio] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
   const [accountProfile, setAccountProfile] =
     useState<WorkerProfileView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +63,9 @@ export default function PersonalInfoScreen() {
         setBio(profile.bio ?? '');
         setAccountProfile(account);
         setPhone(account?.mobile ?? '');
+        setAddress(
+          profile.role === 'WORKER' ? formatWorkerAddress(profile.defaultAddress) : '',
+        );
       } catch {
         // Account details are optional here and may be unavailable during migrations.
       } finally {
@@ -65,10 +78,6 @@ export default function PersonalInfoScreen() {
   }, []);
 
   const handleSave = async () => {
-    if (!name.trim() || !phone.trim()) {
-      showAlert('Missing Fields', 'Please fill in all required fields.');
-      return;
-    }
     setSaving(true);
     try {
       const normalizedMobile = phone.trim().startsWith('0')
@@ -136,13 +145,11 @@ export default function PersonalInfoScreen() {
               >
                 FULL NAME *
               </AppText>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your full name"
-                placeholderTextColor={Colors.textTertiary}
-                value={name}
-                onChangeText={setName}
-              />
+              <View style={styles.readonlyDisplay}>
+                <AppText variant="body" color={Colors.border}>
+                  {name || '—'}
+                </AppText>
+              </View>
             </View>
 
             <View style={styles.inputGroup}>
@@ -154,7 +161,7 @@ export default function PersonalInfoScreen() {
               >
                 EMAIL ADDRESS
               </AppText>
-              <View style={styles.emailDisplay}>
+              <View style={styles.readonlyDisplay}>
                 <AppText variant="body" color={Colors.border}>
                   {email || '—'}
                 </AppText>
@@ -170,44 +177,27 @@ export default function PersonalInfoScreen() {
               >
                 PHONE NUMBER *
               </AppText>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your phone number"
-                placeholderTextColor={Colors.textTertiary}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
+              <View style={styles.readonlyDisplay}>
+                <AppText variant="body" color={Colors.border}>
+                  {phone || '—'}
+                </AppText>
+              </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <AppText
-                  variant="caption"
-                  weight="semiBold"
-                  color={Colors.textTertiary}
-                  style={styles.inputLabel}
-                >
-                  ADDRESS
+              <AppText
+                variant="caption"
+                weight="semiBold"
+                color={Colors.textTertiary}
+                style={styles.inputLabel}
+              >
+                OFFICE ADDRESS
+              </AppText>
+              <View style={styles.readonlyDisplay}>
+                <AppText variant="body" color={Colors.border}>
+                  {address || '—'}
                 </AppText>
-                <View style={styles.warningBadge}>
-                  <TriangleAlert size={12} color={Colors.warning} />
-                  <AppText
-                    variant="caption"
-                    weight="semiBold"
-                    color={Colors.warning}
-                  >
-                    Not available yet
-                  </AppText>
-                </View>
               </View>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your address"
-                placeholderTextColor={Colors.textTertiary}
-                value={address}
-                onChangeText={setAddress}
-              />
             </View>
 
             <View style={styles.inputGroup}>
@@ -278,19 +268,9 @@ const styles = StyleSheet.create({
   inputGroup: {
     gap: Spacing['1'],
   },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['2'],
-  },
   inputLabel: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  warningBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['1'],
   },
   textInput: {
     backgroundColor: Colors.white,
@@ -307,7 +287,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     paddingTop: Spacing['3'],
   },
-  emailDisplay: {
+  readonlyDisplay: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     borderWidth: 1.5,

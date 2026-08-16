@@ -18,6 +18,7 @@ import { Camera, X } from 'lucide-react-native';
 import { Button } from '@/components/buttons/Button';
 import { theme } from '@/constants/theme';
 import { showAlert } from '@/components/AppAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   visible: boolean;
@@ -31,6 +32,7 @@ export function PhotoCaptureModal({
   onUsePhoto,
 }: Props) {
   const cameraRef = useRef<CameraView>(null);
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [preview, setPreview] = useState<CameraCapturedPicture | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,7 +80,7 @@ export function PhotoCaptureModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + theme.spacing.sm }]}>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Close camera"
@@ -180,7 +182,6 @@ const styles = StyleSheet.create({
   },
   header: {
     minHeight: 72,
-    paddingTop: Platform.OS === 'ios' ? 18 : 0,
     paddingHorizontal: theme.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',

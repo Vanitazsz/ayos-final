@@ -5,10 +5,10 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  ActivityIndicator,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { theme } from '@/constants/theme';
@@ -115,7 +115,7 @@ export function LegalContentModal({
   type,
   onClose,
 }: LegalContentModalProps) {
-  const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
   const [pageData, setPageData] = useState<ContentPageViewModel | null>(null);
 
   useEffect(() => {
@@ -125,7 +125,6 @@ export function LegalContentModal({
         setPageData(null);
         return;
       }
-      setLoading(true);
       try {
         const fetched = await fetchPublishedContentPage(type);
         if (isMounted) {
@@ -133,8 +132,6 @@ export function LegalContentModal({
         }
       } catch (err) {
         console.warn('[LegalContentModal] Error fetching content:', err);
-      } finally {
-        if (isMounted) setLoading(false);
       }
     }
     loadContent();
@@ -179,16 +176,10 @@ export function LegalContentModal({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={true}
           >
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-              </View>
-            ) : (
-              <ContentBody body={body} />
-            )}
+            <ContentBody body={body} />
           </ScrollView>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             <AppButton
               label="I Understand"
               variant="primary"
@@ -243,10 +234,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-  },
-  loadingContainer: {
-    paddingVertical: 40,
-    alignItems: 'center',
   },
   bodyContainer: {
     gap: 12,

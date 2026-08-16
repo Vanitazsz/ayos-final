@@ -152,13 +152,13 @@ export function MapSurface({
             : { zoom: 3 }
         }
       />
-      {isCenterValid && displayedRadius ? (
+      {isMapLoaded && isCenterValid && displayedRadius ? (
         <MapLibreGL.GeoJSONSource id="radius" data={radiusGeoJson(mapCenter, displayedRadius)}>
           <MapLibreGL.Layer id="radius-fill" type="fill" paint={{ 'fill-color': '#2563eb', 'fill-opacity': 0.18 }} />
           <MapLibreGL.Layer id="radius-line" type="line" paint={{ 'line-color': '#1d4ed8', 'line-width': 2.5, 'line-opacity': 0.9 }} />
         </MapLibreGL.GeoJSONSource>
       ) : null}
-      {route ? (
+      {isMapLoaded && route ? (
         <MapLibreGL.GeoJSONSource id="route" data={route}>
           <MapLibreGL.Layer id="route-line" type="line" paint={{ 'line-color': '#1e3a8a', 'line-width': 4 }} />
         </MapLibreGL.GeoJSONSource>

@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import {
   fetchBookings,
+  fetchIndustriesAndSkills,
   fetchServiceCategories,
-  fetchProviders,
   subscribeToTable,
 } from '@/services/api';
 import {
@@ -26,9 +25,9 @@ export function useHomeData() {
     queryFn: async () => toQueryData(await fetchServiceCategories()),
     staleTime: QUERY_STALE_TIMES.catalog,
   });
-  const providersQuery = useQuery({
-    queryKey: queryKeys.catalogProviders,
-    queryFn: async () => toQueryData(await fetchProviders()),
+  const industriesQuery = useQuery({
+    queryKey: ['catalog', 'industries'] as const,
+    queryFn: async () => toQueryData(await fetchIndustriesAndSkills()),
     staleTime: QUERY_STALE_TIMES.catalog,
   });
   const profileQuery = useCustomerProfile();
@@ -57,7 +56,7 @@ export function useHomeData() {
   }, [userId, debouncedInvalidateBookings]);
 
   const categories = categoriesQuery.data ?? [];
-  const workers = providersQuery.data ?? [];
+  const industries = industriesQuery.data ?? [];
   const profile = profileQuery.data ?? null;
   const bookings = bookingsQuery.data ?? [];
 
@@ -78,7 +77,7 @@ export function useHomeData() {
   return {
     user,
     categories,
-    workers,
+    industries,
     profile,
     bookings,
     activeBookingsCount,

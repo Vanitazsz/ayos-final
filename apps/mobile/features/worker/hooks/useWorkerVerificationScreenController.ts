@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useGoBack } from '@/hooks/useGoBack';
 import { showAlert } from '@/components/AppAlert';
+import { resolveStorageImage } from '@/services/profile';
 import {
   buildDocuments,
   buildSteps,
+  deleteWorkerVerification,
   fetchWorkerVerification,
   getBackRoute,
-  getMyProfile,
-  removeWorkerVerificationDocument,
+  getSubmittedIdType,
   resubmitWorkerVerificationDocuments,
   type VerificationDocument,
   type VerificationStep,
@@ -30,13 +30,30 @@ export function useWorkerVerificationScreenController() {
   };
 
   const [tab, setTab] = useState<VerificationTab>('status');
-  const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
+  const [existingDocUrls, setExistingDocUrls] = useState<{
+    front: string;
+    back: string;
+  }>({ front: '', back: '' });
   const [verification, setVerification] = useState<WorkerVerification | null>(
     null,
   );
-  const [profileComplete, setProfileComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+
+  const resolveExistingDocs = async (
+    paths: WorkerVerification['document_paths'],
+  ): Promise<{ front: string; back: string }> => {
+    if (!paths || paths.length === 0) return { front: '', back: '' };
+    try {
+      const [front, back] = await Promise.all([
+        resolveStorageImage(paths[0], 'verification-documents'),
+        resolveStorageImage(paths[1], 'verification-documents'),
+      ]);
+      return { front, back };
+    } catch {
+      return { front: '', back: '' };
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -45,8 +62,14 @@ export function useWorkerVerificationScreenController() {
       const verificationResult = await fetchWorkerVerification();
       if (verificationResult.error) {
         setLoadError(verificationResult.error);
+        setExistingDocUrls({ front: '', back: '' });
       } else {
         setVerification(verificationResult.data);
+        setExistingDocUrls(
+          await resolveExistingDocs(verificationResult.data?.document_paths),
+        );
+        if (!draftIdType)
+          setDraftIdType(getSubmittedIdType(verificationResult.data));
       }
     } catch (error) {
       setLoadError(
@@ -54,13 +77,6 @@ export function useWorkerVerificationScreenController() {
           ? error.message
           : 'Unable to load verification',
       );
-    }
-    try {
-      const profileResult = await getMyProfile();
-      setProfileComplete(profileResult.profileComplete);
-    } catch {
-      // The verification record is sufficient to render this screen. Account
-      // details are optional here and may be unavailable during migrations.
     }
     setLoading(false);
   };
@@ -71,14 +87,23 @@ export function useWorkerVerificationScreenController() {
 
   const refreshVerification = () => {
     void fetchWorkerVerification().then((result) => {
-      if (!result.error) setVerification(result.data);
+      if (!result.error) {
+        setVerification(result.data);
+        void resolveExistingDocs(result.data?.document_paths).then(
+          setExistingDocUrls,
+        );
+        if (!draftIdType)
+          setDraftIdType(getSubmittedIdType(result.data));
+      }
     });
   };
 
   const [draftFront, setDraftFront] = useState<string | null>(null);
   const [draftBack, setDraftBack] = useState<string | null>(null);
-  const [busyPath, setBusyPath] = useState<string | null>(null);
+  const [draftIdType, setDraftIdType] = useState('');
+  const [idTypeError, setIdTypeError] = useState('');
   const [resubmitting, setResubmitting] = useState(false);
+  const [deletingSubmission, setDeletingSubmission] = useState(false);
   const [progressMessage, setProgressMessage] = useState<string | null>(null);
 
   const status: WorkerVerificationStatus = verification?.status ?? 'PENDING';
@@ -96,58 +121,37 @@ export function useWorkerVerificationScreenController() {
   );
   const doneCount = steps.filter((step) => step.status === 'done').length;
   const canEditDocs = status === 'PENDING' || status === 'NEEDS_DOCUMENTS';
+  const canDeleteSubmission = canEditDocs && documents.length > 0;
   const canResubmit =
     status === 'NEEDS_DOCUMENTS' ||
     status === 'REJECTED' ||
     documents.length === 0;
 
-  const toggleFaq = (question: string) => {
-    setExpandedFaq((current) => (current === question ? null : question));
-  };
-
-  const pickDocument = async (side: 'front' | 'back') => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.85,
-      });
-      if (result.canceled) return;
-      if (side === 'front') setDraftFront(result.assets[0].uri);
-      else setDraftBack(result.assets[0].uri);
-    } catch (error) {
-      showAlert(
-        'Select document',
-        error instanceof Error ? error.message : 'Unable to select the image',
-      );
-    }
-  };
-
-  const confirmRemoveDocument = (path: string) => {
+  const confirmDeleteSubmission = () => {
+    const paths = verification?.document_paths ?? [];
     showAlert(
-      'Remove document',
-      'This document will be permanently removed from your verification.',
+      'Delete submission',
+      'Your entire verification submission will be permanently deleted, including your identity data and all uploaded documents. You can submit a new application afterward.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove',
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              setBusyPath(path);
+              setDeletingSubmission(true);
               try {
-                await removeWorkerVerificationDocument(path);
+                await deleteWorkerVerification(paths);
                 refreshVerification();
               } catch (error) {
                 showAlert(
-                  'Remove document',
+                  'Delete submission',
                   error instanceof Error
                     ? error.message
-                    : 'Unable to remove the document',
+                    : 'Unable to delete the submission',
                 );
               } finally {
-                setBusyPath(null);
+                setDeletingSubmission(false);
               }
             })();
           },
@@ -158,16 +162,23 @@ export function useWorkerVerificationScreenController() {
 
   const submitDraft = () => {
     if (!draftFront || !draftBack) return;
+    if (!draftIdType) {
+      setIdTypeError('Select the type of ID you are submitting');
+      return;
+    }
     void (async () => {
       setResubmitting(true);
       try {
         await resubmitWorkerVerificationDocuments(
           draftFront,
           draftBack,
+          draftIdType,
           (message) => setProgressMessage(message),
         );
         setDraftFront(null);
         setDraftBack(null);
+        setDraftIdType('');
+        setIdTypeError('');
         setProgressMessage(null);
         refreshVerification();
       } catch (error) {
@@ -186,13 +197,11 @@ export function useWorkerVerificationScreenController() {
     handleBack,
     tab,
     setTab,
-    expandedFaq,
-    toggleFaq,
     loading,
     loadError,
     reload: load,
     verification,
-    profileComplete,
+    existingDocUrls,
     status,
     submitted,
     documents,
@@ -200,13 +209,19 @@ export function useWorkerVerificationScreenController() {
     doneCount,
     canEditDocs,
     canResubmit,
+    canDeleteSubmission,
     draftFront,
     draftBack,
-    busyPath,
+    setDraftFront,
+    setDraftBack,
+    draftIdType,
+    setDraftIdType,
+    idTypeError,
+    setIdTypeError,
     resubmitting,
+    deletingSubmission,
     progressMessage,
-    pickDocument,
-    confirmRemoveDocument,
+    confirmDeleteSubmission,
     submitDraft,
   };
 }

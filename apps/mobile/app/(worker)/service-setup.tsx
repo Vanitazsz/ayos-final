@@ -12,7 +12,7 @@ import {
   type LocationPickerHandle,
 } from '@/components/LocationPicker';
 import { Screen } from '@/components/layout/Screen';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Radius, Spacing, theme } from '@/constants/theme';
 import {
   getWorkerMatchingReadiness,
   saveWorkerMatchingSetup,

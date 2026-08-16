@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
 import { Screen } from '@/components/layout/Screen';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Radius, Spacing, theme } from '@/constants/theme';
 import {
   fetchPublishedContentPage,
   type ContentPageViewModel,
@@ -119,7 +119,7 @@ export default function WorkerHelpCenterScreen() {
             hitSlop={12}
             style={styles.backButton}
           >
-            <ChevronLeft size={26} color={Colors.textPrimary} />
+            <ArrowLeft size={24} color={Colors.textPrimary} />
           </Pressable>
           <AppText variant="h3" weight="bold" style={styles.headerTitle}>
             {page.title}
@@ -154,6 +154,7 @@ const styles = StyleSheet.create({
     maxWidth: 840,
     alignSelf: 'center',
     flexGrow: 1,
+    paddingHorizontal: theme.layout.screenPadding,
   },
   header: {
     minHeight: 56,

@@ -11,7 +11,7 @@ for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/landing');
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByText('Sign in', { exact: true })).toBeVisible();
+    await expect(page.getByText('Welcome back', { exact: true })).toBeVisible();
     await expect(page.getByText('Register as Worker')).toHaveCount(0);
     await expect(page.getByText('Book trusted service nearby.')).toHaveCount(0);
     const overflow = await page.evaluate(

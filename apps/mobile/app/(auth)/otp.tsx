@@ -24,9 +24,9 @@ const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { email, returnTo } = useLocalSearchParams<{
+  const { email, resumeToken } = useLocalSearchParams<{
     email: string;
-    returnTo?: string;
+    resumeToken?: string;
   }>();
   const setSessionUser = useAuthStore((state) => state.setSessionUser);
   const goBack = useGoBack('/(auth)/landing');
@@ -35,6 +35,7 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(30);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const inputs = useRef<(RNTextInput | null)[]>([]);
 
@@ -76,22 +77,47 @@ export default function OTPScreen() {
     setLoading(true);
     try {
       await verifyEmailOtp(email ?? '', otpValue);
-      try {
-        await completePendingWorkerApplication();
-      } catch (completeErr) {
-        console.warn('Pending worker application submission failed:', completeErr);
-      }
       const user = await loadCurrentUser();
       setSessionUser(user);
-      if (returnTo === 'worker-registration' && user?.role === 'WORKER') {
-        router.replace({ pathname: '/register-worker', params: { submitted: 'true' } });
+
+      // Resume an in-flight worker registration whenever one is pending,
+      // independent of the role returned above (the role can lag behind the
+      // OTP confirmation, which used to strand workers on the customer
+      // verification page).
+      try {
+        const completion = await completePendingWorkerApplication(resumeToken);
+        if (completion.completed) {
+          router.replace({
+            pathname: '/register-worker',
+            params: { submitted: 'true' },
+          });
+          return;
+        }
+      } catch (completeErr) {
+        router.replace({
+          pathname: '/register-worker',
+          params: {
+            error:
+              completeErr instanceof Error
+                ? completeErr.message
+                : 'We could not finish submitting your registration. Please try again.',
+          },
+        });
         return;
       }
-      router.replace(
-        user?.role === 'WORKER'
-          ? { pathname: '/register-worker', params: { submitted: 'true' } }
-          : '/(auth)/verify-identity',
-      );
+
+      if (user?.role === 'WORKER') {
+        router.replace({
+          pathname: '/register-worker',
+          params: {
+            notice:
+              'Your registration was not completed. Please review your details and submit again.',
+          },
+        });
+        return;
+      }
+
+      router.replace('/(auth)/verify-identity');
     } catch (verifyError) {
       setError(
         verifyError instanceof Error
@@ -119,11 +145,35 @@ export default function OTPScreen() {
     inputs.current[0]?.focus();
   };
 
+  const renderSlot = (index: number) => (
+    <View key={index} style={styles.slotWrapper}>
+      <RNTextInput
+        ref={(ref) => {
+          inputs.current[index] = ref;
+        }}
+        style={[
+          styles.otpInput,
+          focusedIndex === index && styles.otpInputFocused,
+          error ? styles.otpInputError : null,
+        ]}
+        value={otp[index]}
+        onChangeText={(val) => handleOtpChange(val, index)}
+        onKeyPress={(e) => handleKeyPress(e, index)}
+        onFocus={() => setFocusedIndex(index)}
+        onBlur={() => setFocusedIndex(null)}
+        keyboardType="number-pad"
+        maxLength={1}
+        selectTextOnFocus
+        accessibilityLabel={`Digit ${index + 1}`}
+      />
+    </View>
+  );
+
   return (
     <Screen
       scrollable
       keyboardAvoiding={false}
-      contentContainerStyle={{ paddingBottom: 80 }}
+      contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 80 }}
       style={{ paddingBottom: 0 }}
     >
       <View style={styles.header}>
@@ -142,26 +192,7 @@ export default function OTPScreen() {
         </Text>
 
         <View style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <RNTextInput
-              key={index}
-              ref={(ref) => {
-                inputs.current[index] = ref;
-              }}
-              style={[
-                styles.otpInput,
-                theme.typography.h3,
-                digit !== '' && styles.otpInputFilled,
-                error ? styles.otpInputError : null,
-              ]}
-              value={digit}
-              onChangeText={(val) => handleOtpChange(val, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="number-pad"
-              maxLength={1}
-              selectTextOnFocus
-            />
-          ))}
+          {otp.map((_, index) => renderSlot(index))}
         </View>
 
         {error ? (
@@ -169,14 +200,6 @@ export default function OTPScreen() {
             {error}
           </Text>
         ) : null}
-
-        <Button
-          title="Verify"
-          onPress={handleVerify}
-          loading={loading}
-          fullWidth
-          style={styles.submitBtn}
-        />
 
         <View style={styles.footer}>
           {countdown > 0 ? (
@@ -197,6 +220,14 @@ export default function OTPScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        <Button
+          title="Verify"
+          onPress={handleVerify}
+          loading={loading}
+          fullWidth
+          style={styles.submitBtn}
+        />
       </View>
     </Screen>
   );
@@ -210,7 +241,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  content: { flex: 1, paddingTop: theme.spacing.xl },
+  content: { flex: 1, paddingTop: theme.spacing.xxl },
   title: { color: theme.colors.textPrimary, marginBottom: theme.spacing.xs },
   subtitle: {
     color: theme.colors.textSecondary,
@@ -221,19 +252,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: theme.spacing.xl,
   },
-  otpInput: {
+  slotWrapper: {
     width: 48,
     height: 56,
+  },
+  otpInput: {
+    width: '100%',
+    height: '100%',
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     textAlign: 'center',
     color: theme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '600',
+    padding: 0,
   },
-  otpInputFilled: {
+  otpInputFocused: {
     borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.infoBackground,
   },
   otpInputError: {
     borderColor: theme.colors.error,
@@ -245,10 +282,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     marginTop: -theme.spacing.md,
   },
-  submitBtn: { marginBottom: theme.spacing.xl },
+  submitBtn: { marginTop: theme.spacing.sm },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: theme.spacing.md,
   },
 });

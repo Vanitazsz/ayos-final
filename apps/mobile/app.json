@@ -34,8 +34,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow A-YOS to select a photo of the service problem.",
-          "cameraPermission": "Allow A-YOS to photograph the service problem.",
-          "microphonePermission": "Allow A-YOS to record a voice description of the service problem."
+          "cameraPermission": "Allow A-YOS to photograph the service problem."
         }
       ],
       "@maplibre/maplibre-react-native",

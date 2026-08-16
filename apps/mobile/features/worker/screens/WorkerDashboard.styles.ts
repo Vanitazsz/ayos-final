@@ -43,8 +43,6 @@ export const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: theme.colors.surface,
   },
   headerAvatar: { width: '100%', height: '100%' },
   content: { flex: 1, zIndex: 5 },

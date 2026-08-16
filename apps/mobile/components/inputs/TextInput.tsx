@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  TextInput as RNTextInput, 
-  Text, 
-  StyleSheet, 
-  TextInputProps as RNTextInputProps, 
-  TouchableOpacity 
+import {
+  View,
+  TextInput as RNTextInput,
+  Text,
+  StyleSheet,
+  TextInputProps as RNTextInputProps,
+  TouchableOpacity,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { LucideIcon, Eye, EyeOff } from 'lucide-react-native';
@@ -18,6 +20,7 @@ export interface TextInputProps extends RNTextInputProps {
   rightIcon?: LucideIcon;
   onRightIconPress?: () => void;
   isPassword?: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 export const TextInput: React.FC<TextInputProps> = ({
@@ -28,6 +31,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   rightIcon: RightIcon,
   onRightIconPress,
   isPassword,
+  containerStyle,
   style,
   ...props
 }) => {
@@ -41,7 +45,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label && (
         <Text style={[theme.typography.label, styles.label, error && styles.errorText]}>
           {label}
@@ -50,7 +54,6 @@ export const TextInput: React.FC<TextInputProps> = ({
       <View style={[
         styles.inputContainer,
         { borderColor: getBorderColor() },
-        isFocused && styles.inputContainerFocused,
         error && styles.inputContainerError
       ]}>
         {LeftIcon && (
@@ -67,7 +70,7 @@ export const TextInput: React.FC<TextInputProps> = ({
         />
 
         {isPassword ? (
-          <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.rightIcon}>
+          <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.rightIcon} hitSlop={10}>
             {isPasswordVisible ? (
               <EyeOff color={theme.colors.textTertiary} size={20} />
             ) : (
@@ -75,7 +78,7 @@ export const TextInput: React.FC<TextInputProps> = ({
             )}
           </TouchableOpacity>
         ) : RightIcon ? (
-          <TouchableOpacity onPress={onRightIconPress} disabled={!onRightIconPress} style={styles.rightIcon}>
+          <TouchableOpacity onPress={onRightIconPress} disabled={!onRightIconPress} style={styles.rightIcon} hitSlop={10}>
             <RightIcon color={theme.colors.textTertiary} size={20} />
           </TouchableOpacity>
         ) : null}
@@ -110,9 +113,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     minHeight: 56,
     paddingHorizontal: theme.spacing.md,
-  },
-  inputContainerFocused: {
-    backgroundColor: theme.colors.infoBackground,
   },
   inputContainerError: {
     backgroundColor: theme.colors.errorBackground,

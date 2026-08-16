@@ -1,26 +1,25 @@
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   Pressable,
   Modal,
   TextInput,
-  Keyboard,
 } from 'react-native';
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
   CheckCircle,
   Clock,
   AlertCircle,
   ArrowDownToLine,
   ArrowUpFromLine,
   ChevronRight,
+  ArrowLeft,
 } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Colors, theme } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
@@ -34,7 +33,7 @@ import { submitManualWalletTopup, recordSimulatedTopup } from '@/services/wallet
 import { simulateTopUp } from '@/services/apiCore';
 import { showAlert } from '@/components/AppAlert';
 import { styles } from '@/features/worker/screens/WorkerWallet.styles';
-import { useWalletData, type Period, type TxFilter } from '@/hooks/useWalletData';
+import { useWalletData, type TxFilter } from '@/hooks/useWalletData';
 
 const statusIcon = (s: TransactionStatus) => {
   if (s === 'completed') return <CheckCircle size={12} color={Colors.verified} />;
@@ -50,7 +49,7 @@ const statusColor = (s: TransactionStatus) => {
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
-  const [period, setPeriod] = useState<Period>('week');
+  const goBack = useGoBack('/(worker)/profile');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('5000');
@@ -60,13 +59,12 @@ export default function WalletScreen() {
 
   const {
     wallet,
-    stats,
     walletBarData,
     barMax,
     filteredTransactions,
     manualTopups,
     refresh,
-  } = useWalletData(period, txFilter);
+  } = useWalletData('week', txFilter);
 
   useFocusEffect(
     useCallback(() => {
@@ -134,9 +132,19 @@ export default function WalletScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={theme.typography.h2}>Wallet</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={goBack}
+          hitSlop={12}
+          style={styles.backButton}
+        >
+          <ArrowLeft size={24} color={Colors.textPrimary} />
+        </Pressable>
+        <AppText variant="h3" weight="bold">Wallet</AppText>
+        <View style={styles.headerSpacer} />
       </View>
-      <View style={{ paddingHorizontal: theme.layout.screenPadding, flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -154,7 +162,7 @@ export default function WalletScreen() {
           </View>
           <View style={styles.balanceActions}>
             <AppButton
-              label="Add GCash Top-Up"
+              label="Top-Up"
               variant="outline"
               size="sm"
               leftIcon={<ArrowUpFromLine size={14} color={Colors.cta} />}
@@ -234,37 +242,6 @@ export default function WalletScreen() {
               </View>
             ))}
           </View>
-        </View>
-
-        {/* Period Toggle */}
-        <View style={styles.periodToggle}>
-          {(['week', 'month', 'all'] as Period[]).map((p) => (
-            <Chip
-              key={p}
-              label={p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'All Time'}
-              selected={period === p}
-              onPress={() => setPeriod(p)}
-              size="sm"
-            />
-          ))}
-        </View>
-
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          {[
-            { label: 'Gross Earnings', val: stats.gross, color: Colors.info, icon: <TrendingUp size={16} color={Colors.info} /> },
-            { label: 'Net Earnings', val: stats.net, color: Colors.verified, icon: <DollarSign size={16} color={Colors.verified} /> },
-            { label: 'Jobs Completed', val: stats.jobs, color: Colors.warning, icon: <CheckCircle size={16} color={Colors.warning} /> },
-            { label: 'Commission Paid', val: stats.commission, color: Colors.textTertiary, icon: <TrendingDown size={16} color={Colors.textTertiary} /> },
-          ].map((s) => (
-            <View key={s.label} style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${s.color}15` }]}>
-                {s.icon}
-              </View>
-              <AppText variant="h4" weight="bold" color={s.color}>{s.val}</AppText>
-              <AppText variant="caption" color={Colors.textTertiary}>{s.label}</AppText>
-            </View>
-          ))}
         </View>
 
         {/* Transactions */}

@@ -14,6 +14,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { loadCurrentUser } from '@/services/auth';
+import { hydratePendingWorkerApplication } from '@/services/workerApplication';
 import {
   markPasswordRecoveryPending,
   PASSWORD_RECOVERY_ROUTE,
@@ -91,6 +92,9 @@ export default function RootLayout() {
         await SplashScreen.hideAsync();
         return;
       }
+      // Restore an in-flight worker registration so the OTP resume can
+      // complete it even after an app restart.
+      void hydratePendingWorkerApplication();
       let pendingRecovery = false;
       try {
         pendingRecovery = await resolvePendingPasswordRecovery();
@@ -220,7 +224,7 @@ function SessionBoundary({
     return <Redirect href="/(worker)" />;
   if (isAuthenticated && user?.role === 'USER' && root === '(worker)')
     return <Redirect href="/(tabs)/home" />;
-  if (isAuthenticated && !user?.profileComplete) {
+  if (isAuthenticated && !user?.profileComplete && root !== '(auth)') {
     if (user?.role === 'WORKER' && root === 'register-worker') {
       // Allow register-worker page to render normally
     } else if (

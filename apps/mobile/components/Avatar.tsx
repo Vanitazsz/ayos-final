@@ -49,16 +49,32 @@ export const Avatar = React.memo(function Avatar({
       </View>
     );
   }
+
+  const borderWidth =
+    typeof style?.borderWidth === 'number' ? style.borderWidth : 0;
+  const innerSize = size - borderWidth * 2;
+
   return (
-    <Image
-      source={{ uri }}
-      onError={() => setImageFailed(true)}
+    <View
       style={[
-        styles.image,
+        styles.ring,
         { width: size, height: size, borderRadius: r },
         style,
       ]}
-    />
+    >
+      <Image
+        source={{ uri }}
+        onError={() => setImageFailed(true)}
+        style={[
+          styles.image,
+          {
+            width: innerSize,
+            height: innerSize,
+            borderRadius: innerSize / 2,
+          },
+        ]}
+      />
+    </View>
   );
 });
 
@@ -66,7 +82,11 @@ const styles = StyleSheet.create({
   image: {
     backgroundColor: Colors.border,
     resizeMode: 'cover',
+  },
+  ring: {
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fallback: {
     backgroundColor: Colors.surfaceLight,

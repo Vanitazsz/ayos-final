@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
@@ -8,39 +8,33 @@ import { theme } from '@/constants/theme';
 import {
   ArrowLeft,
   X,
-  Wrench,
-  Droplets,
-  Zap,
-  Paintbrush,
   Navigation,
   Camera,
   ImageUp,
-  Mic,
   Info,
-  ChevronDown,
   MapPin,
   ShieldCheck,
   Check,
   Plus,
- Fan, Monitor, Shovel, Sparkles } from 'lucide-react-native';
+  Pencil,
+} from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import type { CameraCapturedPicture } from 'expo-camera';
 import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
-import {
   fetchCustomerProfile,
+  fetchIndustriesAndSkills,
   fetchServiceCategories,
   geocodeSearch,
   assistRequestMedia,
   EdgeFunctionError,
   type GeocodingResult,
+  type IndustryWithSkills,
 } from '@/services/api';
+import { ServiceCategoryGrid } from '@/features/customer/ServiceCategoryGrid';
+import { ServiceCategorySheet } from '@/features/customer/ServiceCategorySheet';
+import { AddressEditorModal } from '@/features/customer/AddressEditorModal';
+import { industryVisualByName } from '@/features/customer/serviceIndustries';
 import { deleteRequestMedia, uploadRequestMedia } from '@/services/uploads';
 import { useRequestStore } from '@/store/useRequestStore';
 import {
@@ -58,47 +52,8 @@ import { isPhilippinesCoordinates } from '@/lib/coordinates';
 import type { MediaInput } from '@/types/ai';
 import { PhotoCaptureModal } from '@/components/media/PhotoCaptureModal';
 import { showAlert } from '@/components/AppAlert';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import {
-  aiMediaErrorMessage,
-  isTranscriptionFailure,
-} from '@/utils/aiMedia';
+import { aiMediaErrorMessage } from '@/utils/aiMedia';
 
-const getParentForCategory = (name: string) => {
-  const lower = name.toLowerCase();
-  if (lower.includes('clean')) return 'Cleaning';
-  if (lower.includes('plumb') || lower.includes('pipe') || lower.includes('water')) return 'Plumbing';
-  if (lower.includes('elect')) return 'Electrical';
-  if (lower.includes('carpent') || lower.includes('wood')) return 'Carpentry';
-  if (lower.includes('cool') || lower.includes('ac ') || lower.includes('air')) return 'Cooling';
-  if (lower.includes('paint')) return 'Painting';
-  if (lower.includes('appliance') || lower.includes('tv ') || lower.includes('fridge')) return 'Appliance';
-  return 'Handyman';
-};
-
-const PARENT_CATEGORIES = [
-  { id: 'p1', label: 'Cleaning', icon: Sparkles },
-  { id: 'p2', label: 'Plumbing', icon: Droplets },
-  { id: 'p3', label: 'Electrical', icon: Zap },
-  { id: 'p4', label: 'Carpentry', icon: Wrench },
-  { id: 'p5', label: 'Cooling', icon: Fan },
-  { id: 'p6', label: 'Painting', icon: Paintbrush },
-  { id: 'p7', label: 'Appliance', icon: Monitor },
-  { id: 'p8', label: 'Handyman', icon: Shovel },
-];
-
-const CATEGORY_COLORS = [
-  { color: '#0ea5e9', bg: '#e0f2fe' },
-  { color: '#f59e0b', bg: '#fef3c7' },
-  { color: '#10b981', bg: '#d1fae5' },
-  { color: '#06b6d4', bg: '#cffafe' },
-  { color: '#6366f1', bg: '#e0e7ff' },
-  { color: '#3b82f6', bg: '#dbeafe' },
-  { color: '#8b5cf6', bg: '#ede9fe' },
-  { color: '#22c55e', bg: '#dcfce7' },
-];
-
-type MediaKind = 'photo' | 'voice';
 type MediaStatus =
   | 'idle'
   | 'uploading'
@@ -106,15 +61,6 @@ type MediaStatus =
   | 'processing'
   | 'completed'
   | 'failed';
-
-const iconFor = (name: string) =>
-  name.toLowerCase().includes('elect')
-    ? Zap
-    : name.toLowerCase().includes('paint')
-      ? Paintbrush
-      : name.toLowerCase().includes('plumb')
-        ? Droplets
-        : Wrench;
 
 export default function CreateRequestScreen() {
   const router = useRouter();
@@ -141,6 +87,7 @@ export default function CreateRequestScreen() {
       minimumPriceMinor: number | null;
     }[]
   >([]);
+  const [industries, setIndustries] = useState<IndustryWithSkills[]>([]);
   const [addressResults, setAddressResults] = useState<GeocodingResult[]>([]);
   const [addressSearchLoading, setAddressSearchLoading] = useState(false);
   const [addressSearchError, setAddressSearchError] = useState('');
@@ -153,21 +100,17 @@ export default function CreateRequestScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [, setSubmissionError] = useState('');
+  const [submissionError, setSubmissionError] = useState('');
   const [cameraPhoto, setCameraPhoto] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [customerProfile, setCustomerProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
-  const [voiceRecord, setVoiceRecord] = useState<string | null>(null);
   const [photoMedia, setPhotoMedia] = useState<MediaInput | null>(null);
-  const [voiceMedia, setVoiceMedia] = useState<MediaInput | null>(null);
   const [photoStatus, setPhotoStatus] = useState<MediaStatus>('idle');
-  const [voiceStatus, setVoiceStatus] = useState<MediaStatus>('idle');
   const [photoError, setPhotoError] = useState('');
-  const [voiceError, setVoiceError] = useState('');
-  const [voiceNeedsManualText, setVoiceNeedsManualText] = useState(false);
   const [manualAddressMode, setManualAddressMode] = useState(false);
+  const [addressEditorOpen, setAddressEditorOpen] = useState(false);
   const [manualAddress, setManualAddress] = useState({
     barangay: '',
     city: '',
@@ -175,46 +118,29 @@ export default function CreateRequestScreen() {
     postalCode: '',
   });
 
-  const groupedCategories = useMemo(() => {
-    const groups: Record<string, any[]> = {
-      Cleaning: [], Plumbing: [], Electrical: [], Carpentry: [], Cooling: [], Painting: [], Appliance: [], Handyman: []
-    };
-    categories.forEach(cat => {
-      const parent = getParentForCategory(cat.name);
-      if (groups[parent]) groups[parent].push(cat);
-    });
-    return groups;
-  }, [categories]);
-
   const selectedCategoryObj = useMemo(() => categories.find(c => c.id === selectedCategory), [categories, selectedCategory]);
+  const selectedIndustry = useMemo(
+    () => industries.find((item) => item.name === selectedParent) ?? null,
+    [industries, selectedParent],
+  );
+  const selectedSkills = useMemo(
+    () => selectedIndustry?.skills ?? [],
+    [selectedIndustry],
+  );
 
-  const [voiceRecording, setVoiceRecording] = useState(false);
-  const [voiceBusy, setVoiceBusy] = useState(false);
-  const [voiceDurationSeconds, setVoiceDurationSeconds] = useState(0);
-  const recordingStartTimeRef = useRef<number | null>(null);
-  const voiceDurationSecondsRef = useRef(0);
-  const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder);
-  const recordingRef = useRef(false);
-  const recordingActionRef = useRef(false);
-  const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const consentRef = useRef(false);
-  const mediaGenerationRef = useRef({ photo: 0, voice: 0 });
-  const mediaIdempotencyRef = useRef({ photo: '', voice: '' });
-  const mediaUploadTaskRef = useRef<Partial<Record<MediaKind, Promise<void>>>>(
+  const mediaGenerationRef = useRef({ photo: 0 });
+  const mediaIdempotencyRef = useRef({ photo: '' });
+  const mediaUploadTaskRef = useRef<Partial<Record<'photo', Promise<void>>>>(
     {},
   );
   const uploadedMediaRef = useRef<{
     photo: MediaInput | null;
-    voice: MediaInput | null;
   }>({
     photo: null,
-    voice: null,
   });
   const savedAddressSelectionRef = useRef<string | null>(null);
-  const generatedTextRef = useRef({ photo: '', voice: '' });
-  const queuedVoiceUriRef = useRef('');
+  const generatedTextRef = useRef({ photo: '' });
   const geocodeCooldownUntilRef = useRef(0);
   const setDraft = useRequestStore((state) => state.setDraft);
   const selectedSavedAddressId = useRequestStore((state) => state.addressId);
@@ -292,6 +218,11 @@ const applySavedAddress = useCallback(
         }
       }
     });
+    void fetchIndustriesAndSkills().then((result) => {
+      if (!active) return;
+      if (result.error) showAlert('Services unavailable', result.error);
+      else setIndustries(result.data);
+    });
     return () => {
       active = false;
     };
@@ -335,16 +266,6 @@ const applySavedAddress = useCallback(
         active = false;
       };
     }, []),
-  );
-
-  useEffect(
-    () => () => {
-      if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
-      autoStopTimerRef.current = null;
-      if (recordingRef.current) void recorder.stop().catch(() => undefined);
-      recordingRef.current = false;
-    },
-    [recorder],
   );
 
   useEffect(() => {
@@ -402,57 +323,53 @@ const applySavedAddress = useCallback(
     };
   }, [address, confirmedAddressLabel, coords, locationSource]);
 
-  const setMediaStatus = (kind: MediaKind, status: MediaStatus) => {
-    if (kind === 'photo') setPhotoStatus(status);
-    else setVoiceStatus(status);
+  const setMediaStatus = (status: MediaStatus) => {
+    setPhotoStatus(status);
   };
 
-  const setMediaError = (kind: MediaKind, message: string) => {
-    if (kind === 'photo') setPhotoError(message);
-    else setVoiceError(message);
+  const setMediaError = (message: string) => {
+    setPhotoError(message);
   };
 
-  const setUploadedMedia = (kind: MediaKind, media: MediaInput | null) => {
-    uploadedMediaRef.current[kind] = media;
-    if (kind === 'photo') setPhotoMedia(media);
-    else setVoiceMedia(media);
+  const setUploadedMedia = (media: MediaInput | null) => {
+    uploadedMediaRef.current.photo = media;
+    setPhotoMedia(media);
   };
 
-  const mergeGeneratedDescription = (kind: MediaKind, value: string) => {
+  const mergeGeneratedDescription = (value: string) => {
     const nextGenerated = value.trim();
     if (!nextGenerated) return;
     setDescription((current) => {
-      const previous = generatedTextRef.current[kind];
+      const previous = generatedTextRef.current.photo;
       const preserved =
         previous && current.includes(previous)
           ? current.replace(previous, '').trim()
           : current.trim();
-      generatedTextRef.current[kind] = nextGenerated;
+      generatedTextRef.current.photo = nextGenerated;
       return [preserved, nextGenerated].filter(Boolean).join('\n\n');
     });
     setErrors((current) => ({ ...current, description: '' }));
   };
 
-  const removeGeneratedDescription = (kind: MediaKind) => {
-    const previous = generatedTextRef.current[kind];
+  const removeGeneratedDescription = () => {
+    const previous = generatedTextRef.current.photo;
     if (previous)
       setDescription((current) =>
         current.includes(previous)
           ? current.replace(previous, '').trim()
           : current,
       );
-    generatedTextRef.current[kind] = '';
+    generatedTextRef.current.photo = '';
   };
 
   const runMediaAssist = useCallback(
-    async (kind: MediaKind, media: MediaInput, generation: number) => {
+    async (media: MediaInput, generation: number) => {
       if (!consentRef.current) {
-        setMediaStatus(kind, 'awaiting-consent');
+        setMediaStatus('awaiting-consent');
         return;
       }
-      setMediaStatus(kind, 'processing');
-      setMediaError(kind, '');
-      if (kind === 'voice') setVoiceNeedsManualText(false);
+      setMediaStatus('processing');
+      setMediaError('');
       try {
         const result = await assistRequestMedia({
           media,
@@ -463,64 +380,50 @@ const applySavedAddress = useCallback(
             .replace(/^"|"$/g, '')
             .trim(),
           idempotencyKey:
-            mediaIdempotencyRef.current[kind] ||
-            (mediaIdempotencyRef.current[kind] = randomUUID()),
+            mediaIdempotencyRef.current.photo ||
+            (mediaIdempotencyRef.current.photo = randomUUID()),
         });
-        if (mediaGenerationRef.current[kind] !== generation) return;
-        const generated =
-          kind === 'voice'
-            ? result.transcript || result.requestDraft
-            : result.problemDescription || result.requestDraft;
-        mergeGeneratedDescription(kind, generated);
-        setMediaStatus(kind, 'completed');
+        if (mediaGenerationRef.current.photo !== generation) return;
+        const generated = result.problemDescription || result.requestDraft;
+        mergeGeneratedDescription(generated);
+        setMediaStatus('completed');
       } catch (error) {
-        if (mediaGenerationRef.current[kind] !== generation) return;
-        setMediaStatus(kind, 'failed');
-        setMediaError(kind, aiMediaErrorMessage(error));
-        if (kind === 'voice') setVoiceNeedsManualText(isTranscriptionFailure(error));
+        if (mediaGenerationRef.current.photo !== generation) return;
+        setMediaStatus('failed');
+        setMediaError(aiMediaErrorMessage(error));
       }
     },
     [description],
   );
 
   const queueCapturedMedia = useCallback(
-    (
-      kind: MediaKind,
-      uri: string,
-      fallbackContentType: string,
-      durationSeconds?: number,
-    ) => {
-      const generation = ++mediaGenerationRef.current[kind];
-      mediaIdempotencyRef.current[kind] = randomUUID();
-      setMediaStatus(kind, 'uploading');
-      setMediaError(kind, '');
-      setUploadedMedia(kind, null);
+    (uri: string, fallbackContentType: string) => {
+      const generation = ++mediaGenerationRef.current.photo;
+      mediaIdempotencyRef.current.photo = randomUUID();
+      setMediaStatus('uploading');
+      setMediaError('');
+      setUploadedMedia(null);
       const task = (async () => {
         try {
-          const media = await uploadRequestMedia(
-            uri,
-            fallbackContentType,
-            durationSeconds,
-          );
-          if (mediaGenerationRef.current[kind] !== generation) {
+          const media = await uploadRequestMedia(uri, fallbackContentType);
+          if (mediaGenerationRef.current.photo !== generation) {
             await deleteRequestMedia(media).catch(() => undefined);
             return;
           }
-          setUploadedMedia(kind, media);
-          if (consentRef.current) void runMediaAssist(kind, media, generation);
-          else setMediaStatus(kind, 'awaiting-consent');
+          setUploadedMedia(media);
+          if (consentRef.current) void runMediaAssist(media, generation);
+          else setMediaStatus('awaiting-consent');
         } catch (error) {
-          if (mediaGenerationRef.current[kind] !== generation) return;
-          setMediaStatus(kind, 'failed');
+          if (mediaGenerationRef.current.photo !== generation) return;
+          setMediaStatus('failed');
           setMediaError(
-            kind,
             error instanceof Error ? error.message : 'Unable to upload media.',
           );
         } finally {
-          delete mediaUploadTaskRef.current[kind];
+          delete mediaUploadTaskRef.current.photo;
         }
       })();
-      mediaUploadTaskRef.current[kind] = task;
+      mediaUploadTaskRef.current.photo = task;
     },
     [runMediaAssist],
   );
@@ -539,62 +442,33 @@ const applySavedAddress = useCallback(
         return;
       const asset = pending.assets[0];
       setCameraPhoto(asset.uri);
-      queueCapturedMedia('photo', asset.uri, asset.mimeType ?? 'image/jpeg');
+      queueCapturedMedia(asset.uri, asset.mimeType ?? 'image/jpeg');
     });
     return () => {
       active = false;
     };
   }, [queueCapturedMedia]);
 
-  const removeMedia = useCallback((kind: MediaKind) => {
-    mediaGenerationRef.current[kind] += 1;
-    mediaIdempotencyRef.current[kind] = '';
-    const remote = kind === 'photo' ? uploadedMediaRef.current.photo : uploadedMediaRef.current.voice;
+  const removeMedia = useCallback(() => {
+    mediaGenerationRef.current.photo += 1;
+    mediaIdempotencyRef.current.photo = '';
+    const remote = uploadedMediaRef.current.photo;
     if (remote) void deleteRequestMedia(remote).catch(() => undefined);
-    setUploadedMedia(kind, null);
-    setMediaStatus(kind, 'idle');
-    setMediaError(kind, '');
-    if (kind === 'voice') setVoiceNeedsManualText(false);
-    removeGeneratedDescription(kind);
-    if (kind === 'photo') setCameraPhoto(null);
-    else {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-        durationIntervalRef.current = null;
-      }
-      recordingStartTimeRef.current = null;
-      voiceDurationSecondsRef.current = 0;
-      setVoiceDurationSeconds(0);
-      queuedVoiceUriRef.current = '';
-      setVoiceRecord(null);
-    }
+    setUploadedMedia(null);
+    setMediaStatus('idle');
+    setMediaError('');
+    removeGeneratedDescription();
+    setCameraPhoto(null);
   }, []);
 
-  const retryMediaAssist = (kind: MediaKind) => {
-    const media = kind === 'photo' ? photoMedia : voiceMedia;
+  const retryMediaAssist = () => {
+    const media = photoMedia;
     if (media)
-      void runMediaAssist(kind, media, mediaGenerationRef.current[kind]);
+      void runMediaAssist(media, mediaGenerationRef.current.photo);
     else {
-      const uri = kind === 'photo' ? cameraPhoto : voiceRecord;
-      if (uri)
-        queueCapturedMedia(
-          kind,
-          uri,
-          kind === 'photo'
-            ? 'image/jpeg'
-            : Platform.OS === 'web'
-              ? 'audio/webm'
-              : 'audio/m4a',
-          kind === 'voice'
-            ? Math.max(1, voiceDurationSecondsRef.current)
-            : undefined,
-        );
+      const uri = cameraPhoto;
+      if (uri) queueCapturedMedia(uri, 'image/jpeg');
     }
-  };
-
-  const useWrittenDescription = () => {
-    removeMedia('voice');
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   };
 
   const validateRequest = (useAi: boolean, media: MediaInput[]) => {
@@ -602,7 +476,7 @@ const applySavedAddress = useCallback(
     if (!selectedCategory) next.service = 'Select a service.';
     if (description.trim().length < 10 && (!useAi || media.length === 0))
       next.description = useAi
-        ? 'Enter at least 10 characters or add a photo or voice recording.'
+        ? 'Enter at least 10 characters or add a photo.'
         : 'Describe the issue using at least 10 characters.';
     if (address.trim().length < 5)
       next.address = 'Enter a complete service address.';
@@ -670,11 +544,10 @@ const applySavedAddress = useCallback(
       setSaving(false);
       setSubmissionError('');
     }
-    const media = [
-      uploadedMediaRef.current.photo,
-      uploadedMediaRef.current.voice,
-    ].filter((item): item is MediaInput => Boolean(item));
-    if ((cameraPhoto || voiceRecord) && media.length === 0) {
+    const media = [uploadedMediaRef.current.photo].filter(
+      (item): item is MediaInput => Boolean(item),
+    );
+    if (cameraPhoto && media.length === 0) {
       setSubmissionError(
         'Media upload failed. Retry it or remove it before continuing.',
       );
@@ -837,7 +710,7 @@ const applySavedAddress = useCallback(
   const useCapturedPhoto = (photo: CameraCapturedPicture) => {
     setCameraOpen(false);
     setCameraPhoto(photo.uri);
-    queueCapturedMedia('photo', photo.uri, 'image/jpeg');
+    queueCapturedMedia(photo.uri, 'image/jpeg');
   };
 
   const handleUploadPhoto = async () => {
@@ -848,152 +721,9 @@ const applySavedAddress = useCallback(
     if (!result.canceled) {
       const asset = result.assets[0];
       setCameraPhoto(asset.uri);
-      queueCapturedMedia('photo', asset.uri, asset.mimeType ?? 'image/jpeg');
+      queueCapturedMedia(asset.uri, asset.mimeType ?? 'image/jpeg');
     }
   };
-
-  const stopVoiceRecording = useCallback(async () => {
-    if (!recordingRef.current || recordingActionRef.current) return;
-    recordingActionRef.current = true;
-    setVoiceBusy(true);
-    if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
-    autoStopTimerRef.current = null;
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
-    const finalDuration = recordingStartTimeRef.current
-      ? Math.max(1, Math.ceil((Date.now() - recordingStartTimeRef.current) / 1000))
-      : Math.max(1, voiceDurationSecondsRef.current);
-    recordingStartTimeRef.current = null;
-    voiceDurationSecondsRef.current = finalDuration;
-    setVoiceDurationSeconds(finalDuration);
-
-    try {
-      await recorder.stop();
-      recordingRef.current = false;
-      setVoiceRecording(false);
-      if (recorder.uri && recorder.uri !== queuedVoiceUriRef.current) {
-        queuedVoiceUriRef.current = recorder.uri;
-        setVoiceRecord(recorder.uri);
-        queueCapturedMedia(
-          'voice',
-          recorder.uri,
-          Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a',
-          finalDuration,
-        );
-      }
-    } catch (error) {
-      recordingRef.current = false;
-      setVoiceRecording(false);
-      showAlert(
-        'Voice recording unavailable',
-        error instanceof Error
-          ? error.message
-          : 'Unable to stop the recording.',
-      );
-    } finally {
-      recordingActionRef.current = false;
-      setVoiceBusy(false);
-    }
-  }, [queueCapturedMedia, recorder]);
-
-  const handleVoiceClick = async () => {
-    if (recordingActionRef.current) return;
-    if (recordingRef.current) {
-      await stopVoiceRecording();
-      return;
-    }
-    recordingActionRef.current = true;
-    setVoiceBusy(true);
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
-          showAlert(
-            'Microphone access unavailable',
-            'Microphone recording requires a secure connection (HTTPS or localhost) and a supported browser.',
-          );
-          return;
-        }
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          stream.getTracks().forEach((track) => track.stop());
-        } catch (err: any) {
-          showAlert(
-            'Microphone permission required',
-            'Microphone access was denied or blocked by your browser. Please click the permissions icon (padlock/tune icon) next to the URL in your browser address bar and change Microphone to "Allow".',
-          );
-          return;
-        }
-      }
-
-      const permission = await requestRecordingPermissionsAsync();
-      if (!permission.granted) {
-        showAlert(
-          'Microphone permission required',
-          'Microphone access is required to record voice notes. Please allow microphone permissions in your browser or device settings.',
-        );
-        return;
-      }
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      recordingStartTimeRef.current = Date.now();
-      setVoiceDurationSeconds(1);
-      voiceDurationSecondsRef.current = 1;
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = setInterval(() => {
-        if (recordingStartTimeRef.current) {
-          const elapsed = Math.max(1, Math.ceil((Date.now() - recordingStartTimeRef.current) / 1000));
-          setVoiceDurationSeconds(elapsed);
-          voiceDurationSecondsRef.current = elapsed;
-        }
-      }, 500);
-
-      recordingRef.current = true;
-      setVoiceRecording(true);
-      autoStopTimerRef.current = setTimeout(() => {
-        void stopVoiceRecording();
-      }, 60_000);
-    } catch (error) {
-      recordingRef.current = false;
-      setVoiceRecording(false);
-      showAlert(
-        'Voice recording unavailable',
-        error instanceof Error
-          ? error.message
-          : 'Unable to start recording. Please check microphone permissions in your browser or device settings.',
-      );
-    } finally {
-      recordingActionRef.current = false;
-      setVoiceBusy(false);
-    }
-  };
-
-  useEffect(() => {
-    if (
-      !recorderState.isRecording &&
-      recorder.uri &&
-      recorder.uri !== queuedVoiceUriRef.current
-    ) {
-      const durationSec = Math.max(1, voiceDurationSecondsRef.current);
-      queuedVoiceUriRef.current = recorder.uri;
-      setVoiceRecord(recorder.uri);
-      queueCapturedMedia(
-        'voice',
-        recorder.uri,
-        Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a',
-        durationSec,
-      );
-    }
-  }, [
-    queueCapturedMedia,
-    recorder.uri,
-    recorderState.isRecording,
-  ]);
 
   return (
     <Screen
@@ -1025,9 +755,9 @@ const applySavedAddress = useCallback(
         <Text
           style={[theme.typography.h4, { color: theme.colors.textPrimary }]}
         >
-          A-yos AI
+          Create Booking
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       <View style={styles.content}>
@@ -1076,12 +806,13 @@ const applySavedAddress = useCallback(
           What do you need help with?
         </Text>
 
+        <View style={[styles.sectionCard, styles.serviceSectionCard]}>
         <View style={styles.serviceSectionHeader}>
           <Text
             style={[
               theme.typography.label,
               styles.sectionTitle,
-              { marginBottom: 0 },
+              styles.serviceSectionTitle,
             ]}
           >
             Select Service
@@ -1089,49 +820,44 @@ const applySavedAddress = useCallback(
         </View>
 
         {selectedCategoryObj ? (
-          <View style={styles.selectedServiceBanner}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={[styles.categoryIconContainer, { backgroundColor: '#e0e7ff', width: 40, height: 40, marginRight: 12 }]}>
-                {(() => {
-                  const Icon = iconFor(selectedCategoryObj.name);
-                  return <Icon color={theme.colors.primary} size={20} />;
-                })()}
+          <>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Change selected service: ${selectedCategoryObj.name}`}
+              style={styles.selectedServiceBanner}
+              onPress={() => setSelectedCategory(null)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.categoryIconContainer, { backgroundColor: industryVisualByName(selectedCategoryObj.name).bg, width: 40, height: 40, marginRight: 12 }]}>
+                  {(() => {
+                    const Icon = industryVisualByName(selectedCategoryObj.name).icon;
+                    return <Icon color={industryVisualByName(selectedCategoryObj.name).color} size={20} />;
+                  })()}
+                </View>
+                <View>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Selected Service</Text>
+                  <Text style={[theme.typography.body1, { fontWeight: '600', color: theme.colors.textPrimary }]}>{selectedCategoryObj.name}</Text>
+                </View>
               </View>
-              <View>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>Selected Service</Text>
-                <Text style={[theme.typography.body1, { fontWeight: '600', color: theme.colors.textPrimary }]}>{selectedCategoryObj.name}</Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ padding: 8 }}>
-              <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Change</Text>
             </TouchableOpacity>
-          </View>
+            <Text style={styles.changeServiceHint}>
+              Tap the card to change your selected service.
+            </Text>
+          </>
         ) : (
-          <View style={styles.categoriesGrid}>
-            {PARENT_CATEGORIES.map((parentCat, index) => {
-              const Icon = parentCat.icon;
-              const colorTheme = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-              return (
-                <Animated.View key={parentCat.id} entering={FadeInDown.delay(index * 50).duration(400).springify()} style={styles.categoryItemWrap}>
-                  <TouchableOpacity 
-                    style={styles.categoryItem} 
-                    onPress={() => setSelectedParent(parentCat.label)}
-                  >
-                    <View style={[styles.categoryIconContainer, { backgroundColor: colorTheme.bg }]}>
-                      <Icon color={colorTheme.color} size={28} />
-                    </View>
-                    <Text style={[theme.typography.caption, styles.categoryName]}>{parentCat.label}</Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
-          </View>
+          <ServiceCategoryGrid
+            industries={industries}
+            onSelect={(industry) => setSelectedParent(industry.name)}
+            flushBottom
+          />
         )}
 
         {errors.service ? (
           <Text style={styles.fieldError}>{errors.service}</Text>
         ) : null}
+        </View>
 
+        <View style={[styles.sectionCard, styles.cameraSectionCard]}>
         <Text style={[theme.typography.label, styles.sectionTitle]}>
           Camera
         </Text>
@@ -1144,7 +870,7 @@ const applySavedAddress = useCallback(
             />
             <TouchableOpacity
               style={styles.removeMediaBtn}
-              onPress={() => removeMedia('photo')}
+              onPress={() => removeMedia()}
             >
               <X color={theme.colors.surface} size={16} />
             </TouchableOpacity>
@@ -1202,90 +928,12 @@ const applySavedAddress = useCallback(
                       : photoError}
             </Text>
             {photoStatus === 'failed' ? (
-              <TouchableOpacity onPress={() => retryMediaAssist('photo')}>
+              <TouchableOpacity
+                onPress={() => retryMediaAssist()}
+                style={styles.mediaRetryBtn}
+              >
                 <Text style={styles.mediaRetryText}>Retry</Text>
               </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
-
-        <Text
-          style={[
-            theme.typography.label,
-            styles.sectionTitle,
-            { marginTop: theme.spacing.lg },
-          ]}
-        >
-          Voice
-        </Text>
-        {voiceRecord ? (
-          <View style={styles.mediaPreview}>
-            <View
-              style={[
-                styles.mediaImg,
-                { backgroundColor: theme.colors.primary },
-              ]}
-            />
-            <View style={styles.voiceLabelOverlay}>
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                Voice Content: {Math.max(1, voiceDurationSeconds)}s
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.removeMediaBtn}
-              onPress={() => removeMedia('voice')}
-            >
-              <X color={theme.colors.surface} size={16} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.mediaUploadBtn}
-            disabled={voiceBusy}
-            onPress={handleVoiceClick}
-          >
-            <Mic color={theme.colors.primary} size={32} />
-            <Text
-              style={[
-                theme.typography.caption,
-                { color: theme.colors.primary, marginTop: theme.spacing.xs },
-              ]}
-            >
-              {voiceBusy
-                ? 'Please wait…'
-                : voiceRecording
-                  ? `Stop (${voiceDurationSeconds}s)`
-                  : 'Record Voice'}
-            </Text>
-          </TouchableOpacity>
-        )}
-        {voiceRecord && voiceStatus !== 'idle' ? (
-          <View style={styles.mediaStatusRow}>
-            {voiceStatus === 'uploading' || voiceStatus === 'processing' ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : null}
-            <Text style={styles.mediaStatusText}>
-              {voiceStatus === 'uploading'
-                ? 'Uploading voice recording…'
-                : voiceStatus === 'awaiting-consent'
-                  ? 'Ready. Accept AI consent to transcribe this recording.'
-                  : voiceStatus === 'processing'
-                    ? 'Transcribing your recording…'
-                    : voiceStatus === 'completed'
-                      ? 'Transcript added to the description.'
-                      : voiceError}
-            </Text>
-            {voiceStatus === 'failed' ? (
-              <View style={styles.mediaRecoveryActions}>
-                <TouchableOpacity onPress={() => retryMediaAssist('voice')}>
-                  <Text style={styles.mediaRetryText}>Retry</Text>
-                </TouchableOpacity>
-                {voiceNeedsManualText ? (
-                  <TouchableOpacity onPress={useWrittenDescription}>
-                    <Text style={styles.mediaRetryText}>Use written description</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
             ) : null}
           </View>
         ) : null}
@@ -1310,178 +958,14 @@ const applySavedAddress = useCallback(
               setErrors((current) => ({ ...current, description: '' }));
           }}
           error={errors.description}
+          helperText="At least 10 characters helps match the right worker."
           style={styles.textArea}
           textAlignVertical="top"
+          autoCapitalize="sentences"
         />
-
-        <View style={styles.locationHeaderRow}>
-          <Text
-            style={[
-              theme.typography.label,
-              styles.sectionTitle,
-              { marginBottom: 0 },
-            ]}
-          >
-            Service Location
-          </Text>
-          <View style={styles.locationControls}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Use current location"
-              style={styles.currentLocationBtn}
-              onPress={() =>
-                void locationPickerRef.current?.useCurrentLocation()
-              }
-              disabled={locationLoading}
-            >
-              <Navigation color={theme.colors.primary} size={16} />
-              <Text style={styles.currentLocationText}>
-                {locationLoading ? 'Detecting…' : 'Use Current'}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
-        {savedAddresses.length ? (
-          <View style={styles.savedAddressSection}>
-            <View style={styles.savedAddressHeader}>
-              <Text style={styles.savedAddressTitle}>Main house address</Text>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Manage main house address"
-                onPress={() => router.push('/settings/addresses')}
-                style={styles.manageButton}
-              >
-                <Plus color={theme.colors.primary} size={16} />
-                <Text style={styles.savedAddressManage}>Manage</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.savedAddressList}>
-              {savedAddresses.map((savedAddress) => {
-                const selected = activeSavedAddressId === savedAddress.id;
-                return (
-                  <TouchableOpacity
-                    key={savedAddress.id}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    aria-checked={selected}
-                    accessibilityLabel={`Use saved address ${savedAddress.label}`}
-                    style={[
-                      styles.savedAddressChip,
-                      selected && styles.savedAddressChipSelected,
-                    ]}
-                    onPress={() => applySavedAddress(savedAddress)}
-                  >
-                    <MapPin
-                      color={
-                        selected ? theme.colors.surface : theme.colors.primary
-                      }
-                      size={15}
-                    />
-                    <View style={styles.savedAddressChipText}>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.savedAddressChipLabel,
-                          selected && styles.savedAddressChipLabelSelected,
-                        ]}
-                      >
-                        {savedAddress.label}
-                        {savedAddress.isDefault ? ' · Default' : ''}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.savedAddressChipDetail,
-                          selected && styles.savedAddressChipDetailSelected,
-                        ]}
-                      >
-                        {savedAddress.barangay}, {savedAddress.city}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-        <TextInput
-          placeholder="Enter complete address"
-          value={address}
-          onChangeText={updateAddress}
-          leftIcon={MapPin}
-          rightIcon={address ? X : undefined}
-          onRightIconPress={() => updateAddress('')}
-          error={errors.address}
-          style={styles.addressInput}
-        />
-        {addressSearchLoading ? (
-          <View style={styles.addressSearchStatus}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.addressSearchStatusText}>
-              Searching Philippine addresses…
-            </Text>
-          </View>
-        ) : null}
-        {addressResults.length > 0 ? (
-          <View style={styles.addressResults}>
-            {addressResults.map((result) => (
-              <TouchableOpacity
-                key={`${result.providerId}:${result.longitude}:${result.latitude}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Use address ${result.displayLabel}`}
-                style={styles.addressResultRow}
-                onPress={() => selectAddress(result)}
-              >
-                <MapPin color={theme.colors.primary} size={18} />
-                <Text style={styles.addressResultText}>
-                  {result.displayLabel ||
-                    [result.line, result.barangay, result.city, result.province]
-                      .filter(Boolean)
-                      .join(', ')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-        {addressSearchError ? (
-          <Text style={styles.addressSearchError}>{addressSearchError}</Text>
-        ) : null}
-        {locationWarning ? (
-          <Text style={styles.locationWarning}>{locationWarning}</Text>
-        ) : null}
-        {manualAddressMode ? (
-          <View style={styles.manualAddressCard}>
-            <Text style={styles.manualAddressTitle}>Complete the address</Text>
-            <Text style={styles.manualAddressHelp}>
-              Your map point is saved. These details are required so the worker
-              can find you.
-            </Text>
-            <TextInput
-              placeholder="Barangay"
-              value={manualAddress.barangay}
-              onChangeText={(value) => updateManualAddress('barangay', value)}
-              error={errors.barangay}
-            />
-            <TextInput
-              placeholder="City or municipality"
-              value={manualAddress.city}
-              onChangeText={(value) => updateManualAddress('city', value)}
-              error={errors.city}
-            />
-            <TextInput
-              placeholder="Province"
-              value={manualAddress.province}
-              onChangeText={(value) => updateManualAddress('province', value)}
-              error={errors.province}
-            />
-            <TextInput
-              placeholder="Postal code (optional)"
-              value={manualAddress.postalCode}
-              onChangeText={(value) => updateManualAddress('postalCode', value)}
-              keyboardType="number-pad"
-            />
-          </View>
-        ) : null}
+
+        <View style={[styles.sectionCard, styles.addressSectionCard]}>
         <LocationPicker
           ref={locationPickerRef}
           coords={coords}
@@ -1534,6 +1018,194 @@ const applySavedAddress = useCallback(
             setDraft({ addressId: null, addressDetails: details });
           }}
         />
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Edit full address"
+          testID="address-display"
+          style={[
+            styles.addressDisplay,
+            errors.address && styles.addressDisplayError,
+          ]}
+          onPress={() => setAddressEditorOpen(true)}
+        >
+          <MapPin color={theme.colors.primary} size={20} />
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[
+              styles.addressDisplayText,
+              !address && styles.addressDisplayPlaceholder,
+            ]}
+          >
+            {address || 'Tap to enter service address'}
+          </Text>
+          <Pencil color={theme.colors.textSecondary} size={18} />
+        </TouchableOpacity>
+        {errors.address ? (
+          <Text style={styles.addressErrorText}>{errors.address}</Text>
+        ) : null}
+        {addressSearchLoading ? (
+          <View style={styles.addressSearchStatus}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.addressSearchStatusText}>
+              Searching Philippine addresses…
+            </Text>
+          </View>
+        ) : null}
+        {addressResults.length > 0 ? (
+          <View style={styles.addressResults}>
+            {addressResults.map((result) => (
+              <TouchableOpacity
+                key={`${result.providerId}:${result.longitude}:${result.latitude}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Use address ${result.displayLabel}`}
+                style={styles.addressResultRow}
+                onPress={() => selectAddress(result)}
+              >
+                <MapPin color={theme.colors.primary} size={18} />
+                <Text style={styles.addressResultText}>
+                  {result.displayLabel ||
+                    [result.line, result.barangay, result.city, result.province]
+                      .filter(Boolean)
+                      .join(', ')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+        {addressSearchError ? (
+          <Text style={styles.addressSearchError}>{addressSearchError}</Text>
+        ) : null}
+        {locationWarning ? (
+          <Text style={styles.locationWarning}>{locationWarning}</Text>
+        ) : null}
+        <View style={styles.locationControls}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Use current location"
+              style={[
+                styles.currentLocationBtn,
+                locationLoading && styles.currentLocationBtnDisabled,
+              ]}
+              onPress={() =>
+                void locationPickerRef.current?.useCurrentLocation()
+              }
+              disabled={locationLoading}
+            >
+              <Navigation color={theme.colors.surface} size={16} />
+              <Text style={styles.currentLocationText}>
+                {locationLoading ? 'Detecting…' : 'Use Current'}
+              </Text>
+            </TouchableOpacity>
+            {savedAddresses.length ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Manage main house address"
+                onPress={() => router.push('/settings/addresses')}
+                style={styles.manageButton}
+              >
+                <Plus color={theme.colors.primary} size={16} />
+                <Text style={styles.savedAddressManage}>Manage</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        {savedAddresses.length ? (
+          <View style={styles.savedAddressSection}>
+            <Text style={styles.savedAddressTitle}>Saved addresses</Text>
+            <View style={styles.savedAddressList}>
+              {savedAddresses.map((savedAddress) => {
+                const selected = activeSavedAddressId === savedAddress.id;
+                return (
+                  <TouchableOpacity
+                    key={savedAddress.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    aria-checked={selected}
+                    accessibilityLabel={`Use saved address ${savedAddress.label}`}
+                    style={[
+                      styles.savedAddressChip,
+                      selected && styles.savedAddressChipSelected,
+                    ]}
+                    onPress={() => applySavedAddress(savedAddress)}
+                  >
+                    <MapPin
+                      color={
+                        selected ? theme.colors.surface : theme.colors.primary
+                      }
+                      size={15}
+                    />
+                    <View style={styles.savedAddressChipText}>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.savedAddressChipLabel,
+                          selected && styles.savedAddressChipLabelSelected,
+                        ]}
+                      >
+                        {savedAddress.label}
+                        {savedAddress.isDefault ? ' · Default' : ''}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.savedAddressChipDetail,
+                          selected && styles.savedAddressChipDetailSelected,
+                        ]}
+                      >
+                        {savedAddress.barangay}, {savedAddress.city}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+        {manualAddressMode ? (
+          <View style={styles.manualAddressCard}>
+            <Text style={styles.manualAddressTitle}>Complete the address</Text>
+            <Text style={styles.manualAddressHelp}>
+              Your map point is saved. These details are required so the worker
+              can find you.
+            </Text>
+            <TextInput
+              label="Barangay"
+              placeholder="Barangay"
+              value={manualAddress.barangay}
+              onChangeText={(value) => updateManualAddress('barangay', value)}
+              error={errors.barangay}
+              autoCapitalize="words"
+              containerStyle={styles.manualField}
+            />
+            <TextInput
+              label="City or municipality"
+              placeholder="City or municipality"
+              value={manualAddress.city}
+              onChangeText={(value) => updateManualAddress('city', value)}
+              error={errors.city}
+              autoCapitalize="words"
+              containerStyle={styles.manualField}
+            />
+            <TextInput
+              label="Province"
+              placeholder="Province"
+              value={manualAddress.province}
+              onChangeText={(value) => updateManualAddress('province', value)}
+              error={errors.province}
+              autoCapitalize="words"
+              containerStyle={styles.manualField}
+            />
+            <TextInput
+              label="Postal code (optional)"
+              placeholder="Postal code (optional)"
+              value={manualAddress.postalCode}
+              onChangeText={(value) => updateManualAddress('postalCode', value)}
+              keyboardType="number-pad"
+              containerStyle={styles.manualField}
+            />
+          </View>
+        ) : null}
+        </View>
 
         <View style={styles.infoCard}>
           <View
@@ -1558,7 +1230,7 @@ const applySavedAddress = useCallback(
               • Customer uploads a photo of the problem
             </Text>
             <Text style={[theme.typography.caption, styles.infoBullet]}>
-              • Customer records or enters a spoken or written description
+              • Customer enters a written description
             </Text>
             <Text style={[theme.typography.caption, styles.infoBullet]}>
               • AI identifies the likely issue
@@ -1586,18 +1258,8 @@ const applySavedAddress = useCallback(
                   photoStatus === 'awaiting-consent'
                 )
                   void runMediaAssist(
-                    'photo',
                     uploadedMediaRef.current.photo,
                     mediaGenerationRef.current.photo,
-                  );
-                if (
-                  uploadedMediaRef.current.voice &&
-                  voiceStatus === 'awaiting-consent'
-                )
-                  void runMediaAssist(
-                    'voice',
-                    uploadedMediaRef.current.voice,
-                    mediaGenerationRef.current.voice,
                   );
               }
             }}
@@ -1622,6 +1284,12 @@ const applySavedAddress = useCallback(
         </View>
       </View>
 
+      {submissionError ? (
+        <View style={styles.submissionErrorCard}>
+          <Text style={styles.submissionError}>{submissionError}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.footer}>
         <Button
           title={profileLoading ? 'Loading profile…' : 'Continue'}
@@ -1629,6 +1297,7 @@ const applySavedAddress = useCallback(
           loading={saving}
           disabled={saving || profileLoading}
           fullWidth
+          size="lg"
         />
         <TouchableOpacity
           style={styles.manualButton}
@@ -1643,48 +1312,26 @@ const applySavedAddress = useCallback(
         </TouchableOpacity>
       </View>
 
-      <Modal visible={!!selectedParent} transparent animationType="fade" onRequestClose={() => setSelectedParent(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={theme.typography.h3}>{selectedParent} Services</Text>
-              <TouchableOpacity onPress={() => setSelectedParent(null)}>
-                <X color={theme.colors.textSecondary} size={24} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ maxHeight: 400 }}>
-              {selectedParent && groupedCategories[selectedParent]?.length > 0 ? (
-                groupedCategories[selectedParent].map((cat) => (
-                  <TouchableOpacity 
-                    key={cat.id} 
-                    style={styles.subcatItem}
-                    onPress={() => {
-                      setSelectedCategory(cat.id);
-                      setErrors((current) => ({ ...current, service: '' }));
-                      setSelectedParent(null);
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={[styles.categoryIconContainer, { backgroundColor: '#e0e7ff', width: 40, height: 40, marginRight: 12 }]}>
-                        {(() => {
-                          const Icon = iconFor(cat.name);
-                          return <Icon color={theme.colors.primary} size={20} />;
-                        })()}
-                      </View>
-                      <Text style={theme.typography.body1}>{cat.name}</Text>
-                    </View>
-                    <ChevronDown color={theme.colors.textTertiary} size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={{ padding: 20, alignItems: 'center' }}>
-                  <Text style={{ color: theme.colors.textSecondary }}>No services available in this category yet.</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <ServiceCategorySheet
+        visible={!!selectedParent}
+        industry={selectedIndustry}
+        items={selectedSkills}
+        onSelect={(skill) => {
+          setSelectedCategory(skill.id);
+          setErrors((current) => ({ ...current, service: '' }));
+          setSelectedParent(null);
+        }}
+        onClose={() => setSelectedParent(null)}
+      />
+      <AddressEditorModal
+        visible={addressEditorOpen}
+        initialValue={address}
+        onClose={() => setAddressEditorOpen(false)}
+        onConfirm={(value) => {
+          updateAddress(value);
+          setAddressEditorOpen(false);
+        }}
+      />
     </Screen>
   );
 }
@@ -1703,17 +1350,38 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   content: {
     flex: 1,
     paddingHorizontal: theme.layout.screenPadding,
-    paddingVertical: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   title: { marginBottom: theme.spacing.xl, color: theme.colors.textPrimary },
+  sectionCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+  },
+  serviceSectionTitle: {
+    marginBottom: theme.spacing.md,
+  },
+  serviceSectionCard: {
+    marginBottom: theme.spacing.xs,
+  },
+  cameraSectionCard: {
+    paddingBottom: theme.spacing.sm,
+  },
+  addressSectionCard: {
+    paddingVertical: theme.spacing.md,
+  },
   sectionTitle: {
     marginBottom: theme.spacing.sm,
     color: theme.colors.textPrimary,
@@ -1722,7 +1390,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 0,
   },
   serviceSearchToggle: {
     flexDirection: 'row',
@@ -1807,7 +1475,7 @@ const styles = StyleSheet.create({
   },
   photoActionRow: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
   },
   photoAction: {
     flex: 1,
@@ -1826,21 +1494,13 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.border,
   },
-  voiceLabelOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
   removeMediaBtn: {
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.error,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1864,6 +1524,11 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '700',
   },
+  mediaRetryBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.sm,
+  },
   mediaRecoveryActions: {
     alignItems: 'flex-end',
     gap: theme.spacing.xs,
@@ -1872,24 +1537,19 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 100,
     backgroundColor: theme.colors.surface,
-    marginBottom: theme.spacing.xl,
   },
 
-  locationHeaderRow: {
+  locationControls: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.sm,
   },
-  locationControls: { flexDirection: 'row', alignItems: 'center' },
   savedAddressSection: {
-    marginBottom: theme.spacing.md,
     gap: theme.spacing.sm,
-  },
-  savedAddressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   savedAddressTitle: {
     ...theme.typography.caption,
@@ -1904,25 +1564,31 @@ const styles = StyleSheet.create({
   manageButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.primary + '15',
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
     borderRadius: theme.radius.full,
   },
   savedAddressList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
   },
   savedAddressChip: {
     minWidth: 150,
+    minHeight: 48,
     maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.primary,
     borderRadius: theme.radius.md,
@@ -1952,22 +1618,28 @@ const styles = StyleSheet.create({
   currentLocationBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: theme.colors.primary + '15',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    gap: 6,
+    flex: 1,
+    minHeight: 44,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.full,
+  },
+  currentLocationBtnDisabled: {
+    opacity: 0.6,
   },
   currentLocationText: {
     ...theme.typography.caption,
-    color: theme.colors.primary,
+    color: theme.colors.surface,
     fontWeight: '700',
   },
   addressSearchStatus: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    marginTop: -theme.spacing.sm,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   addressSearchStatusText: {
@@ -1979,7 +1651,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    marginTop: -theme.spacing.md,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
     overflow: 'hidden',
   },
@@ -2007,7 +1679,7 @@ const styles = StyleSheet.create({
   addressSearchError: {
     ...theme.typography.caption,
     color: theme.colors.error,
-    marginTop: -theme.spacing.sm,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   locationWarning: {
@@ -2016,7 +1688,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.warningBackground,
     padding: theme.spacing.sm,
     borderRadius: theme.radius.sm,
-    marginTop: -theme.spacing.sm,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   manualAddressCard: {
@@ -2026,7 +1698,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
-    gap: theme.spacing.xs,
+    gap: theme.spacing.md,
   },
   manualAddressTitle: {
     ...theme.typography.label,
@@ -2035,7 +1707,9 @@ const styles = StyleSheet.create({
   manualAddressHelp: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
+  },
+  manualField: {
+    marginBottom: 0,
   },
 
   mapGridPattern: {
@@ -2056,9 +1730,36 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: 'rgba(255,255,255,0.4)',
   },
-  addressInput: {
+  addressDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
-    marginBottom: theme.spacing.xl,
+    minHeight: 56,
+    paddingHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  addressDisplayError: {
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.errorBackground,
+  },
+  addressDisplayText: {
+    flex: 1,
+    ...theme.typography.body1,
+    color: theme.colors.textPrimary,
+  },
+  addressDisplayPlaceholder: {
+    color: theme.colors.textTertiary,
+  },
+  addressErrorText: {
+    ...theme.typography.caption,
+    color: theme.colors.error,
+    marginTop: -theme.spacing.xs,
+    marginBottom: theme.spacing.md,
   },
 
   infoCard: {
@@ -2082,19 +1783,29 @@ const styles = StyleSheet.create({
   },
   consentRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    minHeight: 44,
+    paddingVertical: theme.spacing.xs,
     marginTop: theme.spacing.md,
   },
   consentBox: {
-    width: 18,
-    height: 18,
+    width: 22,
+    height: 22,
     borderWidth: 1,
     borderColor: theme.colors.primary,
-    borderRadius: 4,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   consentBoxChecked: { backgroundColor: theme.colors.primary },
-  manualButton: { alignItems: 'center', paddingVertical: theme.spacing.md },
+  manualButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
   submissionError: {
     ...theme.typography.caption,
     color: theme.colors.error,
@@ -2104,6 +1815,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.xs,
     padding: theme.spacing.sm,
+    paddingHorizontal: theme.layout.screenPadding,
     marginBottom: theme.spacing.sm,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.errorBackground,
@@ -2145,22 +1857,17 @@ const styles = StyleSheet.create({
   selectedServiceBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
     borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
     ...theme.shadows.sm,
   },
-  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', marginBottom: theme.spacing.lg },
-  categoryItemWrap: { width: '25%' },
-  categoryItem: { alignItems: 'center', marginBottom: theme.spacing.lg },
+  changeServiceHint: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+  },
   categoryIconContainer: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: theme.spacing.xs },
-  categoryName: { textAlign: 'center', color: theme.colors.textPrimary, fontSize: 11, fontWeight: '500' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, padding: theme.spacing.lg },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg },
-  subcatItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.borderLight },
 });

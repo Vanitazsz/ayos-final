@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
 import {
@@ -15,6 +16,7 @@ export type WorkerApplicationInput = {
   frontId: string;
   backId: string;
   identityData: Record<string, unknown>;
+  resumeToken?: string;
 };
 
 export type WorkerApplicationProgress =
@@ -26,16 +28,41 @@ export type WorkerApplicationProgress =
 
 let pendingWorkerApplicationBuffer: WorkerApplicationInput | null = null;
 
-export function savePendingWorkerApplication(input: WorkerApplicationInput) {
+const PENDING_WORKER_APPLICATION_KEY = 'pending-worker-application';
+
+export async function savePendingWorkerApplication(input: WorkerApplicationInput) {
   pendingWorkerApplicationBuffer = input;
+  await AsyncStorage.setItem(
+    PENDING_WORKER_APPLICATION_KEY,
+    JSON.stringify(input),
+  );
 }
 
 export function getPendingWorkerApplication(): WorkerApplicationInput | null {
   return pendingWorkerApplicationBuffer;
 }
 
-export function clearPendingWorkerApplication() {
+export async function clearPendingWorkerApplication() {
   pendingWorkerApplicationBuffer = null;
+  await AsyncStorage.removeItem(PENDING_WORKER_APPLICATION_KEY);
+}
+
+/**
+ * Restores a persisted pending application (e.g. after an app restart) into the
+ * in-memory buffer so the OTP resume path can complete the registration.
+ */
+export async function hydratePendingWorkerApplication() {
+  if (pendingWorkerApplicationBuffer) return;
+  try {
+    const stored = await AsyncStorage.getItem(PENDING_WORKER_APPLICATION_KEY);
+    if (!stored) return;
+    const parsed = JSON.parse(stored) as WorkerApplicationInput;
+    if (parsed && typeof parsed.email === 'string' && parsed.email.trim()) {
+      pendingWorkerApplicationBuffer = parsed;
+    }
+  } catch {
+    // Ignore malformed or unreadable persisted applications.
+  }
 }
 
 async function uploadDocument(userId: string, uri: string) {
@@ -52,6 +79,64 @@ async function uploadDocument(userId: string, uri: string) {
     .upload(path, bytes, { contentType: 'image/jpeg', upsert: false });
   if (error) throw error;
   return path;
+}
+
+/**
+ * Converts an image URI (file/blob/data URL) into a base64 data URL so a
+ * pending application can be shipped to the server before the account exists.
+ * The verification-documents bucket only accepts authenticated uploads, so the
+ * resume payload must carry the raw image bytes instead.
+ */
+async function toBase64DataUrl(uri: string) {
+  const response = await fetch(uri);
+  if (!response.ok)
+    throw new Error('Unable to read the selected identity document');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(index, index + chunkSize),
+    );
+  }
+  const base64 = btoa(binary);
+  const mime = /^data:([^;,]+)/.exec(uri)?.[1] ?? 'image/jpeg';
+  return `data:${mime};base64,${base64}`;
+}
+
+async function savePendingWorkerApplicationToServer(
+  input: WorkerApplicationInput,
+  resumeToken: string,
+) {
+  const payload = {
+    ...input,
+    frontId: await toBase64DataUrl(input.frontId),
+    backId: await toBase64DataUrl(input.backId),
+    resumeToken,
+  };
+  const { error } = await supabase.rpc('save_pending_worker_registration', {
+    p_resume_token: resumeToken,
+    p_email: input.email,
+    p_payload: payload,
+  });
+  if (error) throw error;
+}
+
+async function fetchPendingWorkerApplicationFromServer(resumeToken: string) {
+  const { data, error } = await supabase.rpc(
+    'get_pending_worker_registration',
+    { p_resume_token: resumeToken },
+  );
+  if (error) throw error;
+  if (!data) return null;
+  return data as WorkerApplicationInput;
+}
+
+async function clearPendingWorkerApplicationFromServer(resumeToken: string) {
+  const { error } = await supabase.rpc('clear_pending_worker_registration', {
+    p_resume_token: resumeToken,
+  });
+  if (error) throw error;
 }
 
 export async function submitWorkerApplication(
@@ -89,12 +174,21 @@ export async function submitWorkerApplication(
       }
       session = data.session;
       if (!session) {
-        savePendingWorkerApplication(input);
-        return { requiresEmailVerification: true as const };
+        const resumeToken = input.resumeToken ?? randomUUID();
+        const pending = { ...input, resumeToken };
+        try {
+          await savePendingWorkerApplicationToServer(pending, resumeToken);
+        } catch (serverError) {
+          // A server copy is a reload safety net; if it cannot be saved the
+          // local copy still covers this session, so do not block the OTP flow.
+          console.warn('Failed to persist pending registration:', serverError);
+        }
+        await savePendingWorkerApplication(pending);
+        return { requiresEmailVerification: true as const, resumeToken };
       }
     }
 
-    if (session.user.email?.toLowerCase() !== email) {
+    if (session.user.email?.trim().toLowerCase() !== email.trim().toLowerCase()) {
       throw new Error(
         'The application email must match the authenticated worker account',
       );
@@ -125,7 +219,14 @@ export async function submitWorkerApplication(
       p_experience: input.experience,
     });
     if (error) throw error;
-    clearPendingWorkerApplication();
+    if (input.resumeToken) {
+      try {
+        await clearPendingWorkerApplicationFromServer(input.resumeToken);
+      } catch {
+        // Best-effort cleanup; an orphaned pending row expires on its own.
+      }
+    }
+    await clearPendingWorkerApplication();
     return { requiresEmailVerification: false as const, data };
   } catch (error) {
     if (paths.length)
@@ -138,12 +239,21 @@ export async function submitWorkerApplication(
  * Automatically resumes pending worker application submission after OTP verification completes.
  */
 export async function completePendingWorkerApplication(
+  resumeToken?: string,
   onProgress?: (message: WorkerApplicationProgress) => void,
 ) {
-  const pending = getPendingWorkerApplication();
+  await hydratePendingWorkerApplication();
+  let pending = getPendingWorkerApplication();
+  if (!pending && resumeToken) {
+    try {
+      pending = await fetchPendingWorkerApplicationFromServer(resumeToken);
+    } catch {
+      pending = null;
+    }
+    if (pending) pendingWorkerApplicationBuffer = pending;
+  }
   if (!pending) return { completed: false };
   const res = await submitWorkerApplication(pending, onProgress);
-  clearPendingWorkerApplication();
   return { completed: true, data: res };
 }
 
@@ -153,33 +263,13 @@ export type WorkerDocumentResubmitProgress =
   | 'Submitting your updated documents…';
 
 /**
- * Removes a submitted identity document while the worker verification is still actionable.
- * The file is deleted through the Storage API first (direct SQL deletion of
- * storage.objects is blocked by Supabase), then the path is unlinked in the RPC.
- */
-export async function removeWorkerVerificationDocument(p_document_path: string) {
-  try {
-    const { error: removeError } = await supabase.storage
-      .from('verification-documents')
-      .remove([p_document_path]);
-    if (removeError) throw removeError;
-    const { data, error } = await supabase.rpc(
-      'remove_worker_verification_document',
-      { p_document_path },
-    );
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    throw new Error(workerRegistrationErrorMessage(error));
-  }
-}
-
-/**
- * Replaces the current identity documents with a freshly uploaded front/back pair.
+ * Replaces the current identity documents with a freshly uploaded front/back pair
+ * and records which government ID type was submitted.
  */
 export async function resubmitWorkerVerificationDocuments(
   frontId: string,
   backId: string,
+  idType: string,
   onProgress?: (message: WorkerDocumentResubmitProgress) => void,
 ) {
   const {
@@ -196,13 +286,36 @@ export async function resubmitWorkerVerificationDocuments(
     onProgress?.('Submitting your updated documents…');
     const { data, error } = await supabase.rpc(
       'resubmit_worker_verification_documents',
-      { p_document_paths: paths },
+      { p_document_paths: paths, p_id_type: idType },
     );
     if (error) throw error;
     return data;
   } catch (error) {
     if (paths.length)
       await supabase.storage.from('verification-documents').remove(paths);
+    throw new Error(workerRegistrationErrorMessage(error));
+  }
+}
+
+/**
+ * Deletes the worker's entire verification submission while it is still
+ * actionable (PENDING or NEEDS_DOCUMENTS). The ID files are removed through the
+ * Storage API first (direct SQL deletion of storage.objects is blocked by
+ * Supabase), then the worker_verifications row is deleted by the RPC and the
+ * worker profile returns to its initial un-submitted state.
+ */
+export async function deleteWorkerVerification(documentPaths: string[]) {
+  try {
+    if (documentPaths.length) {
+      const { error: removeError } = await supabase.storage
+        .from('verification-documents')
+        .remove(documentPaths);
+      if (removeError) throw removeError;
+    }
+    const { data, error } = await supabase.rpc('delete_worker_verification');
+    if (error) throw error;
+    return data;
+  } catch (error) {
     throw new Error(workerRegistrationErrorMessage(error));
   }
 }

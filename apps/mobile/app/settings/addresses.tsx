@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGoBack } from '@/hooks/useGoBack';
 import { ArrowLeft, Check, Edit3, MapPin, Plus, Trash2, AlertCircle } from 'lucide-react-native';
 import { Screen } from '@/components/layout/Screen';
@@ -52,6 +53,7 @@ const emptyForm: AddressForm = {
 
 export default function SavedAddressesScreen() {
   const goBack = useGoBack('/(tabs)/home');
+  const queryClient = useQueryClient();
   const locationPickerRef = useRef<LocationPickerHandle>(null);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +143,7 @@ export default function SavedAddressesScreen() {
       });
       closeForm();
       await load();
+      void queryClient.invalidateQueries({ queryKey: ['customer', 'profile'] });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save this address.');
     } finally {
@@ -168,6 +171,7 @@ export default function SavedAddressesScreen() {
       await archiveSavedAddress(id);
       setConfirmRemoveId(null);
       await load();
+      void queryClient.invalidateQueries({ queryKey: ['customer', 'profile'] });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to remove this address.');
     } finally {
@@ -419,9 +423,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.layout.screenPadding,
   },
   backButton: { width: 40, height: 40, justifyContent: 'center' },
-  content: { paddingVertical: theme.spacing.lg, gap: theme.spacing.md },
+  content: {
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.layout.screenPadding,
+    gap: theme.spacing.md,
+  },
   helpText: { color: theme.colors.textSecondary },
   loadingState: { alignItems: 'center', gap: theme.spacing.sm, padding: theme.spacing.xl },
   errorCard: {
