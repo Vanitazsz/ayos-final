@@ -152,7 +152,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen safeArea backgroundColor="#fff">
+    <Screen safeArea fullWidth backgroundColor="#fff">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}

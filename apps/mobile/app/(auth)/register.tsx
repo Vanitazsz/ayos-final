@@ -23,10 +23,8 @@ export default function RegisterScreen() {
     <Screen
       scrollable
       keyboardAvoiding={false}
-      style={{ paddingHorizontal: theme.layout.screenPadding }}
       contentContainerStyle={{
         flexGrow: 1,
-        paddingHorizontal: theme.spacing.lg,
         paddingBottom: theme.spacing.lg,
       }}
     >

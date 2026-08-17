@@ -151,7 +151,7 @@ export default function CancelBookingScreen() {
 
   if (!bookingId || bookingUnavailable) {
     return (
-      <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea fullWidth backgroundColor={theme.colors.background}>
         <View style={styles.centerState}>
           <FileQuestion size={42} color={theme.colors.primary} />
           <AppText variant="h3" weight="bold" align="center">

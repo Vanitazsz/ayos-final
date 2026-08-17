@@ -67,7 +67,7 @@ export default function MatchingScreen() {
   } = useLiveMatching(requestId);
 
   return (
-    <Screen safeArea>
+    <Screen safeArea fullWidth>
       <View style={styles.header}>
         <TouchableOpacity
           accessibilityLabel="Go back"

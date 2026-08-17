@@ -26,3 +26,33 @@ export function filterServiceCatalog<T extends SearchableService>(
       .some((value) => normalizeServiceQuery(value.replace(/-/g, ' ')).includes(normalizedQuery)),
   );
 }
+
+export interface SearchableIndustry {
+  id: string;
+  name: string;
+  slug: string;
+  skills: Array<{ id: string; name: string; slug: string }>;
+}
+
+export interface IndustrySearchResult {
+  industry: SearchableIndustry;
+  skill: { id: string; name: string; slug: string };
+}
+
+export function filterIndustries(
+  industries: SearchableIndustry[],
+  query: string,
+): IndustrySearchResult[] {
+  const q = normalizeServiceQuery(query);
+  if (!q) return [];
+
+  return industries.flatMap((industry) =>
+    industry.skills
+      .filter(
+        (skill) =>
+          normalizeServiceQuery(skill.name.replace(/-/g, ' ')).includes(q) ||
+          normalizeServiceQuery(industry.name).includes(q),
+      )
+      .map((skill) => ({ industry, skill })),
+  );
+}

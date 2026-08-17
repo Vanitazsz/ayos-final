@@ -106,40 +106,37 @@ export default function WorkerHelpCenterScreen() {
   return (
     <Screen
       scrollable
-      fullWidth
       keyboardAvoiding={false}
-      contentContainerStyle={[styles.screenContent, { paddingBottom: 80 }]}
+      contentContainerStyle={{ paddingBottom: 80 }}
       style={{ paddingBottom: 0 }}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel="Back to profile"
-            hitSlop={12}
-            style={styles.backButton}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </Pressable>
-          <AppText variant="h3" weight="bold" style={styles.headerTitle}>
-            {page.title}
-          </AppText>
-          <View style={styles.headerSpacer} />
-        </View>
+      <View style={styles.header}>
+        <Pressable
+          onPress={handleBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back to profile"
+          hitSlop={12}
+          style={styles.backButton}
+        >
+          <ArrowLeft size={24} color={Colors.textPrimary} />
+        </Pressable>
+        <AppText variant="h3" weight="bold" style={styles.headerTitle}>
+          {page.title}
+        </AppText>
+        <View style={styles.headerSpacer} />
+      </View>
 
-        <View style={styles.contentCard}>
-          <ContentBody body={page.body} />
-          <View style={styles.metadata}>
+      <View style={styles.contentCard}>
+        <ContentBody body={page.body} />
+        <View style={styles.metadata}>
+          <AppText variant="caption" color={Colors.textTertiary}>
+            Version {page.version}
+          </AppText>
+          {formatUpdatedAt(page.updatedAt) ? (
             <AppText variant="caption" color={Colors.textTertiary}>
-              Version {page.version}
+              Updated {formatUpdatedAt(page.updatedAt)}
             </AppText>
-            {formatUpdatedAt(page.updatedAt) ? (
-              <AppText variant="caption" color={Colors.textTertiary}>
-                Updated {formatUpdatedAt(page.updatedAt)}
-              </AppText>
-            ) : null}
-          </View>
+          ) : null}
         </View>
       </View>
     </Screen>
@@ -147,15 +144,6 @@ export default function WorkerHelpCenterScreen() {
 }
 
 const styles = StyleSheet.create({
-  screenContent: {
-    paddingBottom: Spacing['8'],
-  },
-  container: {
-    width: '100%',
-    maxWidth: 840,
-    alignSelf: 'center',
-    flexGrow: 1,
-  },
   header: {
     minHeight: 56,
     flexDirection: 'row',

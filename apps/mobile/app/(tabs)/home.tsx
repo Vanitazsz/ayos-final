@@ -27,13 +27,13 @@ import { ServiceCategoryGrid } from '@/features/customer/ServiceCategoryGrid';
 import { ServiceCategorySheet } from '@/features/customer/ServiceCategorySheet';
 import { useHomeData } from '@/hooks/useHomeData';
 import { useNotificationsGate } from '@/hooks/useNotificationsGate';
-import { filterServiceCatalog } from '@/services/catalogSearch';
+import { filterIndustries } from '@/services/catalogSearch';
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { user, categories, industries, profile, activeBookingsCount, lastCompletedWorkerName } = useHomeData();
+  const { user, industries, profile, activeBookingsCount, lastCompletedWorkerName } = useHomeData();
   const openNotifications = useNotificationsGate();
   const [selectedParent, setSelectedParent] = useState<string | null>(null);
   const [serviceQuery, setServiceQuery] = useState('');
@@ -64,9 +64,9 @@ export default function HomeScreen() {
     [selectedIndustry],
   );
 
-  const filteredCategories = useMemo(
-    () => filterServiceCatalog(categories, serviceQuery),
-    [categories, serviceQuery],
+  const filteredResults = useMemo(
+    () => filterIndustries(industries, serviceQuery),
+    [industries, serviceQuery],
   );
 
   const dropdownMaxHeight = useMemo(() => {
@@ -77,6 +77,12 @@ export default function HomeScreen() {
       24;
     return Math.min(Math.max(available, 160), 400);
   }, [windowHeight, headerHeight, keyboardHeight]);
+
+  const handleSelectResult = (result: { industry: { name: string }; skill: { id: string } }) => {
+    setServiceQuery('');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedParent(result.industry.name);
+  };
 
   const handleSelectSkill = (skill: { id: string }) => {
     setServiceQuery('');
@@ -139,19 +145,22 @@ export default function HomeScreen() {
             entering={FadeInDown.duration(200)}
             style={[styles.searchDropdown, { top: headerHeight + 4 }]}
           >
-            {filteredCategories.length > 0 ? (
+            {filteredResults.length > 0 ? (
               <ScrollView
                 style={[styles.searchDropdownScroll, { maxHeight: dropdownMaxHeight }]}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator
               >
-                {filteredCategories.map((subcat: any) => (
+                {filteredResults.map((result) => (
                   <TouchableOpacity
-                    key={subcat.id}
+                    key={`${result.industry.id}-${result.skill.id}`}
                     style={styles.searchResultItem}
-                    onPress={() => handleSelectSkill(subcat)}
+                    onPress={() => handleSelectResult(result)}
                   >
-                    <Text style={theme.typography.body1}>{subcat.label}</Text>
+                    <Text style={theme.typography.body1}>{result.skill.name}</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                      {result.industry.name}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

@@ -162,7 +162,7 @@ export default function BookingSummaryScreen() {
   };
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background}>
+    <Screen safeArea fullWidth backgroundColor={theme.colors.background}>
       {/* Header */}
       <View
         style={[

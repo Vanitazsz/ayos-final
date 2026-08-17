@@ -86,7 +86,6 @@ export default function CreateAccountScreen() {
       style={{ paddingBottom: 0 }}
       contentContainerStyle={{
         flexGrow: 1,
-        paddingHorizontal: 24,
         paddingBottom: 80,
       }}
     >

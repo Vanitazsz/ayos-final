@@ -81,7 +81,7 @@ export default function WorkerBookingsScreen() {
   const comingSoon = () => showAlert('Coming Soon', 'Earnings receipts will be available in a future update.');
 
   return (
-    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
+    <Screen safeArea fullWidth backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
       </View>
