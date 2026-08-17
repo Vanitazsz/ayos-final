@@ -127,13 +127,6 @@ export function MapSurface({
     if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
   }, []);
 
-  useEffect(() => {
-    // TEMP-DIAG: log center on mount to pinpoint invalid-coordinate source.
-    console.log(
-      `[MapSurface] mount center=${JSON.stringify(center)} radiusMeters=${radiusMeters} valid=${isCenterValid}`,
-    );
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
     <MapLibreGL.Map
       style={styles.map}

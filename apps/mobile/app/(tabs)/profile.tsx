@@ -356,22 +356,15 @@ export default function ProfileScreen() {
                   {profile.subdivisionName}
                 </Text>
               ) : null}
-              <View style={styles.verifiedBadge}>
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    {
-                      color: profile.emailVerified
-                        ? theme.colors.success
-                        : theme.colors.warning,
-                    },
-                  ]}
-                >
-                  {profile.emailVerified
-                    ? '✓ Email verified'
-                    : 'Email verification pending'}
-                </Text>
-              </View>
+              <Badge
+                label={
+                  profile.emailVerified
+                    ? 'Email verified'
+                    : 'Email verification pending'
+                }
+                variant={profile.emailVerified ? 'verified' : 'warning'}
+                style={{ marginTop: theme.spacing.xs }}
+              />
             </View>
 
             {!profile.profileComplete && (
@@ -538,13 +531,11 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.layout.screenPadding,
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.layout.screenPadding,
     paddingBottom: theme.spacing.xxxl,
   },
   userInfo: { alignItems: 'center', marginVertical: theme.spacing.xl },
@@ -624,13 +615,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  verifiedBadge: {
-    backgroundColor: `${theme.colors.success}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-    marginTop: theme.spacing.xs,
   },
   section: { marginBottom: theme.spacing.xl },
   sectionTitle: {

@@ -14,7 +14,6 @@ import {
   Elevation,
   Radius,
   Spacing,
-  theme,
 } from '@/constants/theme';
 import {
   fetchMyCustomerVerification,
@@ -307,7 +306,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing['3'],
-    paddingHorizontal: theme.layout.screenPadding,
   },
   backButton: {
     width: 40,
@@ -318,10 +316,8 @@ const styles = StyleSheet.create({
   headerSpacer: { width: 40 },
   loading: {
     marginTop: Spacing['6'],
-    paddingHorizontal: theme.layout.screenPadding,
   },
   form: {
-    paddingHorizontal: theme.layout.screenPadding,
     paddingTop: Spacing['2'],
   },
   intro: {
@@ -341,7 +337,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: Spacing['4'],
     gap: Spacing['2'],
-    marginHorizontal: theme.layout.screenPadding,
     marginTop: Spacing['2'],
     ...Elevation.sm,
   },

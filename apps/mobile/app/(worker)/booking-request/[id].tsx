@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
   },
   scrollView: { flex: 1 },
   scrollContent: {
-    padding: Layout.screenPadding,
+    paddingVertical: Layout.screenPadding,
     paddingBottom: Spacing['10'],
     gap: Spacing['4'],
   },

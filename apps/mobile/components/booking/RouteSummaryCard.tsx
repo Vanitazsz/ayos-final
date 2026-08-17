@@ -107,8 +107,6 @@ export function RouteSummaryCard({
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: Spacing['4'],
-    marginVertical: Spacing['3'],
     padding: Spacing['4'],
     borderRadius: Radius.xl,
     backgroundColor: Colors.white,

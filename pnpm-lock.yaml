@@ -7,6 +7,9 @@ settings:
 overrides:
   expo-router>@expo/metro-runtime: 6.1.2
 
+patchedDependencies:
+  '@maplibre/maplibre-react-native@11.3.6': 97e34ae800d6c6fed98a2364f1ba445b1344fe2e06daa1762b7f5dcc22ae2128
+
 importers:
 
   .:
@@ -68,7 +71,7 @@ importers:
         version: 0.1.2
       '@maplibre/maplibre-react-native':
         specifier: ^11.3.6
-        version: 11.3.6(@types/geojson@7946.0.16)(@types/react@19.1.17)(expo@54.0.36)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 11.3.6(patch_hash=97e34ae800d6c6fed98a2364f1ba445b1344fe2e06daa1762b7f5dcc22ae2128)(@types/geojson@7946.0.16)(@types/react@19.1.17)(expo@54.0.36)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))
@@ -7058,7 +7061,7 @@ snapshots:
       quickselect: 3.0.0
       tinyqueue: 3.0.0
 
-  '@maplibre/maplibre-react-native@11.3.6(@types/geojson@7946.0.16)(@types/react@19.1.17)(expo@54.0.36)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+  '@maplibre/maplibre-react-native@11.3.6(patch_hash=97e34ae800d6c6fed98a2364f1ba445b1344fe2e06daa1762b7f5dcc22ae2128)(@types/geojson@7946.0.16)(@types/react@19.1.17)(expo@54.0.36)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@maplibre/maplibre-gl-style-spec': 24.8.5
       '@turf/distance': 7.3.5

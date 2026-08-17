@@ -263,7 +263,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing['3'],
-    paddingHorizontal: theme.layout.screenPadding,
   },
   backButton: {
     width: 40,
@@ -274,7 +273,6 @@ const styles = StyleSheet.create({
   headerSpacer: { width: 40 },
   loading: {
     marginTop: Spacing['6'],
-    paddingHorizontal: theme.layout.screenPadding,
   },
   formCard: {
     backgroundColor: Colors.white,
@@ -282,7 +280,6 @@ const styles = StyleSheet.create({
     padding: Spacing['4'],
     gap: Spacing['4'],
     marginBottom: theme.spacing.xl,
-    marginHorizontal: theme.layout.screenPadding,
     ...Elevation.sm,
   },
   instructionCard: {

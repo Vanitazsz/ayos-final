@@ -16,7 +16,6 @@ import {
   CircleCheck,
   Briefcase,
   Wrench,
-  MapPin,
   User,
   Mail,
   Phone,
@@ -46,6 +45,7 @@ import { ImageUploadCard } from '@/components/ImageUploadCard';
 import { LegalContentModal } from '@/components/LegalContentModal';
 import { fetchIndustriesAndSkills } from '@/services/api';
 import { submitWorkerApplication } from '@/services/workerApplication';
+import { supabase } from '@/lib/supabase';
 import { isValidPhilippinePhone } from '@/lib/workerRegistration';
 import { getVerificationPendingNotice } from '@/lib/verificationStatus';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
@@ -133,14 +133,7 @@ export default function RegisterWorkerScreen() {
   >('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-  // Step 3: Office Address + Contact Info
-  const [street, setStreet] = useState('');
-  const [district, setDistrict] = useState('');
-  const [city, setCity] = useState('');
-  const [region, setRegion] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
+  // Step 3: Identity Verification
   const [idType, setIdType] = useState('');
   const [frontId, setFrontId] = useState<string | null>(null);
   const [backId, setBackId] = useState<string | null>(null);
@@ -287,12 +280,6 @@ export default function RegisterWorkerScreen() {
 
   const validateStep3 = () => {
     const e: Record<string, string> = {};
-    if (!street) e.street = 'Complete address is required';
-    if (!city) e.city = 'City is required';
-    if (!region) e.region = 'Province is required';
-    if (!contactPerson) e.contactPerson = 'Contact person is required';
-    if (!contactPhone || !isValidPhilippinePhone(contactPhone))
-      e.contactPhone = 'Valid phone number required';
     if (!idType) e.idType = 'Please select an ID type';
     if (!frontId) e.frontId = 'Front of ID is required';
     if (!backId) e.backId = 'Back of ID is required';
@@ -374,15 +361,6 @@ export default function RegisterWorkerScreen() {
             industryId: industryValue,
             skillIds: selectedSkills,
             employmentType,
-            address: {
-              street,
-              barangay: district,
-              city,
-              province: region,
-              postalCode,
-            },
-            contactPerson,
-            contactPhone,
             idType,
             consents: {
               informationAccurate: infoAccurate,
@@ -436,7 +414,7 @@ export default function RegisterWorkerScreen() {
   const getGenderLabel = () =>
     GENDERS.find((g) => g.value === gender)?.label || 'Not specified';
 
-  const stepLabels = ['Account', 'Industry', 'Address', 'Review'];
+  const stepLabels = ['Account', 'Industry', 'Identity', 'Review'];
 
   const renderStepper = () => (
     <View style={styles.progressContainer}>
@@ -874,114 +852,29 @@ export default function RegisterWorkerScreen() {
     </View>
   );
 
-  // ─── Step 3: Office Address + Contact Info ──────────────────────────────
+  // ─── Step 3: Identity Verification ────────────────────────────────────
   const renderStep3 = () => (
     <View style={styles.formSection}>
       <View style={styles.sectionHeader}>
-        <MapPin size={28} color={Colors.primary} />
+        <ShieldCheck size={28} color={Colors.primary} />
         <AppText variant="h3" weight="bold" style={styles.sectionTitleNoMargin}>
-          Office Address & Contact
+          Identity Verification
         </AppText>
       </View>
       <AppText
         variant="body"
         color={Colors.textSecondary}
       >
-        Where is your office or primary service location? Also provide a backup
-        contact.
+        Upload a valid government ID to verify your identity.
       </AppText>
 
       {/* Instruction Banner */}
-      <InfoCard title="Step 3 Instructions: Address &amp; Verification" style={styles.instructionCard}>
-        {'\u2022'} Enter your primary office address (Street, City,
-        Province).{'\n'}
-        {'\u2022'} Provide an emergency Contact Person&apos;s name and valid
-        phone (+63...).{'\n'}
+      <InfoCard title="Step 3 Instructions: Identity Verification" style={styles.instructionCard}>
         {'\u2022'} Select a valid Government ID and upload clear photos of both
         Front &amp; Back.{'\n'}
         {'\u2022'} Missing details or photo uploads will be{' '}
         <InfoCardHighlight>highlighted in red</InfoCardHighlight>.
       </InfoCard>
-
-      <AppInput
-        label="Complete Address"
-        placeholder="e.g. 123 Rizal St."
-        value={street}
-        onChangeText={setStreet}
-        error={errors.street}
-      />
-      <AppInput
-        label="Barangay"
-        placeholder="e.g. Barangay San Lorenzo"
-        value={district}
-        onChangeText={setDistrict}
-      />
-      <View style={{ flexDirection: 'row', gap: Spacing['3'] }}>
-        <AppInput
-          label="City / Municipality"
-          placeholder="e.g. Makati"
-          value={city}
-          onChangeText={setCity}
-          error={errors.city}
-          containerStyle={{ flex: 1 }}
-        />
-        <AppInput
-          label="Province"
-          placeholder="e.g. Metro Manila"
-          value={region}
-          onChangeText={setRegion}
-          error={errors.region}
-          containerStyle={{ flex: 1 }}
-        />
-      </View>
-      <AppInput
-        label="ZIP Code"
-        placeholder="e.g. 1200"
-        value={postalCode}
-        onChangeText={setPostalCode}
-        keyboardType="number-pad"
-      />
-
-      <View style={styles.divider} />
-
-      <AppText
-        variant="h4"
-        weight="bold"
-        style={{ marginBottom: -Spacing['2'] }}
-      >
-        Contact Information
-      </AppText>
-
-      <AppInput
-        label="Contact Person Name"
-        placeholder="Full name of contact person"
-        value={contactPerson}
-        onChangeText={setContactPerson}
-        error={errors.contactPerson}
-        leftIcon={<User size={20} color={Colors.textSecondary} />}
-      />
-      <AppInput
-        label="Contact Person Phone"
-        placeholder="e.g. 09171234567 or +639171234567"
-        helperText="(11 digits starting with 09)"
-        value={contactPhone}
-        onChangeText={setContactPhone}
-        error={errors.contactPhone}
-        keyboardType="phone-pad"
-        autoComplete="tel"
-        textContentType="telephoneNumber"
-        leftIcon={<Phone size={20} color={Colors.textSecondary} />}
-      />
-
-      <View style={styles.divider} />
-
-      <AppText
-        variant="h4"
-        weight="bold"
-        style={{ marginBottom: -Spacing['2'] }}
-      >
-        Identity Verification
-      </AppText>
 
       <AppSelect
         label="Select Valid Government ID"
@@ -1144,46 +1037,15 @@ export default function RegisterWorkerScreen() {
         </View>
       </View>
 
-      {/* Address Section */}
+      {/* Identity Verification Section */}
       <View style={styles.reviewCard}>
         <View style={styles.reviewCardHeader}>
           <AppText variant="h4" weight="bold">
-            Address & Contact
+            Identity Verification
           </AppText>
           <Pressable onPress={() => goToStep(3)} hitSlop={8}>
             <Edit3 size={18} color={Colors.primary} />
           </Pressable>
-        </View>
-        <View style={styles.reviewRow}>
-          <AppText variant="bodySm" color={Colors.textSecondary}>
-            Office Address
-          </AppText>
-          <AppText
-            variant="bodySm"
-            weight="medium"
-            style={{ textAlign: 'right', flex: 1 }}
-          >
-            {[street, district, city, region]
-              .filter(Boolean)
-              .join(', ')}
-            {postalCode ? ` ${postalCode}` : ''}
-          </AppText>
-        </View>
-        <View style={styles.reviewRow}>
-          <AppText variant="bodySm" color={Colors.textSecondary}>
-            Contact Person
-          </AppText>
-          <AppText variant="bodySm" weight="medium">
-            {contactPerson}
-          </AppText>
-        </View>
-        <View style={styles.reviewRow}>
-          <AppText variant="bodySm" color={Colors.textSecondary}>
-            Contact Phone
-          </AppText>
-          <AppText variant="bodySm" weight="medium">
-            {contactPhone}
-          </AppText>
         </View>
         <View style={styles.reviewRow}>
           <AppText variant="bodySm" color={Colors.textSecondary}>
@@ -1441,7 +1303,9 @@ export default function RegisterWorkerScreen() {
               label="Go to Sign In"
               onPress={() => {
                 setShowSuccess(false);
-                router.replace('/(auth)/login');
+                void supabase.auth.signOut().finally(() => {
+                  router.replace('/(auth)/login');
+                });
               }}
               fullWidth
             />
@@ -1686,7 +1550,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
   },
   submitBtn: {
-    marginTop: Spacing['10'],
+    marginTop: Spacing['4'],
   },
   submissionFeedback: {
     borderRadius: Radius.lg,

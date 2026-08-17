@@ -2,11 +2,11 @@ import { StyleSheet } from 'react-native';
 import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: theme.spacing.md },
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
   menuButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
   content: { flex: 1 },
-  contentContainer: { paddingHorizontal: theme.layout.screenPadding, paddingBottom: theme.spacing.xxxl, paddingTop: theme.spacing.md },
+  contentContainer: { paddingBottom: theme.spacing.xxxl, paddingTop: theme.spacing.md },
   notificationCard: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,

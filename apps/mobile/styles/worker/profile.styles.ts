@@ -31,15 +31,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${theme.colors.success}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-    marginTop: theme.spacing.xs,
-  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',

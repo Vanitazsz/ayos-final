@@ -740,7 +740,6 @@ const applySavedAddress = useCallback(
       <View
         style={[
           styles.header,
-          { paddingHorizontal: theme.layout.screenPadding },
         ]}
       >
         <TouchableOpacity
@@ -1357,7 +1356,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.layout.screenPadding,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
@@ -1815,7 +1813,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.xs,
     padding: theme.spacing.sm,
-    paddingHorizontal: theme.layout.screenPadding,
     marginBottom: theme.spacing.sm,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.errorBackground,

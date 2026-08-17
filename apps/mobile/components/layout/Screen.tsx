@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export interface ScreenProps {
   children: React.ReactNode;
   scrollable?: boolean;
+  fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   safeArea?: boolean;
@@ -17,6 +18,7 @@ export interface ScreenProps {
 export const Screen: React.FC<ScreenProps> = ({
   children,
   scrollable = false,
+  fullWidth = false,
   style,
   contentContainerStyle,
   safeArea = true,
@@ -32,14 +34,14 @@ export const Screen: React.FC<ScreenProps> = ({
     <ScrollView 
       ref={scrollViewRef}
       style={styles.flex} 
-      contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+      contentContainerStyle={[!fullWidth && styles.scrollContent, contentContainerStyle]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.flex, styles.content, contentContainerStyle]}>
+    <View style={[styles.flex, !fullWidth && styles.content, contentContainerStyle]}>
       {children}
     </View>
   );

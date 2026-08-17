@@ -409,20 +409,22 @@ export default function TrackingScreen() {
         {['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(
           workerStatus ?? '',
         ) && (
-          <RouteSummaryCard
-            bookingId={bookingId}
-            startLat={tracking?.booking?.worker_start_lat}
-            startLng={tracking?.booking?.worker_start_lng}
-            destinationLat={address?.latitude}
-            destinationLng={address?.longitude}
-            destinationAddress={[
-              address?.line1,
-              address?.barangay,
-              address?.city,
-            ]
-              .filter(Boolean)
-              .join(', ')}
-          />
+          <View style={{ marginHorizontal: theme.spacing.lg }}>
+            <RouteSummaryCard
+              bookingId={bookingId}
+              startLat={tracking?.booking?.worker_start_lat}
+              startLng={tracking?.booking?.worker_start_lng}
+              destinationLat={address?.latitude}
+              destinationLng={address?.longitude}
+              destinationAddress={[
+                address?.line1,
+                address?.barangay,
+                address?.city,
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            />
+          </View>
         )}
 
         {/* Worker Info */}

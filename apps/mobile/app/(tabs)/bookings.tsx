@@ -210,13 +210,13 @@ export default function BookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.layout.screenPadding, alignItems: 'center' },
+  header: { paddingVertical: theme.spacing.md, alignItems: 'center' },
   tabsContainer: { marginBottom: theme.spacing.md },
-  tabsScroll: { paddingHorizontal: theme.layout.screenPadding, gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
+  tabsScroll: { gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
   tabButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.borderLight },
   tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   content: { flex: 1 },
-  contentInner: { padding: theme.layout.screenPadding, paddingBottom: 88 },
+  contentInner: { paddingBottom: 88 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
   bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.md, borderWidth: 1, borderColor: theme.colors.borderLight },
   seeAllButton: {

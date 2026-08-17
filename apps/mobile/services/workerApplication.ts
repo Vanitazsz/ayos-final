@@ -151,9 +151,10 @@ export async function submitWorkerApplication(
     const phone = normalizePhilippinePhone(
       String(input.identityData.phone ?? ''),
     );
-    const contactPhone = normalizePhilippinePhone(
-      String(input.identityData.contactPhone ?? ''),
-    );
+    const rawContactPhone = String(input.identityData.contactPhone ?? '');
+    const contactPhone = rawContactPhone
+      ? normalizePhilippinePhone(rawContactPhone)
+      : '';
     const identityData = { ...input.identityData, phone, contactPhone };
     let {
       data: { session },

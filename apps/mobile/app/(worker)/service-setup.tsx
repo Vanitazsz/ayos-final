@@ -43,6 +43,9 @@ export default function WorkerServiceSetupScreen() {
     null,
   );
   const [coords, setCoords] = useState<LocationCoordinates | null>(null);
+  const [serviceAreaDistrict, setServiceAreaDistrict] = useState('');
+  const [serviceAreaCity, setServiceAreaCity] = useState('');
+  const [serviceAreaProvince, setServiceAreaProvince] = useState('');
   const [serviceArea, setServiceArea] = useState('');
   const [radius, setRadius] = useState('10000');
   const [online, setOnline] = useState(false);
@@ -51,6 +54,23 @@ export default function WorkerServiceSetupScreen() {
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
   const [saved, setSaved] = useState(false);
+
+  const recombineServiceArea = (
+    district: string,
+    city: string,
+    province: string,
+  ) => [district, city, province].filter(Boolean).join(', ');
+
+  const parseServiceArea = (value: string) => {
+    const parts = value.split(', ').map((s) => s.trim());
+    if (parts.length >= 3) {
+      return { district: parts[0], city: parts[1], province: parts.slice(2).join(', ') };
+    }
+    if (parts.length === 2) {
+      return { district: '', city: parts[0], province: parts[1] };
+    }
+    return { district: '', city: value, province: '' };
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -67,7 +87,12 @@ export default function WorkerServiceSetupScreen() {
               longitude: Number(result.longitude),
             });
           }
-          setServiceArea(result.serviceArea ?? '');
+          const area = result.serviceArea ?? '';
+          setServiceArea(area);
+          const parsed = parseServiceArea(area);
+          setServiceAreaDistrict(parsed.district);
+          setServiceAreaCity(parsed.city);
+          setServiceAreaProvince(parsed.province);
           setRadius(String(result.radiusMeters ?? 10000));
           setOnline(result.online);
         })
@@ -222,11 +247,14 @@ export default function WorkerServiceSetupScreen() {
                 }}
                 onLocationDetected={(details, next, label) => {
                   setCoords(next);
+                  const autoDistrict = details.district || '';
+                  const autoCity = details.city || '';
+                  const autoProvince = details.region || '';
+                  setServiceAreaDistrict(autoDistrict);
+                  setServiceAreaCity(autoCity);
+                  setServiceAreaProvince(autoProvince);
                   setServiceArea(
-                    label ||
-                      [details.district, details.city, details.region]
-                        .filter(Boolean)
-                        .join(', '),
+                    label || recombineServiceArea(autoDistrict, autoCity, autoProvince),
                   );
                   setWarning('');
                   setSaved(false);
@@ -239,11 +267,32 @@ export default function WorkerServiceSetupScreen() {
                 </AppText>
               ) : null}
               <AppInput
-                label="Service area label"
-                placeholder="Trece Martires City, Cavite"
-                value={serviceArea}
+                label="District / Barangay"
+                placeholder="e.g. Barangay San Lorenzo"
+                value={serviceAreaDistrict}
                 onChangeText={(value) => {
-                  setServiceArea(value);
+                  setServiceAreaDistrict(value);
+                  setServiceArea(recombineServiceArea(value, serviceAreaCity, serviceAreaProvince));
+                  setSaved(false);
+                }}
+              />
+              <AppInput
+                label="City / Municipality"
+                placeholder="e.g. Trece Martires City"
+                value={serviceAreaCity}
+                onChangeText={(value) => {
+                  setServiceAreaCity(value);
+                  setServiceArea(recombineServiceArea(serviceAreaDistrict, value, serviceAreaProvince));
+                  setSaved(false);
+                }}
+              />
+              <AppInput
+                label="Province"
+                placeholder="e.g. Cavite"
+                value={serviceAreaProvince}
+                onChangeText={(value) => {
+                  setServiceAreaProvince(value);
+                  setServiceArea(recombineServiceArea(serviceAreaDistrict, serviceAreaCity, value));
                   setSaved(false);
                 }}
               />

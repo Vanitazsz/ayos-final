@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
 import { Screen } from '@/components/layout/Screen';
-import { Colors, Radius, Spacing, theme } from '@/constants/theme';
+import { Colors, Radius, Spacing } from '@/constants/theme';
 import {
   fetchPublishedContentPage,
   type ContentPageViewModel,
@@ -111,6 +111,7 @@ export default function WorkerPrivacyPolicyScreen() {
   return (
     <Screen
       scrollable
+      fullWidth
       keyboardAvoiding={false}
       contentContainerStyle={[styles.screenContent, { paddingBottom: 80 }]}
       style={{ paddingBottom: 0 }}
@@ -159,7 +160,6 @@ const styles = StyleSheet.create({
     maxWidth: 840,
     alignSelf: 'center',
     flexGrow: 1,
-    paddingHorizontal: theme.layout.screenPadding,
   },
   header: {
     minHeight: 56,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.xl,
-    padding: Spacing['5'],
+    padding: Spacing['4'],
     flexGrow: 1,
   },
   body: {

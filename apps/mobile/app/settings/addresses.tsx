@@ -423,12 +423,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.layout.screenPadding,
   },
   backButton: { width: 40, height: 40, justifyContent: 'center' },
   content: {
     paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.layout.screenPadding,
     gap: theme.spacing.md,
   },
   helpText: { color: theme.colors.textSecondary },

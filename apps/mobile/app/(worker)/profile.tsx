@@ -28,7 +28,6 @@ import {
   HelpCircle,
   Shield,
   LogOut,
-  CheckCircle,
   BadgeCheck,
   Wallet,
   // ArrowUpFromLine, // Payments section hidden
@@ -500,29 +499,27 @@ export default function WorkerProfileScreen() {
               >
                 {workerProfile.email}
               </Text>
-              <View style={styles.verifiedBadge}>
-                <CheckCircle color={theme.colors.success} size={14} />
-                <Text
-                  style={[
-                    theme.typography.caption,
-                    {
-                      color:
-                        workerProfile.verificationStatus === 'rejected'
-                          ? theme.colors.error
-                          : theme.colors.success,
-                      marginLeft: 4,
-                    },
-                  ]}
-                >
-                  {workerProfile.verificationStatus === 'verified'
+              <Badge
+                label={
+                  workerProfile.verificationStatus === 'verified'
                     ? 'Verified Worker'
                     : workerProfile.verificationStatus === 'rejected'
                       ? 'Verification Rejected'
                       : workerProfile.verificationStatus === 'needs_review'
                         ? 'Needs Document Review'
-                        : 'Verification Pending'}
-                </Text>
-              </View>
+                        : 'Verification Pending'
+                }
+                variant={
+                  workerProfile.verificationStatus === 'verified'
+                    ? 'verified'
+                    : workerProfile.verificationStatus === 'rejected'
+                      ? 'error'
+                      : workerProfile.verificationStatus === 'needs_review'
+                        ? 'warning'
+                        : 'info'
+                }
+                style={{ marginTop: theme.spacing.xs }}
+              />
             </View>
 
             <View style={styles.statsRow}>

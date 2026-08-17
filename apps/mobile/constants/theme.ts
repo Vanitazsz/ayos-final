@@ -70,7 +70,7 @@ export const shadows = {
 } as const;
 
 export const layout = {
-  screenPadding: spacing.md,
+  screenPadding: spacing.lg,
   headerHeight: 60,
   bottomNavHeight: 65,
 } as const;
@@ -145,7 +145,7 @@ export const Spacing = {
 } as const;
 
 export const Layout = {
-  screenPadding: spacing.md, sectionSpacing: 24, cardPadding: 16, componentGap: 16, smallGap: 8, navHeight: 80, headerHeight: 56,
+  screenPadding: spacing.lg, sectionSpacing: 24, cardPadding: 16, componentGap: 16, smallGap: 8, navHeight: 80, headerHeight: 56,
 } as const;
 
 export const Radius = {
