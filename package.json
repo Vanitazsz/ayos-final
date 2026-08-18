@@ -32,9 +32,7 @@
     "refactor:inventory": "tsx scripts/refactor/analyze-repository.ts && prettier --write docs/refactor/*.md",
     "refactor:inventory:final": "tsx scripts/refactor/analyze-repository.ts --final && prettier --write docs/refactor/*.md",
     "traceability:check": "tsx scripts/check-traceability.ts",
-    "contracts:check": "bash scripts/check-frontend-backend-contracts.sh",
-    "android": "expo run:android",
-    "ios": "expo run:ios"
+    "contracts:check": "bash scripts/check-frontend-backend-contracts.sh"
   },
   "devDependencies": {
     "@eslint/js": "9.38.0",
@@ -55,9 +53,6 @@
     "tests/*"
   ],
   "dependencies": {
-    "whatwg-url-without-unicode": "8.0.0-3",
-    "expo": "~54.0.36",
-    "react": "19.1.0",
-    "react-native": "0.81.5"
+    "whatwg-url-without-unicode": "8.0.0-3"
   }
 }

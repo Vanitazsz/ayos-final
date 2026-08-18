@@ -3,7 +3,6 @@ node_modules/
 apps/*/package-lock.json
 .turbo/
 dist/
-.next/
 .expo/
 coverage/
 test-results/

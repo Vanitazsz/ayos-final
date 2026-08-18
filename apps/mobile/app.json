@@ -42,8 +42,7 @@
       "./plugins/withIosPodDeploymentTarget"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "autolinkingModuleResolution": true
+      "typedRoutes": true
     }
   }
 }

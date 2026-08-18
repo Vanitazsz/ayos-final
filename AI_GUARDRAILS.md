@@ -344,8 +344,6 @@ Use only real scripts:
 | iOS native run/build        | `pnpm --dir apps/mobile ios` (requires macOS/Xcode)                |
 | Full available gate         | `pnpm verify`                                                      |
 
-There is no separate root script named `integration`, no EAS production-build script, and no native release/archive script: **Not confirmed from the current repository**. `expo export --platform web` is the configured Expo production export.
-
 Run checks proportional to the changed surfaces, at minimum typecheck, lint, relevant tests, and build/export when application code changes. Database work additionally requires reset/lint/pgTAP/types; Edge work requires Deno checks/tests; contract changes require contract and traceability checks. Docker is required for local Supabase database checks.
 
 For UI changes verify loading, error, empty, success, phone/small screen, tablet/large screen, Android/web behavior, iOS when available, back navigation, and protected-route behavior. Use Playwright for requested visual-layout verification. Do not substitute existing Darwin snapshots for current Windows/native execution evidence.
