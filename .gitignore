@@ -15,6 +15,8 @@ supabase/.temp/
 supabase/.env.local
 .DS_Store
 
+tmp
+
 # macOS Finder duplicate / copy files ("name 2.ext")
 * 2.*
 

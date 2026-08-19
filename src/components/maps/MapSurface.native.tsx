@@ -59,7 +59,7 @@ export function MapSurface({
         { padding: { top: 40, right: 40, bottom: 40, left: 40 }, duration: 0 },
       );
     } else {
-      cameraRef.current?.setStop({ zoom: 3 });
+      void cameraRef.current?.setStop({ zoom: 3 });
     }
   }, [fitBounds, isCenterValid, isMapLoaded, mapCenter]);
 
