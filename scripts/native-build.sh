@@ -1,47 +1,45 @@
 #!/bin/bash
 set -euo pipefail
 
-# Build script for native platforms
+# Native build helpers for Expo managed workflow.
+#
+# expo prebuild always generates ios/ and android/ at the project root.
+# expo run:ios and expo run:android also expect them there — there is no
+# --project-directory flag.  This script wraps prebuild and optionally
+# archives the generated projects into build/ for CI or cleanup.
+#
 # Usage:
-#   pnpm native:prebuild        - Generate native projects in build/
+#   pnpm native:prebuild        - Generate ios/ and android/ at root
 #   pnpm native:prebuild:clean  - Clean and regenerate
-#   pnpm ios                    - Build and run on iOS device
-#   pnpm ios:simulator          - Build and run on iOS simulator
-#   pnpm android                - Build and run on Android
+#   pnpm native:archive         - Copy ios/ + android/ into build/
+#   pnpm ios                    - Prebuild (if needed) then run on device
+#   pnpm ios:simulator          - Prebuild (if needed) then run on simulator
+#   pnpm android                - Prebuild (if needed) then run on Android
 
 BUILD_DIR="build"
-IOS_DIR="$BUILD_DIR/ios"
-ANDROID_DIR="$BUILD_DIR/android"
 
 ensure_prebuild() {
-  if [ ! -d "$IOS_DIR" ] && [ ! -d "$ANDROID_DIR" ]; then
-    echo "▸ Native projects not found in $BUILD_DIR/. Running prebuild..."
-    run_prebuild
+  if [ ! -d "ios" ] && [ ! -d "android" ]; then
+    echo "▸ Native projects not found. Running prebuild..."
+    npx expo prebuild --clean
   fi
 }
 
 run_prebuild() {
   echo "▸ Running expo prebuild..."
-  mkdir -p "$BUILD_DIR"
   npx expo prebuild --clean
-  # Move generated ios/ and android/ into build/
-  if [ -d "ios" ]; then
-    rm -rf "$IOS_DIR"
-    mv ios "$IOS_DIR"
-    echo "  ✓ iOS project → $IOS_DIR"
-  fi
-  if [ -d "android" ]; then
-    rm -rf "$ANDROID_DIR"
-    mv android "$ANDROID_DIR"
-    echo "  ✓ Android project → $ANDROID_DIR"
-  fi
-  echo "▸ Prebuild complete."
+  echo "▸ Prebuild complete — ios/ and android/ are at project root."
 }
 
-clean_prebuild() {
-  echo "▸ Cleaning native projects..."
-  rm -rf "$BUILD_DIR/ios" "$BUILD_DIR/android"
-  run_prebuild
+archive_native() {
+  if [ ! -d "ios" ] && [ ! -d "android" ]; then
+    echo "▸ Nothing to archive — run 'pnpm native:prebuild' first."
+    exit 1
+  fi
+  mkdir -p "$BUILD_DIR"
+  [ -d "ios" ] && rm -rf "$BUILD_DIR/ios" && cp -R ios "$BUILD_DIR/ios" && echo "  ✓ ios/ → $BUILD_DIR/ios"
+  [ -d "android" ] && rm -rf "$BUILD_DIR/android" && cp -R android "$BUILD_DIR/android" && echo "  ✓ android/ → $BUILD_DIR/android"
+  echo "▸ Archive complete."
 }
 
 case "${1:-prebuild}" in
@@ -49,13 +47,17 @@ case "${1:-prebuild}" in
     run_prebuild
     ;;
   clean)
-    clean_prebuild
+    rm -rf ios android
+    run_prebuild
     ;;
   ensure)
     ensure_prebuild
     ;;
+  archive)
+    archive_native
+    ;;
   *)
-    echo "Usage: $0 {prebuild|clean|ensure}"
+    echo "Usage: $0 {prebuild|clean|ensure|archive}"
     exit 1
     ;;
 esac
