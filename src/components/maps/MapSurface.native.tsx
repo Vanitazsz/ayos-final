@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { mapStyleUrl } from '@/lib/supabase';
-import { isWorldCoordinates } from '@/lib/coordinates';
+import { isWorldCoordinates, isValidRouteGeojson } from '@/lib/coordinates';
 
 import type { MapSurfaceProps } from './types';
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
@@ -33,6 +33,7 @@ export function MapSurface({
     [center.latitude, center.longitude],
   );
   const isCenterValid = useMemo(() => isWorldCoordinates(mapCenter), [mapCenter]);
+  const isValidRoute = useMemo(() => isValidRouteGeojson(route), [route]);
   const cameraRef = useRef<NativeCameraRef>(null);
   const animationFrameRef = useRef<number | null>(null);
   const displayedRadiusRef = useRef<number | undefined>(radiusMeters);
@@ -144,7 +145,7 @@ export function MapSurface({
           />
         </GeoJSONSource>
       ) : null}
-      {isMapLoaded && route ? (
+      {isMapLoaded && isValidRoute ? (
         <GeoJSONSource id="route" data={route}>
           <Layer id="route-line" type="line" paint={{ 'line-color': '#1e3a8a', 'line-width': 4 }} />
         </GeoJSONSource>

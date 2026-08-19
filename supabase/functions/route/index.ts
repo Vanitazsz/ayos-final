@@ -48,7 +48,15 @@ Deno.serve(async (request) => {
           method: 'POST',
           body: JSON.stringify({ coordinates: [start, end], instructions: false }),
         });
-        const summary = geojson.features?.[0]?.properties?.summary ?? {};
+        const routeFeature = geojson?.features?.[0];
+        if (
+          !routeFeature ||
+          routeFeature.geometry?.type !== 'LineString' ||
+          !routeFeature.geometry.coordinates?.length
+        ) {
+          throw new HttpError(422, 'empty_route', 'Route service returned no usable geometry');
+        }
+        const summary = routeFeature.properties?.summary ?? {};
         return {
           geojson,
           distanceMeters: Math.round(Number(summary.distance ?? 0)),

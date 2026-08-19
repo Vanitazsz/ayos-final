@@ -7,17 +7,8 @@ export type MapCoordinates = {
   longitude: number;
 };
 
-function isFiniteInRange(
-  value: unknown,
-  min: number,
-  max: number,
-): value is number {
-  return (
-    typeof value === 'number' &&
-    Number.isFinite(value) &&
-    value >= min &&
-    value <= max
-  );
+function isFiniteInRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 }
 
 export function isWorldCoordinates(
@@ -25,11 +16,8 @@ export function isWorldCoordinates(
 ): boolean {
   if (!coords) return false;
   return (
-    isFiniteInRange(
-      coords.latitude,
-      WORLD_LATITUDE_BOUNDS.min,
-      WORLD_LATITUDE_BOUNDS.max,
-    ) && Number.isFinite(coords.longitude)
+    isFiniteInRange(coords.latitude, WORLD_LATITUDE_BOUNDS.min, WORLD_LATITUDE_BOUNDS.max) &&
+    Number.isFinite(coords.longitude)
   );
 }
 
@@ -48,5 +36,16 @@ export function isPhilippinesCoordinates(
       PHILIPPINES_LONGITUDE_BOUNDS.min,
       PHILIPPINES_LONGITUDE_BOUNDS.max,
     )
+  );
+}
+
+export function isValidRouteGeojson(route: GeoJSON.FeatureCollection | null | undefined): boolean {
+  if (!route || route.type !== 'FeatureCollection') return false;
+  const feature = route.features?.[0];
+  if (!feature?.geometry || feature.geometry.type !== 'LineString') return false;
+  const coords = (feature.geometry as GeoJSON.LineString).coordinates;
+  if (!Array.isArray(coords) || coords.length < 2) return false;
+  return coords.every(
+    (c) => Array.isArray(c) && c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]),
   );
 }

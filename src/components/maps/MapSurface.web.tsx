@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { mapStyleUrl } from '@/lib/supabase';
+import { isValidRouteGeojson } from '@/lib/coordinates';
 
 import type { MapSurfaceProps } from './types';
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
@@ -21,6 +22,7 @@ export function MapSurface({
     () => ({ latitude: center.latitude, longitude: center.longitude }),
     [center.latitude, center.longitude],
   );
+  const isValidRoute = useMemo(() => isValidRouteGeojson(route), [route]);
   const containerRef = useRef<HTMLDivElement>(null);
   const initialMapOptionsRef = useRef({ center: mapCenter, interactive });
   const mapRef = useRef<MapLibre.WebMapInstance | null>(null);
@@ -84,12 +86,12 @@ export function MapSurface({
     markerRefs.current = MapLibre.syncMarkers(map, points);
     popupRefs.current = MapLibre.syncPopups(map, points);
 
-    if (route) {
-      MapLibre.setRouteSource(map, route);
+    if (isValidRoute) {
+      MapLibre.setRouteSource(map, route!);
     } else {
       MapLibre.removeRouteSource(map);
     }
-  }, [isMapLoaded, mapCenter, points, route]);
+  }, [isMapLoaded, mapCenter, points, isValidRoute, route]);
 
   useEffect(() => {
     const map = mapRef.current;

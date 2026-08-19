@@ -23,8 +23,7 @@ web-build/
 expo-env.d.ts
 
 # native
-ios/
-android/
+build/
 *.orig.*
 *.jks
 *.p8
