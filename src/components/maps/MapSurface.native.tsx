@@ -45,6 +45,25 @@ export function MapSurface({
 
   useEffect(() => {
     if (!isMapLoaded) return;
+    if (isCenterValid) {
+      const halfDeg = 0.05;
+      fitBounds(
+        cameraRef,
+        [
+          mapCenter.longitude - halfDeg,
+          mapCenter.latitude - halfDeg,
+          mapCenter.longitude + halfDeg,
+          mapCenter.latitude + halfDeg,
+        ],
+        { padding: { top: 40, right: 40, bottom: 40, left: 40 }, duration: 0 },
+      );
+    } else {
+      cameraRef.current?.setStop({ zoom: 3 });
+    }
+  }, [fitBounds, isCenterValid, mapCenter]);
+
+  useEffect(() => {
+    if (!isMapLoaded) return;
     if (!isCenterValid) return;
     if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
     if (!radiusMeters) {
@@ -119,14 +138,7 @@ export function MapSurface({
       touchRotate={interactive}
       onDidFinishLoadingMap={() => setIsMapLoaded(true)}
     >
-      <Camera
-        ref={cameraRef}
-        initialViewState={
-          isCenterValid
-            ? { center: [mapCenter.longitude, mapCenter.latitude], zoom: 13 }
-            : { zoom: 3 }
-        }
-      />
+      <Camera ref={cameraRef} />
       {isMapLoaded && isCenterValid && displayedRadius ? (
         <GeoJSONSource id="radius" data={radiusGeoJson(mapCenter, displayedRadius)}>
           <Layer

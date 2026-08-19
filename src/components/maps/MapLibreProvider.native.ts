@@ -34,7 +34,16 @@ export function useSafeFitBounds() {
         if (attemptRef.current >= 10) return;
         attemptRef.current += 1;
         try {
-          cameraRef.current?.fitBounds(bounds, options);
+          const padding =
+            typeof options?.padding === 'number'
+              ? {
+                  top: options.padding,
+                  right: options.padding,
+                  bottom: options.padding,
+                  left: options.padding,
+                }
+              : options?.padding;
+          cameraRef.current?.fitBounds(bounds, { ...options, padding });
         } catch {
           requestAnimationFrame(attempt);
         }
