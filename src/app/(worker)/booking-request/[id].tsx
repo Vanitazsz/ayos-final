@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import {
-  ChevronLeft,
+  ArrowLeft,
   MapPin,
   Clock,
   DollarSign,
@@ -13,7 +13,9 @@ import {
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
+import { Screen } from '@/components/layout/Screen';
 import {
+  theme,
   Colors,
   Radius,
   Spacing,
@@ -493,17 +495,8 @@ export default function BookingRequestScreen() {
   const remainingTime = '';
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={goBack} hitSlop={12}>
-          <ChevronLeft size={24} color={Colors.textPrimary} />
-        </Pressable>
-        <AppText variant="h4" weight="bold" color={Colors.textPrimary}>
-          Booking Request
-        </AppText>
-        <View style={{ width: 40 }} />
-      </View>
-
+    <Screen safeArea backgroundColor={Colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
+      <View style={styles.wideColumn}>
       {trackingIsLoading ? (
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
@@ -524,6 +517,22 @@ export default function BookingRequestScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <View style={styles.header}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              onPress={goBack}
+              hitSlop={12}
+              style={styles.backButton}
+            >
+              <ArrowLeft size={24} color={Colors.textPrimary} />
+            </Pressable>
+            <AppText variant="h3" weight="bold">
+              Booking Request
+            </AppText>
+            <View style={styles.headerSpacer} />
+          </View>
+
           {/* ─── Job Card ─── */}
           <View style={styles.jobCard}>
             <BookingStepIndicator currentStatus={booking.status} />
@@ -957,6 +966,8 @@ export default function BookingRequestScreen() {
         </ScrollView>
       )}
 
+      </View>
+
       <CompleteJobModal
         visible={showCompleteModal}
         bookingId={booking.id}
@@ -965,34 +976,32 @@ export default function BookingRequestScreen() {
         onClose={() => setShowCompleteModal(false)}
         onCompleted={handleJobCompleted}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  wideColumn: {
+    flex: 1,
+    ...theme.layout.wideColumn,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.white,
-    paddingHorizontal: Layout.screenPadding,
-    paddingTop: Spacing['16'],
-    paddingBottom: Spacing['4'],
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    paddingVertical: Spacing['3'],
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: Radius.full,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
+  headerSpacer: { width: 40 },
   scrollView: { flex: 1 },
   scrollContent: {
     paddingVertical: Layout.screenPadding,
-    paddingBottom: Spacing['10'],
+    paddingBottom: 88,
     gap: Spacing['4'],
   },
   jobCard: {
