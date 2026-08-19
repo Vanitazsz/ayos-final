@@ -1,6 +1,6 @@
 # Requirements and Traceability
 
-Canonical local source: `requirements/catalog.json`, containing FR-01–FR-104 and NFR-01–NFR-18. The original SRS and workflow source files cited by older documentation are absent; content beyond the catalog is **INSUFFICIENT DATA TO VERIFY**. Statuses reflect the implementation and executed evidence currently present in this repository. No requirement is marked verified solely because a UI route exists.
+Canonical local source: `docs/requirements/catalog.json`, containing FR-01–FR-104 and NFR-01–NFR-18. The original SRS and workflow source files cited by older documentation are absent; content beyond the catalog is **INSUFFICIENT DATA TO VERIFY**. Statuses reflect the implementation and executed evidence currently present in this repository. No requirement is marked verified solely because a UI route exists.
 
 ## Status definitions
 

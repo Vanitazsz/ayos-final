@@ -1,14 +1,26 @@
-You have access to MCP tools. Use them automatically:
+# Agent Instructions
 
-- Use `context7` whenever I ask about frontend frameworks or external APIs.
-- Use `sequential-thinking` automatically for any debugging or multi-file edits.
-- Use `playwright` whenever I ask you to verify UI visual layouts.
+## Development
 
-## Mandatory Project Guardrails
+- Keep modules **small** and **single-purpose**.
+- **Fix root causes**. Do not layer workarounds.
+- **Comment sparingly**. The code should be able to describe what it's doing and the comment should say why. If the code is not clear and reasoning is non-obvious, then add a comment.
+- Create a new branch when tasked to write changes. Keep branch names short and concise.
+- **Never edit an existing migration script.** Always create a new numbered migration for schema changes.
 
-Before analyzing, planning, or modifying this repository, read and follow:
+## Commits and PRs
 
-- `AI_GUARDRAILS.md`
+- Use the **imperative mood**. Use conventional commit prefixes (`fix:`, `feat:`, `chore:`, `docs:`, `refactor:`, etc.).
+- The commit body should explain why the change was made, never what it is.
+- Always run `pnpm format`, `pnpm lint`, `pnpm typecheck` and `pnpm test` before committing. These are the same gates CI enforces.
 
-When instructions conflict, preserve safety, existing user behavior, database integrity, and authentication integrity. Do not proceed with destructive changes without explicit approval.
-up
+## Boundaries
+
+- **Ask first**
+  - Large refactors.
+  - New dependencies with broad impact.
+  - Destructive data or migration changes.
+
+- **Never**
+  - Commit secrets, credentials, or tokens.
+  - Use destructive git operations unless explicitly requested.

@@ -26,7 +26,7 @@ These rules apply to the entire pnpm workspace: the Expo mobile/web client, shar
 
 Native release signing, final production legal content, production OAuth callback domains, retention policy, performance targets, RPO, and RTO are **Not confirmed from the current repository**.
 
-Common commands from the root are `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, and `pnpm verify`. Local database work uses `pnpm supabase:start`, `pnpm db:reset`, `pnpm db:lint`, `pnpm test:db`, and `pnpm db:types`.
+Common commands from the root are `pnpm start`, `pnpm start:web`, `pnpm ios`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, and `pnpm verify`. Local database work uses `pnpm supabase:start`, `pnpm db:reset`, `pnpm db:lint`, `pnpm test:db`, and `pnpm db:types`.
 
 ## 3. Source-of-Truth Files
 
@@ -56,7 +56,7 @@ Common commands from the root are `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm t
 | Lint/format                    | `eslint.config.mjs`, `app/eslint.config.js`, `.prettierrc.json`                                       | Do not disable rules to hide failures                                                                                                    |
 | Test runners                   | `vitest.config.ts`, `app/vitest.config.ts`, `playwright.config.ts`, `supabase/tests/database/`        | Put tests in the existing suite nearest the behavior                                                                                     |
 | Supabase local/build config    | `supabase/config.toml`, root `package.json`, `app/app.json`, `vercel.json`                            | Do not create parallel configuration without approval                                                                                    |
-| Requirements/traceability      | `REQUIREMENTS.md`, `requirements/catalog.json`, `scripts/check-traceability.ts`                               | Update traceability when requirements or contracted behavior changes                                                                     |
+| Requirements/traceability      | `docs/REQUIREMENTS.md`, `docs/requirements/catalog.json`, `scripts/check-traceability.ts`                               | Update traceability when requirements or contracted behavior changes                                                                     |
 
 Conflicts to manage deliberately:
 
@@ -328,8 +328,8 @@ Use only real scripts:
 
 | Purpose                     | Command                                                            |
 | --------------------------- | ------------------------------------------------------------------ |
-| Development, all workspaces | `pnpm dev`                                                         |
-| Mobile Expo start           | `pnpm --dir app dev`                                       |
+| Development, all workspaces | `pnpm start`                                                        |
+| Mobile Expo start           | `pnpm start`                                              |
 | Type checking               | `pnpm typecheck` (mobile-only: `pnpm --dir app typecheck`) |
 | Linting                     | `pnpm lint` (mobile-only: `pnpm --dir app lint`)           |
 | Unit/package tests          | `pnpm test` (mobile-only: `pnpm --dir app test`)           |

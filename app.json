@@ -39,7 +39,7 @@
       ],
       "@maplibre/maplibre-react-native",
       "@react-native-community/datetimepicker",
-      "./plugins/withIosPodDeploymentTarget"
+      "./plugins/withIosPodDeploymentTarget.cjs"
     ],
     "experiments": {
       "typedRoutes": true

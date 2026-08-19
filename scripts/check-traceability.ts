@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-const document = await readFile(new URL('../REQUIREMENTS.md', import.meta.url), 'utf8');
+const document = await readFile(new URL('../docs/REQUIREMENTS.md', import.meta.url), 'utf8');
 const missing: string[] = [];
 
 for (let index = 1; index <= 104; index += 1) {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const catalog = JSON.parse(
-  readFileSync(new URL('../../requirements/catalog.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../docs/requirements/catalog.json', import.meta.url), 'utf8'),
 ) as Array<{ id: string; text: string }>;
 
 describe('requirement catalog', () => {

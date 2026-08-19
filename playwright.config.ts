@@ -24,7 +24,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --dir app exec expo start --web --port 8081',
+      command: 'pnpm start:web --port 8081',
       url: 'http://localhost:8081/landing',
       env: {
         EXPO_PUBLIC_SUPABASE_URL: localSupabaseUrl,
