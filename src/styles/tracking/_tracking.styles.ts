@@ -4,9 +4,7 @@ import { theme } from '@/constants/theme';
 export const styles = StyleSheet.create({
   wideColumn: {
     flex: 1,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
+    ...theme.layout.wideColumn,
   },
   header: {
     flexDirection: 'row',
@@ -74,7 +72,6 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionErrorCard: {
-    marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.md,
     padding: theme.spacing.md,
     borderRadius: theme.radius.lg,
@@ -98,14 +95,12 @@ export const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: theme.colors.borderLight,
-    marginHorizontal: theme.spacing.lg,
   },
   safetyActions: {
     gap: theme.spacing.sm,
     padding: theme.spacing.lg,
   },
   cancellationCard: {
-    marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
     gap: theme.spacing.xs,
@@ -127,7 +122,6 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
-    marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
     borderRadius: theme.radius.xl,
@@ -142,7 +136,6 @@ export const styles = StyleSheet.create({
     ...theme.shadows.md,
   },
   proofCard: {
-    marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
     borderRadius: theme.radius.xl,
@@ -180,7 +173,6 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   timelineSection: {
-    marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.lg,
   },
   footer: {

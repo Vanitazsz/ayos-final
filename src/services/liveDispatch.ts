@@ -92,6 +92,7 @@ export type DispatchOffer = {
   rateMinor: number | null;
   area: string;
   budget?: string;
+  notSelected?: boolean;
 };
 export type PresenceState =
   | 'starting'

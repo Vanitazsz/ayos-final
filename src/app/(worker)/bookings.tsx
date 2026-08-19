@@ -81,7 +81,7 @@ export default function WorkerBookingsScreen() {
   const comingSoon = () => showAlert('Coming Soon', 'Earnings receipts will be available in a future update.');
 
   return (
-    <Screen safeArea fullWidth backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
+    <Screen safeArea backgroundColor={theme.colors.background} style={{ paddingBottom: 0 }} keyboardAvoiding={false}>
       <View style={styles.header}>
         <Text style={theme.typography.h2}>My Bookings</Text>
       </View>
@@ -135,11 +135,11 @@ export default function WorkerBookingsScreen() {
               <View key={booking.id}>
                 {/* ─── UPCOMING / IN PROGRESS / PENDING ─── */}
                 {(activeTab === 'Upcoming' || activeTab === 'In Progress' || activeTab === 'Pending') && (
-                  <Pressable
-                    style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
-                    onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}
-                  >
-                    <View style={styles.bookingCard}>
+                  <View style={styles.bookingCard}>
+                    <Pressable
+                      style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
+                      onPress={() => router.push(`/(worker)/booking-request/${booking.id}`)}
+                    >
                       <View style={styles.cardHeader}>
                         <View style={styles.customerRow}>
                           <Avatar uri={booking.customerAvatar} size={40} />
@@ -184,8 +184,25 @@ export default function WorkerBookingsScreen() {
                           {booking.status === 'pending_confirmation' ? 'Awaiting confirmation' : activeTab === 'In Progress' ? (isCurrentlyWorking ? 'Working\u2026' : 'Tap to view') : activeTab === 'Pending' ? 'Awaiting confirmation' : 'Tap to view'}
                         </Text>
                       </View>
-                    </View>
-                  </Pressable>
+                    </Pressable>
+
+                    {booking.status === 'pending' && (
+                      <View style={styles.incomingActions}>
+                        <TouchableOpacity
+                          style={styles.declineBtn}
+                          onPress={() => decline(booking.id)}
+                        >
+                          <Text style={[theme.typography.button, { color: theme.colors.error }]}>Decline</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.acceptBtn}
+                          onPress={() => void accept(booking.id)}
+                        >
+                          <Text style={[theme.typography.button, { color: theme.colors.surface }]}>Accept</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 )}
 
                 {/* ─── COMPLETED ─── */}
@@ -367,23 +384,6 @@ export default function WorkerBookingsScreen() {
                   </Pressable>
                 )}
 
-                {/* ─── ACCEPT / DECLINE for pending bookings ─── */}
-                {booking.status === 'pending' && (
-                  <View style={styles.incomingActions}>
-                    <TouchableOpacity
-                      style={styles.declineBtn}
-                      onPress={() => decline(booking.id)}
-                    >
-                      <Text style={[theme.typography.button, { color: theme.colors.error }]}>Decline</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.acceptBtn}
-                      onPress={() => void accept(booking.id)}
-                    >
-                      <Text style={[theme.typography.button, { color: theme.colors.surface }]}>Accept</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
               </View>
             ))
           )}

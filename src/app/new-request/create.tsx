@@ -1337,9 +1337,7 @@ const applySavedAddress = useCallback(
 
 const styles = StyleSheet.create({
   wideColumn: {
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
+    ...theme.layout.wideColumn,
     marginHorizontal: 'auto',
   },
   header: {

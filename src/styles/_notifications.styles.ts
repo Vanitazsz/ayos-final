@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   contentContainer: { paddingBottom: theme.spacing.xxxl, paddingTop: theme.spacing.md },
   notificationCard: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#f8fafc',
     borderRadius: theme.radius.xl,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.md,
@@ -19,7 +19,7 @@ export const styles = StyleSheet.create({
   },
   unreadCard: {
     borderColor: `${theme.colors.primary}40`,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.colors.surface,
   },
   iconContainer: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: theme.spacing.md },
   textContainer: { flex: 1, justifyContent: 'center' },

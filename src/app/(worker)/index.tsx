@@ -216,7 +216,12 @@ export default function WorkerDashboardScreen() {
               budget={incomingJob.budget || (incomingJob.rateMinor == null ? 'Rate unavailable' : `₱${(incomingJob.rateMinor / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
               postedTime={new Date(incomingJob.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               description={incomingJob.description}
-              status={incomingJob.status === 'ACCEPTED' ? 'accepted' : incomingJob.status === 'DECLINED' ? 'declined' : 'pending'}
+              status={
+                incomingJob.notSelected ? 'not_selected' :
+                incomingJob.status === 'ACCEPTED' ? 'waiting' :
+                incomingJob.status === 'DECLINED' ? 'declined' :
+                'pending'
+              }
               onAccept={() => void respond(incomingJob, 'ACCEPTED')}
               onDecline={() => {
                 showAlert(
@@ -232,7 +237,6 @@ export default function WorkerDashboardScreen() {
                   ],
                 );
               }}
-              onPress={() => router.push(`/(worker)/booking-request/${incomingJob.serviceRequestId}`)}
             />
           </View>
         )}
@@ -287,9 +291,7 @@ export default function WorkerDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.perfCard}>
             <View style={styles.perfHeader}>
-              <View style={styles.perfAvatar}>
-                <Text style={[theme.typography.h4, { color: theme.colors.surface }]}>JR</Text>
-              </View>
+              <Avatar uri={workerProfile?.avatarUri} name={workerProfile?.name} size={44} borderRadius={22} />
               <View style={styles.perfInfo}>
                 <Text style={theme.typography.h4}>{workerProfile?.name ?? ''}</Text>
                 <Badge
@@ -310,6 +312,7 @@ export default function WorkerDashboardScreen() {
                         : 'warning'
                   }
                   size="sm"
+                  style={{ alignSelf: 'flex-start' }}
                 />
               </View>
             </View>

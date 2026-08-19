@@ -409,7 +409,7 @@ export default function TrackingScreen() {
         {['ACCEPTED', 'WORKER_PREPARING', 'WORKER_EN_ROUTE'].includes(
           workerStatus ?? '',
         ) && (
-          <View style={{ marginHorizontal: theme.spacing.lg }}>
+          <View>
             <RouteSummaryCard
               bookingId={bookingId}
               startLat={tracking?.booking?.worker_start_lat}

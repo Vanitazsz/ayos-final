@@ -621,7 +621,7 @@ export default function WorkerProfileScreen() {
                 ) : (
                   <TouchableOpacity
                     onPress={() => handleItemPress('areas')}
-                    style={{ marginTop: theme.spacing.xs }}
+                style={{ marginTop: theme.spacing.xs }}
                   >
                     <Text
                       style={[

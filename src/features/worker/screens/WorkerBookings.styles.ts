@@ -16,7 +16,6 @@ export const styles = StyleSheet.create({
   tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   content: { flex: 1 },
   contentInner: {
-    paddingHorizontal: theme.layout.screenPadding,
     paddingTop: theme.spacing.md,
     paddingBottom: 88,
   },

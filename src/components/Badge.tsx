@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { CheckCircle, BadgeCheck, XCircle } from 'lucide-react-native';
+import { CheckCircle, XCircle } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '@/constants/theme';
 import { AppText } from './AppText';
 
@@ -13,7 +13,7 @@ interface BadgeProps {
 }
 
 const variantConfig = {
-  verified: { bg: Colors.verifiedBg, text: Colors.verified, icon: <BadgeCheck size={14} color={Colors.verified} fill={Colors.verified} /> },
+  verified: { bg: Colors.verifiedBg, text: Colors.verified, icon: null },
   success: { bg: Colors.successBg, text: Colors.success, icon: <CheckCircle size={14} color={Colors.success} /> },
   warning: { bg: Colors.warningBg, text: Colors.warning, icon: null },
   error: { bg: Colors.errorBg, text: Colors.error, icon: <XCircle size={14} color={Colors.error} /> },
@@ -48,6 +48,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.full,
-    alignSelf: 'flex-start',
   },
 });

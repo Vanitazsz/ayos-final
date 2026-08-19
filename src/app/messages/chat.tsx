@@ -11,7 +11,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import {
   ArrowLeft,
-  MapPin,
   Paperclip,
   RotateCcw,
   Send,
@@ -224,18 +223,14 @@ export default function ChatScreen() {
           { paddingBottom: insets.bottom || theme.spacing.md },
         ]}
       >
-        <TouchableOpacity style={styles.attachBtn} disabled={!access.canSend}>
+        <TouchableOpacity
+          style={styles.attachBtn}
+          disabled={!access.canSend}
+          onPress={() =>
+            showAlert('Coming Soon', 'File attachments will be available soon.')
+          }
+        >
           <Paperclip
-            color={
-              access.canSend
-                ? theme.colors.textSecondary
-                : theme.colors.textTertiary
-            }
-            size={20}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.attachBtn} disabled={!access.canSend}>
-          <MapPin
             color={
               access.canSend
                 ? theme.colors.textSecondary

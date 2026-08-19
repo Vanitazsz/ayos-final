@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchWalletTransactions,
@@ -25,6 +25,17 @@ import {
 } from '@/services/queryUtils';
 import { useAuthStore } from '@/store/useAuthStore';
 
+const NOT_SELECTED_DISMISS_MS = 10_000;
+const REFETCH_DEBOUNCE_MS = 500;
+
+function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+  let timer: ReturnType<typeof setTimeout>;
+  return ((...args: any[]) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
 export function useWorkerDashboard() {
   const userId = useAuthStore((s) => s.user?.id);
   const queryClient = useQueryClient();
@@ -34,6 +45,8 @@ export function useWorkerDashboard() {
   const ready = presenceState !== 'starting';
   const [liveStatus, setLiveStatus] = useState<WorkerLiveStatus | null>(null);
   const [refreshingLocation, setRefreshingLocation] = useState(false);
+  const acceptedIdsRef = useRef(new Set<string>());
+  const dismissTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const profileQuery = useQuery({
     queryKey: queryKeys.workerProfile(userId ?? 'anonymous'),
@@ -117,24 +130,62 @@ export function useWorkerDashboard() {
 
   useEffect(() => {
     let active = true;
+
+    const processRows = (rows: DispatchOffer[]) => {
+      if (!active) return;
+
+      const currentIds = new Set(rows.map((r) => r.dispatchId));
+      const disappeared = [...acceptedIdsRef.current].filter(
+        (id) => !currentIds.has(id),
+      );
+
+      if (disappeared.length > 0) {
+        for (const id of disappeared) {
+          acceptedIdsRef.current.delete(id);
+        }
+        setDispatchOffers((prev) =>
+          prev.map((o) =>
+            disappeared.includes(o.dispatchId)
+              ? { ...o, notSelected: true }
+              : o,
+          ),
+        );
+        for (const id of disappeared) {
+          const timer = setTimeout(() => {
+            dismissTimersRef.current.delete(id);
+            setDispatchOffers((prev) =>
+              prev.filter((o) => o.dispatchId !== id),
+            );
+          }, NOT_SELECTED_DISMISS_MS);
+          dismissTimersRef.current.set(id, timer);
+        }
+      } else {
+        setDispatchOffers(rows);
+      }
+    };
+
     const loadOffers = () =>
       void getMyDispatchOffers()
-        .then((rows) => {
-          if (active) setDispatchOffers(rows);
-        })
+        .then(processRows)
         .catch(() => {});
+
     const loadLiveStatus = () =>
       void getMyWorkerLiveStatus()
         .then((status) => {
           if (active) setLiveStatus(status);
         })
         .catch(() => {});
+
     loadOffers();
     loadLiveStatus();
-    const stopDispatch = subscribeToDispatch(loadOffers);
+
+    const debouncedLoadOffers = debounce(loadOffers, REFETCH_DEBOUNCE_MS);
+    const stopDispatch = subscribeToDispatch(debouncedLoadOffers);
     return () => {
       active = false;
       stopDispatch();
+      dismissTimersRef.current.forEach((t) => clearTimeout(t));
+      dismissTimersRef.current.clear();
     };
   }, []);
 
@@ -152,6 +203,9 @@ export function useWorkerDashboard() {
 
   const respond = useCallback(
     async (offer: DispatchOffer, response: 'ACCEPTED' | 'DECLINED') => {
+      if (response === 'ACCEPTED') {
+        acceptedIdsRef.current.add(offer.dispatchId);
+      }
       await respondToDispatch(offer.dispatchId, response);
       setDispatchOffers((current) =>
         current.map((item) =>
@@ -209,7 +263,11 @@ export function useWorkerDashboard() {
   const incomingJob = useMemo(
     () =>
       dispatchOffers.find(
-        (o) => o.status === 'OFFERED' || o.status === 'VIEWED',
+        (o) =>
+          o.status === 'OFFERED' ||
+          o.status === 'VIEWED' ||
+          o.status === 'ACCEPTED' ||
+          o.notSelected,
       ),
     [dispatchOffers],
   );

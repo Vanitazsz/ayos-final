@@ -73,6 +73,7 @@ export const layout = {
   screenPadding: spacing.lg,
   headerHeight: 60,
   bottomNavHeight: 65,
+  wideColumn: { width: '100%' as const, maxWidth: 520, alignSelf: 'center' as const },
 } as const;
 
 export const animations = {

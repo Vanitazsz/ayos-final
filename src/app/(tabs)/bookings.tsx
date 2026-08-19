@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { AppState, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { theme } from '@/constants/theme';
-import { MapPin, Calendar as CalendarIcon, Clock, ChevronRight } from 'lucide-react-native';
+import { MapPin, Calendar as CalendarIcon, Clock } from 'lucide-react-native';
 
 import { EmptyState } from '@/components/layout/EmptyState';
+import { Avatar } from '@/components/Avatar';
+import { Badge } from '@/components/Badge';
+import { Skeleton } from '@/components/Skeleton';
 import { fetchBookings, subscribeToBookingFeed } from '@/services/api';
 import {
   CUSTOMER_BOOKING_TABS,
@@ -15,18 +18,44 @@ import {
 
 const RECENT_BOOKINGS_LIMIT = 5;
 
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'Awaiting Worker Acceptance', ...theme.colors.status.pending },
-  ACCEPTED: { label: 'Confirmed', ...theme.colors.status.confirmed },
-  WORKER_PREPARING: { label: 'Confirmed · Preparing', ...theme.colors.status.confirmed },
-  WORKER_EN_ROUTE: { label: 'En Route', ...theme.colors.status.enRoute },
-  WORKER_ARRIVED: { label: 'Arrived', ...theme.colors.status.progress },
-  SERVICE_STARTED: { label: 'In Progress', ...theme.colors.status.progress },
-  IN_PROGRESS: { label: 'In Progress', ...theme.colors.status.progress },
-  PENDING_CONFIRMATION: { label: 'Awaiting Your Confirmation', ...theme.colors.status.pending },
-  COMPLETED: { label: 'Completed', ...theme.colors.status.progress },
-  CANCELLED: { label: 'Cancelled', ...theme.colors.status.cancelled },
+const STATUS_MAP: Record<string, { label: string; variant: string }> = {
+  PENDING: { label: 'Awaiting Worker Acceptance', variant: 'warning' },
+  ACCEPTED: { label: 'Confirmed', variant: 'info' },
+  WORKER_PREPARING: { label: 'Confirmed · Preparing', variant: 'info' },
+  WORKER_EN_ROUTE: { label: 'En Route', variant: 'info' },
+  WORKER_ARRIVED: { label: 'Arrived', variant: 'info' },
+  SERVICE_STARTED: { label: 'In Progress', variant: 'warning' },
+  IN_PROGRESS: { label: 'In Progress', variant: 'warning' },
+  PENDING_CONFIRMATION: { label: 'Awaiting Your Confirmation', variant: 'warning' },
+  COMPLETED: { label: 'Completed', variant: 'success' },
+  CANCELLED: { label: 'Cancelled', variant: 'error' },
 };
+
+function BookingSkeletonCard() {
+  return (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonHeader}>
+        <View style={styles.skeletonProvider}>
+          <Skeleton width={40} height={40} borderRadius={20} />
+          <View style={{ flex: 1, gap: theme.spacing.xs }}>
+            <Skeleton width="70%" height={14} borderRadius={7} />
+            <Skeleton width="45%" height={12} borderRadius={6} />
+          </View>
+        </View>
+        <Skeleton width={72} height={22} borderRadius={11} />
+      </View>
+      <View style={styles.skeletonDetails}>
+        <Skeleton width={88} height={12} borderRadius={6} />
+        <Skeleton width={68} height={12} borderRadius={6} />
+        <Skeleton width={80} height={12} borderRadius={6} />
+      </View>
+      <View style={styles.skeletonFooter}>
+        <Skeleton width={128} height={34} borderRadius={17} />
+        <Skeleton width={128} height={34} borderRadius={17} />
+      </View>
+    </View>
+  );
+}
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -37,6 +66,7 @@ export default function BookingsScreen() {
   const tabsRef = useRef<ScrollView>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setActiveTab(getInitialCustomerBookingTab(filter));
@@ -49,10 +79,12 @@ export default function BookingsScreen() {
     }
   }, [activeTab]);
 
-  const load = () =>
-    void fetchBookings().then((result) => {
+  const load = () => {
+    setLoading(true);
+    return void fetchBookings().then((result) => {
       if (result.error || !Array.isArray(result.data)) {
         setBookings([]);
+        setLoading(false);
         return;
       }
       setBookings(
@@ -64,13 +96,16 @@ export default function BookingsScreen() {
             ...row,
             service: row.category,
             provider: row.providerName,
+            providerAvatar: row.avatarUri,
             location: row.address,
             tabGroup,
             rawStatus: raw,
           };
         })
       );
+      setLoading(false);
     });
+  };
 
   useEffect(() => {
     let active = true;
@@ -133,112 +168,190 @@ export default function BookingsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
-        {filteredBookings.length === 0 ? (
-          <EmptyState 
-            icon={CalendarIcon} 
-            title={`No ${activeTab} Bookings`} 
-            description={`You don't have any ${activeTab.toLowerCase()} bookings at the moment. Explore services to book a professional!`}
-          />
-        ) : (
-          <>
-          {visibleBookings.map((booking) => {
-            const badge = STATUS_MAP[booking.rawStatus] ?? { label: booking.rawStatus || 'Active', color: theme.colors.primary, bg: theme.colors.infoBackground };
-            return (
-              <TouchableOpacity 
-                key={booking.id} 
-                testID="customer-booking-card"
-                style={styles.bookingCard}
-                onPress={() =>
-                  booking.rawStatus === 'COMPLETED'
-                    ? router.push(`/booking-summary/${booking.id}`)
-                    : router.push(`/tracking/${booking.id}`)
-                }
-              >
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={theme.typography.h4}>{booking.service}</Text>
-                    <Text style={[theme.typography.body2, { color: theme.colors.textSecondary, marginTop: 2 }]}>
-                      Provider: {booking.provider}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[theme.typography.h4, { color: theme.colors.primary }]}>{booking.price}</Text>
-                    <View style={[styles.badgeContainer, { backgroundColor: badge.bg }]}>
-                      <Text style={[styles.badgeText, { color: badge.color }]}>{badge.label}</Text>
-                    </View>
-                  </View>
-                </View>
+      {loading ? (
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
+          <BookingSkeletonCard />
+          <BookingSkeletonCard />
+          <BookingSkeletonCard />
+        </ScrollView>
+      ) : null}
 
-                <View style={styles.cardDetails}>
-                  <View style={styles.detailRow}>
-                    <CalendarIcon color={theme.colors.textTertiary} size={14} />
-                    <Text style={[theme.typography.caption, styles.detailText]}>{booking.date}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Clock color={theme.colors.textTertiary} size={14} />
-                    <Text style={[theme.typography.caption, styles.detailText]}>{booking.time}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <MapPin color={theme.colors.textTertiary} size={14} />
-                    <Text style={[theme.typography.caption, styles.detailText]} numberOfLines={1}>{booking.location}</Text>
-                  </View>
-                  <ChevronRight color={theme.colors.textTertiary} size={18} />
+      {!loading ? (
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
+          {filteredBookings.length === 0 ? (
+            <EmptyState 
+              icon={CalendarIcon} 
+              title={`No ${activeTab} Bookings`} 
+              description={`You don't have any ${activeTab.toLowerCase()} bookings at the moment. Explore services to book a professional!`}
+            />
+          ) : (
+            <>
+            {visibleBookings.map((booking) => {
+              const badge = STATUS_MAP[booking.rawStatus] ?? { label: booking.rawStatus || 'Active', variant: 'info' };
+              return (
+                <View key={booking.id}>
+                  <TouchableOpacity 
+                    testID="customer-booking-card"
+                    style={styles.bookingCard}
+                    onPress={() =>
+                      booking.rawStatus === 'COMPLETED'
+                        ? router.push(`/booking-summary/${booking.id}`)
+                        : router.push(`/tracking/${booking.id}`)
+                    }
+                  >
+                    <View style={styles.cardHeader}>
+                      <View style={styles.providerRow}>
+                        <Avatar uri={booking.providerAvatar} size={40} name={booking.provider} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={theme.typography.h4}>{booking.service}</Text>
+                          <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>
+                            Provider: {booking.provider}
+                          </Text>
+                        </View>
+                      </View>
+                      <Badge
+                        label={badge.label}
+                        variant={badge.variant as any}
+                        size="sm"
+                      />
+                    </View>
+
+                    <View style={styles.cardDetails}>
+                      <View style={styles.detailRow}>
+                        <CalendarIcon color={theme.colors.textTertiary} size={16} />
+                        <Text style={[theme.typography.caption, styles.detailText]}>{booking.date}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Clock color={theme.colors.textTertiary} size={16} />
+                        <Text style={[theme.typography.caption, styles.detailText]}>{booking.time}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <MapPin color={theme.colors.textTertiary} size={16} />
+                        <Text style={[theme.typography.caption, styles.detailText]} numberOfLines={1} ellipsizeMode="tail">{booking.location}</Text>
+                      </View>
+                    </View>
+
+                    {booking.rawStatus === 'CANCELLED' && booking.cancellationReason ? (
+                      <View style={[styles.cancelledReason, { borderTopWidth: 1, borderTopColor: theme.colors.borderLight }]}>
+                        <Text style={[theme.typography.caption, { color: theme.colors.error, fontStyle: 'italic' }]}>
+                          Reason: {booking.cancellationReason}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    <View style={styles.cardFooter}>
+                      <Text style={[theme.typography.h4, { color: theme.colors.primary }]}>{booking.price}</Text>
+                      <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
+                        {booking.rawStatus === 'PENDING_CONFIRMATION' ? 'Awaiting confirmation' : booking.rawStatus === 'IN_PROGRESS' ? 'Tap to view' : 'Tap to view'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-                {booking.rawStatus === 'CANCELLED' && booking.cancellationReason ? (
-                  <Text style={[theme.typography.caption, styles.cancelledReason]}>
-                    Reason: {booking.cancellationReason}
-                  </Text>
-                ) : null}
+              );
+            })}
+            {!showAll && filteredBookings.length > RECENT_BOOKINGS_LIMIT ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={styles.seeAllButton}
+                onPress={() => setShowAll(true)}
+              >
+                <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
-            );
-          })}
-          {!showAll && filteredBookings.length > RECENT_BOOKINGS_LIMIT ? (
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={styles.seeAllButton}
-              onPress={() => setShowAll(true)}
-            >
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          ) : null}
-          </>
-        )}
-      </ScrollView>
+            ) : null}
+            </>
+          )}
+        </ScrollView>
+      ) : null}
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  header: { paddingVertical: theme.spacing.md, alignItems: 'center' },
+const styles = {
+  header: { paddingVertical: theme.spacing.md, alignItems: 'center' as const },
   tabsContainer: { marginBottom: theme.spacing.md },
-  tabsScroll: { gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' },
+  tabsScroll: { gap: theme.spacing.sm, flexGrow: 1, justifyContent: 'center' as const },
   tabButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.borderLight },
   tabButtonActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   content: { flex: 1 },
   contentInner: { paddingBottom: 88 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl },
-  bookingCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: theme.spacing.lg, marginBottom: theme.spacing.md, ...theme.shadows.md, borderWidth: 1, borderColor: theme.colors.borderLight },
-  seeAllButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
+  bookingCard: {
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  cardHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-start' as const,
+    marginBottom: theme.spacing.md,
+  },
+  providerRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: theme.spacing.sm, flex: 1 },
+  cardDetails: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.sm,
+  },
+  detailRow: { flexDirection: 'row' as const, alignItems: 'center' as const, flex: 1 },
+  detailText: { color: theme.colors.textSecondary, marginLeft: 4, flexShrink: 1 },
+  cardFooter: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  cancelledReason: {
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  seeAllButton: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: theme.spacing.md,
   },
   seeAllText: {
     ...theme.typography.button,
     color: theme.colors.primary,
+    textDecorationLine: 'underline' as const,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xs },
-  cardDetails: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: theme.colors.borderLight, paddingTop: theme.spacing.sm },
-  detailRow: { flexDirection: 'row', alignItems: 'center' },
-  detailText: { color: theme.colors.textSecondary, marginLeft: 4 },
-  badgeContainer: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, marginTop: 4 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  cancelledReason: {
-    color: theme.colors.error,
-    marginTop: theme.spacing.sm,
+  skeletonCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
   },
-});
+  skeletonHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: theme.spacing.md,
+  },
+  skeletonProvider: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  skeletonDetails: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.sm,
+  },
+  skeletonFooter: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+};
