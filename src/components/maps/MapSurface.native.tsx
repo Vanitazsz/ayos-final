@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { mapStyleUrl } from '@/lib/supabase';
@@ -39,6 +39,7 @@ export function MapSurface({
   const displayedRadiusRef = useRef<number | undefined>(radiusMeters);
   const lastFitBoundsRef = useRef<string | undefined>(undefined);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [hasLayout, setHasLayout] = useState(false);
   const [displayedRadius, setDisplayedRadius] = useState(radiusMeters);
 
   const fitBounds = useSafeFitBounds();
@@ -60,7 +61,7 @@ export function MapSurface({
     } else {
       cameraRef.current?.setStop({ zoom: 3 });
     }
-  }, [fitBounds, isCenterValid, mapCenter]);
+  }, [fitBounds, isCenterValid, isMapLoaded, mapCenter]);
 
   useEffect(() => {
     if (!isMapLoaded) return;
@@ -128,17 +129,29 @@ export function MapSurface({
     [],
   );
 
+  const onLayout = useCallback(
+    (e: { nativeEvent: { layout: { width: number; height: number } } }) => {
+      if (e.nativeEvent.layout.width > 0 && e.nativeEvent.layout.height > 0) {
+        setHasLayout(true);
+      }
+    },
+    [],
+  );
+
+  const onDidFinishLoadingMap = useCallback(() => setIsMapLoaded(true), []);
+
   return (
     <MapView
       style={styles.map}
       mapStyle={mapStyleUrl}
+      onLayout={onLayout}
       dragPan={interactive}
       touchZoom={interactive}
       doubleTapZoom={interactive}
       touchRotate={interactive}
-      onDidFinishLoadingMap={() => setIsMapLoaded(true)}
+      onDidFinishLoadingMap={onDidFinishLoadingMap}
     >
-      <Camera ref={cameraRef} />
+      {isMapLoaded && hasLayout ? <Camera ref={cameraRef} /> : null}
       {isMapLoaded && isCenterValid && displayedRadius ? (
         <GeoJSONSource id="radius" data={radiusGeoJson(mapCenter, displayedRadius)}>
           <Layer
