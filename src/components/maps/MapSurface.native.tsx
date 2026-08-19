@@ -61,7 +61,7 @@ export function MapSurface({
     } else {
       void cameraRef.current?.setStop({ zoom: 3 });
     }
-  }, [fitBounds, isCenterValid, isMapLoaded, mapCenter]);
+  }, [fitBounds, isCenterValid, isMapLoaded, hasLayout, mapCenter]);
 
   useEffect(() => {
     if (!isMapLoaded) return;
