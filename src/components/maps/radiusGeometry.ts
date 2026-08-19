@@ -7,10 +7,7 @@ const LATITUDE_METERS = 110_540;
 const LONGITUDE_METERS = 111_320;
 const CIRCLE_SEGMENTS = 64;
 
-export function radiusGeoJson(
-  center: MapCoordinates,
-  meters: number,
-): GeoJSON.FeatureCollection {
+export function radiusGeoJson(center: MapCoordinates, meters: number): GeoJSON.FeatureCollection {
   if (
     !Number.isFinite(center.latitude) ||
     !Number.isFinite(center.longitude) ||
@@ -43,7 +40,10 @@ export function radiusGeoJson(
   };
 }
 
-export function radiusBounds(center: MapCoordinates, meters: number): [number, number, number, number] {
+export function radiusBounds(
+  center: MapCoordinates,
+  meters: number,
+): [number, number, number, number] {
   if (
     !Number.isFinite(center.latitude) ||
     !Number.isFinite(center.longitude) ||
@@ -53,7 +53,7 @@ export function radiusBounds(center: MapCoordinates, meters: number): [number, n
     return [NaN, NaN, NaN, NaN];
   }
   const latitudeRadians = (center.latitude * Math.PI) / 180;
-  const longitudeDelta = (meters / LONGITUDE_METERS) / Math.max(Math.cos(latitudeRadians), 0.01);
+  const longitudeDelta = meters / LONGITUDE_METERS / Math.max(Math.cos(latitudeRadians), 0.01);
   const latitudeDelta = meters / LATITUDE_METERS;
 
   return [

@@ -1,22 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import * as MapLibreGL from '@maplibre/maplibre-react-native';
 
 import { mapStyleUrl } from '@/lib/supabase';
 import { isWorldCoordinates } from '@/lib/coordinates';
 
+import type { MapSurfaceProps } from './types';
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
+import {
+  MapView,
+  Camera,
+  Marker,
+  GeoJSONSource,
+  Layer,
+  useSafeFitBounds,
+} from './MapLibreProvider';
+import type { NativeCameraRef } from './MapLibreProvider';
 
-export type MapPoint = { id: string; latitude: number; longitude: number; color?: string; label?: string };
-
-type MapSurfaceProps = {
-  center: { latitude: number; longitude: number };
-  points: MapPoint[];
-  route?: GeoJSON.FeatureCollection;
-  interactive?: boolean;
-  radiusMeters?: number;
-  animateRadius?: boolean;
-};
+export type { MapPoint } from './types';
 
 const RADIUS_ANIMATION_MS = 320;
 
@@ -32,37 +32,15 @@ export function MapSurface({
     () => ({ latitude: center.latitude, longitude: center.longitude }),
     [center.latitude, center.longitude],
   );
-  const isCenterValid = useMemo(
-    () => isWorldCoordinates(mapCenter),
-    [mapCenter],
-  );
-  const cameraRef = useRef<MapLibreGL.CameraRef>(null);
+  const isCenterValid = useMemo(() => isWorldCoordinates(mapCenter), [mapCenter]);
+  const cameraRef = useRef<NativeCameraRef>(null);
   const animationFrameRef = useRef<number | null>(null);
   const displayedRadiusRef = useRef<number | undefined>(radiusMeters);
   const lastFitBoundsRef = useRef<string | undefined>(undefined);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [displayedRadius, setDisplayedRadius] = useState(radiusMeters);
 
-  const fitCameraBounds = useCallback(
-    (
-      bounds: [number, number, number, number],
-      options?: Parameters<MapLibreGL.CameraRef['fitBounds']>[1],
-    ) => {
-      if (!bounds.every((value) => Number.isFinite(value))) return;
-      let attempts = 0;
-      const attempt = () => {
-        if (attempts >= 10) return;
-        attempts += 1;
-        try {
-          cameraRef.current?.fitBounds(bounds, options);
-        } catch {
-          requestAnimationFrame(attempt);
-        }
-      };
-      requestAnimationFrame(attempt);
-    },
-    [],
-  );
+  const fitBounds = useSafeFitBounds();
 
   useEffect(() => {
     if (!isMapLoaded) return;
@@ -76,7 +54,7 @@ export function MapSurface({
 
     const startRadius = displayedRadiusRef.current ?? radiusMeters;
     displayedRadiusRef.current = startRadius;
-    fitCameraBounds(radiusBounds(mapCenter, radiusMeters), {
+    fitBounds(cameraRef, radiusBounds(mapCenter, radiusMeters), {
       padding: { top: 32, right: 32, bottom: 32, left: 32 },
       duration: animateRadius ? RADIUS_ANIMATION_MS : 0,
     });
@@ -101,7 +79,7 @@ export function MapSurface({
     return () => {
       if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [animateRadius, fitCameraBounds, isCenterValid, isMapLoaded, mapCenter, radiusMeters]);
+  }, [animateRadius, fitBounds, isCenterValid, isMapLoaded, mapCenter, radiusMeters]);
 
   useEffect(() => {
     if (!isMapLoaded || radiusMeters || points.length < 2) return;
@@ -117,18 +95,21 @@ export function MapSurface({
     const key = box.map((value) => value.toFixed(6)).join(',');
     if (key === lastFitBoundsRef.current) return;
     lastFitBoundsRef.current = key;
-    fitCameraBounds(box, {
+    fitBounds(cameraRef, box, {
       padding: { top: 40, right: 40, bottom: 40, left: 40 },
       duration: 0,
     });
-  }, [fitCameraBounds, isCenterValid, isMapLoaded, points, radiusMeters]);
+  }, [fitBounds, isCenterValid, isMapLoaded, points, radiusMeters]);
 
-  useEffect(() => () => {
-    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
+    },
+    [],
+  );
 
   return (
-    <MapLibreGL.Map
+    <MapView
       style={styles.map}
       mapStyle={mapStyleUrl}
       dragPan={interactive}
@@ -137,7 +118,7 @@ export function MapSurface({
       touchRotate={interactive}
       onDidFinishLoadingMap={() => setIsMapLoaded(true)}
     >
-      <MapLibreGL.Camera
+      <Camera
         ref={cameraRef}
         initialViewState={
           isCenterValid
@@ -146,26 +127,44 @@ export function MapSurface({
         }
       />
       {isMapLoaded && isCenterValid && displayedRadius ? (
-        <MapLibreGL.GeoJSONSource id="radius" data={radiusGeoJson(mapCenter, displayedRadius)}>
-          <MapLibreGL.Layer id="radius-fill" type="fill" paint={{ 'fill-color': '#2563eb', 'fill-opacity': 0.18 }} />
-          <MapLibreGL.Layer id="radius-line" type="line" paint={{ 'line-color': '#1d4ed8', 'line-width': 2.5, 'line-opacity': 0.9 }} />
-        </MapLibreGL.GeoJSONSource>
+        <GeoJSONSource id="radius" data={radiusGeoJson(mapCenter, displayedRadius)}>
+          <Layer
+            id="radius-fill"
+            type="fill"
+            paint={{ 'fill-color': '#2563eb', 'fill-opacity': 0.18 }}
+          />
+          <Layer
+            id="radius-line"
+            type="line"
+            paint={{
+              'line-color': '#1d4ed8',
+              'line-width': 2.5,
+              'line-opacity': 0.9,
+            }}
+          />
+        </GeoJSONSource>
       ) : null}
       {isMapLoaded && route ? (
-        <MapLibreGL.GeoJSONSource id="route" data={route}>
-          <MapLibreGL.Layer id="route-line" type="line" paint={{ 'line-color': '#1e3a8a', 'line-width': 4 }} />
-        </MapLibreGL.GeoJSONSource>
+        <GeoJSONSource id="route" data={route}>
+          <Layer id="route-line" type="line" paint={{ 'line-color': '#1e3a8a', 'line-width': 4 }} />
+        </GeoJSONSource>
       ) : null}
       {points.filter(isWorldCoordinates).map((point) => (
-        <MapLibreGL.Marker key={point.id} id={point.id} lngLat={[point.longitude, point.latitude]}>
+        <Marker key={point.id} id={point.id} lngLat={[point.longitude, point.latitude]}>
           <View style={[styles.marker, { backgroundColor: point.color ?? '#1e3a8a' }]} />
-        </MapLibreGL.Marker>
+        </Marker>
       ))}
-    </MapLibreGL.Map>
+    </MapView>
   );
 }
 
 const styles = StyleSheet.create({
   map: { flex: 1 },
-  marker: { width: 20, height: 20, borderRadius: 10, borderWidth: 3, borderColor: '#fff' },
+  marker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
 });

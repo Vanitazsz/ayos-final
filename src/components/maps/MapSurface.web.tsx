@@ -1,20 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { mapStyleUrl } from '@/lib/supabase';
 
-import type { MapPoint } from './MapSurface.native';
+import type { MapSurfaceProps } from './types';
 import { easeOutCubic, radiusBounds, radiusGeoJson } from './radiusGeometry';
-
-type MapSurfaceProps = {
-  center: { latitude: number; longitude: number };
-  points: MapPoint[];
-  route?: GeoJSON.FeatureCollection;
-  interactive?: boolean;
-  radiusMeters?: number;
-  animateRadius?: boolean;
-};
+import * as MapLibre from './MapLibreProvider';
 
 const RADIUS_ANIMATION_MS = 320;
 const RADIUS_PADDING = 32;
@@ -33,9 +23,9 @@ export function MapSurface({
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const initialMapOptionsRef = useRef({ center: mapCenter, interactive });
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markerRefs = useRef<maplibregl.Marker[]>([]);
-  const popupRefs = useRef<maplibregl.Popup[]>([]);
+  const mapRef = useRef<MapLibre.WebMapInstance | null>(null);
+  const markerRefs = useRef<import('maplibre-gl').Marker[]>([]);
+  const popupRefs = useRef<import('maplibre-gl').Popup[]>([]);
   const animationFrameRef = useRef<number | null>(null);
   const lastFitBoundsRef = useRef<string | undefined>(undefined);
   const displayedRadiusRef = useRef<number | undefined>(undefined);
@@ -51,17 +41,16 @@ export function MapSurface({
       const height = Math.round(container.clientHeight);
       if (width === 0 || height === 0) return;
 
-      const initialMapOptions = initialMapOptionsRef.current;
-      const map = new maplibregl.Map({
+      const { center: initCenter, interactive: initInteractive } = initialMapOptionsRef.current;
+      const map = MapLibre.createMap({
         container,
-        style: mapStyleUrl,
-        center: [initialMapOptions.center.longitude, initialMapOptions.center.latitude],
+        styleUrl: mapStyleUrl,
+        center: [initCenter.longitude, initCenter.latitude],
         zoom: 13,
-        interactive: initialMapOptions.interactive,
+        interactive: initInteractive,
       });
-      map.addControl(new maplibregl.AttributionControl({ compact: true }));
       map.on('load', () => {
-        map.resize();
+        MapLibre.resizeMap(map);
         setIsMapLoaded(true);
       });
       mapRef.current = map;
@@ -69,7 +58,7 @@ export function MapSurface({
 
     const observer = new ResizeObserver(() => {
       ensureMap();
-      mapRef.current?.resize();
+      if (mapRef.current) MapLibre.resizeMap(mapRef.current);
     });
     observer.observe(container);
     ensureMap();
@@ -79,7 +68,7 @@ export function MapSurface({
       if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
       popupRefs.current.forEach((popup) => popup.remove());
       markerRefs.current.forEach((marker) => marker.remove());
-      mapRef.current?.remove();
+      if (mapRef.current) MapLibre.destroyMap(mapRef.current);
       mapRef.current = null;
     };
   }, []);
@@ -88,50 +77,17 @@ export function MapSurface({
     const map = mapRef.current;
     if (!map || !isMapLoaded) return;
 
-    map.setCenter([mapCenter.longitude, mapCenter.latitude]);
+    MapLibre.setCenter(map, [mapCenter.longitude, mapCenter.latitude]);
     popupRefs.current.forEach((popup) => popup.remove());
     popupRefs.current = [];
     markerRefs.current.forEach((marker) => marker.remove());
-    markerRefs.current = points.map((point) => {
-      const marker = new maplibregl.Marker({ color: point.color ?? '#1e3a8a' })
-        .setLngLat([point.longitude, point.latitude])
-        .addTo(map);
+    markerRefs.current = MapLibre.syncMarkers(map, points);
+    popupRefs.current = MapLibre.syncPopups(map, points);
 
-      const labelText =
-        point.label ??
-        (point.id === 'worker'
-          ? 'Worker'
-          : point.id === 'destination'
-            ? 'User'
-            : point.id === 'start'
-              ? 'Start'
-              : undefined);
-
-      if (labelText) {
-        const popup = new maplibregl.Popup({
-          offset: 25,
-          closeButton: false,
-          closeOnClick: false,
-          focusAfterOpen: false,
-        })
-          .setLngLat([point.longitude, point.latitude])
-          .setHTML(`<div style="font-size: 11px; font-weight: 700; color: #0f172a; padding: 2px 5px; font-family: sans-serif;">${labelText}</div>`)
-          .addTo(map);
-        popupRefs.current.push(popup);
-      }
-      return marker;
-    });
-
-    const routeSource = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
     if (route) {
-      if (routeSource) routeSource.setData(route);
-      else {
-        map.addSource('route', { type: 'geojson', data: route });
-        map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#1e3a8a', 'line-width': 4 } });
-      }
-    } else if (routeSource) {
-      map.removeLayer('route-line');
-      map.removeSource('route');
+      MapLibre.setRouteSource(map, route);
+    } else {
+      MapLibre.removeRouteSource(map);
     }
   }, [isMapLoaded, mapCenter, points, route]);
 
@@ -149,7 +105,7 @@ export function MapSurface({
     const key = box.map((value) => value.toFixed(6)).join(',');
     if (key === lastFitBoundsRef.current) return;
     lastFitBoundsRef.current = key;
-    map.fitBounds(box, { padding: 40, maxZoom: 15, duration: 0 });
+    MapLibre.fitBounds(map, box, { padding: 40, maxZoom: 15, duration: 0 });
   }, [isMapLoaded, points, radiusMeters]);
 
   useEffect(() => {
@@ -157,30 +113,19 @@ export function MapSurface({
     if (!map || !isMapLoaded) return;
     if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
 
-    const radiusSource = map.getSource('radius') as maplibregl.GeoJSONSource | undefined;
     if (!radiusMeters) {
       displayedRadiusRef.current = undefined;
-      if (radiusSource) {
-        map.removeLayer('radius-line');
-        map.removeLayer('radius-fill');
-        map.removeSource('radius');
-      }
+      MapLibre.removeRadiusSource(map);
       return;
     }
 
     const setRadiusData = (meters: number) => {
-      const source = map.getSource('radius') as maplibregl.GeoJSONSource | undefined;
-      if (source) source.setData(radiusGeoJson(mapCenter, meters));
-      else {
-        map.addSource('radius', { type: 'geojson', data: radiusGeoJson(mapCenter, meters) });
-        map.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius', paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.18 } });
-        map.addLayer({ id: 'radius-line', type: 'line', source: 'radius', paint: { 'line-color': '#1d4ed8', 'line-width': 2.5, 'line-opacity': 0.9 } });
-      }
+      MapLibre.setRadiusSource(map, radiusGeoJson(mapCenter, meters));
     };
 
     const startRadius = displayedRadiusRef.current ?? radiusMeters;
     displayedRadiusRef.current = startRadius;
-    map.fitBounds(radiusBounds(mapCenter, radiusMeters), {
+    MapLibre.fitBounds(map, radiusBounds(mapCenter, radiusMeters), {
       padding: RADIUS_PADDING,
       duration: animateRadius ? RADIUS_ANIMATION_MS : 0,
     });
