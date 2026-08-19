@@ -109,13 +109,13 @@ export function migrateApiImports(content: string): string {
 function run(root: string) {
   const files = execFileSync(
     'rg',
-    ['-l', 'from [\'"]@/services/api[\'"]', 'apps/mobile', '--glob', '*.{ts,tsx}'],
+    ['-l', 'from [\'"]@/services/api[\'"]', 'src', '--glob', '*.{ts,tsx}'],
     { cwd: root, encoding: 'utf8' },
   )
     .trim()
     .split('\n')
     .filter(Boolean)
-    .filter((file) => file !== 'apps/mobile/services/api.ts');
+    .filter((file) => file !== 'src/services/api.ts');
   for (const file of files) {
     const absolute = path.join(root, file);
     writeFileSync(absolute, migrateApiImports(readFileSync(absolute, 'utf8')));

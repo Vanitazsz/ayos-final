@@ -1,13 +1,15 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
     "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "lib": ["ES2022", "DOM"]
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["scripts/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

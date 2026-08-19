@@ -24,7 +24,7 @@ function source(file: string): string {
 
 describe('logic and presentation boundaries', () => {
   it('keeps Expo route files as thin adapters without data access or styles', () => {
-    const violations = tracked('apps/mobile/app')
+    const violations = tracked('src/app')
       .filter((file) => file.endsWith('.tsx'))
       .map((file) => ({ file, analysis: analyzeContent(source(file)) }))
       .filter(
@@ -46,7 +46,7 @@ describe('logic and presentation boundaries', () => {
   });
 
   it('keeps feature-screen styles in adjacent style modules', () => {
-    const violations = tracked('apps/mobile/features')
+    const violations = tracked('src/features')
       .filter((file) => /\/screens\/.*\.tsx$/.test(file))
       .filter((file) => analyzeContent(source(file)).hasStyleSheet);
 
@@ -54,7 +54,7 @@ describe('logic and presentation boundaries', () => {
   });
 
   it('keeps mobile screens as controller/view adapters', () => {
-    const mobileViolations = tracked('apps/mobile/features')
+    const mobileViolations = tracked('src/features')
       .filter((file) => /\/screens\/.*Screen\.tsx$/.test(file))
       .filter(
         (file) =>
@@ -66,7 +66,7 @@ describe('logic and presentation boundaries', () => {
   });
 
   it('keeps data and integration modules out of presentation views', () => {
-    const views = tracked('apps/mobile/features').filter((file) => file.endsWith('.view.tsx'));
+    const views = tracked('src/features').filter((file) => file.endsWith('.view.tsx'));
     const violations = views.filter((file) =>
       /(?:@\/services\/|@\/repositories\/|@\/lib\/supabase|\/services\/|\/lib\/supabase)/.test(
         source(file),
@@ -77,10 +77,10 @@ describe('logic and presentation boundaries', () => {
   });
 
   it('keeps mobile feature controllers free of rendered JSX', () => {
-    const violations = tracked('apps/mobile/features')
+    const violations = tracked('src/features')
       .filter((file) => /\/hooks\/use.*Controller\.tsx$/.test(file))
       .concat(
-        tracked('apps/mobile/features')
+        tracked('src/features')
           .filter((file) => /\/hooks\/use.*Controller\.ts$/.test(file))
           .filter((file) => /(?:Screen\.styles|\.view)|return\s*\(\s*</.test(source(file))),
       );
@@ -90,15 +90,15 @@ describe('logic and presentation boundaries', () => {
 
   it('prevents presentation components from importing data clients', () => {
     const violations = [
-      ...tracked('apps/mobile/components/**/*.tsx'),
-      ...tracked('apps/mobile/features/**/*.tsx'),
+      ...tracked('src/components/**/*.tsx'),
+      ...tracked('src/features/**/*.tsx'),
     ].filter((file) => /(?:lib\/supabase|authenticatedFunctions|services\/api)/.test(source(file)));
 
     expect(violations).toEqual([]);
   });
 
   it('uses one request-state source and one mobile button/input family', () => {
-    const allMobileSources = tracked('apps/mobile')
+    const allMobileSources = tracked('src')
       .filter((file) => /\.(ts|tsx)$/.test(file))
       .map((file) => source(file))
       .join('\n');

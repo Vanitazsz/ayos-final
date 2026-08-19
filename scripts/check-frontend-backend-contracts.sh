@@ -2,13 +2,13 @@
 set -euo pipefail
 
 frontend_paths=(
-  apps/mobile/app
-  apps/mobile/components
-  apps/mobile/context
-  apps/mobile/hooks
-  apps/mobile/lib
-  apps/mobile/services
-  apps/mobile/store
+  src/app
+  src/components
+  src/context
+  src/hooks
+  src/lib
+  src/services
+  src/store
 )
 backend_paths=(supabase/migrations supabase/functions)
 failed=0

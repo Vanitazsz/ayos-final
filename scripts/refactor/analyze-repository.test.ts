@@ -37,7 +37,7 @@ describe('analyzeContent', () => {
 describe('buildInventoryRecord', () => {
   it('flags a styled route with raw database access for refactoring', () => {
     const record = buildInventoryRecord(
-      'apps/mobile/app/booking/[id].tsx',
+      'src/app/booking/[id].tsx',
       `import { StyleSheet } from 'react-native';\n` +
         `supabase.from('bookings').select('*');\n` +
         `const styles = StyleSheet.create({});\n`,
@@ -52,11 +52,11 @@ describe('buildInventoryRecord', () => {
   });
 
   it('classifies tests, generated code, configuration, and legacy code safely', () => {
-    expect(buildInventoryRecord('apps/mobile/services/auth.test.ts', '').status).toBe('TEST FILE');
+    expect(buildInventoryRecord('src/services/auth.test.ts', '').status).toBe('TEST FILE');
     expect(buildInventoryRecord('packages/supabase/src/database.generated.ts', '').status).toBe(
       'GENERATED — DO NOT EDIT',
     );
-    expect(buildInventoryRecord('apps/mobile/tsconfig.json', '{}').status).toBe(
+    expect(buildInventoryRecord('tsconfig.json', '{}').status).toBe(
       'CONFIGURATION FILE',
     );
     expect(buildInventoryRecord('backend/src/app.ts', '').status).toBe(
@@ -92,13 +92,12 @@ describe('chunkFiles', () => {
 
 describe('routeScreenTarget', () => {
   it('creates collision-free feature screen names from complete route paths', () => {
-    expect(routeScreenTarget('apps/mobile/app/(tabs)/profile.tsx', 'account')).toEqual({
-      importPath: '@/features/account/screens/TabsProfileScreen',
-      targetFile: 'apps/mobile/features/account/screens/TabsProfileScreen.tsx',
+    expect(routeScreenTarget('src/app/(tabs)/profile.tsx', 'account')).toEqual({      importPath: '@/features/account/screens/TabsProfileScreen',
+      targetFile: 'src/features/account/screens/TabsProfileScreen.tsx',
     });
-    expect(routeScreenTarget('apps/mobile/app/(worker)/profile.tsx', 'worker')).toEqual({
+    expect(routeScreenTarget('src/app/(worker)/profile.tsx', 'worker')).toEqual({
       importPath: '@/features/worker/screens/WorkerProfileScreen',
-      targetFile: 'apps/mobile/features/worker/screens/WorkerProfileScreen.tsx',
+      targetFile: 'src/features/worker/screens/WorkerProfileScreen.tsx',
     });
   });
 });
@@ -106,7 +105,7 @@ describe('routeScreenTarget', () => {
 describe('extractStyleModule', () => {
   it('moves StyleSheet.create into an adjacent module with only required dependencies', () => {
     const transformed = extractStyleModule(
-      'apps/mobile/features/auth/screens/LoginScreen.tsx',
+      'src/features/auth/screens/LoginScreen.tsx',
       `import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '@/constants/theme';
@@ -132,7 +131,7 @@ const styles = StyleSheet.create({ root: { gap: GAP } });
 describe('extractLogicGateway', () => {
   it('moves service and provider dependencies behind a feature logic module', () => {
     const transformed = extractLogicGateway(
-      'apps/mobile/features/location/screens/TrackingScreen.tsx',
+      'src/features/location/screens/TrackingScreen.tsx',
       `import React from 'react';
 import * as Location from 'expo-location';
 import { fetchBookingTracking, type WorkerBooking } from '@/services/api';
@@ -171,7 +170,7 @@ describe('migrateApiImports', () => {
 describe('extractMobileScreenController', () => {
   it('separates stateful coordination from a presentation view', () => {
     const result = extractMobileScreenController(
-      'apps/mobile/features/demo/screens/DemoScreen.tsx',
+      'src/features/demo/screens/DemoScreen.tsx',
       `import { useState } from 'react';
 import { View, Text } from 'react-native';
 import { loadValue } from '../logic/DemoScreenLogic';

@@ -252,7 +252,7 @@ function filesRecursively(directory: string): string[] {
 
 export function extractAllMobileControllers(root: string): string[] {
   const changed: string[] = [];
-  for (const absolute of filesRecursively(path.join(root, 'apps/mobile/features'))) {
+  for (const absolute of filesRecursively(path.join(root, 'src/features'))) {
     const relative = path.relative(root, absolute).split(path.sep).join('/');
     const extraction = extractMobileScreenController(relative, readFileSync(absolute, 'utf8'));
     if (!extraction) continue;

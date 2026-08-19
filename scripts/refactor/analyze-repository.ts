@@ -108,7 +108,7 @@ function fileType(file: string): string {
   if (GENERATED_FILES.test(file)) return 'GENERATED';
   if (TEST_FILES.test(file)) return 'TEST';
   if (CONFIG_FILES.test(file)) return 'CONFIGURATION';
-  if (/^apps\/mobile\/app\/.*\.(tsx|ts)$/.test(file)) return 'ROUTE';
+  if (/^apps\/mobile\/src\/app\/.*\.(tsx|ts)$/.test(file)) return 'ROUTE';
   if (/\/components\//.test(file)) return 'COMPONENT';
   if (/\/hooks\//.test(file)) return 'HOOK';
   if (/\/context\//.test(file)) return 'CONTEXT/PROVIDER';
@@ -125,7 +125,7 @@ function fileType(file: string): string {
 }
 
 function routeFeature(file: string): string {
-  const normalized = file.replace(/^apps\/mobile\/app\//, '').replace(/\.(tsx|ts|jsx|js)$/, '');
+  const normalized = file.replace(/^apps\/mobile\/src\/app\//, '').replace(/\.(tsx|ts|jsx|js)$/, '');
   const parts = normalized.split('/').filter((part) => !/^\(.*\)$/.test(part));
   const leaf = parts.at(-1)?.replace(/^\[|\]$/g, '') ?? 'shared';
   const first = parts[0] ?? leaf;
@@ -160,7 +160,7 @@ function routeFeature(file: string): string {
 }
 
 function featureFor(file: string): string {
-  if (/^apps\/mobile\/app\//.test(file)) return routeFeature(file);
+  if (/^apps\/mobile\/src\/app\//.test(file)) return routeFeature(file);
   if (/auth/i.test(file)) return 'auth';
   if (/booking|payment|wallet|review/i.test(file)) return 'bookings';
   if (/request|match|dispatch/i.test(file)) return 'requests';
@@ -208,7 +208,7 @@ function duplicateRelationship(file: string): string {
     return 'AppInput.tsx ↔ inputs/TextInput.tsx';
   if (/constants\/theme\.ts/.test(file))
     return 'Lowercase theme API ↔ PascalCase compatibility API';
-  if (/app\/(chat\/\[id\]|messages\/chat)\.tsx/.test(file))
+  if (/src\/app\/(chat\/\[id\]|messages\/chat)\.tsx/.test(file))
     return 'Two chat routes with different entry contracts';
   if (/services\/(api|profile)\.ts/.test(file))
     return 'Competing profile representations across api.ts and profile.ts';
@@ -248,10 +248,10 @@ function targetFor(file: string, type: string, feature: string): string {
       .split(/[-_]/)
       .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : ''))
       .join('');
-    return `${file} (thin wrapper) + apps/mobile/features/${feature}/screens/${screen || 'Index'}Screen.tsx`;
+    return `${file} (thin wrapper) + src/features/${feature}/screens/${screen || 'Index'}Screen.tsx`;
   }
-  if (file === 'apps/mobile/services/api.ts')
-    return 'apps/mobile/services/<domain>.ts compatibility split';
+  if (file === 'src/services/api.ts')
+    return 'src/services/<domain>.ts compatibility split';
   return file;
 }
 
@@ -398,8 +398,8 @@ function resolveImport(importer: string, specifier: string, files: Set<string>):
   let base: string | null = null;
   if (specifier.startsWith('.'))
     base = path.posix.normalize(path.posix.join(path.posix.dirname(importer), specifier));
-  if (specifier.startsWith('@/') && importer.startsWith('apps/mobile/'))
-    base = `apps/mobile/${specifier.slice(2)}`;
+  if (specifier.startsWith('@/') && importer.startsWith('src/'))
+    base = `src/${specifier.slice(2)}`;
   if (!base) return null;
   const candidates = [
     base,
@@ -507,7 +507,7 @@ function renderMetrics(
 | --- | ---: | --- |
 | Total in-scope tracked files | ${records.length} | Tracked files excluding lockfile internals and generated caches/build output |
 | Total source files | ${source.length} | Tracked TS/TSX/JS/JSX/MJS/CJS/CSS/SQL/Prisma files |
-| Total routes | ${metric(records, (record) => record.type === 'ROUTE')} | Expo Router files under \`apps/mobile/app\` |
+| Total routes | ${metric(records, (record) => record.type === 'ROUTE')} | Expo Router files under \`src/app\` |
 | Total screens | ${metric(records, (record) => /\/screens\//.test(record.file))} | Explicit feature screen directories |
 | Total components | ${metric(records, (record) => record.type === 'COMPONENT')} | Component directories |
 | Total hooks | ${metric(records, (record) => record.type === 'HOOK')} | Hook directories |

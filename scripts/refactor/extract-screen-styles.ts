@@ -277,7 +277,7 @@ function screenFiles(directory: string): string[] {
 }
 
 export function extractAllScreenStyles(root: string): string[] {
-  const featureRoot = path.join(root, 'apps/mobile/features');
+  const featureRoot = path.join(root, 'src/features');
   const changed: string[] = [];
   for (const absolute of screenFiles(featureRoot)) {
     if (!absolute.includes(`${path.sep}screens${path.sep}`)) continue;

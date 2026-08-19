@@ -506,7 +506,7 @@ test('photo analysis waits for consent then merges an editable explanation', asy
   const chooserPromise = page.waitForEvent('filechooser');
   await page.getByText('Upload Photo', { exact: true }).click();
   const chooser = await chooserPromise;
-  await chooser.setFiles(join(process.cwd(), 'apps/mobile/assets/images/icon.png'));
+  await chooser.setFiles(join(process.cwd(), 'assets/images/icon.png'));
 
   await expect(page.getByText(/Accept AI consent to analyze this photo/i)).toBeVisible();
   await page.getByRole('checkbox').click();

@@ -1,6 +1,5 @@
 node_modules/
 .worktrees/
-apps/*/package-lock.json
 .turbo/
 dist/
 .expo/
@@ -11,7 +10,6 @@ test-results/
 .env
 .env.*
 !.env.example
-apps/mobile/.expo/
 supabase/.branches/
 supabase/.temp/
 supabase/.env.local
@@ -19,5 +17,29 @@ supabase/.env.local
 
 # macOS Finder duplicate / copy files ("name 2.ext")
 * 2.*
-apps/mobile/android/app/debug.keystore
-/ios/
+
+# expo
+web-build/
+expo-env.d.ts
+
+# native
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+
+# pem
+*.pem
+
+# vercel
+.vercel

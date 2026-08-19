@@ -244,13 +244,13 @@
     "text": "The system shall provide Call, Chat, and Emergency contact options during an active booking.",
     "traceability": {
       "sources": [
-        "apps/mobile/app/tracking/[id].tsx",
-        "apps/mobile/hooks/useBookingTracking.ts",
-        "apps/mobile/services/liveDispatch.ts"
+        "src/app/tracking/[id].tsx",
+        "src/hooks/useBookingTracking.ts",
+        "src/services/liveDispatch.ts"
       ],
       "tests": [
-        "apps/mobile/services/liveDispatch.test.ts",
-        "apps/mobile/services/api.workerBookings.test.ts"
+        "src/services/liveDispatch.test.ts",
+        "src/services/api.workerBookings.test.ts"
       ],
       "uat": "UAT#9",
       "status": "repository_verified_device_uat_pending"
@@ -374,12 +374,12 @@
     "text": "The system shall require the homeowner to attach at least one photo of the completed work (proof of work) before paying for the completed, paid booking, and shall make the proof visible to the booking's parties and administrators.",
     "traceability": {
       "sources": [
-        "apps/mobile/components/booking/CustomerProofOfWorkModal.tsx",
-        "apps/mobile/app/payment/[id].tsx",
-        "apps/mobile/app/tracking/[id].tsx",
-        "apps/mobile/services/apiCore.ts"
+        "src/components/booking/CustomerProofOfWorkModal.tsx",
+        "src/app/payment/[id].tsx",
+        "src/app/tracking/[id].tsx",
+        "src/services/apiCore.ts"
       ],
-      "tests": ["apps/mobile/services/api.workerBookings.test.ts"],
+      "tests": ["src/services/api.workerBookings.test.ts"],
       "uat": "UAT#12",
       "status": "repository_verified_hosted_moderation_uat_pending"
     }
@@ -401,12 +401,12 @@
     "text": "The system shall provide an optional AI Home Assistant that a user can open when preparing a service request.",
     "traceability": {
       "sources": [
-        "apps/mobile/app/new-request/create.tsx",
+        "src/app/new-request/create.tsx",
         "supabase/functions/ai-assist-media/index.ts"
       ],
       "tests": [
         "supabase/functions/_frontend_shared/ai.test.ts",
-        "apps/mobile/utils/aiMedia.test.ts"
+        "src/utils/aiMedia.test.ts"
       ],
       "uat": "UAT#30",
       "status": "repository_verified_hosted_ai_prerequisites_pending"
@@ -418,11 +418,11 @@
     "traceability": {
       "sources": [
         "supabase/functions/_frontend_shared/ai.ts",
-        "apps/mobile/app/new-request/create.tsx"
+        "src/app/new-request/create.tsx"
       ],
       "tests": [
         "supabase/functions/_frontend_shared/ai.test.ts",
-        "apps/mobile/utils/aiMedia.test.ts"
+        "src/utils/aiMedia.test.ts"
       ],
       "uat": "UAT#30",
       "status": "repository_verified_hosted_provider_uat_pending"
@@ -447,7 +447,7 @@
     "traceability": {
       "sources": [
         "supabase/functions/_frontend_shared/ai.ts",
-        "apps/mobile/app/new-request/create.tsx"
+        "src/app/new-request/create.tsx"
       ],
       "tests": ["supabase/functions/_frontend_shared/ai.test.ts"],
       "uat": "UAT#30",
@@ -458,8 +458,8 @@
     "id": "FR-96",
     "text": "The system shall create an editable service-request draft from available AI analysis details; the user shall review or change the draft before sending the booking request.",
     "traceability": {
-      "sources": ["apps/mobile/app/new-request/create.tsx", "apps/mobile/services/apiCore.ts"],
-      "tests": ["apps/mobile/utils/aiMedia.test.ts"],
+      "sources": ["src/app/new-request/create.tsx", "src/services/apiCore.ts"],
+      "tests": ["src/utils/aiMedia.test.ts"],
       "uat": "UAT#30",
       "status": "repository_verified_hosted_ai_prerequisites_pending"
     }

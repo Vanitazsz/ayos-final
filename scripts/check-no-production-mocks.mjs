@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
-const roots = ['app', 'services', 'store', 'components'];
+const roots = ['src/app', 'src/services', 'src/store', 'src/components'];
 const extensions = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const forbidden = [
   /Juan Dela Cruz|juan\.delacruz|juan@example\.com|09171234567/g,
@@ -25,10 +25,10 @@ async function visit(path) {
     if (entry.isDirectory()) await visit(target);
     else if (extensions.has(extname(entry.name))) {
       const source = await readFile(target, 'utf8');
-      if (/app[\\/]+\(auth\)[\\/]+login\.[jt]sx?$/.test(target) && /setTimeout\s*\(/.test(source)) {
+      if (/src[\\/]+app[\\/]+\(auth\)[\\/]+login\.[jt]sx?$/.test(target) && /setTimeout\s*\(/.test(source)) {
         failures.push(`${target}: fake authentication delay`);
       }
-      if (/app[\\/]+\(tabs\)[\\/]+profile\.[jt]sx?$/.test(target) && /source\s*=\s*['"]https?:\/\//.test(source)) {
+      if (/src[\\/]+app[\\/]+\(tabs\)[\\/]+profile\.[jt]sx?$/.test(target) && /source\s*=\s*['"]https?:\/\//.test(source)) {
         failures.push(`${target}: remote hardcoded profile image`);
       }
       for (const pattern of forbidden) {

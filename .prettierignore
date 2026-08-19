@@ -1,5 +1,4 @@
-apps/admin/next-env.d.ts
-apps/mobile/expo-env.d.ts
+app/expo-env.d.ts
 **/.next/**
 **/.expo/**
 **/dist/**
@@ -9,7 +8,6 @@ test-results/**
 ayos-try/**
 **/pnpm-lock.yaml
 **/database.generated.ts
-apps/admin/**
-apps/mobile/**
+app/**
 dbsql.md
 dbtables.md

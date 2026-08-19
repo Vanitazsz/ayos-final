@@ -19,9 +19,9 @@ export function routeScreenTarget(
   routeFile: string,
   feature: string,
 ): { importPath: string; targetFile: string } {
-  const relative = routeFile.replace(/^apps\/mobile\/app\//, '').replace(/\.(tsx|ts)$/, '');
+  const relative = routeFile.replace(/^apps\/mobile\/src\/app\//, '').replace(/\.(tsx|ts)$/, '');
   const name = relative.split('/').map(pascalSegment).join('') || 'Root';
-  const targetFile = `apps/mobile/features/${feature}/screens/${name}Screen.tsx`;
+  const targetFile = `src/features/${feature}/screens/${name}Screen.tsx`;
   return {
     importPath: `@/features/${feature}/screens/${name}Screen`,
     targetFile,
@@ -36,8 +36,8 @@ export function extractViolatingRoutes(root: string): string[] {
       '--cached',
       '--others',
       '--exclude-standard',
-      'apps/mobile/app/*.tsx',
-      'apps/mobile/app/**/*.tsx',
+      'src/app/*.tsx',
+      'src/app/**/*.tsx',
     ],
     { cwd: root, encoding: 'utf8' },
   )
