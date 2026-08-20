@@ -864,7 +864,7 @@ export async function fetchBookingDetail(id: string) {
     const { data, error } = await supabase
       .from('bookings')
       .select(
-        '*,service_requests(*,service_categories(*),addresses(*)),worker_profiles:worker_account_id(*),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
+        '*,service_requests(*,service_categories(*),addresses(*),request_media(storage_path,content_type)),worker_profiles:worker_account_id(*),user_profiles:user_account_id(*),booking_status_events(*),cancellations(*),payments(*,refunds(*))',
       )
       .eq('id', id)
       .single();

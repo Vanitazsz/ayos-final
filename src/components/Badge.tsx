@@ -35,8 +35,8 @@ export const Badge = React.memo(function Badge({
 
   return (
     <View style={[styles.badge, { backgroundColor: config.bg, paddingHorizontal: paddingH, paddingVertical: paddingV }, style]}>
-      {icon || config.icon}
-      <AppText style={{ fontSize, fontWeight: '600', color: config.text, marginLeft: icon || config.icon ? Spacing['1'] : 0 }}>
+      {icon !== undefined ? icon : config.icon}
+      <AppText style={{ fontSize, fontWeight: '600', color: config.text, marginLeft: (icon !== undefined ? icon : config.icon) ? Spacing['1'] : 0 }}>
         {label}
       </AppText>
     </View>
