@@ -186,7 +186,7 @@ export function ConversationListScreen({
                   entering={FadeInDown.delay(index * 50)
                     .duration(400)
                     .springify()}
-                  style={{ marginBottom: theme.spacing.sm }}
+                  style={[styles.chatCard, { marginBottom: theme.spacing.md }]}
                 >
                   <Swipeable
                     ref={(ref) => {
@@ -195,7 +195,7 @@ export function ConversationListScreen({
                     renderRightActions={() => renderRightActions(chat)}
                     friction={2}
                     overshootRight={false}
-                    containerStyle={styles.swipeableContainer}
+                    containerStyle={[styles.swipeableContainer, chat.unread > 0 && styles.unreadSwipeable]}
                   >
                     <TouchableOpacity
                       accessibilityRole="button"
@@ -297,17 +297,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: theme.layout.screenPadding,
     paddingBottom: 88,
   },
   listContainer: { marginBottom: theme.spacing.lg },
+  chatCard: {
+    ...theme.shadows.sm,
+  },
   swipeableContainer: {
     borderRadius: theme.radius.xl,
     overflow: 'hidden',
     backgroundColor: theme.colors.surface,
-    ...theme.shadows.sm,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
+  },
+  unreadSwipeable: {
+    borderColor: `${theme.colors.primary}40`,
   },
   rightActionsContainer: {
     flexDirection: 'row',
@@ -323,7 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     backgroundColor: '#f8fafc',
   },
   unreadRow: {
