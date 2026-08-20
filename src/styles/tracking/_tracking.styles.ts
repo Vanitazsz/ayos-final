@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.lg,
   },
-  workerInfo: { flexDirection: 'row', alignItems: 'center' },
+  workerInfo: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
   actions: { flexDirection: 'row' },
   contactActions: {
     flexDirection: 'row',
