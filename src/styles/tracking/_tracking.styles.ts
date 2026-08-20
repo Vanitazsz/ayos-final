@@ -27,13 +27,6 @@ export const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   workerInfo: { flexDirection: 'row', alignItems: 'center' },
-  avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.border,
-    marginRight: theme.spacing.md,
-  },
   actions: { flexDirection: 'row' },
   contactActions: {
     flexDirection: 'row',

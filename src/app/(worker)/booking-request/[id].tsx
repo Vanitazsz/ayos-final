@@ -12,7 +12,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useGoBack } from '@/hooks/useGoBack';
+
 import { Screen } from '@/components/layout/Screen';
 import { theme, Colors, Radius, Spacing, Elevation, Layout, AvatarSize } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
@@ -75,7 +75,7 @@ const viewStatus = (status: string) =>
 
 export default function BookingRequestScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const goBack = useGoBack('/(worker)/bookings');
+  const goBack = useCallback(() => router.replace('/(worker)/bookings'), [router]);
   const [isLoading, setIsLoading] = useState(true);
   const [job, setJob] = useState<any>({
     id,
@@ -120,7 +120,8 @@ export default function BookingRequestScreen() {
 
   useEffect(() => {
     if (!id) return;
-    const load = () =>
+    const load = () => {
+      setJobImageUrl(null);
       void fetchBookingDetail(id)
         .then((result) => {
           setIsLoading(false);
@@ -203,12 +204,15 @@ export default function BookingRequestScreen() {
           const firstImage = Array.isArray(media) ? media.find((m: any) => m.content_type?.startsWith('image/')) : null;
           if (firstImage?.storage_path) {
             getRequestMediaSignedUrl(firstImage.storage_path).then(setJobImageUrl).catch(() => {});
+          } else {
+            setJobImageUrl(null);
           }
         })
         .catch((e) => {
           console.error('[booking-detail] load failed:', e);
           setIsLoading(false);
         });
+    };
     load();
     let unsub = () => {};
     try {

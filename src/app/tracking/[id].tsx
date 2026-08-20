@@ -26,6 +26,7 @@ import { buildProviderReportEmail } from '@/services/support';
 import { BookingMap } from '@/components/booking/BookingMap';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { CustomerProofOfWorkModal } from '@/components/booking/CustomerProofOfWorkModal';
+import { Avatar } from '@/components/Avatar';
 import { styles } from '@/styles/tracking/_tracking.styles';
 import { useBookingTracking } from '@/hooks/useBookingTracking';
 import { hasCustomerProof } from '@/services/api';
@@ -460,7 +461,11 @@ export default function TrackingScreen() {
         {/* Worker Info */}
         <View style={styles.workerContainer}>
           <View style={styles.workerInfo}>
-            <View style={styles.avatarPlaceholder} />
+            <Avatar
+              uri={tracking?.booking?.worker_profiles?.avatar_path}
+              size={48}
+              name={tracking?.booking?.worker_profiles?.display_name}
+            />
             <View>
               <Text style={theme.typography.h4}>
                 {tracking?.booking?.worker_profiles?.display_name ??
