@@ -352,13 +352,18 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
     const bookingResult = await supabase
       .from('bookings')
       .select(
-        'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path),cancellations(reason)',
+        'id,service_request_id,worker_account_id,status,created_at,agreed_service_amount,service_requests(description,scheduled_at,addresses(line1,barangay,city),service_categories(name)),worker_profiles:worker_account_id(display_name,avatar_path),cancellations(reason,initiator_role)',
       )
       .eq('user_account_id', user.id)
       .order('created_at', { ascending: false });
     if (bookingResult.error) throw new Error(bookingResult.error.message);
 
-    const rows = bookingResult.data ?? [];
+    const rows = (bookingResult.data ?? []).filter((row: any) => {
+      const cancellation = Array.isArray(row.cancellations)
+        ? row.cancellations[0]
+        : row.cancellations;
+      return !cancellation || cancellation.initiator_role !== 'WORKER';
+    });
     const avatarMap = await batchResolveAvatars(
       rows.map((row: any) => row.worker_profiles?.avatar_path),
     );
@@ -373,14 +378,14 @@ export async function fetchBookings(): Promise<ApiResponse<any[]>> {
         requestId: row.service_request_id,
         recordType: 'booking',
         providerId: row.worker_account_id,
-        providerName: requireIdentity(
-          row.worker_profiles?.display_name,
-          'Booked worker',
-        ),
-        category: requireIdentity(
-          row.service_requests?.service_categories?.name,
-          'Booked service',
-        ),
+        providerName:
+          (typeof row.worker_profiles?.display_name === 'string' &&
+            row.worker_profiles.display_name.trim()) ||
+          'Unknown worker',
+        category:
+          (typeof row.service_requests?.service_categories?.name === 'string' &&
+            row.service_requests.service_categories.name.trim()) ||
+          'Unknown service',
         avatarUri: avatarMap.get(row.worker_profiles?.avatar_path) ?? '',
         date: new Date(
           row.service_requests?.scheduled_at ?? row.created_at,
@@ -549,15 +554,15 @@ const mapWorkerBookingRow = (
   id: row.id,
   requestId: row.service_request_id,
   recordType: 'booking' as const,
-  customerName: requireIdentity(
-    row.user_profiles?.display_name,
-    'Booking customer',
-  ),
+  customerName:
+    (typeof row.user_profiles?.display_name === 'string' &&
+      row.user_profiles.display_name.trim()) ||
+    'Unknown customer',
   customerAvatar: avatarMap.get(row.user_profiles?.avatar_path) ?? '',
-  service: requireIdentity(
-    row.service_requests?.service_categories?.name,
-    'Booked service',
-  ),
+  service:
+    (typeof row.service_requests?.service_categories?.name === 'string' &&
+      row.service_requests.service_categories.name.trim()) ||
+    'Unknown service',
   date: new Date(
     row.service_requests?.scheduled_at ?? row.created_at,
   ).toLocaleDateString(),

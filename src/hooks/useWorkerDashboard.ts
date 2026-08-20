@@ -160,7 +160,7 @@ export function useWorkerDashboard() {
           dismissTimersRef.current.set(id, timer);
         }
       } else {
-        setDispatchOffers(rows);
+        setDispatchOffers(rows.filter((r) => r.status !== 'SELECTED'));
       }
     };
 

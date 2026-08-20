@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {View,
   Text,
   TouchableOpacity,
@@ -30,6 +30,7 @@ import { styles } from '@/styles/tracking/_tracking.styles';
 import { useBookingTracking } from '@/hooks/useBookingTracking';
 import { hasCustomerProof } from '@/services/api';
 import { showAlert } from '@/components/AppAlert';
+import { useRequestStore } from '@/store/useRequestStore';
 
 
 const STATUS_STEP_MAP: Record<string, number> = {
@@ -136,6 +137,35 @@ export default function TrackingScreen() {
     confirmArrival,
     confirmCompletion,
   } = useBookingTracking(bookingId);
+
+  const hasRedirectedRef = useRef(false);
+  useEffect(() => {
+    if (hasRedirectedRef.current) return;
+    if (workerStatus !== 'CANCELLED') return;
+    const cancellation: { initiator_role?: string } | undefined = Array.isArray(tracking?.booking?.cancellations)
+      ? tracking?.booking?.cancellations[0]
+      : tracking?.booking?.cancellations;
+    if (cancellation?.initiator_role !== 'WORKER') return;
+    hasRedirectedRef.current = true;
+    showAlert(
+      'Booking Declined',
+      'The worker has declined this booking. Let\u2019s find you a new provider.',
+      [
+        {
+          text: 'Create New Booking',
+          onPress: () => {
+            useRequestStore.getState().setDraft({
+              requestId: null,
+              bookingId: null,
+              selectedWorkerId: null,
+              status: 'Draft',
+            });
+            router.replace('/new-request/create');
+          },
+        },
+      ],
+    );
+  }, [workerStatus, tracking, router]);
 
   const stepIndex = useMemo(() => {
     return workerStatus && STATUS_STEP_MAP[workerStatus] !== undefined
@@ -614,9 +644,17 @@ export default function TrackingScreen() {
           />
         ) : isCancelled ? (
           <Button
-            title="Back to Bookings"
+            title="Create New Booking"
             variant="outlined"
-            onPress={goBack}
+            onPress={() => {
+              useRequestStore.getState().setDraft({
+                requestId: null,
+                bookingId: null,
+                selectedWorkerId: null,
+                status: 'Draft',
+              });
+              router.replace('/new-request/create');
+            }}
             fullWidth
           />
         ) : (
