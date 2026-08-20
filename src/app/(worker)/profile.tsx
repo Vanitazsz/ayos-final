@@ -51,6 +51,89 @@ import { showAlert } from '@/components/AppAlert';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useNotificationsGate } from '@/hooks/useNotificationsGate';
 import { styles } from '@/styles/worker/profile.styles';
+import { Skeleton } from '@/components/Skeleton';
+
+function ProfileSkeleton() {
+  return (
+    <>
+      <View style={styles.userInfo}>
+        <Skeleton width={88} height={88} borderRadius={44} />
+        <Skeleton width={140} height={20} borderRadius={10} style={{ marginTop: theme.spacing.sm }} />
+        <Skeleton width={180} height={14} borderRadius={7} style={{ marginTop: theme.spacing.xs }} />
+        <Skeleton width={120} height={24} borderRadius={12} style={{ marginTop: theme.spacing.sm }} />
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Skeleton width={48} height={24} borderRadius={12} />
+          <Skeleton width={64} height={12} borderRadius={6} style={{ marginTop: theme.spacing.xs }} />
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Skeleton width={64} height={24} borderRadius={12} />
+          <Skeleton width={56} height={12} borderRadius={6} style={{ marginTop: theme.spacing.xs }} />
+        </View>
+      </View>
+
+      <View style={styles.infoSection}>
+        <Skeleton width={96} height={16} borderRadius={8} style={{ marginBottom: theme.spacing.md, marginLeft: theme.spacing.xs }} />
+        <View style={styles.matchingCard}>
+          <View style={styles.matchingRow}>
+            <Skeleton width="70%" height={14} borderRadius={7} />
+            <Skeleton width={48} height={28} borderRadius={14} />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.infoSection}>
+        <Skeleton width={64} height={16} borderRadius={8} style={{ marginBottom: theme.spacing.md, marginLeft: theme.spacing.xs }} />
+        <View style={styles.chipRow}>
+          <Skeleton width={80} height={28} borderRadius={14} />
+          <Skeleton width={64} height={28} borderRadius={14} />
+          <Skeleton width={96} height={28} borderRadius={14} />
+        </View>
+      </View>
+
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardRow}>
+          <Skeleton width={100} height={14} borderRadius={7} />
+          <Skeleton width={64} height={14} borderRadius={7} />
+        </View>
+        <View style={styles.infoCardDivider} />
+        <View style={styles.infoCardRow}>
+          <Skeleton width={80} height={14} borderRadius={7} />
+          <Skeleton width={80} height={14} borderRadius={7} />
+        </View>
+        <View style={styles.infoCardDivider} />
+        <View style={styles.infoCardRow}>
+          <Skeleton width={112} height={14} borderRadius={7} />
+          <Skeleton width={96} height={14} borderRadius={7} />
+        </View>
+      </View>
+
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardRow}>
+          <Skeleton width={104} height={14} borderRadius={7} />
+          <Skeleton width={72} height={14} borderRadius={7} />
+        </View>
+      </View>
+
+      {[4, 3, 3].map((count, sIdx) => (
+        <View key={sIdx} style={styles.section}>
+          <Skeleton width={80} height={16} borderRadius={8} style={{ marginBottom: theme.spacing.md, marginLeft: theme.spacing.xs }} />
+          <View style={styles.card}>
+            {Array.from({ length: count }).map((_, i) => (
+              <View key={i} style={[styles.settingItem, i < count - 1 && styles.borderBottom]}>
+                <Skeleton width={36} height={36} borderRadius={18} />
+                <Skeleton width={`${50 + Math.random() * 20}%`} height={14} borderRadius={7} style={{ marginLeft: theme.spacing.md }} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </>
+  );
+}
 
 const MENU_SECTIONS = [
   {
@@ -400,19 +483,16 @@ export default function WorkerProfileScreen() {
       </View>
 
       <View style={styles.content}>
-        {!workerProfile && (
+        {!workerProfile && !loadError && <ProfileSkeleton />}
+        {!workerProfile && loadError && (
           <View style={styles.userInfo}>
             <Text
               style={[
                 theme.typography.body2,
-                {
-                  color: loadError
-                    ? theme.colors.error
-                    : theme.colors.textSecondary,
-                },
+                { color: theme.colors.error },
               ]}
             >
-              {loadError || 'Loading profile…'}
+              {loadError}
             </Text>
           </View>
         )}
