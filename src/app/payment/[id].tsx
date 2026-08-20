@@ -8,17 +8,8 @@ import { theme } from '@/constants/theme';
 import { MockGCashPayment } from '@/components/payment/MockGCashPayment';
 import { ImageUploadCard } from '@/components/ImageUploadCard';
 import { uploadBookingProof } from '@/services/uploads';
-import {
-  ArrowLeft,
-  CreditCard,
-  Banknote,
-  Smartphone,
-} from 'lucide-react-native';
-import {
-  confirmCashPayment,
-  fetchBookingDetail,
-  fetchPlatformFeeSettings,
-} from '@/services/api';
+import { ArrowLeft, CreditCard, Banknote, Smartphone } from 'lucide-react-native';
+import { confirmCashPayment, fetchBookingDetail, fetchPlatformFeeSettings } from '@/services/api';
 
 const PAYMENT_METHODS = [
   {
@@ -67,23 +58,22 @@ export default function PaymentScreen() {
 
   useEffect(() => {
     if (bookingId)
-      void Promise.all([
-        fetchBookingDetail(bookingId),
-        fetchPlatformFeeSettings(),
-      ]).then(([result, fees]) => {
-        if (result.error) setError(result.error);
-        else {
-          const b = result.data;
-          const agreedAmount = b?.agreed_service_amount;
-          if (agreedAmount == null || Number(agreedAmount) <= 0) {
-            setError('A worker price must be agreed before payment.');
-            setAmount(null);
-          } else {
-            setAmount(Number(agreedAmount));
+      void Promise.all([fetchBookingDetail(bookingId), fetchPlatformFeeSettings()]).then(
+        ([result, fees]) => {
+          if (result.error) setError(result.error);
+          else {
+            const b = result.data;
+            const agreedAmount = b?.agreed_service_amount;
+            if (agreedAmount == null || Number(agreedAmount) <= 0) {
+              setError('A worker price must be agreed before payment.');
+              setAmount(null);
+            } else {
+              setAmount(Number(agreedAmount));
+            }
           }
-        }
-        if (!fees.error) setHomeownerCharge(fees.data.homeownerCharge ?? 0);
-      });
+          if (!fees.error) setHomeownerCharge(fees.data.homeownerCharge ?? 0);
+        },
+      );
   }, [bookingId]);
   const total = (amount ?? 0) + homeownerCharge;
 
@@ -114,16 +104,10 @@ export default function PaymentScreen() {
       if (payment.status === 'SUCCESSFUL') {
         router.push(`/payment/success?id=${bookingId}`);
       } else {
-        setError(
-          'Your confirmation was recorded. Waiting for the worker to confirm receipt.',
-        );
+        router.push(`/payment/success?id=${bookingId}&pending=true`);
       }
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'Cash payment confirmation failed.',
-      );
+      setError(cause instanceof Error ? cause.message : 'Cash payment confirmation failed.');
     } finally {
       setLoading(false);
     }
@@ -151,23 +135,11 @@ export default function PaymentScreen() {
       contentContainerStyle={{ paddingBottom: 80 }}
       style={{ paddingBottom: 0 }}
     >
-      <View
-        style={[
-          styles.header,
-          { paddingHorizontal: theme.layout.screenPadding },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={goBack}
-          style={styles.backButton}
-        >
+      <View style={[styles.header, { paddingHorizontal: theme.layout.screenPadding }]}>
+        <TouchableOpacity onPress={goBack} style={styles.backButton}>
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
-        <Text
-          style={[theme.typography.h4, { color: theme.colors.textPrimary }]}
-        >
-          Payment
-        </Text>
+        <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>Payment</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -196,12 +168,7 @@ export default function PaymentScreen() {
           </Text>
 
           <View style={styles.summaryRow}>
-            <Text
-              style={[
-                theme.typography.body2,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>
               Service
             </Text>
             <Text style={theme.typography.body2}>
@@ -211,12 +178,7 @@ export default function PaymentScreen() {
             </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text
-              style={[
-                theme.typography.body2,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[theme.typography.body2, { color: theme.colors.textSecondary }]}>
               Homeowner charge
             </Text>
             <Text style={theme.typography.body2}>
@@ -228,9 +190,7 @@ export default function PaymentScreen() {
           </View>
         </View>
 
-        <Text
-          style={[theme.typography.h3, { marginVertical: theme.spacing.md }]}
-        >
+        <Text style={[theme.typography.h3, { marginVertical: theme.spacing.md }]}>
           Select Payment Method
         </Text>
 
@@ -258,16 +218,12 @@ export default function PaymentScreen() {
                 style={[
                   styles.iconContainer,
                   {
-                    backgroundColor: method.available
-                      ? `${method.color}20`
-                      : theme.colors.border,
+                    backgroundColor: method.available ? `${method.color}20` : theme.colors.border,
                   },
                 ]}
               >
                 <Icon
-                  color={
-                    method.available ? method.color : theme.colors.textSecondary
-                  }
+                  color={method.available ? method.color : theme.colors.textSecondary}
                   size={24}
                 />
               </View>
@@ -296,12 +252,7 @@ export default function PaymentScreen() {
                 )}
               </View>
               {method.available && (
-                <View
-                  style={[
-                    styles.radio,
-                    !isSelected && { borderColor: theme.colors.border },
-                  ]}
-                >
+                <View style={[styles.radio, !isSelected && { borderColor: theme.colors.border }]}>
                   {isSelected && <View style={styles.radioInner} />}
                 </View>
               )}
@@ -310,12 +261,7 @@ export default function PaymentScreen() {
         })}
 
         <View style={styles.receiptSection}>
-          <Text
-            style={[
-              theme.typography.h4,
-              { color: theme.colors.textPrimary, marginBottom: 4 },
-            ]}
-          >
+          <Text style={[theme.typography.h4, { color: theme.colors.textPrimary, marginBottom: 4 }]}>
             Proof of Payment / Receipt (Optional for PROD)
           </Text>
           <Text
@@ -327,7 +273,8 @@ export default function PaymentScreen() {
               },
             ]}
           >
-            Take a photo with camera or submit a picture of the receipt for real production verification.
+            Take a photo with camera or submit a picture of the receipt for real production
+            verification.
           </Text>
 
           <ImageUploadCard

@@ -1,27 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  Pressable,
-} from 'react-native';
+import { View, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { CheckCircle2, Star, X } from 'lucide-react-native';
+import { CheckCircle2, Clock, Star, X } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Elevation } from '@/constants/theme';
 import { AppText } from '@/components/AppText';
 import { AppButton } from '@/components/AppButton';
 import { getWorkerFeedback } from '@/services/workerFeedback';
-import {
-  fetchBookingProofPhotos,
-  type BookingProofPhoto,
-} from '@/services/api';
+import { fetchBookingProofPhotos, type BookingProofPhoto } from '@/services/api';
 
 interface CompletedSummaryProps {
   bookingId: string;
   duration: string;
   earnings: string;
   paymentStatus: string;
+  paymentMethod?: string | null;
   commissionRatePercent?: number | null;
   commissionAmount?: number | null;
   onConfirmCash: (method?: 'CASH' | 'ONLINE_SIMULATED') => void;
@@ -32,11 +24,13 @@ export const CompletedSummary = React.memo(function CompletedSummary({
   duration,
   earnings,
   paymentStatus,
+  paymentMethod,
   commissionRatePercent,
   commissionAmount,
   onConfirmCash,
 }: CompletedSummaryProps) {
   const paymentConfirmed = paymentStatus === 'SUCCESSFUL';
+  const paymentAwaiting = paymentStatus === 'AWAITING_CONFIRMATIONS';
   const [feedback, setFeedback] = useState<{
     rating: number;
     comment: string;
@@ -74,29 +68,18 @@ export const CompletedSummary = React.memo(function CompletedSummary({
   const MAX_ID_LENGTH = 14;
   const paddedId = bookingId.padStart(4, '0');
   const displayId =
-    paddedId.length > MAX_ID_LENGTH
-      ? `${paddedId.slice(0, MAX_ID_LENGTH - 3)}...`
-      : paddedId;
+    paddedId.length > MAX_ID_LENGTH ? `${paddedId.slice(0, MAX_ID_LENGTH - 3)}...` : paddedId;
   return (
     <View style={styles.container}>
       <View style={styles.iconRow}>
         <CheckCircle2 size={48} color={Colors.success} />
       </View>
 
-      <AppText
-        variant="h3"
-        weight="bold"
-        color={Colors.success}
-        style={styles.title}
-      >
+      <AppText variant="h3" weight="bold" color={Colors.success} style={styles.title}>
         Job Completed!
       </AppText>
 
-      <AppText
-        variant="body"
-        color={Colors.textSecondary}
-        style={styles.subtitle}
-      >
+      <AppText variant="body" color={Colors.textSecondary} style={styles.subtitle}>
         {paymentConfirmed
           ? 'Payment and platform commission deduction have been recorded.'
           : 'Mark customer payment as received to complete the server-calculated commission deduction.'}
@@ -164,17 +147,10 @@ export const CompletedSummary = React.memo(function CompletedSummary({
                   {proofPhotos.map((photo, index) => (
                     <View key={photo.id} style={styles.photoThumb}>
                       {photo.signedUrl && (
-                        <Image
-                          source={{ uri: photo.signedUrl }}
-                          style={styles.photoThumbImage}
-                        />
+                        <Image source={{ uri: photo.signedUrl }} style={styles.photoThumbImage} />
                       )}
                       <View style={styles.photoIndex}>
-                        <AppText
-                          variant="caption"
-                          weight="bold"
-                          color={Colors.white}
-                        >
+                        <AppText variant="caption" weight="bold" color={Colors.white}>
                           {index + 1}
                         </AppText>
                       </View>
@@ -189,14 +165,8 @@ export const CompletedSummary = React.memo(function CompletedSummary({
                       <Star
                         key={star}
                         size={16}
-                        color={
-                          star <= feedback.rating
-                            ? Colors.warning
-                            : Colors.border
-                        }
-                        fill={
-                          star <= feedback.rating ? Colors.warning : 'transparent'
-                        }
+                        color={star <= feedback.rating ? Colors.warning : Colors.border}
+                        fill={star <= feedback.rating ? Colors.warning : 'transparent'}
                       />
                     ))}
                     <AppText variant="body" weight="semiBold">
@@ -235,19 +205,28 @@ export const CompletedSummary = React.memo(function CompletedSummary({
         )}
       </View>
 
-      {!paymentConfirmed ? (
+      {!paymentConfirmed && !paymentAwaiting ? (
+        <View style={styles.waitingCard}>
+          <Clock size={40} color={Colors.warning} />
+          <AppText
+            variant="h4"
+            weight="bold"
+            color={Colors.textPrimary}
+            style={styles.waitingTitle}
+          >
+            Awaiting Payment Selection
+          </AppText>
+          <AppText variant="body" color={Colors.textSecondary} style={styles.waitingSubtitle}>
+            Customer has not selected a payment method yet.
+          </AppText>
+        </View>
+      ) : paymentAwaiting ? (
         <View style={{ width: '100%', gap: Spacing['2'] }}>
           <AppButton
-            label="Confirm Payment — Cash"
+            label={paymentMethod === 'CASH' ? 'Confirm Cash Payment' : 'Confirm GCash Payment'}
             variant="primary"
             fullWidth
-            onPress={() => onConfirmCash('CASH')}
-          />
-          <AppButton
-            label="Confirm Payment — Online (Simulated)"
-            variant="secondary"
-            fullWidth
-            onPress={() => onConfirmCash('ONLINE_SIMULATED')}
+            onPress={() => onConfirmCash(paymentMethod === 'CASH' ? 'CASH' : 'ONLINE_SIMULATED')}
           />
         </View>
       ) : (
@@ -273,18 +252,12 @@ export const CompletedSummary = React.memo(function CompletedSummary({
               <AppText variant="h4" weight="bold">
                 Your Review
               </AppText>
-              <Pressable
-                onPress={() => setShowReviewModal(false)}
-                hitSlop={12}
-              >
+              <Pressable onPress={() => setShowReviewModal(false)} hitSlop={12}>
                 <X color={Colors.textSecondary} size={24} />
               </Pressable>
             </View>
 
-            <ScrollView
-              style={styles.modalBody}
-              contentContainerStyle={styles.modalBodyContent}
-            >
+            <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
               {proofPhotos.length > 0 && (
                 <ScrollView
                   horizontal
@@ -294,17 +267,10 @@ export const CompletedSummary = React.memo(function CompletedSummary({
                   {proofPhotos.map((photo, index) => (
                     <View key={photo.id} style={styles.modalPhotoThumb}>
                       {photo.signedUrl && (
-                        <Image
-                          source={{ uri: photo.signedUrl }}
-                          style={styles.modalPhotoImage}
-                        />
+                        <Image source={{ uri: photo.signedUrl }} style={styles.modalPhotoImage} />
                       )}
                       <View style={styles.modalPhotoIndex}>
-                        <AppText
-                          variant="caption"
-                          weight="bold"
-                          color={Colors.white}
-                        >
+                        <AppText variant="caption" weight="bold" color={Colors.white}>
                           {index + 1}
                         </AppText>
                       </View>
@@ -324,16 +290,8 @@ export const CompletedSummary = React.memo(function CompletedSummary({
                         <Star
                           key={star}
                           size={24}
-                          color={
-                            star <= feedback.rating
-                              ? Colors.warning
-                              : Colors.border
-                          }
-                          fill={
-                            star <= feedback.rating
-                              ? Colors.warning
-                              : 'transparent'
-                          }
+                          color={star <= feedback.rating ? Colors.warning : Colors.border}
+                          fill={star <= feedback.rating ? Colors.warning : 'transparent'}
                         />
                       ))}
                       <AppText
@@ -459,6 +417,20 @@ const styles = StyleSheet.create({
   viewReviewBtn: {
     alignSelf: 'flex-start',
     marginTop: Spacing['1'],
+  },
+  waitingCard: {
+    width: '100%',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: Radius.lg,
+    padding: Spacing['5'],
+    alignItems: 'center',
+    gap: Spacing['2'],
+  },
+  waitingTitle: {
+    textAlign: 'center',
+  },
+  waitingSubtitle: {
+    textAlign: 'center',
   },
 
   // Review modal

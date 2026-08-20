@@ -3,16 +3,22 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/buttons/Button';
-import { theme } from '@/constants/theme';
+import { theme, Colors } from '@/constants/theme';
 import { CheckCircle2 } from 'lucide-react-native';
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
-  const { bookingId: bookingIdParam, id } = useLocalSearchParams<{
+  const {
+    bookingId: bookingIdParam,
+    id,
+    pending,
+  } = useLocalSearchParams<{
     bookingId?: string;
     id?: string;
+    pending?: string;
   }>();
   const bookingId = bookingIdParam ?? id;
+  const isPending = pending === 'true';
 
   const handleViewBooking = () => {
     if (bookingId) {
@@ -29,27 +35,31 @@ export default function PaymentSuccessScreen() {
   return (
     <Screen safeArea backgroundColor={theme.colors.background}>
       <View style={styles.container}>
-        <View style={styles.iconWrap}>
-          <CheckCircle2 color={theme.colors.success} size={64} />
+        <View
+          style={[
+            styles.iconWrap,
+            isPending
+              ? { backgroundColor: Colors.warningBg, borderColor: Colors.warning + '40' }
+              : undefined,
+          ]}
+        >
+          <CheckCircle2 color={isPending ? Colors.warning : Colors.success} size={64} />
         </View>
 
-        <Text style={styles.title}>Payment Successful!</Text>
+        <Text style={styles.title}>
+          {isPending ? 'Payment Method Recorded' : 'Payment Successful!'}
+        </Text>
         <Text style={styles.subtitle}>
-          Your payment has been confirmed. Thank you for using A-yos.
+          {isPending
+            ? 'Your payment method has been recorded. Waiting for the worker to confirm receipt.'
+            : 'Your payment has been confirmed. Thank you for using A-yos.'}
         </Text>
 
         <View style={styles.actions}>
-          <Button
-            title="View Booking Details"
-            onPress={handleViewBooking}
-            fullWidth
-          />
-          <Button
-            title="Back to Home"
-            variant="outlined"
-            onPress={handleHome}
-            fullWidth
-          />
+          {!isPending && (
+            <Button title="View Booking Details" onPress={handleViewBooking} fullWidth />
+          )}
+          <Button title="Back to Home" variant="outlined" onPress={handleHome} fullWidth />
         </View>
       </View>
     </Screen>
