@@ -190,7 +190,20 @@ export default function WorkerBookingsScreen() {
                       <View style={styles.incomingActions}>
                         <TouchableOpacity
                           style={styles.declineBtn}
-                          onPress={() => decline(booking.id)}
+                          onPress={() =>
+                            showAlert(
+                              'Decline Request',
+                              'Are you sure you want to decline this booking?',
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                  text: 'Decline',
+                                  style: 'destructive',
+                                  onPress: () => void decline(booking.id),
+                                },
+                              ],
+                            )
+                          }
                         >
                           <Text style={[theme.typography.button, { color: theme.colors.error }]}>Decline</Text>
                         </TouchableOpacity>

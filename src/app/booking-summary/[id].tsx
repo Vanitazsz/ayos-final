@@ -170,7 +170,7 @@ export default function BookingSummaryScreen() {
           { paddingHorizontal: theme.layout.screenPadding },
         ]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/bookings?filter=Completed')} style={styles.backBtn}>
           <ArrowLeft color={theme.colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={[theme.typography.h4, { color: theme.colors.textPrimary }]}>
@@ -282,47 +282,78 @@ export default function BookingSummaryScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* ── Proof of Work ── */}
-            <View style={styles.card}>
-              <View style={styles.cardTitleRow}>
-                <ImageIcon size={16} color={theme.colors.primary} />
-                <Text style={styles.cardTitle}>Proof of Work</Text>
-              </View>
-              {proofPhotos.length === 0 ? (
-                <Text
-                  style={[
-                    theme.typography.body2,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  No proof photos were attached for this booking.
-                </Text>
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.proofScroll}
-                >
-                  {proofPhotos.map((photo: any, index: number) =>
-                    photo.signedUrl ? (
-                      <Image
-                        key={photo.id ?? index}
-                        source={{ uri: photo.signedUrl }}
-                        style={styles.proofImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View key={photo.id ?? index} style={styles.proofPlaceholder}>
-                        <ImageIcon
-                          size={28}
-                          color={theme.colors.textTertiary}
+            {/* ── Provider Proof of Work ── */}
+            {(() => {
+              const workerPhotos = proofPhotos.filter(
+                (p: any) => p.submitted_by === 'worker',
+              );
+              const customerPhotos = proofPhotos.filter(
+                (p: any) => p.submitted_by === 'customer',
+              );
+              const emptyMsg =
+                'No proof photos were attached for this booking.';
+              const renderPhotoRow = (photos: any[]) =>
+                photos.length === 0 ? (
+                  <Text
+                    style={[
+                      theme.typography.body2,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {emptyMsg}
+                  </Text>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.proofScroll}
+                  >
+                    {photos.map((photo: any, index: number) =>
+                      photo.signedUrl ? (
+                        <Image
+                          key={photo.id ?? index}
+                          source={{ uri: photo.signedUrl }}
+                          style={styles.proofImage}
+                          resizeMode="cover"
                         />
-                      </View>
-                    ),
-                  )}
-                </ScrollView>
-              )}
-            </View>
+                      ) : (
+                        <View
+                          key={photo.id ?? index}
+                          style={styles.proofPlaceholder}
+                        >
+                          <ImageIcon
+                            size={28}
+                            color={theme.colors.textTertiary}
+                          />
+                        </View>
+                      ),
+                    )}
+                  </ScrollView>
+                );
+              return (
+                <>
+                  <View style={styles.card}>
+                    <View style={styles.cardTitleRow}>
+                      <ImageIcon size={16} color={theme.colors.primary} />
+                      <Text style={styles.cardTitle}>
+                        Provider Proof of Work
+                      </Text>
+                    </View>
+                    {renderPhotoRow(workerPhotos)}
+                  </View>
+
+                  <View style={styles.card}>
+                    <View style={styles.cardTitleRow}>
+                      <ImageIcon size={16} color={theme.colors.primary} />
+                      <Text style={styles.cardTitle}>
+                        Your Proof of Work
+                      </Text>
+                    </View>
+                    {renderPhotoRow(customerPhotos)}
+                  </View>
+                </>
+              );
+            })()}
 
             {/* ── Payment Receipt ── */}
             <View style={styles.card}>
